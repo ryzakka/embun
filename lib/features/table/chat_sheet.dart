@@ -40,7 +40,8 @@ const _palette = [
   Color(0xFFD3E07F),
 ];
 
-Color _accent(String? id, bool mine) {
+/// Warna sorot pemain. Publik karena dipakai juga oleh ChatSpotlightLayer.
+Color chatAccent(String? id, bool mine) {
   if (mine) return Colors.amberAccent;
   if (id == null) return Colors.white70;
   final h = id.codeUnits.fold<int>(0, (a, b) => a + b);
@@ -284,7 +285,7 @@ class _ChatPanelState extends State<ChatPanel> {
       int i, double maxW) {
     final uid = m['user_id'] as String?;
     final mine = uid == widget.repo.myId;
-    final accent = _accent(uid, mine);
+    final accent = chatAccent(uid, mine);
     // rev[0] = terbaru; rev[i + 1] = pesan sebelumnya (lebih lama).
     final older = i + 1 < rev.length ? rev[i + 1] : null;
     final newer = i > 0 ? rev[i - 1] : null;
@@ -416,12 +417,12 @@ class _ChatPanelState extends State<ChatPanel> {
                         children: [...prev, ?cur],
                       ),
                       child: showScene
-                          ? _CutScene(
+                          ? CutScene(
                         key: const ValueKey('cut'),
                         msg: spot,
                         card: _cardOf(spotUid),
                         mine: spotMine,
-                        accent: _accent(spotUid, spotMine),
+                        accent: chatAccent(spotUid, spotMine),
                         onSkip: _skip,
                       )
                           : const SizedBox.shrink(key: ValueKey('none')),
@@ -562,13 +563,15 @@ _Mood _moodOf(String t) {
 ///  0.50-0.80  simbol "!" / "?" / "👀" muncul membal di dekat kepala
 /// Setelah itu potret "bernapas" (naik turun), cahaya berdenyut, dan embun
 /// melayang naik. Teks diketik huruf demi huruf.
-class _CutScene extends StatefulWidget {
+///
+/// Publik karena dipakai juga oleh ChatSpotlightLayer (layar meja/diskusi).
+class CutScene extends StatefulWidget {
   final Map<String, dynamic> msg;
   final String? card;
   final bool mine;
   final Color accent;
   final VoidCallback onSkip;
-  const _CutScene({
+  const CutScene({
     super.key,
     required this.msg,
     required this.card,
@@ -578,10 +581,10 @@ class _CutScene extends StatefulWidget {
   });
 
   @override
-  State<_CutScene> createState() => _CutSceneState();
+  State<CutScene> createState() => CutSceneState();
 }
 
-class _CutSceneState extends State<_CutScene> with TickerProviderStateMixin {
+class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
   late final AnimationController _enter = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1100));
   late final AnimationController _loop = AnimationController(
@@ -601,7 +604,7 @@ class _CutSceneState extends State<_CutScene> with TickerProviderStateMixin {
   }
 
   @override
-  void didUpdateWidget(covariant _CutScene old) {
+  void didUpdateWidget(covariant CutScene old) {
     super.didUpdateWidget(old);
     if (old.msg['id'] != widget.msg['id']) _play();
   }

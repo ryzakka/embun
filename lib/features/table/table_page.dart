@@ -9,7 +9,9 @@ import '../common/art.dart';
 import '../lobby/lobby_page.dart';
 import 'card_burst.dart';
 import 'chat_sheet.dart';
+import 'chat_spotlight.dart';
 import 'countdown.dart';
+import 'day_transition.dart';
 import 'day_view.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
@@ -43,9 +45,18 @@ class _TablePageState extends State<TablePage> {
   List<Map<String, dynamic>>? emotes; // null = belum ada data pertama
   List<Map<String, dynamic>> events = [];
   List<Map<String, dynamic>> trades = [];
-  List<Map<String, dynamic>> chatMsgs = [];
+  List<Map<String, dynamic>>? chatMsgs; // null = belum ada data pertama
   Map<String, DateTime> lastSeen = {};
   int _chatSeen = 0;
+
+  // Efek obrolan dramatis di luar sheet obrolan (layar meja + diskusi).
+  bool chatFx = true;
+  bool _chatOpen = false; // sheet obrolan punya adegannya sendiri
+
+  // Adegan peralihan hari. _lastIntroDay mencegah adegan diputar ulang
+  // (mis. saat masuk kembali di tengah permainan).
+  Map<String, dynamic>? _dayIntro;
+  int? _lastIntroDay;
 
   Map<String, Map<String, dynamic>> defs = {};
   bool busy = false;
@@ -129,7 +140,33 @@ class _TablePageState extends State<TablePage> {
       if (game != null) _backToLobby('Permainan sudah dibubarkan');
       return;
     }
-    setState(() => game = g);
+    setState(() {
+      game = g;
+      _checkDayIntro(g);
+    });
+  }
+
+  /// Putar adegan peralihan hari saat hari baru dimulai (fase 'day').
+  /// Data pertama dianggap riwayat, kecuali hari 1 yang baru dimulai.
+  void _checkDayIntro(Map<String, dynamic> g) {
+    if (g['status'] == 'finished') return;
+    final day = g['day'] as int;
+    final phase = (g['phase'] as String?) ?? 'day';
+    if (_lastIntroDay == null) {
+      _lastIntroDay = day;
+      if (!(day == 1 && phase == 'day')) return;
+    } else {
+      if (phase != 'day' || day == _lastIntroDay) return;
+      _lastIntroDay = day;
+    }
+    _dayIntro = {
+      'day': day,
+      'leaves': (g['leaves'] as int?) ?? 30,
+      'cycle': (g['cycle_len'] as int?) ?? 3,
+      'verdict': (g['verdict_day'] == day - 1 && g['verdict'] != null)
+          ? g['verdict'] as String
+          : null,
+    };
   }
 
   void _toast(String m) =>
@@ -253,14 +290,23 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  int _othersChatCount() =>
-      chatMsgs.where((m) => m['user_id'] != repo.myId).length;
+  int _othersChatCount() => (chatMsgs ?? const <Map<String, dynamic>>[])
+      .where((m) => m['user_id'] != repo.myId)
+      .length;
 
   Future<void> _openChat() async {
-    setState(() => _chatSeen = _othersChatCount());
+    setState(() {
+      _chatSeen = _othersChatCount();
+      _chatOpen = true;
+    });
     await showChatSheet(context,
         repo: repo, gameId: widget.gameId, players: players);
-    if (mounted) setState(() => _chatSeen = _othersChatCount());
+    if (mounted) {
+      setState(() {
+        _chatOpen = false;
+        _chatSeen = _othersChatCount();
+      });
+    }
   }
 
   void _openEmotes(int day) {
@@ -312,6 +358,17 @@ class _TablePageState extends State<TablePage> {
     return raw is String ? DateTime.tryParse(raw) : null;
   }
 
+  /// Adegan obrolan hanya tampil di fase hari biasa dan diskusi, saat efek
+  /// menyala dan sheet obrolan sedang tertutup.
+  bool _spotlightOn(Map<String, dynamic>? g) {
+    if (g == null || g['status'] == 'finished') return false;
+    final phase = (g['phase'] as String?) ?? 'day';
+    return chatFx &&
+        !_chatOpen &&
+        _dayIntro == null &&
+        (phase == 'day' || phase == 'discussion');
+  }
+
   // ---------- build ----------
 
   @override
@@ -325,6 +382,30 @@ class _TablePageState extends State<TablePage> {
           g == null
               ? const Center(child: CircularProgressIndicator())
               : _content(g),
+          // Dipasang di sini (bukan di _content) supaya tetap hidup antar
+          // fase dan tidak memutar ulang pesan lama.
+          Positioned.fill(
+            child: ChatSpotlightLayer(
+              messages: chatMsgs,
+              players: players,
+              myId: repo.myId,
+              enabled: _spotlightOn(g),
+            ),
+          ),
+          if (_dayIntro != null)
+            Positioned.fill(
+              child: DayTransition(
+                key: ValueKey('intro${_dayIntro!['day']}'),
+                day: _dayIntro!['day'] as int,
+                leaves: _dayIntro!['leaves'] as int,
+                cycle: _dayIntro!['cycle'] as int,
+                verdict: _dayIntro!['verdict'] as String?,
+                dark: showAsAntag,
+                onDone: () {
+                  if (mounted) setState(() => _dayIntro = null);
+                },
+              ),
+            ),
           if (burst > 0)
             IgnorePointer(
               child: CardBurst(
@@ -587,7 +668,7 @@ class _TablePageState extends State<TablePage> {
         children: [
           _currencyBar(balance, rate, myCardId, day, readyCount,
               showChat: phase != 'discussion'),
-          if (verdict != null && phase == 'day') ...[
+          if (verdict != null && phase == 'day' && _dayIntro == null) ...[
             const SizedBox(height: 8),
             _verdictCard(verdict),
           ],
@@ -604,7 +685,9 @@ class _TablePageState extends State<TablePage> {
             ),
           ],
           const SizedBox(height: 8),
-          Expanded(child: body),
+          // Selama adegan peralihan, isi hari ditahan supaya animasi Kabar Pagi
+          // dan vonis baru diputar saat adegan selesai.
+          Expanded(child: _dayIntro == null ? body : const SizedBox.shrink()),
         ],
       ),
     );
@@ -696,6 +779,16 @@ class _TablePageState extends State<TablePage> {
         Text('+${_fmt(rate)}/hari',
             style: const TextStyle(fontSize: 12, color: Colors.white60)),
         const Spacer(),
+        IconButton(
+          tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(() => chatFx = !chatFx),
+          icon: Icon(
+            Icons.auto_awesome,
+            size: 20,
+            color: chatFx ? Colors.amberAccent : Colors.white38,
+          ),
+        ),
         if (showChat)
           Badge(
             isLabelVisible: unread > 0,
