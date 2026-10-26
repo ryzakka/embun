@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
@@ -36,9 +38,10 @@ class PrologueFlow extends StatefulWidget {
   State<PrologueFlow> createState() => _PrologueFlowState();
 }
 
-enum _Step { story, role }
+enum _Step { story, shuffling, role }
 
-class _PrologueFlowState extends State<PrologueFlow> {
+class _PrologueFlowState extends State<PrologueFlow>
+    with SingleTickerProviderStateMixin {
   _Step step = _Step.story;
   int line = 0;
   Timer? timer;
@@ -49,9 +52,20 @@ class _PrologueFlowState extends State<PrologueFlow> {
   final _gr = GameRepository();
   Timer? _beat;
 
+  // Controller untuk animasi putar/kocok kartu
+  late final AnimationController _shuffleCtrl;
+  List<String> randomStems = [];
+  int shuffleIndex = 0;
+  Timer? _shuffleTimer;
+
   @override
   void initState() {
     super.initState();
+    _shuffleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
     widget.repo.mySecret(widget.gameId).then((s) {
       if (mounted && s != null) {
         setState(() {
@@ -63,7 +77,10 @@ class _PrologueFlowState extends State<PrologueFlow> {
     widget.repo.players(widget.gameId).first.then((rows) {
       final me = rows.where((p) => p['user_id'] == widget.repo.myId);
       if (mounted && me.isNotEmpty) {
-        setState(() => myCard = me.first['character_card'] as String);
+        setState(() {
+          myCard = me.first['character_card'] as String;
+          randomStems = AssetCatalog.I.stems(protagonisDir);
+        });
       }
     });
     _startTimer();
@@ -84,13 +101,29 @@ class _PrologueFlowState extends State<PrologueFlow> {
     if (line < _prologue.length - 1) {
       setState(() => line++);
     } else {
-      _toRole();
+      _toShuffling();
     }
   }
 
-  void _toRole() {
+  void _toShuffling() {
     timer?.cancel();
-    if (mounted) setState(() => step = _Step.role);
+    if (!mounted) return;
+    setState(() => step = _Step.shuffling);
+    HapticFeedback.heavyImpact();
+
+    // Efek kocok kartu berputar cepat selama 2 detik sebelum masuk ke kartu akhir
+    _shuffleTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (mounted && randomStems.isNotEmpty) {
+        setState(() {
+          shuffleIndex = Random().nextInt(randomStems.length);
+        });
+      }
+    });
+
+    _shuffleCtrl.forward().whenComplete(() {
+      _shuffleTimer?.cancel();
+      if (mounted) setState(() => step = _Step.role);
+    });
   }
 
   void _openTable() {
@@ -105,6 +138,8 @@ class _PrologueFlowState extends State<PrologueFlow> {
   void dispose() {
     timer?.cancel();
     _beat?.cancel();
+    _shuffleCtrl.dispose();
+    _shuffleTimer?.cancel();
     super.dispose();
   }
 
@@ -118,7 +153,13 @@ class _PrologueFlowState extends State<PrologueFlow> {
         fit: StackFit.expand,
         children: [
           Backdrop(path: sceneryPath(scene), dim: 0.5),
-          SafeArea(child: step == _Step.story ? _story() : _roleStep()),
+          SafeArea(
+            child: step == _Step.story
+                ? _story()
+                : step == _Step.shuffling
+                ? _shufflingStep()
+                : _roleStep(),
+          ),
         ],
       ),
     );
@@ -156,7 +197,7 @@ class _PrologueFlowState extends State<PrologueFlow> {
           Positioned(
             right: 8,
             top: 8,
-            child: TextButton(onPressed: _toRole, child: const Text('Lewati')),
+            child: TextButton(onPressed: _toShuffling, child: const Text('Lewati')),
           ),
           const Align(
             alignment: Alignment.bottomCenter,
@@ -165,6 +206,34 @@ class _PrologueFlowState extends State<PrologueFlow> {
               child: Text('Ketuk untuk lanjut',
                   style: TextStyle(color: Colors.white54, fontSize: 12)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shufflingStep() {
+    final displayCard = randomStems.isNotEmpty
+        ? protagonistPath(randomStems[shuffleIndex])
+        : null;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Mengocok nasib dan peran di desa...',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          AnimatedBuilder(
+            animation: _shuffleCtrl,
+            builder: (_, child) {
+              return Transform.rotate(
+                angle: _shuffleCtrl.value * 20 * pi,
+                child: Transform.scale(
+                  scale: 1.0 + 0.3 * sin(_shuffleCtrl.value * pi),
+                  child: CardArt(path: displayCard, width: 140),
+                ),
+              );
+            },
           ),
         ],
       ),

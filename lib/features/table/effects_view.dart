@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
@@ -85,12 +86,20 @@ class _EffectsViewState extends State<EffectsView> {
 
   void _arrive(Map<String, dynamic> row) {
     if (!mounted) return;
+    final isBad = row['kind'] == 'bad';
+    if (isBad) {
+      HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
     setState(() {
       arrived++;
-      shown = row['leaves_after'] as int;
-      if (row['kind'] == 'bad') gray = true;
+      // Hitungan daun baru berubah setelah SEMUA gelembung tiba, supaya
+      // Topeng Warga tidak bocor lewat angka yang turun saat label "+1 daun".
+      if (arrived >= rows.length) shown = widget.finalLeaves;
+      if (isBad) gray = true;
     });
-    if (row['kind'] == 'bad') {
+    if (isBad) {
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) setState(() => gray = false);
       });
@@ -122,7 +131,8 @@ class _EffectsViewState extends State<EffectsView> {
                   child: Column(
                     children: [
                       Expanded(
-                          child: TreePortrait(leaves: shown, pathOverride: sakura)),
+                          child:
+                          TreePortrait(leaves: shown, pathOverride: sakura)),
                       const SizedBox(height: 8),
                       Text('$shown daun',
                           style: const TextStyle(
@@ -238,14 +248,12 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: bad
-                      ? const Color(0xFF3A2A44)
-                      : const Color(0xFF2E7D5B),
+                  color:
+                  bad ? const Color(0xFF3A2A44) : const Color(0xFF2E7D5B),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                      color: bad
-                          ? Colors.purpleAccent
-                          : Colors.lightGreenAccent),
+                      color:
+                      bad ? Colors.purpleAccent : Colors.lightGreenAccent),
                 ),
                 child: Text(widget.row['label'] as String,
                     style: const TextStyle(

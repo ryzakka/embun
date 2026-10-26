@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../../data/errors.dart';
 
 class VotingView extends StatefulWidget {
   final GameRepository repo;
@@ -30,7 +31,7 @@ class _VotingViewState extends State<VotingView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errMsg(e))));
       }
     } finally {
       if (mounted) setState(() => busy = false);

@@ -12,6 +12,8 @@ class CardTile extends StatelessWidget {
   final bool selected;
   final bool dim;
   final bool showCost;
+  final int? costOverride; // harga setelah Kabar Pagi
+  final String? badge; // mis. 'Terbeli', menggantikan harga
   final VoidCallback? onTap;
 
   const CardTile({
@@ -21,13 +23,15 @@ class CardTile extends StatelessWidget {
     this.selected = false,
     this.dim = false,
     this.showCost = false,
+    this.costOverride,
+    this.badge,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final bad = def?['side'] == 'antagonis';
-    final cost = (def?['cost'] as int?) ?? 0;
+    final cost = costOverride ?? (def?['cost'] as int?) ?? 0;
     return GestureDetector(
       onTap: onTap,
       child: Opacity(
@@ -67,7 +71,7 @@ class CardTile extends StatelessWidget {
                             ? const Color(0xFF6A5A7A)
                             : const Color(0xFF7FD3F7)),
                     const SizedBox(width: 4),
-                    Text('$cost'),
+                    Text(badge ?? '$cost'),
                   ],
                 ),
             ],

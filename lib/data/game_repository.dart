@@ -42,9 +42,13 @@ class GameRepository {
   Future<void> finishDay(String gameId, {String? card}) =>
       _db.rpc('finish_day', params: {'p_game': gameId, 'p_card': card});
 
-  Future<void> submitOffering(String gameId, List<String> handIds) =>
-      _db.rpc('submit_offering',
-          params: {'p_game': gameId, 'p_hand_ids': handIds});
+  Future<void> submitOffering(String gameId, List<String> handIds,
+      {String? target}) =>
+      _db.rpc('submit_offering', params: {
+        'p_game': gameId,
+        'p_hand_ids': handIds,
+        'p_target': target,
+      });
 
   Future<List<Map<String, dynamic>>> effects(String gameId, int day) async {
     final rows = await _db
@@ -53,6 +57,17 @@ class GameRepository {
         .eq('game_id', gameId)
         .eq('day', day)
         .order('seq');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> privateLogs(
+      String gameId, int day) async {
+    final rows = await _db
+        .from('private_logs')
+        .select()
+        .eq('game_id', gameId)
+        .eq('day', day)
+        .eq('user_id', myId);
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -87,4 +102,46 @@ class GameRepository {
   Future<void> sendEmote(String gameId, String emoji, {String? target}) =>
       _db.rpc('send_emote',
           params: {'p_game': gameId, 'p_emoji': emoji, 'p_target': target});
+
+  // ---- v2 ----
+  Future<void> buyCard(String gameId, String card) =>
+      _db.rpc('buy_card', params: {'p_game': gameId, 'p_card': card});
+
+  Future<void> giveEmbun(String gameId, String to, int amount) => _db.rpc(
+      'give_embun',
+      params: {'p_game': gameId, 'p_to': to, 'p_amount': amount});
+
+  Future<void> proposeTrade(String gameId, String to, String handId) =>
+      _db.rpc('propose_trade',
+          params: {'p_game': gameId, 'p_to': to, 'p_hand_id': handId});
+
+  Future<void> respondTrade(String tradeId, bool accept, {String? returnHand}) =>
+      _db.rpc('respond_trade', params: {
+        'p_trade': tradeId,
+        'p_accept': accept,
+        'p_return_hand': returnHand,
+      });
+
+  Stream<List<Map<String, dynamic>>> villageEvents(String gameId) => _db
+      .from('village_events')
+      .stream(primaryKey: ['id'])
+      .eq('game_id', gameId)
+      .order('created_at');
+
+  /// RLS hanya menyerahkan tawaran yang melibatkan pemain ini.
+  Stream<List<Map<String, dynamic>>> trades(String gameId) => _db
+      .from('trade_offers')
+      .stream(primaryKey: ['id'])
+      .eq('game_id', gameId);
+
+  Stream<List<Map<String, dynamic>>> presence(String gameId) => _db
+      .from('player_presence')
+      .stream(primaryKey: ['game_id', 'user_id'])
+      .eq('game_id', gameId);
+
+  /// Null bila permainan belum selesai.
+  Future<Map<String, dynamic>?> recap(String gameId) async {
+    final r = await _db.rpc('game_recap', params: {'p_game': gameId});
+    return r == null ? null : Map<String, dynamic>.from(r as Map);
+  }
 }

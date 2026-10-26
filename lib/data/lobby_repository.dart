@@ -30,6 +30,10 @@ class LobbyRepository {
   Future<void> leave(String id) =>
       _db.rpc('leave_game', params: {'p_game': id});
 
+  /// Khusus host: bubarkan ruangan (lobi) atau sudahi permainan (berjalan).
+  Future<void> endGame(String id) =>
+      _db.rpc('end_game', params: {'p_game': id});
+
   Future<void> updateCharacter(String gameId, String name, String card) =>
       _db.rpc('update_character',
           params: {'p_game': gameId, 'p_name': name, 'p_card': card});
@@ -40,21 +44,26 @@ class LobbyRepository {
       .eq('game_id', gameId)
       .order('joined_at');
 
-  Stream<Map<String, dynamic>> game(String gameId) => _db
+  /// null = baris game sudah tidak ada (ruangan dibubarkan).
+  Stream<Map<String, dynamic>?> game(String gameId) => _db
       .from('games')
       .stream(primaryKey: ['id'])
       .eq('id', gameId)
-      .where((rows) => rows.isNotEmpty)
-      .map((rows) => rows.first);
+      .map((rows) => rows.isEmpty ? null : rows.first);
 
+  /// Permainan terbaru yang belum selesai DAN diikuti pemain ini.
   Future<Map<String, dynamic>?> activeGame() async {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return null;
     final rows = await _db
-        .from('games')
-        .select()
-        .neq('status', 'finished')
-        .order('created_at', ascending: false)
+        .from('game_players')
+        .select('joined_at, games!inner(*)')
+        .eq('user_id', uid)
+        .neq('games.status', 'finished')
+        .order('joined_at', ascending: false)
         .limit(1);
-    return rows.isEmpty ? null : Map<String, dynamic>.from(rows.first);
+    if (rows.isEmpty) return null;
+    return Map<String, dynamic>.from(rows.first['games'] as Map);
   }
 
   Future<String?> myRole(String gameId) async =>

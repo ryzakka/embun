@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import 'card_tile.dart';
@@ -10,6 +12,7 @@ class OfferingView extends StatefulWidget {
   final bool isAntag;
   final List<Map<String, dynamic>> hand;
   final Map<String, Map<String, dynamic>> defs;
+  final List<Map<String, dynamic>> players;
   final ValueChanged<int> onSubmitted;
 
   const OfferingView({
@@ -20,6 +23,7 @@ class OfferingView extends StatefulWidget {
     required this.isAntag,
     required this.hand,
     required this.defs,
+    required this.players,
     required this.onSubmitted,
   });
 
@@ -29,6 +33,7 @@ class OfferingView extends StatefulWidget {
 
 class _OfferingViewState extends State<OfferingView> {
   final Set<String> sel = {};
+  String? targetId;
   bool busy = false;
   bool _pre = false;
 
@@ -39,27 +44,50 @@ class _OfferingViewState extends State<OfferingView> {
     return null;
   }
 
+  bool get _needsTarget {
+    for (final h in widget.hand) {
+      if (sel.contains(h['id']) && h['card_id'] == 'lentera_kunang') {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _toggle(String handId) {
     if (widget.isAntag && handId == _samaranId) return; // sumbangan wajib
+    HapticFeedback.selectionClick();
     setState(() {
       if (sel.contains(handId)) {
         sel.remove(handId);
       } else if (sel.length < 2) {
         sel.add(handId);
       }
+      if (!_needsTarget) targetId = null;
     });
   }
 
   Future<void> _submit() async {
+    if (_needsTarget && targetId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Pilih warga yang ingin diterangi Lentera Kunang')),
+      );
+      return;
+    }
     final n = sel.length;
     setState(() => busy = true);
     try {
-      await widget.repo.submitOffering(widget.gameId, sel.toList());
+      await widget.repo.submitOffering(
+        widget.gameId,
+        sel.toList(),
+        target: _needsTarget ? targetId : null,
+      );
+      HapticFeedback.mediumImpact();
       widget.onSubmitted(n);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errMsg(e))));
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -73,6 +101,10 @@ class _OfferingViewState extends State<OfferingView> {
       sel.add(samaran);
       _pre = true;
     }
+    final others = widget.players
+        .where((p) => p['user_id'] != widget.repo.myId)
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -93,6 +125,31 @@ class _OfferingViewState extends State<OfferingView> {
             ],
           ),
         ),
+        if (_needsTarget) ...[
+          const SizedBox(height: 6),
+          const Text('Pilih warga untuk diterangi Lentera Kunang:',
+              style: TextStyle(fontSize: 12, color: Colors.amberAccent)),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final p in others)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(p['name'] as String),
+                      selected: targetId == p['user_id'],
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) =>
+                          setState(() => targetId = p['user_id'] as String),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
         SizedBox(
           height: 196,
           child: ListView.separated(

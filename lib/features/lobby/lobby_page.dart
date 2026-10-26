@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../prologue/prologue_page.dart';
@@ -49,7 +50,7 @@ class _LobbyPageState extends State<LobbyPage> {
       }
       setState(() {});
     } catch (e) {
-      if (mounted) _toast(e.toString());
+      if (mounted) _toast(errMsg(e));
     }
   }
 
@@ -60,7 +61,7 @@ class _LobbyPageState extends State<LobbyPage> {
       final id = await action(randomProtagonist());
       if (mounted) setState(() => gameId = id);
     } catch (e) {
-      _toast(e.toString());
+      _toast(errMsg(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -207,19 +208,27 @@ class _LobbyPageState extends State<LobbyPage> {
       try {
         await repo.updateCharacter(id, me['name'] as String, chosen);
       } catch (e) {
-        if (mounted) _toast(e.toString());
+        if (mounted) _toast(errMsg(e));
       }
     }
   }
 
   Widget _room(String id) {
-    return StreamBuilder<Map<String, dynamic>>(
+    return StreamBuilder<Map<String, dynamic>?>(
       stream: repo.game(id),
       builder: (context, gs) {
-        if (!gs.hasData) {
+        final game = gs.data;
+        if (game == null) {
+          // Sudah menerima data tetapi barisnya hilang: ruangan dibubarkan.
+          if (gs.connectionState != ConnectionState.waiting) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || gameId != id) return;
+              setState(() => gameId = null);
+              _toast('Ruangan sudah dibubarkan');
+            });
+          }
           return const Center(child: CircularProgressIndicator());
         }
-        final game = gs.data!;
         if (game['status'] != 'lobby') {
           if (!_navigated) {
             _navigated = true;
@@ -303,7 +312,7 @@ class _LobbyPageState extends State<LobbyPage> {
                           try {
                             await repo.startGame(id);
                           } catch (e) {
-                            _toast(e.toString());
+                            _toast(errMsg(e));
                           }
                         },
                         child: const Text('Mulai (min. 3 pemain)'),
@@ -311,10 +320,18 @@ class _LobbyPageState extends State<LobbyPage> {
                     ),
                   TextButton(
                     onPressed: () async {
-                      await repo.leave(id);
-                      if (mounted) setState(() => gameId = null);
+                      // Keluar dulu agar penghapusan ruangan tidak memicu
+                      // pesan "dibubarkan" untuk host sendiri.
+                      setState(() => gameId = null);
+                      try {
+                        await repo.leave(id);
+                      } catch (e) {
+                        if (!mounted) return;
+                        setState(() => gameId = id);
+                        _toast(errMsg(e));
+                      }
                     },
-                    child: const Text('Keluar'),
+                    child: Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
                   ),
                 ],
               ),

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../data/game_repository.dart';
+import '../../data/errors.dart';
 
 // Harus sama persis dengan daftar putih di fungsi send_emote (SQL).
 const kEmotes = ['🙂', '😠', '🤔', '😰', '🙏', '👀', '🔥', '💧'];
+
+// Harus sama dengan batas di send_emote (SQL).
+const kEmoteLimit = 8;
 
 class EmotePanel extends StatefulWidget {
   final GameRepository repo;
@@ -42,7 +46,7 @@ class _EmotePanelState extends State<EmotePanel> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errMsg(e))));
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -61,7 +65,7 @@ class _EmotePanelState extends State<EmotePanel> {
         (s.data ?? []).where((e) => e['day'] == widget.day).toList();
         final mine =
             today.where((e) => e['user_id'] == widget.repo.myId).length;
-        final left = 5 - mine;
+        final left = kEmoteLimit - mine;
         final recent = today.reversed.take(8).toList();
         return Column(
           mainAxisSize: MainAxisSize.min,

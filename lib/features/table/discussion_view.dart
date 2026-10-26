@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import 'countdown.dart';
 
@@ -30,6 +31,21 @@ class _DiscussionViewState extends State<DiscussionView> {
   final ctrl = TextEditingController();
   late final Stream<List<Map<String, dynamic>>> chatStream =
   widget.repo.chat(widget.gameId);
+  List<Map<String, dynamic>> effectLogs = [];
+  List<Map<String, dynamic>> mySecrets = [];
+
+
+
+  @override
+  void initState() {
+    super.initState();
+    widget.repo.effects(widget.gameId, widget.day).then((r) {
+      if (mounted) setState(() => effectLogs = r);
+    });
+    widget.repo.privateLogs(widget.gameId, widget.day).then((r) {
+      if (mounted) setState(() => mySecrets = r);
+    });
+  }
 
   @override
   void dispose() {
@@ -44,7 +60,7 @@ class _DiscussionViewState extends State<DiscussionView> {
     try {
       await widget.repo.readyToVote(widget.gameId);
     } catch (e) {
-      if (mounted) _toast(e.toString());
+      if (mounted) _toast(errMsg(e));
     }
   }
 
@@ -55,8 +71,56 @@ class _DiscussionViewState extends State<DiscussionView> {
     try {
       await widget.repo.sendMessage(widget.gameId, t);
     } catch (e) {
-      if (mounted) _toast(e.toString());
+      if (mounted) _toast(errMsg(e));
     }
+  }
+
+  void _showEffectLogSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF14221F),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Catatan Persembahan Hari ${widget.day}',
+                style:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            if (effectLogs.isEmpty)
+              const Text('Tidak ada efek tercatat.',
+                  style: TextStyle(color: Colors.white54))
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: effectLogs.length,
+                  separatorBuilder: (_, _) => const Divider(height: 12),
+                  itemBuilder: (_, i) {
+                    final e = effectLogs[i];
+                    final bad = e['kind'] == 'bad';
+                    return Row(
+                      children: [
+                        Icon(
+                          bad ? Icons.warning_amber : Icons.eco,
+                          size: 18,
+                          color: bad ? Colors.purpleAccent : Colors.greenAccent,
+                        ),
+                        const SizedBox(width: 8),
+                        // Jumlah daun per baris sengaja tidak ditampilkan:
+                        // akan membocorkan efek yang disamarkan Topeng Warga.
+                        Expanded(child: Text(e['label'] as String)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,9 +135,38 @@ class _DiscussionViewState extends State<DiscussionView> {
             const Text('Musyawarah Senja',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
+            TextButton.icon(
+              onPressed: _showEffectLogSheet,
+              icon: const Icon(Icons.history, size: 16),
+              label: const Text('Log Efek', style: TextStyle(fontSize: 12)),
+            ),
+            const SizedBox(width: 6),
             Countdown(deadline: widget.deadline),
           ],
         ),
+        if (mySecrets.isNotEmpty)
+          for (final s in mySecrets)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF332B10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amberAccent),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb,
+                      size: 16, color: Colors.amberAccent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(s['message'] as String,
+                        style: const TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
         const SizedBox(height: 4),
         const Text(
           'Ada pengkhianat di antara kalian. Siapa yang mencurigakan?',
