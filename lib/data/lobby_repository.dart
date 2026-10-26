@@ -34,6 +34,9 @@ class LobbyRepository {
   Future<void> endGame(String id) =>
       _db.rpc('end_game', params: {'p_game': id});
 
+  Future<void> setReady(String gameId, bool ready) =>
+      _db.rpc('set_ready', params: {'p_game': gameId, 'p_ready': ready});
+
   Future<void> updateCharacter(String gameId, String name, String card) =>
       _db.rpc('update_character',
           params: {'p_game': gameId, 'p_name': name, 'p_card': card});

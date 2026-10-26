@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
+import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../prologue/prologue_page.dart';
+import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
 class LobbyPage extends StatefulWidget {
@@ -14,6 +16,7 @@ class LobbyPage extends StatefulWidget {
 
 class _LobbyPageState extends State<LobbyPage> {
   final repo = LobbyRepository();
+  final _gr = GameRepository();
   final nameCtrl = TextEditingController();
   final codeCtrl = TextEditingController();
   String? gameId;
@@ -153,6 +156,7 @@ class _LobbyPageState extends State<LobbyPage> {
   );
 
   Future<void> _pickCard(String id, Map<String, dynamic> me) async {
+    if (me['ready'] == true) return; // terkunci selama siap
     final stems = AssetCatalog.I.stems(protagonisDir);
     final chosen = await showModalBottomSheet<String>(
       context: context,
@@ -251,15 +255,18 @@ class _LobbyPageState extends State<LobbyPage> {
             final mine = players.where((p) => p['user_id'] == repo.myId);
             final me = mine.isEmpty ? null : mine.first;
             final myCard = (me?['character_card'] as String?) ?? 'default';
+            final iReady = me?['ready'] == true;
+            final readyN = players.where((p) => p['ready'] == true).length;
+            final canStart = players.length >= 3 && readyN == players.length;
             return _panel(
               Column(
                 children: [
                   Text('Kode: ${game['code']}',
                       style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      CardArt(path: protagonistPath(myCard), width: 92),
+                      CardArt(path: protagonistPath(myCard), width: 72),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -272,50 +279,76 @@ class _LobbyPageState extends State<LobbyPage> {
                                 const TextStyle(color: Colors.white70)),
                             const SizedBox(height: 8),
                             OutlinedButton.icon(
-                              onPressed:
-                              me == null ? null : () => _pickCard(id, me),
-                              icon: const Icon(Icons.style),
-                              label: const Text('Ganti kartu'),
+                              onPressed: me == null || iReady
+                                  ? null
+                                  : () => _pickCard(id, me),
+                              icon: Icon(iReady ? Icons.lock : Icons.style),
+                              label: Text(
+                                  iReady ? 'Kartu terkunci' : 'Ganti kartu'),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: iReady
+                        ? OutlinedButton.icon(
+                      onPressed: me == null
+                          ? null
+                          : () async {
+                        try {
+                          await repo.setReady(id, false);
+                        } catch (e) {
+                          _toast(errMsg(e));
+                        }
+                      },
+                      icon: const Icon(Icons.check_circle,
+                          color: Colors.greenAccent),
+                      label: const Text('Siap. Ketuk untuk batal'),
+                    )
+                        : FilledButton(
+                      onPressed: me == null
+                          ? null
+                          : () async {
+                        try {
+                          await repo.setReady(id, true);
+                        } catch (e) {
+                          _toast(errMsg(e));
+                        }
+                      },
+                      child: const Text('Siap'),
+                    ),
+                  ),
+                  const Divider(height: 20),
                   Expanded(
-                    child: ListView(
-                      children: [
-                        for (final p in players)
-                          ListTile(
-                            dense: true,
-                            leading: PlayerAvatar(
-                              path: protagonistPath(
-                                  p['character_card'] as String),
-                              size: 40,
-                            ),
-                            title: Text(p['name'] as String),
-                            subtitle: Text(
-                                characterTitle(p['character_card'] as String)),
-                            trailing: p['user_id'] == game['host_id']
-                                ? const Text('Host')
-                                : null,
-                          ),
-                      ],
+                    child: _LobbyBody(
+                      gr: _gr,
+                      gameId: id,
+                      hostId: game['host_id'] as String,
+                      players: players,
                     ),
                   ),
                   if (isHost)
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () async {
+                        onPressed: canStart
+                            ? () async {
                           try {
                             await repo.startGame(id);
                           } catch (e) {
                             _toast(errMsg(e));
                           }
-                        },
-                        child: const Text('Mulai (min. 3 pemain)'),
+                        }
+                            : null,
+                        child: Text(canStart
+                            ? 'Mulai'
+                            : players.length < 3
+                            ? 'Menunggu pemain (min. 3)'
+                            : 'Menunggu semua siap ($readyN/${players.length})'),
                       ),
                     ),
                   TextButton(
@@ -339,6 +372,119 @@ class _LobbyPageState extends State<LobbyPage> {
           },
         );
       },
+    );
+  }
+}
+
+/// Tab Pemain / Obrolan di lobi. Obrolan memakai tabel yang sama dengan
+/// obrolan dalam gim.
+class _LobbyBody extends StatefulWidget {
+  final GameRepository gr;
+  final String gameId;
+  final String hostId;
+  final List<Map<String, dynamic>> players;
+  const _LobbyBody({
+    required this.gr,
+    required this.gameId,
+    required this.hostId,
+    required this.players,
+  });
+
+  @override
+  State<_LobbyBody> createState() => _LobbyBodyState();
+}
+
+class _LobbyBodyState extends State<_LobbyBody> {
+  int tab = 0; // 0 pemain, 1 obrolan
+  int seen = 0;
+  late final Stream<List<Map<String, dynamic>>> chat =
+  widget.gr.chat(widget.gameId);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        StreamBuilder<List<Map<String, dynamic>>>(
+          stream: chat,
+          builder: (context, s) {
+            final count = (s.data ?? [])
+                .where((m) => m['user_id'] != widget.gr.myId)
+                .length;
+            if (tab == 1) seen = count;
+            final unread = count - seen;
+            return Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text('Pemain (${widget.players.length})'),
+                    selected: tab == 0,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: (_) => setState(() => tab = 0),
+                  ),
+                ),
+                Badge(
+                  isLabelVisible: unread > 0 && tab != 1,
+                  label: Text('$unread'),
+                  child: ChoiceChip(
+                    label: const Text('Obrolan'),
+                    selected: tab == 1,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: (_) => setState(() {
+                      tab = 1;
+                      seen = count;
+                    }),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: tab == 0
+              ? ListView(
+            children: [
+              for (final p in widget.players)
+                ListTile(
+                  dense: true,
+                  leading: PlayerAvatar(
+                    path: protagonistPath(p['character_card'] as String),
+                    size: 40,
+                  ),
+                  title: Text(p['name'] as String),
+                  subtitle:
+                  Text(characterTitle(p['character_card'] as String)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (p['user_id'] == widget.hostId)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: Text('Host'),
+                        ),
+                      Icon(
+                        p['ready'] == true
+                            ? Icons.check_circle
+                            : Icons.hourglass_empty,
+                        size: 20,
+                        color: p['ready'] == true
+                            ? Colors.greenAccent
+                            : Colors.white38,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          )
+              : ChatPanel(
+            repo: widget.gr,
+            gameId: widget.gameId,
+            players: widget.players,
+            lobby: true,
+          ),
+        ),
+      ],
     );
   }
 }
