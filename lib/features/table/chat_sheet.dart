@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -83,7 +86,7 @@ Future<void> showChatSheet(
         return Padding(
           padding: EdgeInsets.only(bottom: inset),
           child: SizedBox(
-            height: (mq.size.height - inset) * 0.85,
+            height: (mq.size.height - inset) * 0.88,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Column(
@@ -110,9 +113,10 @@ Future<void> showChatSheet(
       },
     );
 
-/// Isi obrolan: panggung sorot (potret karakter pembicara muncul dramatis
-/// tiap ada pesan baru), riwayat pesan, frasa cepat, dan kolom ketik.
-/// Dipakai di sheet saat bermain dan di tab Obrolan lobi ([lobby] = true).
+/// Isi obrolan. Setiap pesan baru memicu adegan sinematik: potret karakter
+/// pengirim menghantam masuk di atas daftar pesan, lengkap dengan sinar,
+/// partikel, kilatan, dan dialog yang diketik. Ketuk adegan untuk melewati;
+/// tombol ✨ di kolom ketik mematikan/menyalakan efek.
 class ChatPanel extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
@@ -140,11 +144,12 @@ class _ChatPanelState extends State<ChatPanel> {
   final Set<String> _known = {};
   bool _primed = false; // data pertama = riwayat, tidak disorot
 
-  // Antrean sorotan
+  // Antrean adegan
   final List<Map<String, dynamic>> _queue = [];
   Map<String, dynamic>? _spot;
   Timer? _spotTimer;
   bool _busy = false;
+  bool fx = true;
 
   String? about; // user_id yang dibicarakan
   String? err;
@@ -153,9 +158,7 @@ class _ChatPanelState extends State<ChatPanel> {
   @override
   void initState() {
     super.initState();
-    _sub = widget.repo
-        .chat(widget.gameId)
-        .listen(_onData, onError: (_) {});
+    _sub = widget.repo.chat(widget.gameId).listen(_onData, onError: (_) {});
     scroll.addListener(() {
       if (!scroll.hasClients) return;
       // Daftar dibalik: offset 0 = pesan terbaru di bawah.
@@ -186,12 +189,12 @@ class _ChatPanelState extends State<ChatPanel> {
     _primed = true;
     if (!mounted) return;
     setState(() => data = all);
-    if (fresh.isNotEmpty) _enqueue(fresh);
+    if (fresh.isNotEmpty && fx) _enqueue(fresh);
   }
 
   void _enqueue(List<Map<String, dynamic>> msgs) {
     _queue.addAll(msgs);
-    if (_queue.length > 4) _queue.removeRange(0, _queue.length - 4);
+    if (_queue.length > 3) _queue.removeRange(0, _queue.length - 3);
     if (!_busy) _next();
   }
 
@@ -199,9 +202,9 @@ class _ChatPanelState extends State<ChatPanel> {
     if (!mounted) return;
     if (_queue.isEmpty) {
       _busy = false;
-      // Biarkan pembicara terakhir tampil sebentar, lalu panggung menutup.
       _spotTimer?.cancel();
-      _spotTimer = Timer(const Duration(seconds: 3), () {
+      // Biarkan adegan terakhir tertahan sebentar, lalu memudar.
+      _spotTimer = Timer(const Duration(milliseconds: 1200), () {
         if (mounted) setState(() => _spot = null);
       });
       return;
@@ -211,9 +214,31 @@ class _ChatPanelState extends State<ChatPanel> {
     _busy = true;
     setState(() => _spot = m);
     final len = (m['body'] as String).length;
-    var ms = (1600 + len * 45).clamp(2200, 5200).toInt();
-    if (_queue.isNotEmpty) ms -= 600;
+    var ms = (2000 + len * 40).clamp(2400, 4600).toInt();
+    if (_queue.isNotEmpty) ms -= 700;
     _spotTimer = Timer(Duration(milliseconds: ms), _next);
+  }
+
+  void _skip() {
+    if (_queue.isEmpty) {
+      _spotTimer?.cancel();
+      _busy = false;
+      setState(() => _spot = null);
+    } else {
+      _next();
+    }
+  }
+
+  void _toggleFx() {
+    setState(() {
+      fx = !fx;
+      if (!fx) {
+        _queue.clear();
+        _spotTimer?.cancel();
+        _busy = false;
+        _spot = null;
+      }
+    });
   }
 
   void _toLatest() {
@@ -342,60 +367,36 @@ class _ChatPanelState extends State<ChatPanel> {
         ? _lobbyQuick
         : (aboutName == null ? _generalQuick : _aboutQuick(aboutName));
     final rev = sortChat(data).reversed.toList();
+    final spot = _spot;
+    final spotUid = spot?['user_id'] as String?;
+    final spotMine = spotUid == widget.repo.myId;
 
-    return LayoutBuilder(builder: (context, c) {
-      // Panggung menyesuaikan tinggi yang tersedia; hilang bila terlalu sempit
-      // (mis. keyboard terbuka di ponsel pendek).
-      final stageH = c.maxHeight >= 520
-          ? 168.0
-          : c.maxHeight >= 400
-          ? 120.0
-          : 0.0;
-      final spot = _spot;
-      final spotUid = spot?['user_id'] as String?;
-      final spotMine = spotUid == widget.repo.myId;
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            alignment: Alignment.topCenter,
-            child: spot == null || stageH == 0
-                ? const SizedBox(width: double.infinity)
-                : Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(
-                height: stageH,
-                width: double.infinity,
-                child: _Stage(
-                  msg: spot,
-                  card: _cardOf(spotUid),
-                  mine: spotMine,
-                  accent: _accent(spotUid, spotMine),
-                  height: stageH,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: rev.isEmpty
-                ? const Center(
-              child: Text('Belum ada yang bicara...',
-                  style: TextStyle(color: Colors.white38)),
-            )
-                : LayoutBuilder(builder: (context, lc) {
-              final maxW = (lc.maxWidth - 36) * 0.82;
-              return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: LayoutBuilder(builder: (context, lc) {
+            final maxW = (lc.maxWidth - 36) * 0.82;
+            // Adegan menutup area pesan; disembunyikan bila terlalu sempit.
+            final showScene = fx && spot != null && lc.maxHeight >= 150;
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
                 children: [
-                  ListView.builder(
-                    controller: scroll,
-                    reverse: true,
-                    padding: const EdgeInsets.only(bottom: 4),
-                    itemCount: rev.length,
-                    itemBuilder: (_, i) =>
-                        _message(rev[i], rev, i, maxW),
+                  Positioned.fill(
+                    child: rev.isEmpty
+                        ? const Center(
+                      child: Text('Belum ada yang bicara...',
+                          style: TextStyle(color: Colors.white38)),
+                    )
+                        : ListView.builder(
+                      controller: scroll,
+                      reverse: true,
+                      padding: const EdgeInsets.only(bottom: 4),
+                      itemCount: rev.length,
+                      itemBuilder: (_, i) =>
+                          _message(rev[i], rev, i, maxW),
+                    ),
                   ),
                   if (showJump)
                     Positioned(
@@ -407,130 +408,191 @@ class _ChatPanelState extends State<ChatPanel> {
                         child: const Icon(Icons.keyboard_arrow_down),
                       ),
                     ),
-                ],
-              );
-            }),
-          ),
-          if (err != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(err!,
-                  style:
-                  const TextStyle(color: Colors.redAccent, fontSize: 12)),
-            ),
-          const SizedBox(height: 6),
-          if (!widget.lobby) ...[
-            SizedBox(
-              height: 32,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.only(right: 6),
-                      child: Text('Tentang:',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.white54)),
+                  Positioned.fill(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      layoutBuilder: (cur, prev) => Stack(
+                        fit: StackFit.expand,
+                        children: [...prev, ?cur],
+                      ),
+                      child: showScene
+                          ? _CutScene(
+                        key: const ValueKey('cut'),
+                        msg: spot,
+                        card: _cardOf(spotUid),
+                        mine: spotMine,
+                        accent: _accent(spotUid, spotMine),
+                        onSkip: _skip,
+                      )
+                          : const SizedBox.shrink(key: ValueKey('none')),
                     ),
                   ),
-                  for (final p in others)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(p['name'] as String),
-                        selected: about == p['user_id'],
-                        visualDensity: VisualDensity.compact,
-                        onSelected: (v) => setState(() =>
-                        about = v ? p['user_id'] as String : null),
-                      ),
-                    ),
                 ],
               ),
-            ),
-            const SizedBox(height: 4),
-          ],
+            );
+          }),
+        ),
+        if (err != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(err!,
+                style:
+                const TextStyle(color: Colors.redAccent, fontSize: 12)),
+          ),
+        const SizedBox(height: 6),
+        if (!widget.lobby) ...[
           SizedBox(
-            height: 34,
+            height: 32,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                for (final q in phrases)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Text('Tentang:',
+                        style:
+                        TextStyle(fontSize: 11, color: Colors.white54)),
+                  ),
+                ),
+                for (final p in others)
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: ActionChip(
-                      label: Text(q, style: const TextStyle(fontSize: 12)),
+                    child: ChoiceChip(
+                      label: Text(p['name'] as String),
+                      selected: about == p['user_id'],
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _send(q),
+                      onSelected: (v) => setState(
+                              () => about = v ? p['user_id'] as String : null),
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
+          const SizedBox(height: 4),
+        ],
+        SizedBox(
+          height: 34,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: ctrl,
-                  focusNode: focus,
-                  maxLength: 200,
-                  minLines: 1,
-                  maxLines: 3,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendTyped(),
-                  decoration: InputDecoration(
-                    hintText: 'Tulis sesuatu...',
-                    counterText: '',
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.08),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
+              for (final q in phrases)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ActionChip(
+                    label: Text(q, style: const TextStyle(fontSize: 12)),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _send(q),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            IconButton(
+              tooltip: fx ? 'Matikan efek dramatis' : 'Nyalakan efek dramatis',
+              onPressed: _toggleFx,
+              icon: Icon(
+                Icons.auto_awesome,
+                size: 20,
+                color: fx ? Colors.amberAccent : Colors.white38,
+              ),
+            ),
+            Expanded(
+              child: TextField(
+                controller: ctrl,
+                focusNode: focus,
+                maxLength: 200,
+                minLines: 1,
+                maxLines: 3,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendTyped(),
+                decoration: InputDecoration(
+                  hintText: 'Tulis sesuatu...',
+                  counterText: '',
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.08),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-              IconButton.filled(
-                onPressed: _sendTyped,
-                icon: const Icon(Icons.send, size: 20),
-              ),
-            ],
-          ),
-        ],
-      );
-    });
+            ),
+            const SizedBox(width: 6),
+            IconButton.filled(
+              onPressed: _sendTyped,
+              icon: const Icon(Icons.send, size: 20),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
-/// Panggung sorot ala visual novel: potret karakter meluncur masuk dari sisi
-/// pembicara dengan cahaya warna pemain, plakat nama, dan teks yang diketik
-/// huruf demi huruf. Pesan sendiri tampil di kanan, pesan orang lain di kiri.
-class _Stage extends StatefulWidget {
+// ====================== ADEGAN SINEMATIK ======================
+
+enum _Mood { calm, shout, ask, suspect }
+
+_Mood _moodOf(String t) {
+  final l = t.toLowerCase();
+  if (l.contains('curiga') ||
+      l.contains('bohong') ||
+      l.contains('pengkhianat') ||
+      l.contains('terbisik') ||
+      l.contains('👀')) {
+    return _Mood.suspect;
+  }
+  if (t.contains('!')) return _Mood.shout;
+  if (t.contains('?')) return _Mood.ask;
+  return _Mood.calm;
+}
+
+/// Adegan satu pesan. Urutan (1,1 detik):
+///  0.00-0.50  potret menghantam masuk dari sisi pembicara (membesar lalu
+///             mengecil dengan pantulan), latar menggelap, sinar menyebar
+///  0.42-0.50  kilatan cahaya saat potret mendarat
+///  0.45-0.90  guncangan (kuat bila seru "!", sedang bila curiga)
+///  0.30-0.70  plakat nama miring meluncur, lalu kotak dialog
+///  0.50-0.80  simbol "!" / "?" / "👀" muncul membal di dekat kepala
+/// Setelah itu potret "bernapas" (naik turun), cahaya berdenyut, dan embun
+/// melayang naik. Teks diketik huruf demi huruf.
+class _CutScene extends StatefulWidget {
   final Map<String, dynamic> msg;
   final String? card;
   final bool mine;
   final Color accent;
-  final double height;
-  const _Stage({
+  final VoidCallback onSkip;
+  const _CutScene({
+    super.key,
     required this.msg,
     required this.card,
     required this.mine,
     required this.accent,
-    required this.height,
+    required this.onSkip,
   });
 
   @override
-  State<_Stage> createState() => _StageState();
+  State<_CutScene> createState() => _CutSceneState();
 }
 
-class _StageState extends State<_Stage> with TickerProviderStateMixin {
-  late final AnimationController _in = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 650));
+class _CutSceneState extends State<_CutScene> with TickerProviderStateMixin {
+  late final AnimationController _enter = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100));
+  late final AnimationController _loop = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2600))
+    ..repeat();
   late final AnimationController _type = AnimationController(vsync: this);
+  Timer? _typeDelay;
+
+  _Mood mood = _Mood.calm;
+  Color fx = Colors.white;
+  int seed = 0;
 
   @override
   void initState() {
@@ -539,128 +601,442 @@ class _StageState extends State<_Stage> with TickerProviderStateMixin {
   }
 
   @override
-  void didUpdateWidget(covariant _Stage old) {
+  void didUpdateWidget(covariant _CutScene old) {
     super.didUpdateWidget(old);
     if (old.msg['id'] != widget.msg['id']) _play();
   }
 
   void _play() {
-    final n = (widget.msg['body'] as String).runes.length;
-    _type.duration =
-        Duration(milliseconds: (n * 32).clamp(300, 2200).toInt());
-    _in.forward(from: 0);
-    _type.forward(from: 0);
+    final body = widget.msg['body'] as String;
+    mood = _moodOf(body);
+    fx = switch (mood) {
+      _Mood.suspect => const Color(0xFFFF6B6B),
+      _Mood.shout => Color.lerp(widget.accent, Colors.white, 0.35)!,
+      _ => widget.accent,
+    };
+    seed = (widget.msg['id'] as String).hashCode;
+
+    _enter.forward(from: 0);
+    _type.stop();
+    _type.value = 0;
+    _type.duration = Duration(
+        milliseconds: (body.runes.length * 34).clamp(300, 2200).toInt());
+    _typeDelay?.cancel();
+    _typeDelay = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) _type.forward(from: 0);
+    });
+
+    if (!widget.mine) {
+      if (mood == _Mood.shout || mood == _Mood.suspect) {
+        Future.delayed(const Duration(milliseconds: 450),
+            HapticFeedback.heavyImpact);
+      } else {
+        HapticFeedback.selectionClick();
+      }
+    }
   }
 
   @override
   void dispose() {
-    _in.dispose();
+    _typeDelay?.cancel();
+    _enter.dispose();
+    _loop.dispose();
     _type.dispose();
     super.dispose();
   }
 
+  String get _glyph => switch (mood) {
+    _Mood.shout => '!',
+    _Mood.ask => '?',
+    _Mood.suspect => '👀',
+    _Mood.calm => '',
+  };
+
   @override
   Widget build(BuildContext context) {
-    final accent = widget.accent;
     final mine = widget.mine;
-    final cardW = (widget.height - 12) * 3 / 4;
+    final name = (widget.msg['name'] as String).toUpperCase();
     final body = widget.msg['body'] as String;
     final runes = body.runes.toList();
 
-    final portrait = SlideTransition(
-      position: Tween<Offset>(
-          begin: Offset(mine ? 0.7 : -0.7, 0), end: Offset.zero)
-          .animate(CurvedAnimation(parent: _in, curve: Curves.easeOutCubic)),
-      child: FadeTransition(
-        opacity: CurvedAnimation(
-            parent: _in, curve: const Interval(0, 0.6, curve: Curves.easeOut)),
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.82, end: 1.0).animate(
-              CurvedAnimation(parent: _in, curve: Curves.easeOutBack)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: CardArt(
-              path: protagonistPath(widget.card ?? 'default'),
-              width: cardW,
-              glow: accent,
-            ),
-          ),
-        ),
-      ),
-    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onSkip,
+      child: LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth, h = c.maxHeight;
+        var portraitH = (h * 0.84).clamp(100.0, 420.0).toDouble();
+        var cardW = portraitH * 3 / 4;
+        if (cardW > w * 0.58) cardW = w * 0.58;
+        final cardH = cardW * 4 / 3;
+        final sideGap = w * 0.05;
 
-    final dialog = FadeTransition(
-      opacity: CurvedAnimation(
-          parent: _in, curve: const Interval(0.25, 1, curve: Curves.easeOut)),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: mine ? Alignment.centerRight : Alignment.centerLeft,
-            end: mine ? Alignment.centerLeft : Alignment.centerRight,
-            colors: [
-              accent.withValues(alpha: 0.22),
-              Colors.black.withValues(alpha: 0.78),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: accent.withValues(alpha: 0.7)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              (widget.msg['name'] as String).toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accent,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-                letterSpacing: 1.6,
+        return AnimatedBuilder(
+          animation: Listenable.merge([_enter, _loop, _type]),
+          builder: (context, _) {
+            final t = _enter.value;
+            final l = _loop.value;
+            final breathe = sin(l * 2 * pi);
+
+            // --- gerak potret ---
+            final slideT = (t / 0.5).clamp(0.0, 1.0).toDouble();
+            final slide = Curves.easeOutBack.transform(slideT);
+            final dx = (1 - slide) * (mine ? 1 : -1) * cardW * 1.6;
+            final impactScale =
+                1 + 0.32 * (1 - Curves.easeOutCubic.transform(slideT));
+            final fade = (t / 0.2).clamp(0.0, 1.0).toDouble();
+            final shakeT = ((t - 0.45) / 0.45).clamp(0.0, 1.0).toDouble();
+            final amp = switch (mood) {
+              _Mood.shout => 12.0,
+              _Mood.suspect => 7.0,
+              _ => 0.0,
+            };
+            final shake = t > 0.45 ? sin(shakeT * 70) * amp * (1 - shakeT) : 0.0;
+            final tilt = (mine ? 1 : -1) * 0.035 * Curves.easeOut.transform(slideT);
+
+            // --- latar ---
+            final dim = Curves.easeOut
+                .transform((t / 0.25).clamp(0.0, 1.0).toDouble());
+            final rayCount = mood == _Mood.shout ? 20 : 12;
+            final rayStrength = switch (mood) {
+              _Mood.shout => 1.5,
+              _Mood.suspect => 1.1,
+              _ => 0.85,
+            };
+            final rayCenter =
+            Offset(w * (mine ? 0.72 : 0.28), h * 0.42);
+
+            // --- kilatan ---
+            final flashPeak = switch (mood) {
+              _Mood.shout => 0.6,
+              _Mood.suspect => 0.4,
+              _ => 0.18,
+            };
+            final flash =
+                max(0.0, 1 - ((t - 0.46).abs() / 0.07)) * flashPeak;
+
+            // --- plakat & dialog ---
+            final bt = Curves.easeOutCubic
+                .transform(((t - 0.3) / 0.4).clamp(0.0, 1.0).toDouble());
+            final dt = ((t - 0.35) / 0.3).clamp(0.0, 1.0).toDouble();
+            final typed = (runes.length * _type.value).ceil();
+            final typingDone = _type.value >= 1;
+
+            // --- simbol ---
+            final gt = Curves.elasticOut
+                .transform(((t - 0.5) / 0.3).clamp(0.0, 1.0).toDouble());
+
+            final portrait = Transform.translate(
+              offset: Offset(dx + shake, breathe * 4),
+              child: Transform.rotate(
+                angle: tilt,
+                child: Transform.scale(
+                  scale: impactScale * (1 + 0.012 * breathe),
+                  child: Opacity(
+                    opacity: fade,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: -cardW * 0.3,
+                          right: -cardW * 0.3,
+                          top: -cardH * 0.12,
+                          bottom: -cardH * 0.12,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(colors: [
+                                fx.withValues(
+                                    alpha: 0.38 + 0.14 * breathe),
+                                fx.withValues(alpha: 0),
+                              ]),
+                            ),
+                          ),
+                        ),
+                        CardArt(
+                          path: protagonistPath(widget.card ?? 'default'),
+                          width: cardW,
+                          glow: fx,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            Container(
-              width: 36,
-              height: 2,
-              margin: const EdgeInsets.symmetric(vertical: 5),
-              color: accent,
-            ),
-            AnimatedBuilder(
-              animation: _type,
-              builder: (_, __) {
-                final n = (runes.length * _type.value).ceil();
-                return Text(
-                  String.fromCharCodes(runes.take(n)),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, height: 1.35),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+            );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(mine ? 0.85 : -0.85, 0.1),
-            radius: 1.0,
-            colors: [accent.withValues(alpha: 0.28), Colors.transparent],
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: mine
-              ? [Expanded(child: dialog), const SizedBox(width: 10), portrait]
-              : [portrait, const SizedBox(width: 10), Expanded(child: dialog)],
-        ),
-      ),
+            final banner = Transform.translate(
+              offset: Offset((1 - bt) * (mine ? 1 : -1) * 140, 0),
+              child: Opacity(
+                opacity: bt,
+                child: Transform(
+                  transform: Matrix4.skewX(-0.22),
+                  child: Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        fx,
+                        Color.lerp(fx, Colors.black, 0.45)!,
+                      ]),
+                      boxShadow: [
+                        BoxShadow(
+                            color: fx.withValues(alpha: 0.6), blurRadius: 12),
+                      ],
+                    ),
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            final dialog = Opacity(
+              opacity: dt,
+              child: Transform.translate(
+                offset: Offset(0, (1 - dt) * 16),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: h * 0.42),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: mine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        end: mine
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        colors: [
+                          fx.withValues(alpha: 0.28),
+                          Colors.black.withValues(alpha: 0.88),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: fx.withValues(alpha: 0.85)),
+                      boxShadow: [
+                        BoxShadow(
+                            color: fx.withValues(alpha: 0.35), blurRadius: 16),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 14),
+                          child: Text(
+                            String.fromCharCodes(runes.take(typed)),
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: mood == _Mood.shout ? 18 : 15,
+                              fontWeight: mood == _Mood.shout
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                        if (typingDone)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Opacity(
+                              opacity: 0.4 + 0.6 * ((breathe + 1) / 2),
+                              child: Icon(Icons.arrow_drop_down,
+                                  color: fx, size: 22),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            return ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // latar gelap
+                  Opacity(
+                    opacity: dim,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: Alignment(mine ? 0.45 : -0.45, -0.1),
+                          radius: 1.15,
+                          colors: [
+                            Color.lerp(Colors.black, fx, 0.2)!
+                                .withValues(alpha: 0.86),
+                            Colors.black.withValues(alpha: 0.93),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // sinar
+                  Opacity(
+                    opacity: dim,
+                    child: CustomPaint(
+                      painter: _RaysPainter(
+                        rot: l * 2 * pi * 0.25,
+                        color: fx,
+                        count: rayCount,
+                        strength: rayStrength,
+                        center: rayCenter,
+                      ),
+                    ),
+                  ),
+                  // embun melayang
+                  CustomPaint(
+                    painter: _ParticlesPainter(t: l, color: fx, seed: seed),
+                  ),
+                  // potret
+                  Positioned(
+                    top: max(4.0, (h - cardH) * 0.12),
+                    left: mine ? null : sideGap,
+                    right: mine ? sideGap : null,
+                    child: portrait,
+                  ),
+                  // simbol suasana
+                  if (_glyph.isNotEmpty)
+                    Positioned(
+                      top: 6,
+                      left: mine ? null : sideGap + cardW - 6,
+                      right: mine ? sideGap + cardW - 6 : null,
+                      child: Transform.rotate(
+                        angle: sin(l * 2 * pi) * 0.12,
+                        child: Transform.scale(
+                          scale: gt,
+                          child: Text(
+                            _glyph,
+                            style: TextStyle(
+                              fontSize: 46,
+                              fontWeight: FontWeight.w900,
+                              color: fx,
+                              shadows: [
+                                Shadow(color: fx, blurRadius: 18),
+                                const Shadow(
+                                    color: Colors.black, blurRadius: 4),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // plakat nama + dialog
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: mine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(
+                              left: mine ? 0 : 8, right: mine ? 8 : 0),
+                          child: banner,
+                        ),
+                        const SizedBox(height: 4),
+                        dialog,
+                      ],
+                    ),
+                  ),
+                  // kilatan
+                  if (flash > 0.01)
+                    IgnorePointer(
+                      child: ColoredBox(
+                        color: Color.lerp(Colors.white, fx, 0.25)!
+                            .withValues(alpha: flash.clamp(0.0, 1.0).toDouble()),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      }),
     );
   }
+}
+
+/// Sinar menyebar dari belakang potret, berputar pelan.
+class _RaysPainter extends CustomPainter {
+  final double rot;
+  final Color color;
+  final int count;
+  final double strength;
+  final Offset center;
+  _RaysPainter({
+    required this.rot,
+    required this.color,
+    required this.count,
+    required this.strength,
+    required this.center,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.longestSide * 1.2;
+    final paint = Paint()
+      ..shader = ui.Gradient.radial(center, r, [
+        color.withValues(alpha: (0.3 * strength).clamp(0.0, 1.0).toDouble()),
+        color.withValues(alpha: 0),
+      ]);
+    final half = pi / count * 0.45;
+    for (var i = 0; i < count; i++) {
+      final a = rot + i * 2 * pi / count;
+      final p = Path()
+        ..moveTo(center.dx, center.dy)
+        ..lineTo(center.dx + cos(a - half) * r, center.dy + sin(a - half) * r)
+        ..lineTo(center.dx + cos(a + half) * r, center.dy + sin(a + half) * r)
+        ..close();
+      canvas.drawPath(p, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RaysPainter old) => true;
+}
+
+/// Tetes embun / kunang-kunang yang melayang naik.
+class _ParticlesPainter extends CustomPainter {
+  final double t;
+  final Color color;
+  final int seed;
+  _ParticlesPainter({required this.t, required this.color, required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = Random(seed);
+    for (var i = 0; i < 18; i++) {
+      final x0 = rnd.nextDouble();
+      final sp = 0.5 + rnd.nextDouble();
+      final sz = 1.5 + rnd.nextDouble() * 3.5;
+      final ph = rnd.nextDouble();
+      final f = (t * sp + ph) % 1.0;
+      final y = size.height * (1.05 - f * 1.1);
+      final x = size.width * x0 + sin((f + ph) * 2 * pi) * 14;
+      final a = (sin(f * pi) * 0.65).clamp(0.0, 1.0).toDouble();
+      canvas.drawCircle(
+        Offset(x, y),
+        sz,
+        Paint()..color = color.withValues(alpha: a),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlesPainter old) => true;
 }
