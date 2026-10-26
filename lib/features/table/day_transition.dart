@@ -7,23 +7,29 @@ import '../common/art.dart';
 double _seg(double t, double a, double b) =>
     ((t - a) / (b - a)).clamp(0.0, 1.0).toDouble();
 
-/// Adegan sinematik peralihan hari (3,4 detik). Linimasa (t = 0..1):
+double _bump(double t, double c, double w) =>
+    max(0.0, 1 - (t - c).abs() / w);
+
+/// Adegan sinematik peralihan hari (4,2 detik). Linimasa (t = 0..1):
 ///
-///  0.00-0.15  bilah sinema menutup atas-bawah, langit malam gelap
-///  0.00-0.60  matahari terbit dari bawah, sinar berputar, bintang memudar,
-///             langit berubah dari malam ke fajar
-///  0.25-0.65  lanskap Hayu (sesuai jumlah daun) muncul perlahan
-///  0.18-0.32  tulisan "HARI" turun
-///  0.30-0.50  angka hari menghantam dari besar ke ukuran asli
-///  0.50       kilatan putih, cincin kejut, percikan, getar haptic berat
-///  0.50-0.75  angka bergetar mereda; garis bercahaya memanjang
-///  0.60-0.72  info persembahan naik
-///  0.68-0.84  jumlah daun dihitung naik
-///  0.76-0.88  vonis hari sebelumnya (bila ada)
-///  0.88-1.00  seluruh adegan memudar
+///  0.00-0.06  layar menggelap, bilah sinema menutup
+///  0.00-0.50  malam sunyi: bulan tenggelam, bintang berkelip, kabut
+///             bergeser. Tulisan "HARI" jatuh huruf demi huruf, angka hari
+///             kemarin tampak redup lalu terangkat dan lenyap (0.26-0.38)
+///  0.15-0.65  matahari terbit, langit berubah dari malam ke fajar, sinar
+///             berputar; lanskap Hayu muncul dengan zoom perlahan (Ken Burns)
+///  0.40-0.52  angka hari baru menghantam dari besar ke ukuran asli
+///  0.52       kilatan, tiga cincin kejut, percikan, layar terhentak dan
+///             bergetar, getar haptic ganda
+///  0.52-0.66  garis bercahaya memanjang; butiran cahaya mulai naik
+///  0.62-0.74  info persembahan naik
+///  0.68-0.84  jumlah daun dihitung naik, bilah kesehatan Hayu terisi
+///  0.78-0.90  vonis hari sebelumnya (bila ada)
+///  0.90-1.00  seluruh adegan memudar
 ///
-/// Ketuk untuk melewati. [dark] = palet ungu untuk Si Terbisik yang tidak
-/// sedang menyamar (ikuti `showAsAntag` dari TablePage).
+/// Malam persembahan (hari kelipatan siklus) memakai palet bara jingga
+/// kemerahan, Si Terbisik yang tidak menyamar memakai palet ungu.
+/// Ketuk untuk melewati.
 class DayTransition extends StatefulWidget {
   final int day;
   final int leaves;
@@ -49,28 +55,39 @@ class DayTransition extends StatefulWidget {
 class _DayTransitionState extends State<DayTransition>
     with SingleTickerProviderStateMixin {
   static const _night = Color(0xFF05080F);
+  static const _land = 0.52;
 
   late final AnimationController c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 3400));
-  bool _slammed = false;
+      vsync: this, duration: const Duration(milliseconds: 4200));
+  final Set<int> _fired = {};
   bool _done = false;
 
-  Color get _warm =>
-      widget.dark ? const Color(0xFFB07CE8) : const Color(0xFFFFC857);
-  Color get _cool =>
-      widget.dark ? const Color(0xFF2A1745) : const Color(0xFF24365E);
+  bool get _offering => widget.day % widget.cycle == 0;
+
+  Color get _warm => widget.dark
+      ? const Color(0xFFB07CE8)
+      : _offering
+      ? const Color(0xFFFF9A52)
+      : const Color(0xFFFFC857);
+
+  Color get _cool => widget.dark
+      ? const Color(0xFF2A1745)
+      : _offering
+      ? const Color(0xFF3A2438)
+      : const Color(0xFF24365E);
 
   @override
   void initState() {
     super.initState();
-    HapticFeedback.lightImpact();
     c.addListener(() {
-      if (!_slammed && c.value >= 0.5) {
-        _slammed = true;
+      final t = c.value;
+      if (t >= 0.04 && _fired.add(0)) HapticFeedback.lightImpact();
+      if (t >= _land && _fired.add(1)) {
         HapticFeedback.heavyImpact();
         Future.delayed(
-            const Duration(milliseconds: 110), HapticFeedback.mediumImpact);
+            const Duration(milliseconds: 120), HapticFeedback.heavyImpact);
       }
+      if (t >= 0.7 && _fired.add(2)) HapticFeedback.selectionClick();
     });
     c.forward().whenComplete(_finish);
   }
@@ -90,10 +107,11 @@ class _DayTransitionState extends State<DayTransition>
   @override
   Widget build(BuildContext context) {
     final warm = _warm;
-    final offering = widget.day % widget.cycle == 0;
+    final offering = _offering;
     final subtitle = offering
         ? 'Malam persembahan'
         : 'Persembahan ${widget.cycle - widget.day % widget.cycle} hari lagi';
+    final vit = (widget.leaves / 30).clamp(0.0, 1.0).toDouble();
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -107,68 +125,109 @@ class _DayTransitionState extends State<DayTransition>
           builder: (context, _) {
             final t = c.value;
 
-            final master = min(_seg(t, 0, 0.06), 1 - _seg(t, 0.88, 1.0));
-            final sky = Curves.easeOut.transform(_seg(t, 0, 0.6));
-            final reveal = Curves.easeIn.transform(_seg(t, 0.25, 0.65));
+            final master = min(_seg(t, 0, 0.06), 1 - _seg(t, 0.9, 1.0));
+            final sky = Curves.easeOut.transform(_seg(t, 0.15, 0.65));
+            final reveal = Curves.easeIn.transform(_seg(t, 0.3, 0.7));
+            final kb = Curves.easeOutCubic.transform(_seg(t, 0.2, 1.0));
+            final zoom = 1.0 + 0.16 * (1 - kb) + 0.035 * _bump(t, _land, 0.06);
             final barH = h * 0.09 * Curves.easeOut.transform(_seg(t, 0, 0.15));
-            final flash = max(0.0, 1 - (t - 0.5).abs() / 0.035) * 0.5;
+            final flash = _bump(t, _land, 0.03) * 0.55;
 
-            // --- teks ---
-            final lt = _seg(t, 0.18, 0.32);
-            final slamK = Curves.easeOutBack.transform(_seg(t, 0.3, 0.5));
-            final numOpacity = _seg(t, 0.3, 0.38);
-            final shakeK = _seg(t, 0.5, 0.75);
-            final shake = t > 0.5 ? sin(shakeK * 60) * 12 * (1 - shakeK) : 0.0;
-            final barW = 160 * Curves.easeOut.transform(_seg(t, 0.5, 0.66));
-            final st = _seg(t, 0.6, 0.72);
-            final lvT = _seg(t, 0.68, 0.84);
-            final shownLeaves =
-            (widget.leaves * Curves.easeOut.transform(lvT)).round();
-            final vt = _seg(t, 0.76, 0.88);
+            // --- guncangan seluruh teks setelah angka mendarat ---
+            final shakeK = _seg(t, _land, 0.74);
+            final shakeX =
+            t > _land ? sin(shakeK * 70) * 14 * (1 - shakeK) : 0.0;
+            final shakeY =
+            t > _land ? sin(shakeK * 83) * 6 * (1 - shakeK) : 0.0;
+
+            // --- angka kemarin -> angka hari ini ---
+            final pvIn = _seg(t, 0.08, 0.2);
+            final pvOut = Curves.easeIn.transform(_seg(t, 0.26, 0.38));
+            final slamK = Curves.easeOutBack.transform(_seg(t, 0.4, _land));
+            final numOpacity = _seg(t, 0.4, 0.45);
 
             final shadows = [
               const Shadow(color: Colors.black, blurRadius: 10),
               const Shadow(color: Colors.black, blurRadius: 3),
             ];
 
-            final label = Opacity(
-              opacity: lt,
-              child: Transform.translate(
-                offset: Offset(0, (1 - lt) * -14),
-                child: Text('HARI',
-                    style: TextStyle(
-                      fontSize: 18,
-                      letterSpacing: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white70,
-                      shadows: shadows,
-                    )),
-              ),
-            );
-
-            final number = Opacity(
-              opacity: numOpacity,
-              child: Transform.translate(
-                offset: Offset(shake, 0),
-                child: Transform.scale(
-                  scale: 2.8 - 1.8 * slamK,
-                  child: Text('${widget.day}',
+            Widget letter(int i) {
+              final lt = _seg(t, 0.04 + i * 0.03, 0.14 + i * 0.03);
+              return Opacity(
+                opacity: lt,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - lt) * -26),
+                  child: Text('HARI'[i],
                       style: TextStyle(
-                        fontSize: numSize,
-                        height: 1.0,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(color: warm, blurRadius: 32),
-                          const Shadow(color: Colors.black, blurRadius: 8),
-                        ],
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white70,
+                        shadows: shadows,
                       )),
                 ),
+              );
+            }
+
+            final label = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                letter(0),
+                const SizedBox(width: 12),
+                letter(1),
+                const SizedBox(width: 12),
+                letter(2),
+                const SizedBox(width: 12),
+                letter(3),
+              ],
+            );
+
+            final numberBox = SizedBox(
+              width: numSize * 2.4,
+              height: numSize * 1.05,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  if (widget.day > 1)
+                    Opacity(
+                      opacity: (pvIn * (1 - pvOut)).clamp(0.0, 1.0).toDouble(),
+                      child: Transform.translate(
+                        offset: Offset(0, -70 * pvOut),
+                        child: Transform.scale(
+                          scale: 1 - 0.3 * pvOut,
+                          child: Text('${widget.day - 1}',
+                              style: TextStyle(
+                                fontSize: numSize,
+                                height: 1.0,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white38,
+                              )),
+                        ),
+                      ),
+                    ),
+                  Opacity(
+                    opacity: numOpacity,
+                    child: Transform.scale(
+                      scale: 2.8 - 1.8 * slamK,
+                      child: Text('${widget.day}',
+                          style: TextStyle(
+                            fontSize: numSize,
+                            height: 1.0,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(color: warm, blurRadius: 32),
+                              const Shadow(color: Colors.black, blurRadius: 8),
+                            ],
+                          )),
+                    ),
+                  ),
+                ],
               ),
             );
 
             final line = Container(
-              width: barW,
+              width: 170 * Curves.easeOut.transform(_seg(t, _land, 0.66)),
               height: 3,
               decoration: BoxDecoration(
                 color: warm,
@@ -177,45 +236,80 @@ class _DayTransitionState extends State<DayTransition>
               ),
             );
 
+            final st = _seg(t, 0.62, 0.74);
             final sub = Opacity(
               opacity: st,
               child: Transform.translate(
                 offset: Offset(0, (1 - st) * 14),
-                child: Text(subtitle,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: offering ? FontWeight.w800 : FontWeight.w500,
-                      letterSpacing: 1,
-                      color: offering ? Colors.amberAccent : Colors.white70,
-                      shadows: shadows,
-                    )),
+                child: Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: offering ? FontWeight.w800 : FontWeight.w500,
+                    letterSpacing: 1,
+                    color: offering ? Colors.amberAccent : Colors.white70,
+                    shadows: shadows,
+                  ),
+                ),
               ),
             );
 
-            final leavesChip = Opacity(
+            final lvT = _seg(t, 0.68, 0.84);
+            final lvE = Curves.easeOut.transform(lvT);
+            final shownLeaves = (widget.leaves * lvE).round();
+            final barColor = widget.dark
+                ? const Color(0xFFB07CE8)
+                : Color.lerp(Colors.redAccent, Colors.greenAccent, vit)!;
+            final leavesBlock = Opacity(
               opacity: lvT,
               child: Transform.translate(
                 offset: Offset(0, (1 - lvT) * 14),
-                child: Row(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.eco,
-                        size: 22,
-                        color: widget.dark
-                            ? Colors.blueGrey
-                            : Colors.greenAccent),
-                    const SizedBox(width: 6),
-                    Text('$shownLeaves daun',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          shadows: shadows,
-                        )),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.eco,
+                            size: 22,
+                            color: widget.dark
+                                ? Colors.blueGrey
+                                : Colors.greenAccent),
+                        const SizedBox(width: 6),
+                        Text('$shownLeaves daun',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              shadows: shadows,
+                            )),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 180,
+                      height: 6,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: Stack(
+                          children: [
+                            const Positioned.fill(
+                                child: ColoredBox(color: Colors.white12)),
+                            FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: (vit * lvE).clamp(0.0, 1.0).toDouble(),
+                              child: SizedBox.expand(
+                                  child: ColoredBox(color: barColor)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             );
 
+            final vt = _seg(t, 0.78, 0.9);
             final verdictBox = widget.verdict == null
                 ? const SizedBox.shrink()
                 : Opacity(
@@ -229,8 +323,7 @@ class _DayTransitionState extends State<DayTransition>
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                    Border.all(color: warm.withValues(alpha: 0.6)),
+                    border: Border.all(color: warm.withValues(alpha: 0.6)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -249,27 +342,30 @@ class _DayTransitionState extends State<DayTransition>
               ),
             );
 
-            final content = Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      label,
-                      number,
-                      const SizedBox(height: 8),
-                      line,
-                      const SizedBox(height: 12),
-                      sub,
-                      const SizedBox(height: 14),
-                      leavesChip,
-                      if (widget.verdict != null) ...[
+            final content = Transform.translate(
+              offset: Offset(shakeX, shakeY),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        label,
+                        numberBox,
+                        const SizedBox(height: 8),
+                        line,
+                        const SizedBox(height: 12),
+                        sub,
                         const SizedBox(height: 14),
-                        verdictBox,
+                        leavesBlock,
+                        if (widget.verdict != null) ...[
+                          const SizedBox(height: 14),
+                          verdictBox,
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -288,24 +384,31 @@ class _DayTransitionState extends State<DayTransition>
                         end: Alignment.bottomCenter,
                         colors: [
                           Color.lerp(_night, _cool, sky)!,
-                          Color.lerp(_night,
-                              Color.lerp(_cool, warm, 0.5)!, sky)!,
+                          Color.lerp(
+                              _night, Color.lerp(_cool, warm, 0.5)!, sky)!,
                         ],
                       ),
                     ),
                   ),
-                  // bintang, matahari terbit, sinar
+                  // bulan, bintang, matahari terbit, sinar
                   CustomPaint(
                     painter: _SkyPainter(t: t, warm: warm, seed: widget.day),
                   ),
-                  // lanskap Hayu sesuai jumlah daun
+                  // lanskap Hayu: muncul + zoom perlahan + terhentak
                   Opacity(
                     opacity: reveal * 0.82,
-                    child: Backdrop(
-                      path: landscapePath(widget.leaves),
-                      dark: widget.dark,
-                      dim: 0.5,
+                    child: Transform.scale(
+                      scale: zoom,
+                      child: Backdrop(
+                        path: landscapePath(widget.leaves),
+                        dark: widget.dark,
+                        dim: 0.5,
+                      ),
                     ),
+                  ),
+                  // kabut malam + butiran cahaya fajar
+                  CustomPaint(
+                    painter: _MotesPainter(t: t, warm: warm, seed: widget.day),
                   ),
                   // vinyet agar teks terbaca
                   DecoratedBox(
@@ -320,15 +423,14 @@ class _DayTransitionState extends State<DayTransition>
                       ),
                     ),
                   ),
-                  // cincin kejut + percikan saat angka mendarat
                   CustomPaint(
                     painter: _RingPainter(t: t, warm: warm, seed: widget.day),
                   ),
                   content,
                   if (flash > 0.01)
                     ColoredBox(
-                        color: Colors.white.withValues(
-                            alpha: flash.clamp(0.0, 1.0).toDouble())),
+                        color: Colors.white
+                            .withValues(alpha: flash.clamp(0.0, 1.0).toDouble())),
                   // bilah sinema
                   Align(
                     alignment: Alignment.topCenter,
@@ -366,7 +468,8 @@ class _DayTransitionState extends State<DayTransition>
   }
 }
 
-/// Bintang berkelip yang memudar, matahari terbit, dan sinar yang berputar.
+/// Bulan yang tenggelam, bintang berkelip yang memudar, matahari terbit,
+/// dan sinar yang berputar.
 class _SkyPainter extends CustomPainter {
   final double t;
   final Color warm;
@@ -397,8 +500,31 @@ class _SkyPainter extends CustomPainter {
       }
     }
 
+    // bulan tenggelam
+    final moonT = 1 - _seg(t, 0.08, 0.5);
+    if (moonT > 0.01) {
+      final mc = Offset(w * 0.22, h * (0.2 + 0.32 * (1 - moonT)));
+      final mr = min(w, h) * 0.07;
+      canvas.drawCircle(
+        mc,
+        mr * 3.2,
+        Paint()
+          ..shader = RadialGradient(colors: [
+            const Color(0xFFDCE6FF).withValues(alpha: 0.28 * moonT),
+            const Color(0xFFDCE6FF).withValues(alpha: 0),
+          ]).createShader(Rect.fromCircle(center: mc, radius: mr * 3.2)),
+      );
+      canvas.drawCircle(
+        mc,
+        mr,
+        Paint()
+          ..color = const Color(0xFFEFF3FF)
+              .withValues(alpha: (0.9 * moonT).clamp(0.0, 1.0).toDouble()),
+      );
+    }
+
     // matahari
-    final sunT = Curves.easeOutCubic.transform(_seg(t, 0, 0.6));
+    final sunT = Curves.easeOutCubic.transform(_seg(t, 0.15, 0.62));
     final r = min(w, h) * 0.14;
     final c = Offset(w * 0.5, h * (1.1 - 0.5 * sunT));
 
@@ -440,7 +566,57 @@ class _SkyPainter extends CustomPainter {
   bool shouldRepaint(covariant _SkyPainter old) => old.t != t;
 }
 
-/// Cincin kejut dan percikan yang meledak saat angka hari mendarat (t = 0.5).
+/// Kabut malam yang bergeser dan memudar saat fajar, lalu butiran cahaya
+/// yang melayang naik.
+class _MotesPainter extends CustomPainter {
+  final double t;
+  final Color warm;
+  final int seed;
+  _MotesPainter({required this.t, required this.warm, required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    final fog = 0.09 * (1 - _seg(t, 0.3, 0.62)) * _seg(t, 0, 0.1);
+    if (fog > 0.003) {
+      final p = Paint()
+        ..color = Colors.white.withValues(alpha: fog)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 38);
+      for (var i = 0; i < 5; i++) {
+        final dir = i.isEven ? 1.0 : -1.0;
+        final x = (i * 0.27 + t * 0.35 * dir) % 1.3 - 0.15;
+        canvas.drawCircle(
+            Offset(w * x, h * (0.55 + 0.09 * i)), max(w, h) * 0.2, p);
+      }
+    }
+
+    final mt = _seg(t, 0.35, 0.55);
+    if (mt > 0) {
+      final rnd = Random(seed * 53 + 9);
+      for (var i = 0; i < 30; i++) {
+        final x0 = rnd.nextDouble();
+        final sp = 0.5 + rnd.nextDouble();
+        final sz = 1.5 + rnd.nextDouble() * 3.5;
+        final ph = rnd.nextDouble();
+        final f = (t * 1.3 * sp + ph) % 1.0;
+        final y = h * (1.05 - f * 1.1);
+        final x = w * x0 + sin((f + ph) * 2 * pi) * 16;
+        final a = (sin(f * pi) * 0.7 * mt).clamp(0.0, 1.0).toDouble();
+        canvas.drawCircle(
+          Offset(x, y),
+          sz,
+          Paint()..color = (i.isEven ? warm : Colors.white).withValues(alpha: a),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MotesPainter old) => old.t != t;
+}
+
+/// Cincin kejut dan percikan yang meledak saat angka hari mendarat.
 class _RingPainter extends CustomPainter {
   final double t;
   final Color warm;
@@ -449,22 +625,22 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final s = _seg(t, 0.5, 0.85);
+    final s = _seg(t, _DayTransitionState._land, 0.88);
     if (s <= 0 || s >= 1) return;
     final c = Offset(size.width / 2, size.height * 0.46);
     final e = Curves.easeOutCubic.transform(s);
 
-    for (var ring = 0; ring < 2; ring++) {
-      final rs = ((s - ring * 0.12) / (1 - ring * 0.12)).clamp(0.0, 1.0);
+    for (var ring = 0; ring < 3; ring++) {
+      final rs = ((s - ring * 0.1) / (1 - ring * 0.1)).clamp(0.0, 1.0);
       if (rs <= 0) continue;
       final re = Curves.easeOutCubic.transform(rs.toDouble());
       canvas.drawCircle(
         c,
-        30 + 360 * re,
+        30 + 420 * re,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = (7 * (1 - rs)).clamp(0.5, 7.0).toDouble()
-          ..color = Color.lerp(warm, Colors.white, ring * 0.6)!
+          ..strokeWidth = (8 * (1 - rs)).clamp(0.5, 8.0).toDouble()
+          ..color = Color.lerp(warm, Colors.white, ring * 0.4)!
               .withValues(alpha: (1 - rs).clamp(0.0, 1.0).toDouble()),
       );
     }
@@ -473,9 +649,9 @@ class _RingPainter extends CustomPainter {
     final streak = Paint()
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 3;
-    for (var k = 0; k < 18; k++) {
+    for (var k = 0; k < 24; k++) {
       final ang = rnd.nextDouble() * 2 * pi;
-      final dist = 90 + rnd.nextDouble() * 220;
+      final dist = 90 + rnd.nextDouble() * 260;
       final dir = Offset(cos(ang), sin(ang));
       final head = c + dir * (dist * e);
       final tail = c + dir * (dist * max(0.0, e - 0.2));

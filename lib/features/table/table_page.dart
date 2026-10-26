@@ -16,6 +16,7 @@ import 'day_view.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'emote_panel.dart';
+import 'offering_transition.dart';
 import 'offering_view.dart';
 import 'player_sheet.dart';
 import 'village_strip.dart';
@@ -53,10 +54,14 @@ class _TablePageState extends State<TablePage> {
   bool chatFx = true;
   bool _chatOpen = false; // sheet obrolan punya adegannya sendiri
 
-  // Adegan peralihan hari. _lastIntroDay mencegah adegan diputar ulang
-  // (mis. saat masuk kembali di tengah permainan).
+  // Adegan peralihan layar penuh. _dayIntro['kind'] = 'day' (fajar hari
+  // baru) atau 'offering' (menuju Hayu). _lastIntroDay / _lastOfferDay
+  // mencegah adegan diputar ulang (mis. saat masuk kembali di tengah
+  // permainan).
   Map<String, dynamic>? _dayIntro;
   int? _lastIntroDay;
+  int? _lastOfferDay;
+  bool _offerSeeded = false;
 
   Map<String, Map<String, dynamic>> defs = {};
   bool busy = false;
@@ -143,7 +148,29 @@ class _TablePageState extends State<TablePage> {
     setState(() {
       game = g;
       _checkDayIntro(g);
+      _checkOfferIntro(g);
     });
+  }
+
+  /// Putar adegan menuju Hayu saat fase 'offering' dimulai. Data pertama
+  /// dianggap riwayat, jadi masuk kembali saat fase persembahan tidak
+  /// memutarnya lagi.
+  void _checkOfferIntro(Map<String, dynamic> g) {
+    if (g['status'] == 'finished') return;
+    final day = g['day'] as int;
+    final phase = (g['phase'] as String?) ?? 'day';
+    if (!_offerSeeded) {
+      _offerSeeded = true;
+      if (phase == 'offering') _lastOfferDay = day;
+      return;
+    }
+    if (phase != 'offering' || day == _lastOfferDay) return;
+    _lastOfferDay = day;
+    _dayIntro = {
+      'kind': 'offering',
+      'day': day,
+      'leaves': (g['leaves'] as int?) ?? 30,
+    };
   }
 
   /// Putar adegan peralihan hari saat hari baru dimulai (fase 'day').
@@ -160,6 +187,7 @@ class _TablePageState extends State<TablePage> {
       _lastIntroDay = day;
     }
     _dayIntro = {
+      'kind': 'day',
       'day': day,
       'leaves': (g['leaves'] as int?) ?? 30,
       'cycle': (g['cycle_len'] as int?) ?? 3,
@@ -394,7 +422,17 @@ class _TablePageState extends State<TablePage> {
           ),
           if (_dayIntro != null)
             Positioned.fill(
-              child: DayTransition(
+              child: _dayIntro!['kind'] == 'offering'
+                  ? OfferingTransition(
+                key: ValueKey('offer${_dayIntro!['day']}'),
+                day: _dayIntro!['day'] as int,
+                leaves: _dayIntro!['leaves'] as int,
+                dark: showAsAntag,
+                onDone: () {
+                  if (mounted) setState(() => _dayIntro = null);
+                },
+              )
+                  : DayTransition(
                 key: ValueKey('intro${_dayIntro!['day']}'),
                 day: _dayIntro!['day'] as int,
                 leaves: _dayIntro!['leaves'] as int,

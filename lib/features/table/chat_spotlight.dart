@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'chat_sheet.dart' show CutScene, chatAccent, sortChat;
 
@@ -7,6 +8,10 @@ import 'chat_sheet.dart' show CutScene, chatAccent, sortChat;
 /// Tempatkan di dalam Stack milik TablePage, di atas isi halaman:
 ///
 ///   Positioned.fill(child: ChatSpotlightLayer(...))
+///
+/// Adegan ditaruh di bagian ATAS panel kanan (di bawah bar mata uang dan
+/// deretan avatar) dan menyisakan ruang di bawah, supaya kolom ketik dan
+/// tombol "Siap memilih" / "Akhiri hari" tidak tertutup.
 ///
 /// Pesan pertama yang diterima dianggap riwayat (tidak disorot). Selama
 /// [enabled] false (fase lain, efek dimatikan, atau sheet obrolan terbuka),
@@ -21,6 +26,12 @@ class ChatSpotlightLayer extends StatefulWidget {
 
   /// Jarak kiri supaya adegan tidak menutupi sidebar hari (120 + garis + padding).
   final double leftInset;
+
+  /// Jarak atas: melewati bar mata uang + deretan avatar + judul diskusi.
+  final double topInset;
+
+  /// Ruang kosong di bawah untuk kolom ketik dan tombol aksi.
+  final double bottomInset;
   final double sceneHeight;
 
   const ChatSpotlightLayer({
@@ -30,6 +41,8 @@ class ChatSpotlightLayer extends StatefulWidget {
     required this.myId,
     required this.enabled,
     this.leftInset = 137,
+    this.topInset = 190,
+    this.bottomInset = 130,
     this.sceneHeight = 240,
   });
 
@@ -129,41 +142,49 @@ class _ChatSpotlightLayerState extends State<ChatSpotlightLayer> {
   @override
   Widget build(BuildContext context) {
     final spot = _spot;
-    final show = widget.enabled && spot != null;
     final uid = spot?['user_id'] as String?;
     final mine = uid == widget.myId;
 
     return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomRight,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(widget.leftInset, 0, 16, 16),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            layoutBuilder: (cur, prev) => Stack(
-              alignment: Alignment.bottomCenter,
-              children: [...prev, ?cur],
-            ),
-            child: show
-                ? SizedBox(
-              key: const ValueKey('cut'),
-              height: widget.sceneHeight,
-              width: double.infinity,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: CutScene(
-                  msg: spot,
-                  card: _cardOf(uid),
-                  mine: mine,
-                  accent: chatAccent(uid, mine),
-                  onSkip: _skip,
-                ),
+      child: LayoutBuilder(builder: (context, c) {
+        // Di layar pendek, inset disusutkan secara proporsional.
+        final total = c.maxHeight;
+        final top = min(widget.topInset, total * 0.28);
+        final bottom = min(widget.bottomInset, total * 0.2);
+        final h = min(widget.sceneHeight, total - top - bottom);
+        final show = widget.enabled && spot != null && h >= 110;
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(widget.leftInset, top, 16, bottom),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              layoutBuilder: (cur, prev) => Stack(
+                alignment: Alignment.topCenter,
+                children: [...prev, ?cur],
               ),
-            )
-                : const SizedBox.shrink(key: ValueKey('none')),
+              child: show
+                  ? SizedBox(
+                key: const ValueKey('cut'),
+                height: h,
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: CutScene(
+                    msg: spot,
+                    card: _cardOf(uid),
+                    mine: mine,
+                    accent: chatAccent(uid, mine),
+                    onSkip: _skip,
+                  ),
+                ),
+              )
+                  : const SizedBox.shrink(key: ValueKey('none')),
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
