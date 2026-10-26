@@ -77,6 +77,10 @@ class _TablePageState extends State<TablePage> {
   bool get isAntag => widget.role == 'antagonis';
   bool get showAsAntag => isAntag && !disguiseMode;
 
+  /// Di bawah lebar ini (ponsel) sidebar hari diganti header ringkas di atas.
+  static const _narrowBreakpoint = 720.0;
+  bool get _narrow => MediaQuery.sizeOf(context).width < _narrowBreakpoint;
+
   @override
   void initState() {
     super.initState();
@@ -418,6 +422,12 @@ class _TablePageState extends State<TablePage> {
               players: players,
               myId: repo.myId,
               enabled: _spotlightOn(g),
+              // Tanpa sidebar di ponsel: adegan memakai lebar penuh dan
+              // lebih pendek supaya tidak menutupi kartu terlalu banyak.
+              leftInset: _narrow ? 12 : 137,
+              topInset: _narrow ? 172 : 190,
+              bottomInset: _narrow ? 96 : 130,
+              sceneHeight: _narrow ? 190 : 240,
             ),
           ),
           if (_dayIntro != null)
@@ -518,7 +528,11 @@ class _TablePageState extends State<TablePage> {
       children: [
         Backdrop(path: landscapePath(leaves), dark: showAsAntag, dim: 0.74),
         SafeArea(
-          child: Row(
+          child: _narrow
+              ? _panel(g, day, phase, leaves, iAmReady, readyCount, jailed,
+              myCardId, deadline,
+              narrow: true, cycle: cycle, worms: worms, isHost: isHost)
+              : Row(
             children: [
               SizedBox(
                   width: 120,
@@ -526,8 +540,12 @@ class _TablePageState extends State<TablePage> {
                       day, cycle, leaves, worms, deadline, isHost)),
               const VerticalDivider(width: 1),
               Expanded(
-                child: _panel(g, day, phase, leaves, iAmReady, readyCount,
-                    jailed, myCardId, deadline),
+                child: _panel(g, day, phase, leaves, iAmReady,
+                    readyCount, jailed, myCardId, deadline,
+                    narrow: false,
+                    cycle: cycle,
+                    worms: worms,
+                    isHost: isHost),
               ),
             ],
           ),
@@ -632,8 +650,12 @@ class _TablePageState extends State<TablePage> {
       int readyCount,
       bool jailed,
       String myCardId,
-      DateTime? deadline,
-      ) {
+      DateTime? deadline, {
+        required bool narrow,
+        required int cycle,
+        required int worms,
+        required bool isHost,
+      }) {
     final balance = (myState?['balance'] as num?)?.toDouble() ?? 0;
     final rate = (myState?['rate'] as num?)?.toDouble() ?? 0;
     final verdict = (g['verdict_day'] == day - 1 && g['verdict'] != null)
@@ -651,6 +673,8 @@ class _TablePageState extends State<TablePage> {
         iAmReady: iAmReady,
         readyCount: readyCount,
         total: players.length,
+        players: players,
+        events: events,
       );
     } else if (phase == 'voting') {
       body = iAmReady
@@ -700,12 +724,26 @@ class _TablePageState extends State<TablePage> {
         phase == 'day' || phase == 'discussion' || phase == 'voting';
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(narrow ? 10 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _currencyBar(balance, rate, myCardId, day, readyCount,
-              showChat: phase != 'discussion'),
+          if (narrow)
+            _phoneHeader(
+              balance: balance,
+              rate: rate,
+              myCardId: myCardId,
+              day: day,
+              cycle: cycle,
+              leaves: leaves,
+              worms: worms,
+              deadline: deadline,
+              isHost: isHost,
+              showChat: phase != 'discussion',
+            )
+          else
+            _currencyBar(balance, rate, myCardId, day, readyCount,
+                showChat: phase != 'discussion'),
           if (verdict != null && phase == 'day' && _dayIntro == null) ...[
             const SizedBox(height: 8),
             _verdictCard(verdict),
@@ -784,6 +822,175 @@ class _TablePageState extends State<TablePage> {
       );
     },
   );
+
+  /// Header ringkas untuk ponsel: menggantikan sidebar hari dan bar mata
+  /// uang. Baris 1: avatar, saldo, obrolan, menu. Baris 2: hari, daun,
+  /// ulat, hitung mundur, daftar warga. Aksi sekunder ada di menu titik tiga.
+  Widget _phoneHeader({
+    required double balance,
+    required double rate,
+    required String myCardId,
+    required int day,
+    required int cycle,
+    required int leaves,
+    required int worms,
+    required DateTime? deadline,
+    required bool isHost,
+    required bool showChat,
+  }) {
+    final seed = darkSeed;
+    final avatar = showAsAntag
+        ? (seed == null ? null : darkCardPath(seed))
+        : protagonistPath(myCardId);
+    final accent =
+    showAsAntag ? const Color(0xFFB07CE8) : const Color(0xFF6FBF73);
+    final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
+    final readyCount = players.where((p) => p['ready'] == true).length;
+    final due = day % cycle == 0
+        ? 'Malam persembahan'
+        : 'Persembahan ${cycle - day % cycle} hari lagi';
+
+    PopupMenuItem<String> item(String v, IconData i, String t, {Color? c}) =>
+        PopupMenuItem<String>(
+          value: v,
+          child: Row(
+            children: [
+              Icon(i, size: 18, color: c ?? Colors.white70),
+              const SizedBox(width: 10),
+              Text(t, style: TextStyle(color: c)),
+            ],
+          ),
+        );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 6),
+      decoration: BoxDecoration(
+        color: Colors.black38,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PlayerAvatar(path: avatar, size: 38, ring: accent),
+              const SizedBox(width: 10),
+              Icon(showAsAntag ? Icons.circle : Icons.water_drop,
+                  size: 20,
+                  color: showAsAntag
+                      ? const Color(0xFF8A74A8)
+                      : const Color(0xFF7FD3F7)),
+              const SizedBox(width: 4),
+              Text(_fmt(balance),
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text('+${_fmt(rate)}/hari',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                    const TextStyle(fontSize: 12, color: Colors.white60)),
+              ),
+              const Spacer(),
+              if (showChat)
+                Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text('$unread'),
+                  child: IconButton(
+                    tooltip: 'Obrolan',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _openChat,
+                    icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                  ),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'Menu',
+                icon: const Icon(Icons.more_vert, size: 20),
+                padding: EdgeInsets.zero,
+                onSelected: (v) {
+                  switch (v) {
+                    case 'players':
+                      _showPlayersSheet(day);
+                    case 'fx':
+                      setState(() => chatFx = !chatFx);
+                    case 'mask':
+                      setState(() => disguiseMode = !disguiseMode);
+                    case 'exit':
+                      if (!busy) _confirmExit(isHost);
+                  }
+                },
+                itemBuilder: (_) => [
+                  item('players', Icons.people, 'Daftar warga'),
+                  item(
+                      'fx',
+                      Icons.auto_awesome,
+                      chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
+                      c: chatFx ? Colors.amberAccent : null),
+                  if (isAntag)
+                    item(
+                        'mask',
+                        disguiseMode ? Icons.visibility_off : Icons.visibility,
+                        disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
+                        c: disguiseMode ? Colors.amberAccent : null),
+                  const PopupMenuDivider(),
+                  item(
+                      'exit',
+                      isHost ? Icons.stop_circle_outlined : Icons.logout,
+                      isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
+                      c: Colors.redAccent),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Row(
+              children: [
+                Text('HARI $day',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5)),
+                const SizedBox(width: 10),
+                Icon(Icons.eco,
+                    size: 14,
+                    color: showAsAntag ? Colors.blueGrey : Colors.greenAccent),
+                const SizedBox(width: 3),
+                Text('$leaves', style: const TextStyle(fontSize: 13)),
+                if (worms > 0) ...[
+                  const SizedBox(width: 10),
+                  Text('🐛 $worms',
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.purpleAccent)),
+                ],
+                const Spacer(),
+                const Icon(Icons.hourglass_bottom,
+                    size: 13, color: Colors.white54),
+                const SizedBox(width: 3),
+                Countdown(
+                    deadline: deadline, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                ActionChip(
+                  avatar: const Icon(Icons.people, size: 14),
+                  label: Text('$readyCount/${players.length}',
+                      style: const TextStyle(fontSize: 11)),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onPressed: () => _showPlayersSheet(day),
+                ),
+              ],
+            ),
+          ),
+          Text(due,
+              style: const TextStyle(fontSize: 10, color: Colors.white54)),
+        ],
+      ),
+    );
+  }
 
   Widget _currencyBar(
       double balance, double rate, String myCardId, int day, int readyCount,
@@ -965,18 +1172,21 @@ class _TablePageState extends State<TablePage> {
           glow: const Color(0xFFB07CE8),
         ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Si Terbisik ternyata...',
-                style: TextStyle(color: Colors.white70)),
-            Text(name,
-                style:
-                const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            if (usernames[antagId] != null)
-              Text('yaitu ${usernames[antagId]}',
-                  style: const TextStyle(fontSize: 16, color: Colors.white70)),
-          ],
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Si Terbisik ternyata...',
+                  style: TextStyle(color: Colors.white70)),
+              Text(name,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold)),
+              if (usernames[antagId] != null)
+                Text('yaitu ${usernames[antagId]}',
+                    style:
+                    const TextStyle(fontSize: 16, color: Colors.white70)),
+            ],
+          ),
         ),
       ],
     );
@@ -1058,7 +1268,7 @@ class _TablePageState extends State<TablePage> {
       final withTarget = os.where((o) => o['target_id'] != null);
       final tgt = withTarget.isEmpty
           ? ''
-          : ' (Lentera ke ${_nameOf(withTarget.first['target_id'] as String?)})';
+          : ' (sasaran: ${_nameOf(withTarget.first['target_id'] as String?)})';
       lines.add(MapEntry(d * 10 + 1, 'Persembahan: $names$tgt'));
     });
     for (final v in votes.where((v) => v['user_id'] == uid)) {

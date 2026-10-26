@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'server_clock.dart';
 
 class GameRepository {
   final _db = Supabase.instance.client;
@@ -53,11 +54,59 @@ class GameRepository {
   Future<List<Map<String, dynamic>>> effects(String gameId, int day) async {
     final rows = await _db
         .from('effect_log')
-        .select()
+    // Kolom delta/leaves_after sengaja tidak diminta (dan dicabut hak
+    // bacanya di server): akan membocorkan efek Topeng Warga.
+        .select('id, game_id, day, seq, kind, label')
         .eq('game_id', gameId)
         .eq('day', day)
         .order('seq');
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// Jumlah daun sebelum efek hari ini diterapkan (awal hitungan animasi).
+  /// Null bila kolomnya belum ada atau belum terisi.
+  Future<int?> leavesBefore(String gameId) async {
+    try {
+      final r = await _db
+          .from('games')
+          .select('leaves_before_effects')
+          .eq('id', gameId)
+          .maybeSingle();
+      return r?['leaves_before_effects'] as int?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Jumlah kartu yang diserahkan tiap pemain pada malam [day]
+  /// (terbuka setelah efek; nama kartu tetap rahasia).
+  Future<Map<String, int>> offeringCounts(String gameId, int day) async {
+    try {
+      final rows = await _db
+          .from('offering_counts')
+          .select('user_id, n_cards')
+          .eq('game_id', gameId)
+          .eq('day', day);
+      return {
+        for (final r in rows) r['user_id'] as String: r['n_cards'] as int
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Banyak daun yang digerogoti kabut tiap malam untuk [players] pemain.
+  Future<int?> fogFor(int players) async {
+    try {
+      final r = await _db
+          .from('game_balance')
+          .select('fog')
+          .eq('players', players)
+          .maybeSingle();
+      return r?['fog'] as int?;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Map<String, dynamic>>> privateLogs(
@@ -90,8 +139,23 @@ class GameRepository {
       _db.rpc('submit_vote', params: {'p_game': gameId, 'p_target': target});
 
   /// Detak jantung + penegakan tenggat fase.
-  Future<void> tick(String gameId) =>
-      _db.rpc('tick', params: {'p_game': gameId});
+  Future<void> tick(String gameId) {
+    if (ServerClock.needsSync) {
+      ServerClock.markSyncing();
+      syncClock().catchError((_) {});
+    }
+    return _db.rpc('tick', params: {'p_game': gameId});
+  }
+
+  /// Hitung selisih jam perangkat dengan server (titik tengah permintaan).
+  Future<void> syncClock() async {
+    final t0 = DateTime.now();
+    final r = await _db.rpc('server_now');
+    final t1 = DateTime.now();
+    final server = DateTime.parse(r as String);
+    ServerClock.offset =
+        server.difference(t0.add(Duration(microseconds: t1.difference(t0).inMicroseconds ~/ 2)));
+  }
 
   Stream<List<Map<String, dynamic>>> emotes(String gameId) => _db
       .from('emotes')

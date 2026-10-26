@@ -12,7 +12,7 @@ const _generalQuick = [
   'Aku beli kartu baik 🌿',
   'Aku belum beli apa-apa',
   'Jangan buru-buru menuduh',
-  'Ada yang punya Lentera Kunang?',
+  'Ada yang punya Lentera Lawas?',
   'Siapa yang tadi memberi embun?',
 ];
 

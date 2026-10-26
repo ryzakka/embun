@@ -12,6 +12,8 @@ class DiscussionView extends StatefulWidget {
   final bool iAmReady;
   final int readyCount;
   final int total;
+  final List<Map<String, dynamic>> players;
+  final List<Map<String, dynamic>> events;
 
   const DiscussionView({
     super.key,
@@ -22,6 +24,8 @@ class DiscussionView extends StatefulWidget {
     required this.iAmReady,
     required this.readyCount,
     required this.total,
+    this.players = const [],
+    this.events = const [],
   });
 
   @override
@@ -34,18 +38,50 @@ class _DiscussionViewState extends State<DiscussionView> {
   widget.repo.chat(widget.gameId);
   List<Map<String, dynamic>> effectLogs = [];
   List<Map<String, dynamic>> mySecrets = [];
+  Map<String, int> counts = {};
+
+  static const _clueMarks = ['Bisik angin:', 'Kabar burung:'];
+
+  /// Petunjuk dari kabar pagi pada siklus ini (3 hari terakhir).
+  List<String> get _clues => [
+    for (final e in widget.events)
+      if (e['kind'] == 'kabar' &&
+          (e['day'] as int? ?? 0) >= widget.day - 2 &&
+          _clueMarks.any((m) => '${e['text']}'.startsWith(m)))
+        '${e['text']}'
+  ];
+
+  String _nameOf(String id) {
+    for (final p in widget.players) {
+      if (p['user_id'] == id) return p['name'] as String;
+    }
+    return '?';
+  }
 
 
 
   @override
   void initState() {
     super.initState();
+    _loadLogs();
+  }
+
+  void _loadLogs() {
     widget.repo.effects(widget.gameId, widget.day).then((r) {
       if (mounted) setState(() => effectLogs = r);
-    });
+    }).catchError((_) {});
     widget.repo.privateLogs(widget.gameId, widget.day).then((r) {
       if (mounted) setState(() => mySecrets = r);
+    }).catchError((_) {});
+    widget.repo.offeringCounts(widget.gameId, widget.day).then((r) {
+      if (mounted) setState(() => counts = r);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscussionView old) {
+    super.didUpdateWidget(old);
+    if (old.day != widget.day) _loadLogs();
   }
 
   @override
@@ -72,7 +108,11 @@ class _DiscussionViewState extends State<DiscussionView> {
     try {
       await widget.repo.sendMessage(widget.gameId, t);
     } catch (e) {
-      if (mounted) _toast(errMsg(e));
+      if (mounted) {
+        // Kembalikan tulisan yang gagal terkirim (kecuali sudah mengetik lagi).
+        if (ctrl.text.isEmpty) ctrl.text = t;
+        _toast(errMsg(e));
+      }
     }
   }
 
@@ -145,6 +185,65 @@ class _DiscussionViewState extends State<DiscussionView> {
             Countdown(deadline: widget.deadline),
           ],
         ),
+        for (final c in _clues)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B2A3A),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.lightBlueAccent),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.air, size: 16, color: Colors.lightBlueAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(c, style: const TextStyle(fontSize: 12))),
+              ],
+            ),
+          ),
+        if (counts.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 26,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Text('Menyerahkan:',
+                        style:
+                        TextStyle(fontSize: 11, color: Colors.white54)),
+                  ),
+                ),
+                for (final p in widget.players)
+                  if (counts[p['user_id']] != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: counts[p['user_id']]! >= 2
+                              ? Colors.amberAccent
+                              : Colors.white24,
+                        ),
+                      ),
+                      child: Text(
+                        '${_nameOf(p['user_id'] as String)} '
+                            '${counts[p['user_id']]} kartu',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ],
         if (mySecrets.isNotEmpty)
           for (final s in mySecrets)
             Container(

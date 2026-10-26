@@ -142,7 +142,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                 style: TextStyle(fontSize: 12, color: Colors.white54),
               )
             else ...[
-              Text('Beri embun (saldomu ${widget.balance.toStringAsFixed(0)})',
+              Text('Beri embun (saldomu ${widget.balance.floor()})',
                   style: const TextStyle(fontSize: 12, color: Colors.white60)),
               const SizedBox(height: 6),
               Wrap(

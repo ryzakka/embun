@@ -61,6 +61,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   void initState() {
     super.initState();
+    randomStems = AssetCatalog.I.stems(protagonisDir);
     _shuffleCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -79,7 +80,6 @@ class _PrologueFlowState extends State<PrologueFlow>
       if (mounted && me.isNotEmpty) {
         setState(() {
           myCard = me.first['character_card'] as String;
-          randomStems = AssetCatalog.I.stems(protagonisDir);
         });
       }
     });
@@ -106,6 +106,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   }
 
   void _toShuffling() {
+    if (step != _Step.story) return;
     timer?.cancel();
     if (!mounted) return;
     setState(() => step = _Step.shuffling);

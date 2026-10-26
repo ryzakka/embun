@@ -36,6 +36,7 @@ class _OfferingViewState extends State<OfferingView> {
   String? targetId;
   bool busy = false;
   bool _pre = false;
+  int? _fog;
 
   String? get _samaranId {
     for (final h in widget.hand) {
@@ -46,11 +47,37 @@ class _OfferingViewState extends State<OfferingView> {
 
   bool get _needsTarget {
     for (final h in widget.hand) {
-      if (sel.contains(h['id']) && h['card_id'] == 'lentera_kunang') {
-        return true;
-      }
+      if (!sel.contains(h['id'])) continue;
+      final eff = widget.defs[h['card_id']]?['effect'];
+      if (eff is Map && eff['needs_target'] == true) return true;
     }
     return false;
+  }
+
+  /// Si Terbisik wajib menyumbang Embun Samaran: pilih otomatis begitu
+  /// kartunya ada di tangan (tangan bisa tiba belakangan lewat stream).
+  void _preselect() {
+    if (_pre || !widget.isAntag) return;
+    final s = _samaranId;
+    if (s != null) {
+      sel.add(s);
+      _pre = true;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _preselect();
+    widget.repo.fogFor(widget.players.length).then((v) {
+      if (mounted) setState(() => _fog = v);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant OfferingView old) {
+    super.didUpdateWidget(old);
+    _preselect();
   }
 
   void _toggle(String handId) {
@@ -61,6 +88,15 @@ class _OfferingViewState extends State<OfferingView> {
         sel.remove(handId);
       } else if (sel.length < 2) {
         sel.add(handId);
+      } else {
+        // Sudah 2 kartu: ganti pilihan tertua (kecuali sumbangan wajib).
+        final drop = sel.firstWhere(
+                (x) => !(widget.isAntag && x == _samaranId),
+            orElse: () => '');
+        if (drop.isNotEmpty) {
+          sel.remove(drop);
+          sel.add(handId);
+        }
       }
       if (!_needsTarget) targetId = null;
     });
@@ -70,7 +106,7 @@ class _OfferingViewState extends State<OfferingView> {
     if (_needsTarget && targetId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Pilih warga yang ingin diterangi Lentera Kunang')),
+            content: Text('Pilih sasaran kartumu dulu')),
       );
       return;
     }
@@ -96,11 +132,6 @@ class _OfferingViewState extends State<OfferingView> {
 
   @override
   Widget build(BuildContext context) {
-    final samaran = widget.isAntag ? _samaranId : null;
-    if (samaran != null && !_pre) {
-      sel.add(samaran);
-      _pre = true;
-    }
     final others = widget.players
         .where((p) => p['user_id'] != widget.repo.myId)
         .toList();
@@ -117,17 +148,24 @@ class _OfferingViewState extends State<OfferingView> {
                   style: Theme.of(context).textTheme.titleLarge),
               Text(
                 widget.isAntag
-                    ? 'Wajib menyumbang: Embun Samaran sudah terpilih. Tambah 1 kartu lagi jika mau.'
+                    ? 'Wajib menyumbang: Papan Penanda sudah terpilih. Tambah 1 kartu lagi jika mau.'
                     : 'Hari persembahan: serahkan 1-2 kartu',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
+              if (_fog != null)
+                Text(
+                  'Malam ini kabut akan menggerogoti $_fog daun.',
+                  style: const TextStyle(
+                      color: Color(0xFFB07CE8), fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
             ],
           ),
         ),
         if (_needsTarget) ...[
           const SizedBox(height: 6),
-          const Text('Pilih warga untuk diterangi Lentera Kunang:',
+          const Text('Pilih sasaran kartumu:',
               style: TextStyle(fontSize: 12, color: Colors.amberAccent)),
           const SizedBox(height: 4),
           SizedBox(

@@ -64,16 +64,25 @@ class _EffectsViewState extends State<EffectsView>
   @override
   void initState() {
     super.initState();
-    widget.repo.effects(widget.gameId, widget.day).then((r) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.repo.effects(widget.gameId, widget.day);
+      final before = await widget.repo.leavesBefore(widget.gameId);
       if (!mounted) return;
       setState(() {
         rows = r;
         loaded = true;
-        if (r.isNotEmpty) {
-          shown = (r.first['leaves_after'] as int) - (r.first['delta'] as int);
-        }
+        // Hitungan awal diambil dari server, bukan dari baris log, karena
+        // baris log tidak lagi membawa angka daun.
+        if (before != null) shown = before;
       });
-      if (r.isEmpty) return;
+      if (r.isEmpty) {
+        setState(() => shown = widget.finalLeaves);
+        return;
+      }
       setState(() => revealed = 1);
       timer = Timer.periodic(const Duration(milliseconds: 1400), (t) {
         if (!mounted || revealed >= rows.length) {
@@ -82,7 +91,15 @@ class _EffectsViewState extends State<EffectsView>
         }
         setState(() => revealed++);
       });
-    });
+    } catch (_) {
+      // Gagal memuat: jangan kunci pemain, tampilkan hasil akhir saja.
+      if (mounted) {
+        setState(() {
+          loaded = true;
+          shown = widget.finalLeaves;
+        });
+      }
+    }
   }
 
   @override

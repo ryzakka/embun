@@ -5,6 +5,8 @@ const protagonisDir = 'assets/kartu/protagonis';
 const antagonisDir = 'assets/kartu/antagonis';
 const pohonDir = 'assets/pohon';
 const bentangDir = 'assets/bentang';
+const kartuWargaDir = 'assets/kartu/powerpro';
+const kartuAntagDir = 'assets/kartu/poweranta';
 
 /// Membaca daftar gambar dari manifest aset, jadi nama file tidak perlu
 /// ditulis satu per satu. .png dan .webp sama-sama didukung.
@@ -71,6 +73,16 @@ String? landscapePath(int leaves) => leaves <= 0
     : AssetCatalog.I.file(bentangDir, 'lembah-hijau${_scale(leaves, 5.99)}');
 
 String? sceneryPath(String stem) => AssetCatalog.I.file(bentangDir, stem);
+
+/// Gambar kartu beli/item. Nama berkas = kolom `art` di card_definitions
+/// (jatuh ke `id` bila kosong). Warga di powerpro, antagonis di poweranta.
+String? cardArtPath(Map<String, dynamic>? def) {
+  if (def == null) return null;
+  final stem = (def['art'] as String?) ?? (def['id'] as String?);
+  if (stem == null) return null;
+  final dir = def['side'] == 'antagonis' ? kartuAntagDir : kartuWargaDir;
+  return AssetCatalog.I.file(dir, stem);
+}
 
 String characterTitle(String stem) {
   final base = stem.replaceAll(RegExp(r'\d+$'), '');

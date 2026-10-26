@@ -1,8 +1,34 @@
-import 'dart:math' show sin, pi;
+import 'dart:async';
+import 'dart:math' show sin, pi, min;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import 'card_tile.dart';
+import 'flip_card.dart';
+
+double _c(double v) => v.clamp(0.0, 1.0).toDouble();
+
+/// Ukuran kartu dan jumlah kolom, dihitung dari lebar yang tersedia.
+class _Grid {
+  final int cols;
+  final double w;
+  final double gap;
+  const _Grid(this.cols, this.w, this.gap);
+  double get h => w * 9 / 7;
+}
+
+_Grid _metrics(double aw) {
+  const gap = 10.0;
+  final minW = aw < 600 ? 120.0 : 140.0;
+  const maxW = 164.0;
+  var cols = ((aw + gap) / (minW + gap)).floor();
+  if (cols < 2) cols = 2;
+  var w = (aw - (cols - 1) * gap) / cols;
+  if (w > maxW) w = maxW;
+  // Bulatkan ke bawah: selisih desimal bisa membuat Wrap turun satu kolom.
+  return _Grid(cols, w.floorToDouble(), gap);
+}
 
 /// Layar hari biasa: tab Meja (kartumu), Pasar (belanja), Balai (kabar,
 /// pemberian, tawaran tukar). Tetap hidup setelah pemain menekan "Akhiri
@@ -53,10 +79,30 @@ class _DayViewState extends State<DayView> {
   String? selected;
   bool busy = false;
 
+  // Pembukaan pasar: kartu dibagikan sebagai punggung, lalu berbalik. Hanya
+  // diputar sekali per hari; kembali ke tab Pasar langsung menampilkan muka.
+  bool _marketOpened = false;
+  Timer? _openTimer;
+  bool _kabarHidden = false;
+
   @override
   void initState() {
     super.initState();
     _loadOffers();
+  }
+
+  @override
+  void dispose() {
+    _openTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Jeda sesaat setelah punggung kartu terbagi, baru berbalik.
+  void _armMarket() {
+    if (_marketOpened || _openTimer != null) return;
+    _openTimer = Timer(const Duration(milliseconds: 750), () {
+      if (mounted) setState(() => _marketOpened = true);
+    });
   }
 
   Future<void> _loadOffers() async {
@@ -125,6 +171,7 @@ class _DayViewState extends State<DayView> {
     if (id == null) return;
     await _run(() async {
       await widget.repo.buyCard(widget.gameId, id);
+      HapticFeedback.mediumImpact();
       if (mounted) setState(() => selected = null);
       await _loadOffers();
     }, ok: '${_cardName(id)} masuk ke mejamu');
@@ -237,7 +284,7 @@ class _DayViewState extends State<DayView> {
 
   /// Fajar menyingsing: spanduk meluncur turun, ikon matahari memantul,
   /// cahaya menyapu dari kiri ke kanan lalu meredup.
-  Widget _kabar() {
+  Widget _kabar({bool compact = false}) {
     final k = widget.events
         .where((e) => e['kind'] == 'kabar' && e['day'] == widget.day)
         .toList();
@@ -262,8 +309,9 @@ class _DayViewState extends State<DayView> {
             offset: Offset(0, (1 - rise) * -18),
             child: Container(
               width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: EdgeInsets.only(bottom: compact ? 6 : 10),
+              padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 10 : 12, vertical: compact ? 6 : 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -301,8 +349,20 @@ class _DayViewState extends State<DayView> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text('Kabar Pagi: $text',
+                        maxLines: compact ? 3 : null,
+                        overflow: compact ? TextOverflow.ellipsis : null,
                         style: const TextStyle(fontSize: 12)),
                   ),
+                  if (compact)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _kabarHidden = true),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(Icons.close,
+                            size: 16, color: Colors.white54),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -382,21 +442,187 @@ class _DayViewState extends State<DayView> {
           child: hand.isEmpty
               ? _empty(Icons.style, 'Mejamu masih kosong',
               'Beli kartu di Pasar untuk dipersembahkan.')
-              : SingleChildScrollView(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final c in hand)
-                  CardTile(
-                    def: widget.defs[c['card_id']],
-                    fallbackName: c['card_id'] as String,
+              : LayoutBuilder(builder: (context, box) {
+            final g = _metrics(box.maxWidth);
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 14, bottom: 8),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: g.gap,
+                runSpacing: g.gap,
+                children: [
+                  for (final h in hand)
+                    CardTile(
+                      def: widget.defs[h['card_id']],
+                      fallbackName: h['card_id'] as String,
+                      width: g.w,
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  /// Posisi tumpukan dikurangi posisi akhir kartu ke-[i]: titik asal saat
+  /// kartu dibagikan. Tumpukan berada di tengah area yang terlihat.
+  Offset _dealOffset(_Grid g, int i, int n, double aw, double viewH) {
+    final rows = (n / g.cols).ceil();
+    final r = i ~/ g.cols;
+    final col = i % g.cols;
+    final inRow = (r == rows - 1) ? n - r * g.cols : g.cols;
+    final rowW = inRow * g.w + (inRow - 1) * g.gap;
+    final x = (aw - rowW) / 2 + col * (g.w + g.gap) + g.w / 2;
+    final totalH = rows * g.h + (rows - 1) * g.gap;
+    final y = 14 + r * (g.h + g.gap) + g.h / 2;
+    final vh = viewH > 22 ? viewH - 22 : viewH;
+    final deckY = 14 + min(totalH, vh) / 2;
+    return Offset(aw / 2 - x, deckY - y);
+  }
+
+  /// Papan pasar: jatuh dari atas, berayun mereda, cahaya menyapu.
+  Widget _marketSign(int n) => TweenAnimationBuilder<double>(
+    // Setelah pasar pernah dibuka hari ini, papan langsung tampil tenang.
+    tween: Tween<double>(begin: _marketOpened ? 1.0 : 0.0, end: 1.0),
+    duration: const Duration(milliseconds: 1500),
+    builder: (context, t, _) {
+      final drop =
+      Curves.easeOutCubic.transform(_c(t / 0.4));
+      final swing = sin(t * pi * 5) * 0.10 * (1 - t);
+      final sweep = _c((t - 0.2) / 0.7);
+      final mid = Color.lerp(const Color(0xFF3A2E12),
+          const Color(0xFF8A6A20), sin(sweep * pi))!;
+      return Opacity(
+        opacity: _c(drop),
+        child: Transform.rotate(
+          angle: swing,
+          alignment: Alignment.topCenter,
+          child: Transform.translate(
+            offset: Offset(0, (1 - drop) * -26),
+            child: Container(
+              width: double.infinity,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF3A2E12), mid, const Color(0xFF3A2E12)],
+                  stops: [_c(sweep - 0.25), sweep, _c(sweep + 0.25)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: Colors.amberAccent.withValues(alpha: 0.6)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amberAccent
+                        .withValues(alpha: 0.25 * (1 - t) + 0.05),
+                    blurRadius: 14,
                   ),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront,
+                      size: 18, color: Colors.amberAccent),
+                  const SizedBox(width: 8),
+                  const Text('Pasar Pagi',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5)),
+                  const Spacer(),
+                  Text('$n kartu hari ini',
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.white70)),
+                ],
+              ),
             ),
           ),
         ),
+      );
+    },
+  );
+
+  /// Cap "TERBELI" menghantam kartu yang sudah dibeli.
+  Widget _boughtStamp() => Center(
+    child: TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) => Opacity(
+        opacity: _c(t * 2),
+        child: Transform.rotate(
+          angle: -0.3,
+          child: Transform.scale(scale: 2.2 - 1.2 * t, child: child),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.greenAccent, width: 3),
+        ),
+        child: const Text('TERBELI',
+            style: TextStyle(
+                color: Colors.greenAccent,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2)),
+      ),
+    ),
+  );
+
+  Widget _marketCard(int i, int n, Map<String, dynamic> offer, _Grid g,
+      double aw, double viewH, int remain) {
+    final id = offer['card_id'] as String;
+    final price = _price(id);
+    final bought = offer['bought'] == true;
+    final ok = !widget.jailed &&
+        !bought &&
+        remain > 0 &&
+        price <= widget.balance;
+    final def = widget.defs[id];
+    final bad = def?['side'] == 'antagonis';
+
+    final tile = CardTile(
+      def: def,
+      fallbackName: id,
+      width: g.w,
+      showCost: true,
+      costOverride: price,
+      badge: bought ? 'Terbeli' : null,
+      selected: selected == id,
+      dim: !ok,
+      onTap: ok
+          ? () {
+        HapticFeedback.selectionClick();
+        setState(() => selected = id);
+      }
+          : null,
+    );
+    final front = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        tile,
+        if (bought)
+          Positioned.fill(child: IgnorePointer(child: _boughtStamp())),
       ],
+    );
+
+    return FlipCard(
+      key: ValueKey('offer$i-$id'),
+      index: i,
+      width: g.w,
+      height: g.h,
+      revealed: _marketOpened,
+      animate: !_marketOpened,
+      dark: bad,
+      glow: bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866),
+      dealOffset: _dealOffset(g, i, n, aw, viewH),
+      suspense: n > 2 && i == n - 1,
+      front: front,
     );
   }
 
@@ -423,40 +649,33 @@ class _DayViewState extends State<DayView> {
           ],
         ),
         const SizedBox(height: 10),
+        if (o != null && o.isNotEmpty) ...[
+          _marketSign(o.length),
+          const SizedBox(height: 4),
+        ],
         Expanded(
           child: o == null
               ? const Center(child: CircularProgressIndicator())
               : o.isEmpty
               ? _empty(Icons.storefront, 'Pasar sedang sepi',
               'Belum ada tawaran hari ini.')
-              : SingleChildScrollView(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final offer in o)
-                  Builder(builder: (_) {
-                    final id = offer['card_id'] as String;
-                    final price = _price(id);
-                    final bought = offer['bought'] == true;
-                    final ok = !widget.jailed &&
-                        !bought &&
-                        remain > 0 &&
-                        price <= widget.balance;
-                    return CardTile(
-                      def: widget.defs[id],
-                      fallbackName: id,
-                      showCost: true,
-                      costOverride: price,
-                      badge: bought ? 'Terbeli' : null,
-                      selected: selected == id,
-                      dim: !ok,
-                      onTap: ok ? () => setState(() => selected = id) : null,
-                    );
-                  }),
-              ],
-            ),
-          ),
+              : LayoutBuilder(builder: (context, c) {
+            _armMarket();
+            final g = _metrics(c.maxWidth);
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 14, bottom: 8),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: g.gap,
+                runSpacing: g.gap,
+                children: [
+                  for (var i = 0; i < o.length; i++)
+                    _marketCard(i, o.length, o[i], g, c.maxWidth,
+                        c.maxHeight, remain),
+                ],
+              ),
+            );
+          }),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -464,9 +683,12 @@ class _DayViewState extends State<DayView> {
           child: FilledButton.icon(
             onPressed: busy || selected == null ? null : _buy,
             icon: const Icon(Icons.water_drop, size: 16),
-            label: Text(selected == null
-                ? 'Pilih kartu untuk dibeli'
-                : 'Beli ${_cardName(selected!)} (${_price(selected!)})'),
+            label: Text(
+              selected == null
+                  ? 'Pilih kartu untuk dibeli'
+                  : 'Beli ${_cardName(selected!)} (${_price(selected!)})',
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
       ],
@@ -541,6 +763,8 @@ class _DayViewState extends State<DayView> {
                     ),
                   ),
                   TextButton(
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact),
                     onPressed: busy
                         ? null
                         : () => _run(() =>
@@ -548,6 +772,8 @@ class _DayViewState extends State<DayView> {
                     child: const Text('Tolak'),
                   ),
                   FilledButton(
+                    style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact),
                     onPressed: busy ? null : () => _accept(t),
                     child: const Text('Terima'),
                   ),
@@ -644,23 +870,163 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final Widget body = switch (tab) {
-      0 => _mejaTab(),
-      1 => _pasarTab(),
-      _ => _balaiTab(),
-    };
+  /// Bilah bawah untuk ponsel: tiga tab (ikon di atas label) dan tombol
+  /// "Akhiri hari" ringkas di satu baris, mudah dijangkau ibu jari.
+  Widget _bottomBar() {
+    final n = _incoming.length;
+    final ready = widget.iAmReady;
+    final progress =
+    widget.total == 0 ? 0.0 : (widget.readyCount / widget.total);
+
+    Widget item(int i, IconData icon, String label, {int badge = 0}) {
+      final sel = tab == i;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => tab = i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: sel
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Badge(
+                  isLabelVisible: badge > 0,
+                  label: Text('$badge'),
+                  child: Icon(icon,
+                      size: 22,
+                      color: sel ? Colors.amberAccent : Colors.white60),
+                ),
+                const SizedBox(height: 2),
+                Text(label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      color: sel ? Colors.white : Colors.white70,
+                    )),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _kabar(),
-        _tabs(),
-        const SizedBox(height: 10),
-        Expanded(child: body),
-        const SizedBox(height: 8),
-        _finishBar(),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            children: [
+              item(0, Icons.style, 'Meja'),
+              item(1, Icons.storefront, 'Pasar'),
+              item(2, Icons.campaign, 'Balai', badge: n),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 104,
+                child: FilledButton(
+                  onPressed: ready || busy
+                      ? null
+                      : () => _run(() => widget.repo.finishDay(widget.gameId)),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 8),
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                          ready
+                              ? Icons.hourglass_top
+                              : Icons.nightlight_round,
+                          size: 16),
+                      const SizedBox(height: 2),
+                      Text(
+                        ready
+                            ? '${widget.readyCount}/${widget.total} siap'
+                            : 'Akhiri hari ${widget.day}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11, height: 1.1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (ready)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: _c(progress),
+                minHeight: 3,
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  Widget _fadeLayout(Widget? current, List<Widget> previous) => Stack(
+    fit: StackFit.expand,
+    children: [...previous, ?current],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      // Lebar panel (bukan layar): sempit = ponsel.
+      final narrow = box.maxWidth < 560;
+      final Widget content = switch (tab) {
+        0 => _mejaTab(),
+        1 => _pasarTab(),
+        _ => _balaiTab(),
+      };
+      final body = AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        layoutBuilder: _fadeLayout,
+        child: KeyedSubtree(key: ValueKey(tab), child: content),
+      );
+
+      if (narrow) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!_kabarHidden) _kabar(compact: true),
+            Expanded(child: body),
+            const SizedBox(height: 8),
+            _bottomBar(),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _kabar(),
+          _tabs(),
+          const SizedBox(height: 10),
+          Expanded(child: body),
+          const SizedBox(height: 8),
+          _finishBar(),
+        ],
+      );
+    });
   }
 }

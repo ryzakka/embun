@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../data/server_clock.dart';
 
 class Countdown extends StatefulWidget {
   final DateTime? deadline;
@@ -31,7 +32,7 @@ class _CountdownState extends State<Countdown> {
   Widget build(BuildContext context) {
     final d = widget.deadline;
     if (d == null) return const SizedBox.shrink();
-    var left = d.difference(DateTime.now()).inSeconds;
+    var left = d.difference(ServerClock.now()).inSeconds;
     if (left < 0) left = 0;
     final m = left ~/ 60;
     final s = (left % 60).toString().padLeft(2, '0');

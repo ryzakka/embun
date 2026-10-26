@@ -48,8 +48,10 @@ class _VotingViewState extends State<VotingView> {
         const Duration(milliseconds: 380), HapticFeedback.heavyImpact);
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
+    var ok = false;
     try {
       await widget.repo.submitVote(widget.gameId, t);
+      ok = true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -57,8 +59,10 @@ class _VotingViewState extends State<VotingView> {
       }
     } finally {
       if (mounted) {
+        // Setelah sukses, tombol tetap terkunci sampai stream menandai
+        // pemain siap; hanya galat yang membukanya lagi.
         setState(() {
-          busy = false;
+          if (!ok) busy = false;
           stamping = false;
         });
       }
