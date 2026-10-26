@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
+import 'chat_sheet.dart' show sortChat;
 import 'countdown.dart';
 
 class DiscussionView extends StatefulWidget {
@@ -177,9 +178,9 @@ class _DiscussionViewState extends State<DiscussionView> {
           child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: chatStream,
             builder: (context, s) {
-              final msgs = (s.data ?? [])
+              final msgs = sortChat((s.data ?? [])
                   .where((m) => m['day'] == widget.day)
-                  .toList()
+                  .toList())
                   .reversed
                   .toList();
               if (msgs.isEmpty) {
