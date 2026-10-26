@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
+import '../common/art.dart';
 import '../lobby/lobby_page.dart';
 import 'card_tile.dart';
 import 'discussion_view.dart';
@@ -27,6 +29,8 @@ class _TablePageState extends State<TablePage> {
   String? selected;
   bool busy = false;
   int burst = 0;
+  int? darkSeed;
+  Future<Map<String, Map<String, dynamic>>>? secretsFuture;
 
   bool get isAntag => widget.role == 'antagonis';
 
@@ -35,6 +39,11 @@ class _TablePageState extends State<TablePage> {
     super.initState();
     repo.cardDefs().then((d) {
       if (mounted) setState(() => defs = d);
+    });
+    lobby.mySecret(widget.gameId).then((s) {
+      if (mounted && s != null) {
+        setState(() => darkSeed = s['dark_seed'] as int?);
+      }
     });
   }
 
@@ -71,94 +80,113 @@ class _TablePageState extends State<TablePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-      isAntag ? const Color(0xFF14131A) : const Color(0xFF12201E),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            StreamBuilder<Map<String, dynamic>>(
-              stream: lobby.game(widget.gameId),
-              builder: (context, gs) {
-                if (!gs.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final game = gs.data!;
-                final day = game['day'] as int;
-                final phase = (game['phase'] as String?) ?? 'day';
-                final leaves = game['leaves'] as int;
-                _syncDay(day, phase);
+      backgroundColor: const Color(0xFF0B1512),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          StreamBuilder<Map<String, dynamic>>(
+            stream: lobby.game(widget.gameId),
+            builder: (context, gs) {
+              if (!gs.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final game = gs.data!;
+              final day = game['day'] as int;
+              final phase = (game['phase'] as String?) ?? 'day';
+              final leaves = game['leaves'] as int;
+              _syncDay(day, phase);
 
-                return StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: lobby.players(widget.gameId),
-                  builder: (context, ps) {
-                    final players = ps.data ?? [];
-                    final me = players.where((p) => p['user_id'] == repo.myId);
-                    final myRow = me.isEmpty ? null : me.first;
-                    final iAmReady = myRow?['ready'] == true;
-                    final readyCount =
-                        players.where((p) => p['ready'] == true).length;
-                    final jailed = myRow?['jailed_day'] == day;
+              return StreamBuilder<List<Map<String, dynamic>>>(
+                stream: lobby.players(widget.gameId),
+                builder: (context, ps) {
+                  final players = ps.data ?? [];
+                  final me = players.where((p) => p['user_id'] == repo.myId);
+                  final myRow = me.isEmpty ? null : me.first;
+                  final iAmReady = myRow?['ready'] == true;
+                  final readyCount =
+                      players.where((p) => p['ready'] == true).length;
+                  final jailed = myRow?['jailed_day'] == day;
+                  final myCardId =
+                      (myRow?['character_card'] as String?) ?? 'default';
 
-                    if (game['status'] == 'finished') return _result(game);
+                  if (game['status'] == 'finished') {
+                    return _result(game, players);
+                  }
 
-                    if (phase == 'effects') {
-                      return EffectsView(
-                        key: ValueKey('fx$day'),
-                        repo: repo,
-                        gameId: widget.gameId,
-                        day: day,
-                        isAntag: isAntag,
-                        waiting: iAmReady,
-                        readyCount: readyCount,
-                        total: players.length,
-                        onContinue: () => _guard(
-                                () => repo.advanceAfterEffects(widget.gameId)),
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        SizedBox(width: 120, child: _sidebar(day, leaves)),
-                        const VerticalDivider(width: 1),
-                        Expanded(
-                          child: _panel(game, day, phase, leaves, players,
-                              iAmReady, readyCount, jailed),
-                        ),
-                      ],
+                  if (phase == 'effects') {
+                    return EffectsView(
+                      key: ValueKey('fx$day'),
+                      repo: repo,
+                      gameId: widget.gameId,
+                      day: day,
+                      finalLeaves: leaves,
+                      isAntag: isAntag,
+                      waiting: iAmReady,
+                      readyCount: readyCount,
+                      total: players.length,
+                      onContinue: () => _guard(
+                              () => repo.advanceAfterEffects(widget.gameId)),
                     );
-                  },
-                );
-              },
-            ),
-            if (burst > 0)
-              IgnorePointer(
-                child: CardBurst(
-                  count: burst,
-                  onDone: () {
-                    if (mounted) setState(() => burst = 0);
-                  },
-                ),
+                  }
+
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Backdrop(
+                        path: landscapePath(leaves),
+                        dark: isAntag,
+                        dim: 0.74,
+                      ),
+                      SafeArea(
+                        child: Row(
+                          children: [
+                            SizedBox(width: 120, child: _sidebar(day, leaves)),
+                            const VerticalDivider(width: 1),
+                            Expanded(
+                              child: _panel(game, day, phase, leaves, players,
+                                  iAmReady, readyCount, jailed, myCardId),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          if (burst > 0)
+            IgnorePointer(
+              child: CardBurst(
+                count: burst,
+                onDone: () {
+                  if (mounted) setState(() => burst = 0);
+                },
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _sidebar(int day, int leaves) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      const Text('HARI', style: TextStyle(fontSize: 12, letterSpacing: 2)),
-      Text('$day',
-          style:
-          const TextStyle(fontSize: 64, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 16),
-      Icon(Icons.eco,
-          size: 36,
-          color: isAntag ? Colors.blueGrey : Colors.greenAccent),
-      Text('$leaves', style: const TextStyle(fontSize: 28)),
-      const Text('daun', style: TextStyle(fontSize: 12)),
-    ],
+  Widget _sidebar(int day, int leaves) => Container(
+    color: Colors.black38,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('HARI',
+            style: TextStyle(fontSize: 12, letterSpacing: 2)),
+        Text('$day',
+            style: const TextStyle(
+                fontSize: 64, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Icon(Icons.eco,
+            size: 36,
+            color: isAntag ? Colors.blueGrey : Colors.greenAccent),
+        Text('$leaves', style: const TextStyle(fontSize: 28)),
+        const Text('daun', style: TextStyle(fontSize: 12)),
+      ],
+    ),
   );
 
   Widget _panel(
@@ -170,6 +198,7 @@ class _TablePageState extends State<TablePage> {
       bool iAmReady,
       int readyCount,
       bool jailed,
+      String myCardId,
       ) {
     final verdict = (game['verdict_day'] == day - 1 && game['verdict'] != null)
         ? game['verdict'] as String
@@ -222,7 +251,7 @@ class _TablePageState extends State<TablePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _currencyBar(balance, rate),
+              _currencyBar(balance, rate, myCardId),
               if (verdict != null && phase == 'day') ...[
                 const SizedBox(height: 8),
                 _verdictCard(verdict),
@@ -240,9 +269,9 @@ class _TablePageState extends State<TablePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
-      color: Colors.amber.withOpacity(0.12),
+      color: Colors.black54,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.amber.withOpacity(0.5)),
+      border: Border.all(color: Colors.amber.withOpacity(0.6)),
     ),
     child: Row(
       children: [
@@ -253,25 +282,35 @@ class _TablePageState extends State<TablePage> {
     ),
   );
 
-  Widget _currencyBar(double balance, double rate) => Row(
-    children: [
-      Icon(isAntag ? Icons.circle : Icons.water_drop,
-          size: 26,
-          color: isAntag
-              ? const Color(0xFF6A5A7A)
-              : const Color(0xFF7FD3F7)),
-      const SizedBox(width: 8),
-      Text(_fmt(balance),
-          style:
-          const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-      const SizedBox(width: 8),
-      Text(isAntag ? 'bulir hitam' : 'tetes embun',
-          style: const TextStyle(fontSize: 13)),
-      const SizedBox(width: 12),
-      Text('+${_fmt(rate)}/hari',
-          style: const TextStyle(fontSize: 12, color: Colors.white54)),
-    ],
-  );
+  Widget _currencyBar(double balance, double rate, String myCardId) {
+    final seed = darkSeed;
+    final avatar = isAntag
+        ? (seed == null ? null : darkCardPath(seed))
+        : protagonistPath(myCardId);
+    return Row(
+      children: [
+        PlayerAvatar(
+          path: avatar,
+          size: 46,
+          ring: isAntag ? const Color(0xFFB07CE8) : const Color(0xFF6FBF73),
+        ),
+        const SizedBox(width: 12),
+        Icon(isAntag ? Icons.circle : Icons.water_drop,
+            size: 26,
+            color:
+            isAntag ? const Color(0xFF8A74A8) : const Color(0xFF7FD3F7)),
+        const SizedBox(width: 6),
+        Text(_fmt(balance),
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 8),
+        Text(isAntag ? 'bulir hitam' : 'tetes embun',
+            style: const TextStyle(fontSize: 13)),
+        const SizedBox(width: 12),
+        Text('+${_fmt(rate)}/hari',
+            style: const TextStyle(fontSize: 12, color: Colors.white60)),
+      ],
+    );
+  }
 
   Widget _hand(int day, bool jailed) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,40 +433,99 @@ class _TablePageState extends State<TablePage> {
     ),
   );
 
-  Widget _result(Map<String, dynamic> game) {
+  Widget _result(Map<String, dynamic> game, List<Map<String, dynamic>> players) {
     final wargaMenang = game['winner'] == 'warga';
-    final verdict = game['verdict'] as String?;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(wargaMenang ? Icons.park : Icons.cloud,
-                size: 110,
-                color: wargaMenang ? Colors.greenAccent : Colors.blueGrey),
-            const SizedBox(height: 16),
-            Text(
-              wargaMenang
-                  ? 'Hayu mekar kembali!'
-                  : 'Hayu layu, desa kembali redup...',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            if (verdict != null) Text(verdict, textAlign: TextAlign.center),
-            Text('Daun akhir: ${game['leaves']}'),
-            Text(isAntag ? 'Perananmu: Si Terbisik' : 'Perananmu: Warga Desa'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LobbyPage()),
+    final leaves = game['leaves'] as int;
+    final day = game['day'] as int;
+    final verdict =
+    game['verdict_day'] == day ? game['verdict'] as String? : null;
+    secretsFuture ??= lobby.allSecrets(widget.gameId);
+    final sakura = leaves >= 30
+        ? AssetCatalog.I.file(pohonDir, 'pohon0-sakura')
+        : null;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Backdrop(path: landscapePath(leaves), dark: !wargaMenang, dim: 0.6),
+        SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 260,
+                      child: TreePortrait(leaves: leaves, pathOverride: sakura),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      wargaMenang
+                          ? 'Hayu mekar kembali!'
+                          : 'Hayu layu, desa kembali redup...',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    if (verdict != null)
+                      Text(verdict, textAlign: TextAlign.center),
+                    Text('Daun akhir: $leaves'),
+                    const SizedBox(height: 16),
+                    FutureBuilder<Map<String, Map<String, dynamic>>>(
+                      future: secretsFuture,
+                      builder: (context, s) {
+                        final secrets = s.data;
+                        if (secrets == null) return const SizedBox(height: 8);
+                        final entry = secrets.entries.where(
+                                (e) => e.value['role'] == 'antagonis');
+                        if (entry.isEmpty) return const SizedBox(height: 8);
+                        final antagId = entry.first.key;
+                        final seed = (entry.first.value['dark_seed'] as int?) ?? 0;
+                        final who = players.where((p) => p['user_id'] == antagId);
+                        final name = who.isEmpty
+                            ? '?'
+                            : who.first['name'] as String;
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CardArt(
+                              path: darkCardPath(seed),
+                              width: 90,
+                              glow: const Color(0xFFB07CE8),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Si Terbisik ternyata...',
+                                    style: TextStyle(color: Colors.white70)),
+                                Text(name,
+                                    style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const LobbyPage()),
+                      ),
+                      child: const Text('Kembali ke balai'),
+                    ),
+                  ],
+                ),
               ),
-              child: const Text('Kembali ke balai'),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

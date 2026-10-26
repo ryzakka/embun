@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../data/character_cards.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../common/art.dart';
 
 class VotingView extends StatefulWidget {
   final GameRepository repo;
@@ -57,14 +58,18 @@ class _VotingViewState extends State<VotingView> {
             children: [
               for (final p in others)
                 Builder(builder: (_) {
-                  final c = cardById(p['character_card'] as String);
+                  final card = p['character_card'] as String;
                   final id = p['user_id'] as String;
                   return ListTile(
                     selected: target == id,
                     selectedTileColor: Colors.amber.withOpacity(0.15),
-                    leading: Icon(c.icon, color: c.color),
+                    leading: PlayerAvatar(
+                      path: protagonistPath(card),
+                      size: 46,
+                      ring: target == id ? Colors.amber : Colors.white38,
+                    ),
                     title: Text(p['name'] as String),
-                    subtitle: Text(c.title),
+                    subtitle: Text(characterTitle(card)),
                     trailing: target == id
                         ? const Icon(Icons.check_circle, color: Colors.amber)
                         : null,

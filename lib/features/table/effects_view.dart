@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../common/art.dart';
 
 List<double> _sat(double s) {
   final inv = 1 - s;
@@ -18,6 +20,7 @@ class EffectsView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
   final int day;
+  final int finalLeaves;
   final bool isAntag;
   final bool waiting;
   final int readyCount;
@@ -29,6 +32,7 @@ class EffectsView extends StatefulWidget {
     required this.repo,
     required this.gameId,
     required this.day,
+    required this.finalLeaves,
     required this.isAntag,
     required this.waiting,
     required this.readyCount,
@@ -45,7 +49,7 @@ class _EffectsViewState extends State<EffectsView> {
   bool loaded = false;
   int revealed = 0;
   int arrived = 0;
-  int shown = 0;
+  late int shown = widget.finalLeaves;
   bool gray = false;
   Timer? timer;
 
@@ -96,65 +100,71 @@ class _EffectsViewState extends State<EffectsView> {
   @override
   Widget build(BuildContext context) {
     final done = loaded && arrived >= rows.length;
-    final bg =
-    widget.isAntag ? const Color(0xFF14131A) : const Color(0xFF12201E);
-    final treeColor = Color.lerp(
-        Colors.blueGrey.shade700, Colors.greenAccent, (shown / 30).clamp(0.0, 1.0));
+    final sakura = shown >= 30
+        ? AssetCatalog.I.file(pohonDir, 'pohon0-sakura')
+        : null;
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: gray ? 0.0 : 1.0),
       duration: const Duration(milliseconds: 500),
       builder: (_, s, child) =>
           ColorFiltered(colorFilter: ColorFilter.matrix(_sat(s)), child: child),
-      child: Container(
-        color: bg,
-        child: Stack(
-          children: [
-            Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: Text('Hasil persembahan hari ${widget.day}',
-                    style: Theme.of(context).textTheme.titleMedium),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.park, size: 150, color: treeColor),
-                  Text('$shown',
-                      style: const TextStyle(
-                          fontSize: 48, fontWeight: FontWeight.bold)),
-                  const Text('daun'),
-                ],
-              ),
-            ),
-            for (var i = 0; i < revealed && i < rows.length; i++)
-              IgnorePointer(
-                child: _Bubble(
-                  key: ValueKey('b$i'),
-                  row: rows[i],
-                  onArrive: () => _arrive(rows[i]),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Backdrop(path: landscapePath(shown), dark: widget.isAntag, dim: 0.5),
+          SafeArea(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 52, 24, 84),
+                  child: Column(
+                    children: [
+                      Expanded(
+                          child: TreePortrait(leaves: shown, pathOverride: sakura)),
+                      const SizedBox(height: 8),
+                      Text('$shown daun',
+                          style: const TextStyle(
+                              fontSize: 30, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
-              ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: !done
-                    ? const SizedBox(height: 40)
-                    : widget.waiting
-                    ? Text(
-                    'Menunggu warga lain... ${widget.readyCount}/${widget.total}')
-                    : FilledButton(
-                  onPressed: widget.onContinue,
-                  child: const Text('Lanjut'),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text('Hasil persembahan hari ${widget.day}',
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
                 ),
-              ),
+                for (var i = 0; i < revealed && i < rows.length; i++)
+                  IgnorePointer(
+                    child: _Bubble(
+                      key: ValueKey('b$i'),
+                      row: rows[i],
+                      onArrive: () => _arrive(rows[i]),
+                    ),
+                  ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: !done
+                        ? const SizedBox(height: 40)
+                        : widget.waiting
+                        ? Text(
+                        'Menunggu warga lain... ${widget.readyCount}/${widget.total}')
+                        : FilledButton(
+                      onPressed: widget.onContinue,
+                      child: const Text('Lanjut'),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -203,7 +213,8 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
       animation: c,
       builder: (_, __) {
         final t = c.value;
-        final riseT = bad ? (t / 0.6).clamp(0.0, 1.0) : (t / 0.8).clamp(0.0, 1.0);
+        final riseT =
+        bad ? (t / 0.6).clamp(0.0, 1.0) : (t / 0.8).clamp(0.0, 1.0);
         final curve = bad ? Curves.easeInOut : Curves.easeOutCubic;
         final y = 0.9 - 1.3 * curve.transform(riseT);
         var x = dx;
@@ -215,7 +226,8 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
         } else if (!bad) {
           scale = 1.0 + 0.1 * sin(riseT * pi);
         }
-        final opacity = t > 0.85 ? (1 - (t - 0.85) / 0.15).clamp(0.0, 1.0) : 1.0;
+        final opacity =
+        t > 0.85 ? (1 - (t - 0.85) / 0.15).clamp(0.0, 1.0) : 1.0;
         return Align(
           alignment: Alignment(x, y),
           child: Opacity(
@@ -231,7 +243,9 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
                       : const Color(0xFF2E7D5B),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                      color: bad ? Colors.purpleAccent : Colors.lightGreenAccent),
+                      color: bad
+                          ? Colors.purpleAccent
+                          : Colors.lightGreenAccent),
                 ),
                 child: Text(widget.row['label'] as String,
                     style: const TextStyle(

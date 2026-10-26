@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'data/asset_catalog.dart';
 import 'features/lobby/lobby_page.dart';
 
 // Sementara ditanam langsung. Kunci "anon" memang publik; keamanan dijaga RLS.
@@ -13,6 +14,7 @@ const supabaseAnonKey =
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  await AssetCatalog.load();
   runApp(const ProviderScope(child: EmbunApp()));
 }
 

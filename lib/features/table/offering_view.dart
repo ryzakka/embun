@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/game_repository.dart';
+import '../common/art.dart';
 import 'card_tile.dart';
 
 class OfferingView extends StatefulWidget {
@@ -60,33 +61,26 @@ class _OfferingViewState extends State<OfferingView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.park,
-                    size: 140,
-                    color: widget.isAntag
-                        ? Colors.blueGrey
-                        : Colors.greenAccent),
-                Text('${widget.leaves} daun',
-                    style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 4),
-                const Text('Hari persembahan: serahkan 1-2 kartu',
-                    style: TextStyle(color: Colors.white70)),
-              ],
-            ),
+          child: Column(
+            children: [
+              Expanded(child: TreePortrait(leaves: widget.leaves)),
+              const SizedBox(height: 6),
+              Text('${widget.leaves} daun',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const Text('Hari persembahan: serahkan 1-2 kartu',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
           ),
         ),
         SizedBox(
-          height: 200,
+          height: 196,
           child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: widget.repo.myHand(widget.gameId),
             builder: (context, hs) {
               final hand = hs.data ?? [];
               return ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: 14),
                 itemCount: hand.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (_, i) {
@@ -105,9 +99,12 @@ class _OfferingViewState extends State<OfferingView> {
           ),
         ),
         const SizedBox(height: 8),
-        FilledButton(
-          onPressed: busy || sel.isEmpty ? null : _submit,
-          child: Text('Serahkan (${sel.length}/2)'),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: busy || sel.isEmpty ? null : _submit,
+            child: Text('Serahkan (${sel.length}/2)'),
+          ),
         ),
       ],
     );
