@@ -70,7 +70,6 @@ class _VotingViewState extends State<VotingView> {
                       ring: target == id ? Colors.amber : Colors.white38,
                     ),
                     title: Text(p['name'] as String),
-                    subtitle: Text(characterTitle(card)),
                     trailing: target == id
                         ? const Icon(Icons.check_circle, color: Colors.amber)
                         : null,

@@ -139,6 +139,17 @@ class GameRepository {
       .stream(primaryKey: ['game_id', 'user_id'])
       .eq('game_id', gameId);
 
+  /// Username asli pemain. Baru terbaca setelah permainan selesai (RLS).
+  Future<Map<String, String>> usernames(String gameId) async {
+    final rows = await _db
+        .from('player_usernames')
+        .select('user_id, username')
+        .eq('game_id', gameId);
+    return {
+      for (final r in rows) r['user_id'] as String: r['username'] as String
+    };
+  }
+
   /// Null bila permainan belum selesai.
   Future<Map<String, dynamic>?> recap(String gameId) async {
     final r = await _db.rpc('game_recap', params: {'p_game': gameId});

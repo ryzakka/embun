@@ -54,6 +54,8 @@ class _TablePageState extends State<TablePage> {
   int? darkSeed;
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
+  Future<Map<String, String>>? usernamesFuture;
+  Map<String, String> usernames = {}; // user_id -> username asli (akhir game)
 
   bool get isAntag => widget.role == 'antagonis';
   bool get showAsAntag => isAntag && !disguiseMode;
@@ -220,8 +222,6 @@ class _TablePageState extends State<TablePage> {
                         size: 36,
                       ),
                       title: Text(p['name'] as String),
-                      subtitle:
-                      Text(characterTitle(p['character_card'] as String)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -708,6 +708,10 @@ class _TablePageState extends State<TablePage> {
     final verdict = g['verdict_day'] == day ? g['verdict'] as String? : null;
     secretsFuture ??= lobby.allSecrets(widget.gameId);
     recapFuture ??= repo.recap(widget.gameId).catchError((_) => null);
+    usernamesFuture ??= repo.usernames(widget.gameId).then((m) {
+      if (mounted) setState(() => usernames = m);
+      return m;
+    }).catchError((_) => <String, String>{});
     final sakura =
     leaves >= 30 ? AssetCatalog.I.file(pohonDir, 'pohon0-sakura') : null;
 
@@ -798,6 +802,9 @@ class _TablePageState extends State<TablePage> {
             Text(name,
                 style:
                 const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            if (usernames[antagId] != null)
+              Text('yaitu ${usernames[antagId]}',
+                  style: const TextStyle(fontSize: 16, color: Colors.white70)),
           ],
         ),
       ],
@@ -899,7 +906,8 @@ class _TablePageState extends State<TablePage> {
       ),
       title: Text(p['name'] as String),
       subtitle: Text(
-        antag ? 'Si Terbisik' : 'Warga Desa',
+        '${usernames[uid] != null ? '${usernames[uid]} · ' : ''}'
+            '${antag ? 'Si Terbisik' : 'Warga Desa'}',
         style: TextStyle(
           fontSize: 12,
           color: antag ? const Color(0xFFB07CE8) : Colors.white60,

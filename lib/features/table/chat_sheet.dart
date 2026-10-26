@@ -273,7 +273,12 @@ class _ChatPanelState extends State<ChatPanel> {
             builder: (context, s) {
               // Terlama -> terbaru, lalu dibalik: indeks 0 = terbaru,
               // tampil di dasar daftar (reverse: true).
-              final rev = sortChat(s.data ?? []).reversed.toList();
+              // Di dalam game, pesan lobi (hari 0) disembunyikan: nama aslinya
+              // tertulis di sana dan bisa membocorkan identitas.
+              final all = (s.data ?? [])
+                  .where((m) => widget.lobby || m['day'] != 0)
+                  .toList();
+              final rev = sortChat(all).reversed.toList();
               if (rev.isEmpty) {
                 return const Center(
                   child: Text('Belum ada yang bicara...',

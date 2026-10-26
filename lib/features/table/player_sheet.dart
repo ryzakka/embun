@@ -108,9 +108,6 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     Text(_name,
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(characterTitle(card),
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white60)),
                   ],
                 ),
               ],
