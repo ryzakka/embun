@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -83,7 +84,7 @@ class _LobbyPageState extends State<LobbyPage> {
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
+                constraints: BoxConstraints(maxWidth: gameId == null ? 520 : 1100),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: gameId == null ? _entry() : _room(gameId!),
@@ -96,15 +97,8 @@ class _LobbyPageState extends State<LobbyPage> {
     );
   }
 
-  Widget _panel(Widget child) => Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: Colors.black.withOpacity(0.62),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: Colors.white12),
-    ),
-    child: child,
-  );
+  Widget _panel(Widget child) =>
+      _Glass(padding: const EdgeInsets.all(20), child: child);
 
   Widget _entry() => SingleChildScrollView(
     child: _panel(
@@ -247,244 +241,416 @@ class _LobbyPageState extends State<LobbyPage> {
           }
           return const Center(child: CircularProgressIndicator());
         }
-        final isHost = game['host_id'] == repo.myId;
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: repo.players(id),
           builder: (context, ps) {
             final players = ps.data ?? [];
             final mine = players.where((p) => p['user_id'] == repo.myId);
             final me = mine.isEmpty ? null : mine.first;
-            final myCard = (me?['character_card'] as String?) ?? 'default';
-            final iReady = me?['ready'] == true;
-            final readyN = players.where((p) => p['ready'] == true).length;
-            final canStart = players.length >= 3 && readyN == players.length;
-            return _panel(
-              Column(
-                children: [
-                  Text('Kode: ${game['code']}',
-                      style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      CardArt(path: protagonistPath(myCard), width: 72),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(me?['name'] as String? ?? '',
-                                style: Theme.of(context).textTheme.titleLarge),
-                            Text(characterTitle(myCard),
-                                style:
-                                const TextStyle(color: Colors.white70)),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: me == null || iReady
-                                  ? null
-                                  : () => _pickCard(id, me),
-                              icon: Icon(iReady ? Icons.lock : Icons.style),
-                              label: Text(
-                                  iReady ? 'Kartu terkunci' : 'Ganti kartu'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: iReady
-                        ? OutlinedButton.icon(
-                      onPressed: me == null
-                          ? null
-                          : () async {
-                        try {
-                          await repo.setReady(id, false);
-                        } catch (e) {
-                          _toast(errMsg(e));
-                        }
-                      },
-                      icon: const Icon(Icons.check_circle,
-                          color: Colors.greenAccent),
-                      label: const Text('Siap. Ketuk untuk batal'),
-                    )
-                        : FilledButton(
-                      onPressed: me == null
-                          ? null
-                          : () async {
-                        try {
-                          await repo.setReady(id, true);
-                        } catch (e) {
-                          _toast(errMsg(e));
-                        }
-                      },
-                      child: const Text('Siap'),
-                    ),
-                  ),
-                  const Divider(height: 20),
-                  Expanded(
-                    child: _LobbyBody(
-                      gr: _gr,
-                      gameId: id,
-                      hostId: game['host_id'] as String,
-                      players: players,
-                    ),
-                  ),
-                  if (isHost)
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: canStart
-                            ? () async {
-                          try {
-                            await repo.startGame(id);
-                          } catch (e) {
-                            _toast(errMsg(e));
-                          }
-                        }
-                            : null,
-                        child: Text(canStart
-                            ? 'Mulai'
-                            : players.length < 3
-                            ? 'Menunggu pemain (min. 3)'
-                            : 'Menunggu semua siap ($readyN/${players.length})'),
-                      ),
-                    ),
-                  TextButton(
-                    onPressed: () async {
-                      // Keluar dulu agar penghapusan ruangan tidak memicu
-                      // pesan "dibubarkan" untuk host sendiri.
-                      setState(() => gameId = null);
-                      try {
-                        await repo.leave(id);
-                      } catch (e) {
-                        if (!mounted) return;
-                        setState(() => gameId = id);
-                        _toast(errMsg(e));
-                      }
-                    },
-                    child: Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
-                  ),
-                ],
-              ),
+            return _RoomShell(
+              gr: _gr,
+              gameId: id,
+              players: players,
+              room: _roomContent(id, game, players, me),
             );
           },
         );
       },
     );
   }
+
+  Future<void> _setReady(String id, bool v) async {
+    try {
+      await repo.setReady(id, v);
+    } catch (e) {
+      _toast(errMsg(e));
+    }
+  }
+
+  Widget _roomContent(String id, Map<String, dynamic> game,
+      List<Map<String, dynamic>> players, Map<String, dynamic>? me) {
+    final isHost = game['host_id'] == repo.myId;
+    final hostId = game['host_id'] as String;
+    final myCard = (me?['character_card'] as String?) ?? 'default';
+    final iReady = me?['ready'] == true;
+    final readyN = players.where((p) => p['ready'] == true).length;
+    final canStart = players.length >= 3 && readyN == players.length;
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _codeHeader(game['code'] as String),
+              const SizedBox(height: 14),
+              _meCard(id, me, myCard, iReady),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: iReady
+                    ? OutlinedButton.icon(
+                  onPressed: me == null ? null : () => _setReady(id, false),
+                  icon: const Icon(Icons.check_circle,
+                      color: Colors.greenAccent),
+                  label: const Text('Siap. Ketuk untuk batal'),
+                )
+                    : FilledButton(
+                  onPressed: me == null ? null : () => _setReady(id, true),
+                  child: const Text('Siap'),
+                ),
+              ),
+              const Divider(height: 28),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Pemain ${players.length}/8 · siap $readyN',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              for (final p in players) _playerTile(p, hostId),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (isHost)
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: canStart
+                  ? () async {
+                try {
+                  await repo.startGame(id);
+                } catch (e) {
+                  _toast(errMsg(e));
+                }
+              }
+                  : null,
+              child: Text(canStart
+                  ? 'Mulai'
+                  : players.length < 3
+                  ? 'Menunggu pemain (min. 3)'
+                  : 'Menunggu semua siap ($readyN/${players.length})'),
+            ),
+          ),
+        TextButton(
+          onPressed: () async {
+            // Keluar dulu agar penghapusan ruangan tidak memicu
+            // pesan "dibubarkan" untuk host sendiri.
+            setState(() => gameId = null);
+            try {
+              await repo.leave(id);
+            } catch (e) {
+              if (!mounted) return;
+              setState(() => gameId = id);
+              _toast(errMsg(e));
+            }
+          },
+          child: Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
+        ),
+      ],
+    );
+  }
+
+  Widget _codeHeader(String code) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Kode ruangan',
+                  style: TextStyle(fontSize: 11, color: Colors.white60)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  code,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Salin kode',
+          icon: const Icon(Icons.copy, size: 20),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: code));
+            _toast('Kode disalin');
+          },
+        ),
+      ],
+    ),
+  );
+
+  Widget _meCard(
+      String id, Map<String, dynamic>? me, String myCard, bool iReady) =>
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            CardArt(path: protagonistPath(myCard), width: 72),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(me?['name'] as String? ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(characterTitle(myCard),
+                      style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed:
+                    me == null || iReady ? null : () => _pickCard(id, me),
+                    icon: Icon(iReady ? Icons.lock : Icons.style, size: 18),
+                    label: Text(iReady ? 'Kartu terkunci' : 'Ganti kartu'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _playerTile(Map<String, dynamic> p, String hostId) {
+    final ready = p['ready'] == true;
+    final isMe = p['user_id'] == repo.myId;
+    final isHostP = p['user_id'] == hostId;
+    final card = p['character_card'] as String;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: ready
+              ? Colors.greenAccent.withValues(alpha: 0.6)
+              : Colors.white12,
+        ),
+      ),
+      child: ListTile(
+        dense: true,
+        leading: PlayerAvatar(
+          path: protagonistPath(card),
+          size: 40,
+          ring: isMe ? Colors.amber : Colors.white38,
+        ),
+        title: Row(
+          children: [
+            Flexible(
+              child: Text(p['name'] as String,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            if (isHostP)
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Host',
+                    style: TextStyle(fontSize: 10, color: Colors.amberAccent)),
+              ),
+          ],
+        ),
+        subtitle: Text(characterTitle(card)),
+        trailing: Icon(
+          ready ? Icons.check_circle : Icons.hourglass_empty,
+          size: 20,
+          color: ready ? Colors.greenAccent : Colors.white38,
+        ),
+      ),
+    );
+  }
 }
 
-/// Tab Pemain / Obrolan di lobi. Obrolan memakai tabel yang sama dengan
-/// obrolan dalam gim.
-class _LobbyBody extends StatefulWidget {
+/// Panel kaca gelap yang dipakai bersama oleh layar masuk, ruangan, dan obrolan.
+class _Glass extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  const _Glass({required this.child, this.padding = const EdgeInsets.all(16)});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.62),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.white12),
+    ),
+    child: child,
+  );
+}
+
+/// Tata letak ruangan yang responsif:
+/// - layar lebar (>= 820 px): ruangan di kiri, obrolan di kanan;
+/// - ponsel: dua halaman yang digeser (ruangan, lalu obrolan di kanan).
+class _RoomShell extends StatefulWidget {
   final GameRepository gr;
   final String gameId;
-  final String hostId;
   final List<Map<String, dynamic>> players;
-  const _LobbyBody({
+  final Widget room;
+  const _RoomShell({
     required this.gr,
     required this.gameId,
-    required this.hostId,
     required this.players,
+    required this.room,
   });
 
   @override
-  State<_LobbyBody> createState() => _LobbyBodyState();
+  State<_RoomShell> createState() => _RoomShellState();
 }
 
-class _LobbyBodyState extends State<_LobbyBody> {
-  int tab = 0; // 0 pemain, 1 obrolan
+class _RoomShellState extends State<_RoomShell> {
+  static const _wideBreakpoint = 820.0;
+  final _pc = PageController();
+  int page = 0;
   int seen = 0;
   late final Stream<List<Map<String, dynamic>>> chat =
   widget.gr.chat(widget.gameId);
 
   @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  Widget _chatPane() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Row(
+        children: [
+          Icon(Icons.forum, size: 18),
+          SizedBox(width: 8),
+          Text('Obrolan Desa', style: TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Expanded(
+        child: ChatPanel(
+          repo: widget.gr,
+          gameId: widget.gameId,
+          players: widget.players,
+          lobby: true,
+        ),
+      ),
+    ],
+  );
+
+  void _goto(int i) => _pc.animateToPage(i,
+      duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
+
+  Widget _tabs(int unread) => Row(
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          avatar: const Icon(Icons.groups, size: 16),
+          label: Text('Ruangan (${widget.players.length})'),
+          selected: page == 0,
+          visualDensity: VisualDensity.compact,
+          onSelected: (_) => _goto(0),
+        ),
+      ),
+      Badge(
+        isLabelVisible: unread > 0 && page != 1,
+        label: Text('$unread'),
+        child: ChoiceChip(
+          avatar: const Icon(Icons.forum, size: 16),
+          label: const Text('Obrolan'),
+          selected: page == 1,
+          visualDensity: VisualDensity.compact,
+          onSelected: (_) => _goto(1),
+        ),
+      ),
+      const Spacer(),
+      if (page == 0)
+        const Text('Geser untuk obrolan',
+            style: TextStyle(fontSize: 11, color: Colors.white54)),
+      if (page == 0)
+        const Icon(Icons.chevron_right, size: 16, color: Colors.white54),
+    ],
+  );
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        StreamBuilder<List<Map<String, dynamic>>>(
-          stream: chat,
-          builder: (context, s) {
-            final count = (s.data ?? [])
-                .where((m) => m['user_id'] != widget.gr.myId)
-                .length;
-            if (tab == 1) seen = count;
-            final unread = count - seen;
-            return Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text('Pemain (${widget.players.length})'),
-                    selected: tab == 0,
-                    visualDensity: VisualDensity.compact,
-                    onSelected: (_) => setState(() => tab = 0),
-                  ),
-                ),
-                Badge(
-                  isLabelVisible: unread > 0 && tab != 1,
-                  label: Text('$unread'),
-                  child: ChoiceChip(
-                    label: const Text('Obrolan'),
-                    selected: tab == 1,
-                    visualDensity: VisualDensity.compact,
-                    onSelected: (_) => setState(() {
-                      tab = 1;
-                      seen = count;
-                    }),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: tab == 0
-              ? ListView(
+    return LayoutBuilder(builder: (context, c) {
+      if (c.maxWidth >= _wideBreakpoint) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _Glass(child: widget.room)),
+            const SizedBox(width: 16),
+            SizedBox(width: 380, child: _Glass(child: _chatPane())),
+          ],
+        );
+      }
+      return StreamBuilder<List<Map<String, dynamic>>>(
+        stream: chat,
+        builder: (context, s) {
+          final count = (s.data ?? [])
+              .where((m) => m['user_id'] != widget.gr.myId)
+              .length;
+          if (page == 1) seen = count;
+          final unread = count - seen;
+          return Column(
             children: [
-              for (final p in widget.players)
-                ListTile(
-                  dense: true,
-                  leading: PlayerAvatar(
-                    path: protagonistPath(p['character_card'] as String),
-                    size: 40,
-                  ),
-                  title: Text(p['name'] as String),
-                  subtitle:
-                  Text(characterTitle(p['character_card'] as String)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (p['user_id'] == widget.hostId)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: Text('Host'),
-                        ),
-                      Icon(
-                        p['ready'] == true
-                            ? Icons.check_circle
-                            : Icons.hourglass_empty,
-                        size: 20,
-                        color: p['ready'] == true
-                            ? Colors.greenAccent
-                            : Colors.white38,
-                      ),
-                    ],
-                  ),
+              _tabs(unread),
+              const SizedBox(height: 8),
+              Expanded(
+                child: PageView(
+                  controller: _pc,
+                  onPageChanged: (i) => setState(() {
+                    page = i;
+                    if (i == 1) seen = count;
+                  }),
+                  children: [
+                    _KeepAlive(child: _Glass(child: widget.room)),
+                    _KeepAlive(child: _Glass(child: _chatPane())),
+                  ],
                 ),
+              ),
             ],
-          )
-              : ChatPanel(
-            repo: widget.gr,
-            gameId: widget.gameId,
-            players: widget.players,
-            lobby: true,
-          ),
-        ),
-      ],
-    );
+          );
+        },
+      );
+    });
+  }
+}
+
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({required this.child});
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
