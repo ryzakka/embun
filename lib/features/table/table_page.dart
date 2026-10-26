@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show sin;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
@@ -6,7 +7,7 @@ import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../lobby/lobby_page.dart';
-import 'card_tile.dart';
+import 'card_burst.dart';
 import 'chat_sheet.dart';
 import 'countdown.dart';
 import 'day_view.dart';
@@ -328,6 +329,8 @@ class _TablePageState extends State<TablePage> {
             IgnorePointer(
               child: CardBurst(
                 count: burst,
+                dark: showAsAntag,
+                leaves: (game?['leaves'] as int?) ?? 30,
                 onDone: () {
                   if (mounted) setState(() => burst = 0);
                 },
@@ -607,21 +610,58 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  Widget _verdictCard(String text) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.black54,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.gavel, size: 18, color: Colors.amber),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
-      ],
-    ),
+  /// Vonis hari sebelumnya: palu diketuk. Kartu membesar lalu menghantam
+  /// ke ukuran asli, kilat emas di titik ketukan, lalu bergetar mereda.
+  Widget _verdictCard(String text) => TweenAnimationBuilder<double>(
+    key: ValueKey(text),
+    tween: Tween<double>(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 1300),
+    builder: (context, t, _) {
+      final slam =
+      Curves.easeOutBack.transform((t / 0.35).clamp(0.0, 1.0).toDouble());
+      final flash = (1 - (t - 0.35).abs() / 0.18).clamp(0.0, 1.0).toDouble();
+      final after = ((t - 0.35) / 0.65).clamp(0.0, 1.0).toDouble();
+      final dx = t > 0.35 ? sin(after * 60) * 6 * (1 - after) : 0.0;
+      return Opacity(
+        opacity: (t / 0.15).clamp(0.0, 1.0).toDouble(),
+        child: Transform.translate(
+          offset: Offset(dx, 0),
+          child: Transform.scale(
+            scale: 1.18 - 0.18 * slam,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: Colors.amber
+                        .withValues(alpha: 0.6 + 0.4 * flash)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withValues(alpha: 0.7 * flash),
+                    blurRadius: 24 * flash,
+                    spreadRadius: 2 * flash,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Transform.rotate(
+                    angle: -0.9 * (1 - slam),
+                    child: const Icon(Icons.gavel,
+                        size: 20, color: Colors.amber),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(text, style: const TextStyle(fontSize: 13))),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
   );
 
   Widget _currencyBar(

@@ -45,7 +45,8 @@ class EffectsView extends StatefulWidget {
   State<EffectsView> createState() => _EffectsViewState();
 }
 
-class _EffectsViewState extends State<EffectsView> {
+class _EffectsViewState extends State<EffectsView>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> rows = [];
   bool loaded = false;
   int revealed = 0;
@@ -53,6 +54,12 @@ class _EffectsViewState extends State<EffectsView> {
   late int shown = widget.finalLeaves;
   bool gray = false;
   Timer? timer;
+
+  // Denyut hantaman tiap gelembung tiba (baik: cincin cahaya; buruk: retak
+  // dan pohon terguncang).
+  late final AnimationController _pulse = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100));
+  bool _lastBad = false;
 
   @override
   void initState() {
@@ -81,12 +88,15 @@ class _EffectsViewState extends State<EffectsView> {
   @override
   void dispose() {
     timer?.cancel();
+    _pulse.dispose();
     super.dispose();
   }
 
   void _arrive(Map<String, dynamic> row) {
     if (!mounted) return;
     final isBad = row['kind'] == 'bad';
+    _lastBad = isBad;
+    _pulse.forward(from: 0);
     if (isBad) {
       HapticFeedback.heavyImpact();
     } else {
@@ -132,11 +142,34 @@ class _EffectsViewState extends State<EffectsView> {
                     children: [
                       Expanded(
                           child:
-                          TreePortrait(leaves: shown, pathOverride: sakura)),
+                          AnimatedBuilder(
+                              animation: _pulse,
+                              builder: (_, child) {
+                                // Guncangan hanya untuk gelembung buruk.
+                                final k = _lastBad
+                                    ? sin(_pulse.value * 70) *
+                                    10 *
+                                    (1 - _pulse.value)
+                                    : 0.0;
+                                return Transform.translate(
+                                    offset: Offset(k, 0), child: child);
+                              },
+                              child: TreePortrait(
+                                  leaves: shown, pathOverride: sakura))),
                       const SizedBox(height: 8),
-                      Text('$shown daun',
-                          style: const TextStyle(
-                              fontSize: 30, fontWeight: FontWeight.bold)),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 450),
+                        transitionBuilder: (w, a) => ScaleTransition(
+                          scale: Tween<double>(begin: 1.6, end: 1.0).animate(
+                              CurvedAnimation(
+                                  parent: a, curve: Curves.easeOutBack)),
+                          child: FadeTransition(opacity: a, child: w),
+                        ),
+                        child: Text('$shown daun',
+                            key: ValueKey(shown),
+                            style: const TextStyle(
+                                fontSize: 30, fontWeight: FontWeight.bold)),
+                      ),
                     ],
                   ),
                 ),
@@ -146,6 +179,20 @@ class _EffectsViewState extends State<EffectsView> {
                     padding: const EdgeInsets.only(top: 16),
                     child: Text('Hasil persembahan hari ${widget.day}',
                         style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _pulse,
+                      builder: (_, __) => _pulse.isAnimating
+                          ? CustomPaint(
+                          painter: _PulsePainter(
+                              t: _pulse.value,
+                              bad: _lastBad,
+                              seed: arrived))
+                          : const SizedBox.shrink(),
+                    ),
                   ),
                 ),
                 for (var i = 0; i < revealed && i < rows.length; i++)
@@ -265,4 +312,98 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
       },
     );
   }
+}
+/// Denyut hantaman di pohon: cincin cahaya dan kilau untuk efek baik;
+/// vinyet gelap dan retakan bercahaya ungu untuk efek buruk.
+class _PulsePainter extends CustomPainter {
+  final double t;
+  final bool bad;
+  final int seed;
+  _PulsePainter({required this.t, required this.bad, required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.42);
+    final e = Curves.easeOutCubic.transform(t);
+    final fade = (1 - t).clamp(0.0, 1.0).toDouble();
+    final rnd = Random(seed * 131 + 7);
+
+    if (bad) {
+      final rect = Offset.zero & size;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            radius: 0.9,
+            colors: [
+              Colors.transparent,
+              const Color(0xFF1A1030).withValues(alpha: 0.6 * fade),
+            ],
+            stops: const [0.35, 1.0],
+          ).createShader(rect),
+      );
+      canvas.drawCircle(
+        c,
+        30 + 200 * e,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 * fade + 0.5
+          ..color = const Color(0xFFB07CE8).withValues(alpha: fade),
+      );
+      final crack = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 2.5
+        ..color = const Color(0xFFE6D6FF).withValues(alpha: fade);
+      for (var k = 0; k < 9; k++) {
+        final ang = rnd.nextDouble() * 2 * pi;
+        final len = (70 + rnd.nextDouble() * 130) * e;
+        final path = Path()..moveTo(c.dx, c.dy);
+        var p = c;
+        const steps = 4;
+        for (var i = 1; i <= steps; i++) {
+          final f = i / steps;
+          final jitter = (rnd.nextDouble() - 0.5) * 24;
+          p = c +
+              Offset(cos(ang), sin(ang)) * (len * f) +
+              Offset(-sin(ang), cos(ang)) * jitter;
+          path.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(path, crack);
+      }
+    } else {
+      for (var ring = 0; ring < 2; ring++) {
+        final rs = ((t - ring * 0.15) / (1 - ring * 0.15)).clamp(0.0, 1.0);
+        if (rs <= 0) continue;
+        final re = Curves.easeOutCubic.transform(rs.toDouble());
+        canvas.drawCircle(
+          c,
+          24 + 170 * re,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 5 * (1 - rs) + 0.5
+            ..color = Color.lerp(const Color(0xFFFFE08A),
+                const Color(0xFF9DF0B8), ring.toDouble())!
+                .withValues(alpha: (1 - rs).clamp(0.0, 1.0).toDouble()),
+        );
+      }
+      for (var k = 0; k < 12; k++) {
+        final ang = rnd.nextDouble() * 2 * pi;
+        final dist = (50 + rnd.nextDouble() * 120) * e;
+        final p = c + Offset(cos(ang), sin(ang)) * dist + Offset(0, -30 * e);
+        canvas.drawCircle(
+          p,
+          1 + 3 * fade,
+          Paint()
+            ..color = (k.isEven
+                ? const Color(0xFFFFF2B0)
+                : const Color(0xFFBFF5D0))
+                .withValues(alpha: fade),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PulsePainter old) => old.t != t;
 }

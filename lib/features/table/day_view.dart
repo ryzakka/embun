@@ -1,3 +1,4 @@
+import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -163,25 +164,71 @@ class _DayViewState extends State<DayView> {
         .where((e) => e['kind'] == 'kabar' && e['day'] == widget.day)
         .toList();
     if (k.isEmpty) return const SizedBox.shrink();
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF332B10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.wb_twilight, size: 16, color: Colors.amberAccent),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Kabar Pagi: ${k.last['text']}',
-                style: const TextStyle(fontSize: 12)),
+    final text = '${k.last['text']}';
+    // Fajar menyingsing: spanduk meluncur turun, ikon matahari memantul,
+    // cahaya menyapu dari kiri ke kanan lalu meredup.
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(text),
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1400),
+      builder: (context, t, _) {
+        final rise =
+        Curves.easeOutCubic.transform((t / 0.45).clamp(0.0, 1.0).toDouble());
+        final pop = Curves.elasticOut
+            .transform(((t - 0.15) / 0.6).clamp(0.0, 1.0).toDouble());
+        final sweep = ((t - 0.2) / 0.6).clamp(0.0, 1.0).toDouble();
+        final glow = (1 - t) * 0.55 + 0.1;
+        final mid = Color.lerp(const Color(0xFF332B10),
+            const Color(0xFF7A5E1A), sin(sweep * pi))!;
+        return Opacity(
+          opacity: rise.clamp(0.0, 1.0).toDouble(),
+          child: Transform.translate(
+            offset: Offset(0, (1 - rise) * -18),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF332B10), mid, const Color(0xFF332B10)],
+                  stops: [
+                    (sweep - 0.25).clamp(0.0, 1.0).toDouble(),
+                    sweep,
+                    (sweep + 0.25).clamp(0.0, 1.0).toDouble(),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: Colors.amberAccent.withValues(alpha: 0.7)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amberAccent
+                        .withValues(alpha: (glow * 0.6).clamp(0.0, 1.0)),
+                    blurRadius: 8 + 16 * glow,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Transform.rotate(
+                    angle: (1 - pop) * -1.2,
+                    child: Transform.scale(
+                      scale: (0.4 + 0.6 * pop).clamp(0.1, 1.6).toDouble(),
+                      child: const Icon(Icons.wb_twilight,
+                          size: 18, color: Colors.amberAccent),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Kabar Pagi: $text',
+                        style: const TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

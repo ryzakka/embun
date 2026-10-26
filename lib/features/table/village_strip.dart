@@ -131,7 +131,7 @@ class _VillageStripState extends State<VillageStrip> {
                       border: Border.all(color: Colors.white24),
                     ),
                     child: Text(
-                      b!.target == null
+                      b.target == null
                           ? b.emoji
                           : '${b.emoji}→${_short(b.target)}',
                       style: const TextStyle(fontSize: 13),
