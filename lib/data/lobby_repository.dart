@@ -4,16 +4,24 @@ final _db = Supabase.instance.client;
 
 class LobbyRepository {
   Future<void> ensureSignedIn() async {
-    if (_db.auth.currentSession == null) {
+    if (_db.auth.currentSession != null) return;
+    try {
       await _db.auth.signInAnonymously();
+    } on AuthException catch (e) {
+      throw Exception('Gagal masuk anonim: ${e.message}');
     }
   }
 
-  Future<String> createGame(String name) async =>
-      await _db.rpc('create_game', params: {'p_name': name}) as String;
+  Future<String> createGame(String name) async {
+    await ensureSignedIn();
+    return await _db.rpc('create_game', params: {'p_name': name}) as String;
+  }
 
-  Future<String> joinGame(String code, String name) async =>
-      await _db.rpc('join_game', params: {'p_code': code, 'p_name': name}) as String;
+  Future<String> joinGame(String code, String name) async {
+    await ensureSignedIn();
+    return await _db.rpc('join_game',
+        params: {'p_code': code, 'p_name': name}) as String;
+  }
 
   Future<void> startGame(String id) =>
       _db.rpc('start_game', params: {'p_game': id});

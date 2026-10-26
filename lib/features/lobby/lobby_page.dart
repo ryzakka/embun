@@ -17,7 +17,11 @@ class _LobbyPageState extends State<LobbyPage> {
   @override
   void initState() {
     super.initState();
-    repo.ensureSignedIn().then((_) => setState(() {}));
+    repo.ensureSignedIn().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((e) {
+      if (mounted) _toast(e.toString());
+    });
   }
 
   Future<void> _run(Future<String> Function() action) async {
