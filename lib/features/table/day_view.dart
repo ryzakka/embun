@@ -90,8 +90,7 @@ class _DayViewState extends State<DayView> {
     return '?';
   }
 
-  String _cardName(String id) =>
-      (widget.defs[id]?['name'] as String?) ?? id;
+  String _cardName(String id) => (widget.defs[id]?['name'] as String?) ?? id;
 
   int _price(String id) {
     final c = (widget.defs[id]?['cost'] as int?) ?? 0;
@@ -103,6 +102,9 @@ class _DayViewState extends State<DayView> {
     final bought = (offers ?? []).where((o) => o['bought'] == true).length;
     return 1 + widget.extraBuy - bought;
   }
+
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
   List<Map<String, dynamic>> get _incoming => widget.trades
       .where((t) =>
@@ -138,8 +140,7 @@ class _DayViewState extends State<DayView> {
     final pick = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: Text(
-            'Tukar ${_cardName(t['give_card_id'] as String)} dengan...'),
+        title: Text('Tukar ${_cardName(t['give_card_id'] as String)} dengan...'),
         children: [
           for (final h in tradable)
             SimpleDialogOption(
@@ -151,29 +152,104 @@ class _DayViewState extends State<DayView> {
     );
     if (pick == null || !mounted) return;
     await _run(
-          () => widget.repo
-          .respondTrade(t['id'] as String, true, returnHand: pick),
+          () => widget.repo.respondTrade(t['id'] as String, true, returnHand: pick),
       ok: 'Kartu bertukar',
     );
   }
 
+  // ---------- bagian kecil yang dipakai ulang ----------
+
+  Widget _section(String title, {IconData? icon, String? trailing}) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 16, color: Colors.white60),
+          const SizedBox(width: 6),
+        ],
+        Text(title,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        const Spacer(),
+        if (trailing != null)
+          Text(trailing,
+              style: const TextStyle(fontSize: 11, color: Colors.white54)),
+      ],
+    ),
+  );
+
+  Widget _chip(IconData icon, String text, {Color? color}) {
+    final c = color ?? Colors.white70;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: c),
+          const SizedBox(width: 5),
+          Text(text, style: TextStyle(fontSize: 12, color: c)),
+        ],
+      ),
+    );
+  }
+
+  Widget _jailBanner() => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.redAccent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.lock, size: 16, color: Colors.redAccent),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text('Kamu dikurung hari ini: tidak bisa berbelanja.',
+              style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+        ),
+      ],
+    ),
+  );
+
+  Widget _empty(IconData icon, String title, String hint) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 40, color: Colors.white24),
+        const SizedBox(height: 8),
+        Text(title, style: const TextStyle(color: Colors.white60)),
+        const SizedBox(height: 2),
+        Text(hint,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Colors.white38)),
+      ],
+    ),
+  );
+
   // ---------- bagian-bagian UI ----------
 
+  /// Fajar menyingsing: spanduk meluncur turun, ikon matahari memantul,
+  /// cahaya menyapu dari kiri ke kanan lalu meredup.
   Widget _kabar() {
     final k = widget.events
         .where((e) => e['kind'] == 'kabar' && e['day'] == widget.day)
         .toList();
     if (k.isEmpty) return const SizedBox.shrink();
     final text = '${k.last['text']}';
-    // Fajar menyingsing: spanduk meluncur turun, ikon matahari memantul,
-    // cahaya menyapu dari kiri ke kanan lalu meredup.
     return TweenAnimationBuilder<double>(
       key: ValueKey(text),
       tween: Tween<double>(begin: 0, end: 1),
       duration: const Duration(milliseconds: 1400),
       builder: (context, t, _) {
-        final rise =
-        Curves.easeOutCubic.transform((t / 0.45).clamp(0.0, 1.0).toDouble());
+        final rise = Curves.easeOutCubic
+            .transform((t / 0.45).clamp(0.0, 1.0).toDouble());
         final pop = Curves.elasticOut
             .transform(((t - 0.15) / 0.6).clamp(0.0, 1.0).toDouble());
         final sweep = ((t - 0.2) / 0.6).clamp(0.0, 1.0).toDouble();
@@ -186,20 +262,24 @@ class _DayViewState extends State<DayView> {
             offset: Offset(0, (1 - rise) * -18),
             child: Container(
               width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [const Color(0xFF332B10), mid, const Color(0xFF332B10)],
+                  colors: [
+                    const Color(0xFF332B10),
+                    mid,
+                    const Color(0xFF332B10),
+                  ],
                   stops: [
                     (sweep - 0.25).clamp(0.0, 1.0).toDouble(),
                     sweep,
                     (sweep + 0.25).clamp(0.0, 1.0).toDouble(),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: Colors.amberAccent.withValues(alpha: 0.7)),
+                borderRadius: BorderRadius.circular(10),
+                border:
+                Border.all(color: Colors.amberAccent.withValues(alpha: 0.7)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.amberAccent
@@ -218,7 +298,7 @@ class _DayViewState extends State<DayView> {
                           size: 18, color: Colors.amberAccent),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text('Kabar Pagi: $text',
                         style: const TextStyle(fontSize: 12)),
@@ -234,75 +314,121 @@ class _DayViewState extends State<DayView> {
 
   Widget _tabs() {
     final n = _incoming.length;
-    Widget chip(int i, String label) => Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: tab == i,
-        visualDensity: VisualDensity.compact,
-        onSelected: (_) => setState(() => tab = i),
+    Widget item(int i, IconData icon, String label, {int badge = 0}) {
+      final sel = tab == i;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => tab = i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: sel
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Badge(
+                  isLabelVisible: badge > 0,
+                  label: Text('$badge'),
+                  child: Icon(icon,
+                      size: 18,
+                      color: sel ? Colors.amberAccent : Colors.white60),
+                ),
+                const SizedBox(width: 6),
+                Text(label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      color: sel ? Colors.white : Colors.white70,
+                    )),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          item(0, Icons.style, 'Meja'),
+          item(1, Icons.storefront, 'Pasar'),
+          item(2, Icons.campaign, 'Balai', badge: n),
+        ],
       ),
     );
-    return Row(children: [
-      chip(0, 'Meja'),
-      chip(1, 'Pasar'),
-      chip(2, n > 0 ? 'Balai ($n)' : 'Balai'),
-    ]);
   }
 
-  Widget _mejaTab() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (widget.jailed)
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Icon(Icons.lock, size: 16, color: Colors.redAccent),
-              SizedBox(width: 6),
-              Text('Kamu dikurung hari ini: tidak bisa berbelanja.',
-                  style: TextStyle(color: Colors.redAccent)),
-            ],
-          ),
-        ),
-      const Text('Kartu di mejamu'),
-      const SizedBox(height: 8),
-      Expanded(
-        child: SingleChildScrollView(
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final c in widget.hand)
-                CardTile(
-                  def: widget.defs[c['card_id']],
-                  fallbackName: c['card_id'] as String,
-                ),
-            ],
-          ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _pasarTab() {
-    final o = offers;
-    final remain = _remaining;
+  Widget _mejaTab() {
+    final hand = widget.hand;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.jailed
-              ? 'Kamu dikurung hari ini: tidak bisa berbelanja.'
-              : 'Pasar Embun · jatah belanja: ${remain < 0 ? 0 : remain}'
-              '${widget.priceMod != 0 ? ' · harga ${widget.priceMod > 0 ? '+' : ''}${widget.priceMod}' : ''}',
-          style: TextStyle(
-              color: widget.jailed ? Colors.redAccent : Colors.white70),
+        if (widget.jailed) _jailBanner(),
+        _section('Kartu di mejamu',
+            icon: Icons.style, trailing: '${hand.length} kartu'),
+        Expanded(
+          child: hand.isEmpty
+              ? _empty(Icons.style, 'Mejamu masih kosong',
+              'Beli kartu di Pasar untuk dipersembahkan.')
+              : SingleChildScrollView(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in hand)
+                  CardTile(
+                    def: widget.defs[c['card_id']],
+                    fallbackName: c['card_id'] as String,
+                  ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _pasarTab() {
+    final o = offers;
+    final remain = _remaining < 0 ? 0 : _remaining;
+    final mod = widget.priceMod;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.jailed) _jailBanner(),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _chip(Icons.water_drop, _fmt(widget.balance),
+                color: const Color(0xFF7FD3F7)),
+            if (!widget.jailed)
+              _chip(Icons.shopping_basket, 'Jatah belanja: $remain',
+                  color: remain > 0 ? Colors.white70 : Colors.white38),
+            if (mod != 0)
+              _chip(Icons.sell, 'Harga ${mod > 0 ? '+' : ''}$mod',
+                  color: mod < 0 ? Colors.greenAccent : Colors.orangeAccent),
+          ],
+        ),
+        const SizedBox(height: 10),
         Expanded(
           child: o == null
               ? const Center(child: CircularProgressIndicator())
+              : o.isEmpty
+              ? _empty(Icons.storefront, 'Pasar sedang sepi',
+              'Belum ada tawaran hari ini.')
               : SingleChildScrollView(
             child: Wrap(
               spacing: 10,
@@ -325,19 +451,23 @@ class _DayViewState extends State<DayView> {
                       badge: bought ? 'Terbeli' : null,
                       selected: selected == id,
                       dim: !ok,
-                      onTap:
-                      ok ? () => setState(() => selected = id) : null,
+                      onTap: ok ? () => setState(() => selected = id) : null,
                     );
                   }),
               ],
             ),
           ),
         ),
-        FilledButton(
-          onPressed: busy || selected == null ? null : _buy,
-          child: Text(selected == null
-              ? 'Pilih kartu untuk dibeli'
-              : 'Beli ${_cardName(selected!)} (${_price(selected!)})'),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: busy || selected == null ? null : _buy,
+            icon: const Icon(Icons.water_drop, size: 16),
+            label: Text(selected == null
+                ? 'Pilih kartu untuk dibeli'
+                : 'Beli ${_cardName(selected!)} (${_price(selected!)})'),
+          ),
         ),
       ],
     );
@@ -355,23 +485,40 @@ class _DayViewState extends State<DayView> {
     final out = _outgoing;
 
     return ListView(
+      padding: EdgeInsets.zero,
       children: [
-        const Text(
-          'Ketuk avatar pemain di atas untuk memberi embun, menukar kartu, atau mengirim isyarat.',
-          style: TextStyle(fontSize: 12, color: Colors.white54),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.white54),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Ketuk avatar pemain di atas untuk memberi embun, menukar kartu, atau mengirim isyarat.',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         if (inc.isNotEmpty) ...[
-          const Text('Tawaran tukar untukmu',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          _section('Tawaran tukar untukmu',
+              icon: Icons.swap_horiz, trailing: '${inc.length}'),
           for (final t in inc)
             Container(
-              margin: const EdgeInsets.only(top: 6),
+              margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.black38,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: Colors.amberAccent.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -381,8 +528,8 @@ class _DayViewState extends State<DayView> {
                       children: [
                         Text(
                             '${_name(t['from_id'] as String?)} menawarkan ${_cardName(t['give_card_id'] as String)}',
-                            style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
                         Text(
                           (widget.defs[t['give_card_id']]?['description']
                           as String?) ??
@@ -396,8 +543,8 @@ class _DayViewState extends State<DayView> {
                   TextButton(
                     onPressed: busy
                         ? null
-                        : () => _run(() => widget.repo
-                        .respondTrade(t['id'] as String, false)),
+                        : () => _run(() =>
+                        widget.repo.respondTrade(t['id'] as String, false)),
                     child: const Text('Tolak'),
                   ),
                   FilledButton(
@@ -407,28 +554,36 @@ class _DayViewState extends State<DayView> {
                 ],
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
         ],
         if (out.isNotEmpty) ...[
+          _section('Menunggu jawaban', icon: Icons.hourglass_top),
           for (final t in out)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 6),
               child: Text(
-                'Menunggu ${_name(t['to_id'] as String?)} menjawab tawaranmu (${_cardName(t['give_card_id'] as String)})...',
+                '${_name(t['to_id'] as String?)} belum menjawab tawaranmu (${_cardName(t['give_card_id'] as String)})',
                 style: const TextStyle(fontSize: 12, color: Colors.white60),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
-        const Text('Kabar desa', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
+        _section('Kabar desa', icon: Icons.campaign),
         if (feed.isEmpty)
-          const Text('Belum ada yang terjadi...',
-              style: TextStyle(color: Colors.white38))
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('Belum ada yang terjadi...',
+                style: TextStyle(color: Colors.white38)),
+          )
         else
           for (final e in feed)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+            Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -443,12 +598,48 @@ class _DayViewState extends State<DayView> {
                     child: Text(e['text'] as String,
                         style: const TextStyle(fontSize: 12)),
                   ),
+                  const SizedBox(width: 8),
                   Text('H${e['day']}',
-                      style: const TextStyle(
-                          fontSize: 10, color: Colors.white38)),
+                      style:
+                      const TextStyle(fontSize: 10, color: Colors.white38)),
                 ],
               ),
             ),
+      ],
+    );
+  }
+
+  Widget _finishBar() {
+    final ready = widget.iAmReady;
+    final progress =
+    widget.total == 0 ? 0.0 : (widget.readyCount / widget.total);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: ready || busy
+                ? null
+                : () => _run(() => widget.repo.finishDay(widget.gameId)),
+            icon: Icon(ready ? Icons.hourglass_top : Icons.nightlight_round,
+                size: 18),
+            label: Text(ready
+                ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
+                : 'Akhiri hari ${widget.day}'),
+          ),
+        ),
+        if (ready)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0).toDouble(),
+                minHeight: 4,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -465,20 +656,10 @@ class _DayViewState extends State<DayView> {
       children: [
         _kabar(),
         _tabs(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Expanded(child: body),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: widget.iAmReady || busy
-                ? null
-                : () => _run(() => widget.repo.finishDay(widget.gameId)),
-            child: Text(widget.iAmReady
-                ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
-                : 'Akhiri hari ${widget.day}'),
-          ),
-        ),
+        const SizedBox(height: 8),
+        _finishBar(),
       ],
     );
   }
