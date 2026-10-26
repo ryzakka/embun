@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/character_cards.dart';
 import '../../data/lobby_repository.dart';
 import '../prologue/prologue_page.dart';
+import '../table/table_page.dart';
 
 class LobbyPage extends StatefulWidget {
   const LobbyPage({super.key});
@@ -19,11 +20,35 @@ class _LobbyPageState extends State<LobbyPage> {
   @override
   void initState() {
     super.initState();
-    repo.ensureSignedIn().then((_) {
-      if (mounted) setState(() {});
-    }).catchError((e) {
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    try {
+      await repo.ensureSignedIn();
+      final g = await repo.activeGame();
+      if (!mounted) return;
+      if (g != null) {
+        final id = g['id'] as String;
+        if (g['status'] == 'lobby') {
+          setState(() => gameId = id);
+          return;
+        }
+        final role = await repo.myRole(id);
+        if (!mounted) return;
+        if (role != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => TablePage(gameId: id, role: role),
+            ),
+          );
+          return;
+        }
+      }
+      setState(() {});
+    } catch (e) {
       if (mounted) _toast(e.toString());
-    });
+    }
   }
 
   Future<void> _run(Future<String> Function() action) async {

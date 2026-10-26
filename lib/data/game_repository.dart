@@ -58,4 +58,20 @@ class GameRepository {
 
   Future<void> advanceAfterEffects(String gameId) =>
       _db.rpc('advance_after_effects', params: {'p_game': gameId});
+
+  Stream<List<Map<String, dynamic>>> chat(String gameId) => _db
+      .from('chat_messages')
+      .stream(primaryKey: ['id'])
+      .eq('game_id', gameId)
+      .order('created_at');
+
+  Future<void> sendMessage(String gameId, String body) =>
+      _db.rpc('send_message', params: {'p_game': gameId, 'p_body': body});
+
+  Future<void> readyToVote(String gameId) =>
+      _db.rpc('ready_to_vote', params: {'p_game': gameId});
+
+  Future<void> submitVote(String gameId, String? target) =>
+      _db.rpc('submit_vote', params: {'p_game': gameId, 'p_target': target});
+
 }

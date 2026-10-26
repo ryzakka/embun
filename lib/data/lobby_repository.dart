@@ -56,5 +56,15 @@ class LobbyRepository {
       .where((rows) => rows.isNotEmpty)
       .map((rows) => rows.first);
 
+  Future<Map<String, dynamic>?> activeGame() async {
+    final rows = await _db
+        .from('games')
+        .select()
+        .neq('status', 'finished')
+        .order('created_at', ascending: false)
+        .limit(1);
+    return rows.isEmpty ? null : Map<String, dynamic>.from(rows.first);
+  }
+
   String? get myId => _db.auth.currentUser?.id;
 }

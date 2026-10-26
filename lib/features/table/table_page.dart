@@ -3,8 +3,10 @@ import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../lobby/lobby_page.dart';
 import 'card_tile.dart';
+import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'offering_view.dart';
+import 'voting_view.dart';
 
 class TablePage extends StatefulWidget {
   final String gameId;
@@ -91,9 +93,11 @@ class _TablePageState extends State<TablePage> {
                   builder: (context, ps) {
                     final players = ps.data ?? [];
                     final me = players.where((p) => p['user_id'] == repo.myId);
-                    final iAmReady = me.isNotEmpty && me.first['ready'] == true;
+                    final myRow = me.isEmpty ? null : me.first;
+                    final iAmReady = myRow?['ready'] == true;
                     final readyCount =
                         players.where((p) => p['ready'] == true).length;
+                    final jailed = myRow?['jailed_day'] == day;
 
                     if (game['status'] == 'finished') return _result(game);
 
@@ -117,8 +121,8 @@ class _TablePageState extends State<TablePage> {
                         SizedBox(width: 120, child: _sidebar(day, leaves)),
                         const VerticalDivider(width: 1),
                         Expanded(
-                          child: _panel(day, phase, leaves, iAmReady,
-                              readyCount, players.length),
+                          child: _panel(game, day, phase, leaves, players,
+                              iAmReady, readyCount, jailed),
                         ),
                       ],
                     );
@@ -157,43 +161,97 @@ class _TablePageState extends State<TablePage> {
     ],
   );
 
-  Widget _panel(int day, String phase, int leaves, bool iAmReady,
-      int readyCount, int total) {
+  Widget _panel(
+      Map<String, dynamic> game,
+      int day,
+      String phase,
+      int leaves,
+      List<Map<String, dynamic>> players,
+      bool iAmReady,
+      int readyCount,
+      bool jailed,
+      ) {
+    final verdict = (game['verdict_day'] == day - 1 && game['verdict'] != null)
+        ? game['verdict'] as String
+        : null;
+
     return StreamBuilder<Map<String, dynamic>?>(
       stream: repo.myState(widget.gameId),
       builder: (context, ss) {
         final st = ss.data;
         final balance = (st?['balance'] as num?)?.toDouble() ?? 0;
         final rate = (st?['rate'] as num?)?.toDouble() ?? 0;
+
+        Widget body;
+        if (phase == 'discussion') {
+          body = DiscussionView(
+            key: ValueKey('disc$day'),
+            repo: repo,
+            gameId: widget.gameId,
+            day: day,
+            iAmReady: iAmReady,
+            readyCount: readyCount,
+            total: players.length,
+          );
+        } else if (phase == 'voting') {
+          body = iAmReady
+              ? _waiting(readyCount, players.length, 'Menunggu suara lain...')
+              : VotingView(
+            key: ValueKey('vote$day'),
+            repo: repo,
+            gameId: widget.gameId,
+            players: players,
+          );
+        } else if (iAmReady) {
+          body = _waiting(readyCount, players.length, 'Menunggu warga lain...');
+        } else if (phase == 'offering') {
+          body = OfferingView(
+            repo: repo,
+            gameId: widget.gameId,
+            leaves: leaves,
+            isAntag: isAntag,
+            defs: defs,
+            onSubmitted: (n) => setState(() => burst = n),
+          );
+        } else {
+          body = showMarket ? _market(balance) : _hand(day, jailed);
+        }
+
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _currencyBar(balance, rate),
-              const SizedBox(height: 16),
-              Expanded(
-                child: iAmReady
-                    ? _waiting(readyCount, total)
-                    : phase == 'offering'
-                    ? OfferingView(
-                  repo: repo,
-                  gameId: widget.gameId,
-                  leaves: leaves,
-                  isAntag: isAntag,
-                  defs: defs,
-                  onSubmitted: (n) => setState(() => burst = n),
-                )
-                    : showMarket
-                    ? _market(balance)
-                    : _hand(day),
-              ),
+              if (verdict != null && phase == 'day') ...[
+                const SizedBox(height: 8),
+                _verdictCard(verdict),
+              ],
+              const SizedBox(height: 12),
+              Expanded(child: body),
             ],
           ),
         );
       },
     );
   }
+
+  Widget _verdictCard(String text) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.amber.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.amber.withOpacity(0.5)),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.gavel, size: 18, color: Colors.amber),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
+      ],
+    ),
+  );
 
   Widget _currencyBar(double balance, double rate) => Row(
     children: [
@@ -215,9 +273,21 @@ class _TablePageState extends State<TablePage> {
     ],
   );
 
-  Widget _hand(int day) => Column(
+  Widget _hand(int day, bool jailed) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
+      if (jailed)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Icon(Icons.lock, size: 16, color: Colors.redAccent),
+              SizedBox(width: 6),
+              Text('Kamu dikurung hari ini: tidak bisa berbelanja.',
+                  style: TextStyle(color: Colors.redAccent)),
+            ],
+          ),
+        ),
       const Text('Kartu di mejamu'),
       const SizedBox(height: 8),
       Expanded(
@@ -242,7 +312,11 @@ class _TablePageState extends State<TablePage> {
         ),
       ),
       FilledButton(
-        onPressed: () => setState(() => showMarket = true),
+        onPressed: jailed
+            ? (busy
+            ? null
+            : () => _guard(() => repo.finishDay(widget.gameId)))
+            : () => setState(() => showMarket = true),
         child: Text('Akhiri hari $day'),
       ),
     ],
@@ -288,8 +362,8 @@ class _TablePageState extends State<TablePage> {
             FilledButton(
               onPressed: busy || selected == null
                   ? null
-                  : () => _guard(() =>
-                  repo.finishDay(widget.gameId, card: selected)),
+                  : () => _guard(
+                      () => repo.finishDay(widget.gameId, card: selected)),
               child: const Text('Beli dan akhiri hari'),
             ),
             OutlinedButton(
@@ -308,13 +382,13 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  Widget _waiting(int ready, int total) => Center(
+  Widget _waiting(int ready, int total, String text) => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const CircularProgressIndicator(),
         const SizedBox(height: 16),
-        const Text('Menunggu warga lain...'),
+        Text(text),
         Text('$ready/$total siap'),
       ],
     ),
@@ -322,6 +396,7 @@ class _TablePageState extends State<TablePage> {
 
   Widget _result(Map<String, dynamic> game) {
     final wargaMenang = game['winner'] == 'warga';
+    final verdict = game['verdict'] as String?;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -340,6 +415,7 @@ class _TablePageState extends State<TablePage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
+            if (verdict != null) Text(verdict, textAlign: TextAlign.center),
             Text('Daun akhir: ${game['leaves']}'),
             Text(isAntag ? 'Perananmu: Si Terbisik' : 'Perananmu: Warga Desa'),
             const SizedBox(height: 24),
