@@ -29,6 +29,20 @@ class LobbyRepository {
   Future<void> leave(String id) =>
       _db.rpc('leave_game', params: {'p_game': id});
 
+  Future<void> updateCharacter(String gameId, String name, String card) =>
+      _db.rpc('update_character',
+          params: {'p_game': gameId, 'p_name': name, 'p_card': card});
+
+  Future<String?> myRole(String gameId) async {
+    final row = await _db
+        .from('player_secrets')
+        .select('role')
+        .eq('game_id', gameId)
+        .eq('user_id', _db.auth.currentUser!.id)
+        .maybeSingle();
+    return row?['role'] as String?;
+  }
+
   Stream<List<Map<String, dynamic>>> players(String gameId) => _db
       .from('game_players')
       .stream(primaryKey: ['game_id', 'user_id'])
