@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
@@ -25,6 +26,23 @@ List<String> _aboutQuick(String n) => [
   '$n, kamu beli apa?',
   'Terima kasih, $n 🙏',
 ];
+
+// Warna sorot tiap pemain (stabil menurut user_id). Milikku selalu emas.
+const _palette = [
+  Color(0xFF7FD3F7),
+  Color(0xFF7FE0A0),
+  Color(0xFFE0A07F),
+  Color(0xFFB07CE8),
+  Color(0xFFE07F9F),
+  Color(0xFFD3E07F),
+];
+
+Color _accent(String? id, bool mine) {
+  if (mine) return Colors.amberAccent;
+  if (id == null) return Colors.white70;
+  final h = id.codeUnits.fold<int>(0, (a, b) => a + b);
+  return _palette[h % _palette.length];
+}
 
 DateTime _ts(Map<String, dynamic> m) =>
     DateTime.tryParse((m['created_at'] as String?) ?? '') ??
@@ -65,7 +83,7 @@ Future<void> showChatSheet(
         return Padding(
           padding: EdgeInsets.only(bottom: inset),
           child: SizedBox(
-            height: (mq.size.height - inset) * 0.8,
+            height: (mq.size.height - inset) * 0.85,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Column(
@@ -92,8 +110,9 @@ Future<void> showChatSheet(
       },
     );
 
-/// Isi obrolan (daftar pesan, frasa cepat, kolom ketik). Dipakai di sheet
-/// saat bermain dan langsung di tab Obrolan saat di lobi ([lobby] = true).
+/// Isi obrolan: panggung sorot (potret karakter pembicara muncul dramatis
+/// tiap ada pesan baru), riwayat pesan, frasa cepat, dan kolom ketik.
+/// Dipakai di sheet saat bermain dan di tab Obrolan lobi ([lobby] = true).
 class ChatPanel extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
@@ -115,8 +134,18 @@ class _ChatPanelState extends State<ChatPanel> {
   final ctrl = TextEditingController();
   final focus = FocusNode();
   final scroll = ScrollController();
-  late final Stream<List<Map<String, dynamic>>> stream =
-  widget.repo.chat(widget.gameId);
+  StreamSubscription<List<Map<String, dynamic>>>? _sub;
+
+  List<Map<String, dynamic>> data = [];
+  final Set<String> _known = {};
+  bool _primed = false; // data pertama = riwayat, tidak disorot
+
+  // Antrean sorotan
+  final List<Map<String, dynamic>> _queue = [];
+  Map<String, dynamic>? _spot;
+  Timer? _spotTimer;
+  bool _busy = false;
+
   String? about; // user_id yang dibicarakan
   String? err;
   bool showJump = false;
@@ -124,6 +153,9 @@ class _ChatPanelState extends State<ChatPanel> {
   @override
   void initState() {
     super.initState();
+    _sub = widget.repo
+        .chat(widget.gameId)
+        .listen(_onData, onError: (_) {});
     scroll.addListener(() {
       if (!scroll.hasClients) return;
       // Daftar dibalik: offset 0 = pesan terbaru di bawah.
@@ -134,10 +166,54 @@ class _ChatPanelState extends State<ChatPanel> {
 
   @override
   void dispose() {
+    _sub?.cancel();
+    _spotTimer?.cancel();
     ctrl.dispose();
     focus.dispose();
     scroll.dispose();
     super.dispose();
+  }
+
+  void _onData(List<Map<String, dynamic>> rows) {
+    // Di dalam game, pesan lobi (hari 0) disembunyikan: nama aslinya
+    // tertulis di sana dan bisa membocorkan identitas.
+    final all = rows.where((m) => widget.lobby || m['day'] != 0).toList();
+    final fresh = <Map<String, dynamic>>[];
+    for (final m in sortChat(all)) {
+      final id = m['id'] as String;
+      if (_known.add(id) && _primed) fresh.add(m);
+    }
+    _primed = true;
+    if (!mounted) return;
+    setState(() => data = all);
+    if (fresh.isNotEmpty) _enqueue(fresh);
+  }
+
+  void _enqueue(List<Map<String, dynamic>> msgs) {
+    _queue.addAll(msgs);
+    if (_queue.length > 4) _queue.removeRange(0, _queue.length - 4);
+    if (!_busy) _next();
+  }
+
+  void _next() {
+    if (!mounted) return;
+    if (_queue.isEmpty) {
+      _busy = false;
+      // Biarkan pembicara terakhir tampil sebentar, lalu panggung menutup.
+      _spotTimer?.cancel();
+      _spotTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _spot = null);
+      });
+      return;
+    }
+    _spotTimer?.cancel();
+    final m = _queue.removeAt(0);
+    _busy = true;
+    setState(() => _spot = m);
+    final len = (m['body'] as String).length;
+    var ms = (1600 + len * 45).clamp(2200, 5200).toInt();
+    if (_queue.isNotEmpty) ms -= 600;
+    _spotTimer = Timer(Duration(milliseconds: ms), _next);
   }
 
   void _toLatest() {
@@ -179,25 +255,27 @@ class _ChatPanelState extends State<ChatPanel> {
     return null;
   }
 
-  Widget _message(
-      Map<String, dynamic> m, List<Map<String, dynamic>> rev, int i, double maxW) {
-    final mine = m['user_id'] == widget.repo.myId;
+  Widget _message(Map<String, dynamic> m, List<Map<String, dynamic>> rev,
+      int i, double maxW) {
+    final uid = m['user_id'] as String?;
+    final mine = uid == widget.repo.myId;
+    final accent = _accent(uid, mine);
     // rev[0] = terbaru; rev[i + 1] = pesan sebelumnya (lebih lama).
     final older = i + 1 < rev.length ? rev[i + 1] : null;
     final newer = i > 0 ? rev[i - 1] : null;
-    final groupStart = older == null || older['user_id'] != m['user_id'];
-    final groupEnd = newer == null || newer['user_id'] != m['user_id'];
+    final groupStart = older == null || older['user_id'] != uid;
+    final groupEnd = newer == null || newer['user_id'] != uid;
     final day = m['day'] as int?;
     final when = _ts(m);
-    final stamp = widget.lobby || day == 0
-        ? _hhmm(when)
-        : 'H$day · ${_hhmm(when)}';
+    final stamp =
+    widget.lobby || day == 0 ? _hhmm(when) : 'H$day · ${_hhmm(when)}';
 
     final bubble = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       constraints: BoxConstraints(maxWidth: maxW),
       decoration: BoxDecoration(
         color: mine ? const Color(0xFF2E5A4C) : const Color(0xFF2A2F36),
+        border: Border.all(color: accent.withValues(alpha: mine ? 0.0 : 0.25)),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(!mine && groupStart ? 4 : 14),
           topRight: Radius.circular(mine && groupStart ? 4 : 14),
@@ -216,10 +294,10 @@ class _ChatPanelState extends State<ChatPanel> {
           Padding(
             padding: const EdgeInsets.only(bottom: 2, left: 2),
             child: Text(m['name'] as String,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white60)),
+                    fontWeight: FontWeight.w700,
+                    color: accent)),
           ),
         bubble,
         if (groupEnd)
@@ -240,12 +318,12 @@ class _ChatPanelState extends State<ChatPanel> {
         children: [
           if (!mine)
             SizedBox(
-              width: 34,
+              width: 36,
               child: groupStart
                   ? PlayerAvatar(
-                path: protagonistPath(_cardOf(m['user_id'] as String?) ??
-                    'default'),
-                size: 28,
+                path: protagonistPath(_cardOf(uid) ?? 'default'),
+                size: 30,
+                ring: accent,
               )
                   : null,
             ),
@@ -263,145 +341,326 @@ class _ChatPanelState extends State<ChatPanel> {
     final phrases = widget.lobby
         ? _lobbyQuick
         : (aboutName == null ? _generalQuick : _aboutQuick(aboutName));
+    final rev = sortChat(data).reversed.toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: stream,
-            builder: (context, s) {
-              // Terlama -> terbaru, lalu dibalik: indeks 0 = terbaru,
-              // tampil di dasar daftar (reverse: true).
-              // Di dalam game, pesan lobi (hari 0) disembunyikan: nama aslinya
-              // tertulis di sana dan bisa membocorkan identitas.
-              final all = (s.data ?? [])
-                  .where((m) => widget.lobby || m['day'] != 0)
-                  .toList();
-              final rev = sortChat(all).reversed.toList();
-              if (rev.isEmpty) {
-                return const Center(
-                  child: Text('Belum ada yang bicara...',
-                      style: TextStyle(color: Colors.white38)),
-                );
-              }
-              return LayoutBuilder(builder: (context, c) {
-                final maxW = (c.maxWidth - 34) * 0.82;
-                return Stack(
-                  children: [
-                    ListView.builder(
-                      controller: scroll,
-                      reverse: true,
-                      padding: const EdgeInsets.only(bottom: 4),
-                      itemCount: rev.length,
-                      itemBuilder: (_, i) => _message(rev[i], rev, i, maxW),
-                    ),
-                    if (showJump)
-                      Positioned(
-                        right: 4,
-                        bottom: 4,
-                        child: FloatingActionButton.small(
-                          heroTag: null,
-                          onPressed: _toLatest,
-                          child: const Icon(Icons.keyboard_arrow_down),
-                        ),
+    return LayoutBuilder(builder: (context, c) {
+      // Panggung menyesuaikan tinggi yang tersedia; hilang bila terlalu sempit
+      // (mis. keyboard terbuka di ponsel pendek).
+      final stageH = c.maxHeight >= 520
+          ? 168.0
+          : c.maxHeight >= 400
+          ? 120.0
+          : 0.0;
+      final spot = _spot;
+      final spotUid = spot?['user_id'] as String?;
+      final spotMine = spotUid == widget.repo.myId;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: spot == null || stageH == 0
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                height: stageH,
+                width: double.infinity,
+                child: _Stage(
+                  msg: spot,
+                  card: _cardOf(spotUid),
+                  mine: spotMine,
+                  accent: _accent(spotUid, spotMine),
+                  height: stageH,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: rev.isEmpty
+                ? const Center(
+              child: Text('Belum ada yang bicara...',
+                  style: TextStyle(color: Colors.white38)),
+            )
+                : LayoutBuilder(builder: (context, lc) {
+              final maxW = (lc.maxWidth - 36) * 0.82;
+              return Stack(
+                children: [
+                  ListView.builder(
+                    controller: scroll,
+                    reverse: true,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    itemCount: rev.length,
+                    itemBuilder: (_, i) =>
+                        _message(rev[i], rev, i, maxW),
+                  ),
+                  if (showJump)
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: FloatingActionButton.small(
+                        heroTag: null,
+                        onPressed: _toLatest,
+                        child: const Icon(Icons.keyboard_arrow_down),
                       ),
-                  ],
-                );
-              });
-            },
+                    ),
+                ],
+              );
+            }),
           ),
-        ),
-        if (err != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(err!,
-                style:
-                const TextStyle(color: Colors.redAccent, fontSize: 12)),
-          ),
-        const SizedBox(height: 6),
-        if (!widget.lobby) ...[
+          if (err != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(err!,
+                  style:
+                  const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            ),
+          const SizedBox(height: 6),
+          if (!widget.lobby) ...[
+            SizedBox(
+              height: 32,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Text('Tentang:',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.white54)),
+                    ),
+                  ),
+                  for (final p in others)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(p['name'] as String),
+                        selected: about == p['user_id'],
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (v) => setState(() =>
+                        about = v ? p['user_id'] as String : null),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
           SizedBox(
-            height: 32,
+            height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: 6),
-                    child: Text('Tentang:',
-                        style:
-                        TextStyle(fontSize: 11, color: Colors.white54)),
-                  ),
-                ),
-                for (final p in others)
+                for (final q in phrases)
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: Text(p['name'] as String),
-                      selected: about == p['user_id'],
+                    child: ActionChip(
+                      label: Text(q, style: const TextStyle(fontSize: 12)),
                       visualDensity: VisualDensity.compact,
-                      onSelected: (v) => setState(
-                              () => about = v ? p['user_id'] as String : null),
+                      onPressed: () => _send(q),
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
-        ],
-        SizedBox(
-          height: 34,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
+          const SizedBox(height: 6),
+          Row(
             children: [
-              for (final q in phrases)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ActionChip(
-                    label: Text(q, style: const TextStyle(fontSize: 12)),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _send(q),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: ctrl,
-                focusNode: focus,
-                maxLength: 200,
-                minLines: 1,
-                maxLines: 3,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendTyped(),
-                decoration: InputDecoration(
-                  hintText: 'Tulis sesuatu...',
-                  counterText: '',
-                  isDense: true,
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+              Expanded(
+                child: TextField(
+                  controller: ctrl,
+                  focusNode: focus,
+                  maxLength: 200,
+                  minLines: 1,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendTyped(),
+                  decoration: InputDecoration(
+                    hintText: 'Tulis sesuatu...',
+                    counterText: '',
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: 6),
+              IconButton.filled(
+                onPressed: _sendTyped,
+                icon: const Icon(Icons.send, size: 20),
+              ),
+            ],
+          ),
+        ],
+      );
+    });
+  }
+}
+
+/// Panggung sorot ala visual novel: potret karakter meluncur masuk dari sisi
+/// pembicara dengan cahaya warna pemain, plakat nama, dan teks yang diketik
+/// huruf demi huruf. Pesan sendiri tampil di kanan, pesan orang lain di kiri.
+class _Stage extends StatefulWidget {
+  final Map<String, dynamic> msg;
+  final String? card;
+  final bool mine;
+  final Color accent;
+  final double height;
+  const _Stage({
+    required this.msg,
+    required this.card,
+    required this.mine,
+    required this.accent,
+    required this.height,
+  });
+
+  @override
+  State<_Stage> createState() => _StageState();
+}
+
+class _StageState extends State<_Stage> with TickerProviderStateMixin {
+  late final AnimationController _in = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 650));
+  late final AnimationController _type = AnimationController(vsync: this);
+
+  @override
+  void initState() {
+    super.initState();
+    _play();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Stage old) {
+    super.didUpdateWidget(old);
+    if (old.msg['id'] != widget.msg['id']) _play();
+  }
+
+  void _play() {
+    final n = (widget.msg['body'] as String).runes.length;
+    _type.duration =
+        Duration(milliseconds: (n * 32).clamp(300, 2200).toInt());
+    _in.forward(from: 0);
+    _type.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _in.dispose();
+    _type.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.accent;
+    final mine = widget.mine;
+    final cardW = (widget.height - 12) * 3 / 4;
+    final body = widget.msg['body'] as String;
+    final runes = body.runes.toList();
+
+    final portrait = SlideTransition(
+      position: Tween<Offset>(
+          begin: Offset(mine ? 0.7 : -0.7, 0), end: Offset.zero)
+          .animate(CurvedAnimation(parent: _in, curve: Curves.easeOutCubic)),
+      child: FadeTransition(
+        opacity: CurvedAnimation(
+            parent: _in, curve: const Interval(0, 0.6, curve: Curves.easeOut)),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.82, end: 1.0).animate(
+              CurvedAnimation(parent: _in, curve: Curves.easeOutBack)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: CardArt(
+              path: protagonistPath(widget.card ?? 'default'),
+              width: cardW,
+              glow: accent,
             ),
-            const SizedBox(width: 6),
-            IconButton.filled(
-              onPressed: _sendTyped,
-              icon: const Icon(Icons.send, size: 20),
+          ),
+        ),
+      ),
+    );
+
+    final dialog = FadeTransition(
+      opacity: CurvedAnimation(
+          parent: _in, curve: const Interval(0.25, 1, curve: Curves.easeOut)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: mine ? Alignment.centerRight : Alignment.centerLeft,
+            end: mine ? Alignment.centerLeft : Alignment.centerRight,
+            colors: [
+              accent.withValues(alpha: 0.22),
+              Colors.black.withValues(alpha: 0.78),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accent.withValues(alpha: 0.7)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              (widget.msg['name'] as String).toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: accent,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                letterSpacing: 1.6,
+              ),
+            ),
+            Container(
+              width: 36,
+              height: 2,
+              margin: const EdgeInsets.symmetric(vertical: 5),
+              color: accent,
+            ),
+            AnimatedBuilder(
+              animation: _type,
+              builder: (_, __) {
+                final n = (runes.length * _type.value).ceil();
+                return Text(
+                  String.fromCharCodes(runes.take(n)),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, height: 1.35),
+                );
+              },
             ),
           ],
         ),
-      ],
+      ),
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(mine ? 0.85 : -0.85, 0.1),
+            radius: 1.0,
+            colors: [accent.withValues(alpha: 0.28), Colors.transparent],
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: mine
+              ? [Expanded(child: dialog), const SizedBox(width: 10), portrait]
+              : [portrait, const SizedBox(width: 10), Expanded(child: dialog)],
+        ),
+      ),
     );
   }
 }
