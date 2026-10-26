@@ -74,4 +74,17 @@ class GameRepository {
   Future<void> submitVote(String gameId, String? target) =>
       _db.rpc('submit_vote', params: {'p_game': gameId, 'p_target': target});
 
+  /// Detak jantung + penegakan tenggat fase.
+  Future<void> tick(String gameId) =>
+      _db.rpc('tick', params: {'p_game': gameId});
+
+  Stream<List<Map<String, dynamic>>> emotes(String gameId) => _db
+      .from('emotes')
+      .stream(primaryKey: ['id'])
+      .eq('game_id', gameId)
+      .order('created_at');
+
+  Future<void> sendEmote(String gameId, String emoji, {String? target}) =>
+      _db.rpc('send_emote',
+          params: {'p_game': gameId, 'p_emoji': emoji, 'p_target': target});
 }

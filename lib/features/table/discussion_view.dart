@@ -1,11 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/game_repository.dart';
+import 'countdown.dart';
 
 class DiscussionView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
   final int day;
+  final DateTime? deadline;
   final bool iAmReady;
   final int readyCount;
   final int total;
@@ -15,6 +16,7 @@ class DiscussionView extends StatefulWidget {
     required this.repo,
     required this.gameId,
     required this.day,
+    required this.deadline,
     required this.iAmReady,
     required this.readyCount,
     required this.total,
@@ -25,29 +27,12 @@ class DiscussionView extends StatefulWidget {
 }
 
 class _DiscussionViewState extends State<DiscussionView> {
-  static const _seconds = 90;
   final ctrl = TextEditingController();
   late final Stream<List<Map<String, dynamic>>> chatStream =
   widget.repo.chat(widget.gameId);
-  Timer? timer;
-  int left = _seconds;
-
-  @override
-  void initState() {
-    super.initState();
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => left--);
-      if (left <= 0) {
-        timer?.cancel();
-        if (!widget.iAmReady) _ready();
-      }
-    });
-  }
 
   @override
   void dispose() {
-    timer?.cancel();
     ctrl.dispose();
     super.dispose();
   }
@@ -76,7 +61,6 @@ class _DiscussionViewState extends State<DiscussionView> {
 
   @override
   Widget build(BuildContext context) {
-    final secs = left < 0 ? 0 : left;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -87,9 +71,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             const Text('Musyawarah Senja',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
-            Text('$secs dtk',
-                style: TextStyle(
-                    color: secs <= 15 ? Colors.redAccent : Colors.white70)),
+            Countdown(deadline: widget.deadline),
           ],
         ),
         const SizedBox(height: 4),

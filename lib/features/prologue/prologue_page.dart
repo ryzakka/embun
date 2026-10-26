@@ -4,6 +4,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../table/table_page.dart';
+import '../../data/game_repository.dart';
 
 class _Line {
   final String text;
@@ -45,6 +46,8 @@ class _PrologueFlowState extends State<PrologueFlow> {
   int darkSeed = 0;
   String myCard = 'default';
   bool revealed = false;
+  final _gr = GameRepository();
+  Timer? _beat;
 
   @override
   void initState() {
@@ -64,6 +67,11 @@ class _PrologueFlowState extends State<PrologueFlow> {
       }
     });
     _startTimer();
+
+    _gr.tick(widget.gameId).catchError((_) {});
+    _beat = Timer.periodic(const Duration(seconds: 8), (_) {
+      _gr.tick(widget.gameId).catchError((_) {});
+    });
   }
 
   void _startTimer() {
@@ -96,6 +104,7 @@ class _PrologueFlowState extends State<PrologueFlow> {
   @override
   void dispose() {
     timer?.cancel();
+    _beat?.cancel();
     super.dispose();
   }
 
