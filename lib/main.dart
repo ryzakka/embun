@@ -4,19 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'features/lobby/lobby_page.dart';
 
-const supabaseUrl = String.fromEnvironment('djwcmkngydczvcagmgji.supabase.co');
-const supabaseAnonKey = String.fromEnvironment('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqd2Nta25neWRjenZjYWdtZ2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTYwODAsImV4cCI6MjEwODUzMjA4MH0.-_pVJJVdrwgInDMxA3braNna0G2eVHtmkGXnw6--Mr8');
+// Sementara ditanam langsung. Kunci "anon" memang publik; keamanan dijaga RLS.
+// JANGAN pernah menaruh kunci "service_role" di sini.
+const supabaseUrl = 'https://djwcmkngydczvcagmgji.supabase.co';
+const supabaseAnonKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqd2Nta25neWRjenZjYWdtZ2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTYwODAsImV4cCI6MjEwODUzMjA4MH0.-_pVJJVdrwgInDMxA3braNna0G2eVHtmkGXnw6--Mr8';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  assert(
-  supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty,
-  'Jalankan dengan --dart-define=SUPABASE_URL=... dan --dart-define=SUPABASE_ANON_KEY=...',
-  );
-
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-
   runApp(const ProviderScope(child: EmbunApp()));
 }
 

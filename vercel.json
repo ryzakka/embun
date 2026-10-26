@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "build/web",
+  "headers": [
+    {
+      "source": "/(index.html|flutter_service_worker.js|flutter_bootstrap.js|version.json|main.dart.js)",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}

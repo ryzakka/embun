@@ -7542,7 +7542,7 @@ var $async$arp=A.I(function(a,b){if(a===1)return A.E(b,r)
 for(;;)switch(s){case 0:if($.a_==null)A.atN()
 $.a_.toString
 s=2
-return A.C(A.afi("",""),$async$arp)
+return A.C(A.afi("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqd2Nta25neWRjenZjYWdtZ2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTYwODAsImV4cCI6MjEwODUzMjA4MH0.-_pVJJVdrwgInDMxA3braNna0G2eVHtmkGXnw6--Mr8","https://djwcmkngydczvcagmgji.supabase.co"),$async$arp)
 case 2:if($.a_==null)A.atN()
 q=$.a_
 q.toString
