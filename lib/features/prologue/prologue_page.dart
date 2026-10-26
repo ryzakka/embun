@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/lobby_repository.dart';
+import '../table/table_page.dart';
 
 const _prologue = [
   'Dahulu, di lembah yang dikelilingi kabut,\nberdiri sebuah pohon tua bernama Hayu.',
@@ -15,11 +16,12 @@ class PrologueFlow extends StatefulWidget {
   final String gameId;
   final LobbyRepository repo;
   const PrologueFlow({super.key, required this.gameId, required this.repo});
+
   @override
   State<PrologueFlow> createState() => _PrologueFlowState();
 }
 
-enum _Step { story, role, table }
+enum _Step { story, role }
 
 class _PrologueFlowState extends State<PrologueFlow> {
   _Step step = _Step.story;
@@ -34,6 +36,11 @@ class _PrologueFlowState extends State<PrologueFlow> {
     widget.repo.myRole(widget.gameId).then((r) {
       if (mounted) setState(() => role = r);
     });
+    _startTimer();
+  }
+
+  void _startTimer() {
+    timer?.cancel();
     timer = Timer.periodic(const Duration(seconds: 5), (_) => _next());
   }
 
@@ -45,6 +52,19 @@ class _PrologueFlowState extends State<PrologueFlow> {
       timer?.cancel();
       setState(() => step = _Step.role);
     }
+  }
+
+  void _onTapStory() {
+    _next();
+    if (step == _Step.story) _startTimer();
+  }
+
+  void _openTable() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => TablePage(gameId: widget.gameId, role: role!),
+      ),
+    );
   }
 
   @override
@@ -59,13 +79,7 @@ class _PrologueFlowState extends State<PrologueFlow> {
       case _Step.story:
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            timer?.cancel();
-            _next();
-            if (step == _Step.story) {
-              timer = Timer.periodic(const Duration(seconds: 5), (_) => _next());
-            }
-          },
+          onTap: _onTapStory,
           child: Center(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 900),
@@ -91,8 +105,10 @@ class _PrologueFlowState extends State<PrologueFlow> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Tahan untuk melihat perananmu',
-                  style: TextStyle(fontSize: 16)),
+              const Text(
+                'Tahan untuk melihat perananmu',
+                style: TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               GestureDetector(
                 onTapDown: (_) => setState(() => revealed = true),
@@ -126,18 +142,11 @@ class _PrologueFlowState extends State<PrologueFlow> {
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: role == null
-                    ? null
-                    : () => setState(() => step = _Step.table),
+                onPressed: role == null ? null : _openTable,
                 child: const Text('Aku sudah ingat'),
               ),
             ],
           ),
-        );
-
-      case _Step.table:
-        return const Center(
-          child: Text('Hari 1: Meja kartu di sini (belum dibuat)'),
         );
     }
   }
