@@ -8,7 +8,6 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../lobby/lobby_page.dart';
-import 'card_burst.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
 import 'countdown.dart';
@@ -17,6 +16,7 @@ import 'day_view.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'emote_panel.dart';
+import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
 import 'player_sheet.dart';
@@ -68,7 +68,7 @@ class _TablePageState extends State<TablePage> {
   bool busy = false;
   bool _leaving = false;
   bool disguiseMode = false; // Mode samaran layar untuk Si Terbisik
-  int burst = 0;
+  int? _ceremonyDay; // hari yang adegan pelemparan kartunya sudah selesai
   int? darkSeed;
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
@@ -491,17 +491,6 @@ class _TablePageState extends State<TablePage> {
                 },
               ),
             ),
-          if (burst > 0)
-            IgnorePointer(
-              child: CardBurst(
-                count: burst,
-                dark: showAsAntag,
-                leaves: (game?['leaves'] as int?) ?? 30,
-                onDone: () {
-                  if (mounted) setState(() => burst = 0);
-                },
-              ),
-            ),
         ],
       ),
     );
@@ -524,6 +513,22 @@ class _TablePageState extends State<TablePage> {
     final myCardId = (meRow?['character_card'] as String?) ?? 'default';
 
     if (g['status'] == 'finished') return _result(g);
+
+    if (phase == 'effects' && _ceremonyDay != day) {
+      // Semua kartu persembahan dilempar ke Hayu dulu, baru hasilnya.
+      return OfferingCeremony(
+        key: ValueKey('cer$day'),
+        repo: repo,
+        gameId: widget.gameId,
+        day: day,
+        fallbackLeaves: leaves,
+        defs: defs,
+        dark: showAsAntag,
+        onDone: () {
+          if (mounted) setState(() => _ceremonyDay = day);
+        },
+      );
+    }
 
     if (phase == 'effects') {
       return Stack(
@@ -726,9 +731,7 @@ class _TablePageState extends State<TablePage> {
         players: players,
       );
     } else if (phase == 'offering') {
-      body = iAmReady
-          ? _waiting(readyCount, players.length, 'Menunggu warga lain...')
-          : OfferingView(
+      body = OfferingView(
         key: ValueKey('off$day'),
         repo: repo,
         gameId: widget.gameId,
@@ -737,10 +740,10 @@ class _TablePageState extends State<TablePage> {
         hand: hand,
         defs: defs,
         players: players,
-        onSubmitted: (n) {
-          setState(() => burst = n);
-          _refreshHand();
-        },
+        submitted: iAmReady,
+        readyCount: readyCount,
+        total: players.length,
+        onSubmitted: _refreshHand,
       );
     } else {
       body = DayView(

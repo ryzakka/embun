@@ -93,6 +93,23 @@ class GameRepository {
     }
   }
 
+  /// Semua kartu yang dipersembahkan pada malam [day], urutan acak dan TANPA
+  /// nama pemilik (dipakai adegan pelemparan ke Hayu). Kosong bila tabelnya
+  /// belum ada / belum terisi.
+  Future<List<String>> revealedCards(String gameId, int day) async {
+    try {
+      final rows = await _db
+          .from('offering_reveal')
+          .select('seq, card_id')
+          .eq('game_id', gameId)
+          .eq('day', day)
+          .order('seq');
+      return [for (final r in rows) r['card_id'] as String];
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Jumlah kartu yang diserahkan tiap pemain pada malam [day]
   /// (terbuka setelah efek; nama kartu tetap rahasia).
   Future<Map<String, int>> offeringCounts(String gameId, int day) async {

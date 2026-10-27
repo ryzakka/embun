@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show sin, pi, min;
+import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/errors.dart';
@@ -40,39 +40,6 @@ class _Grid {
   double get h => w * 9 / 7;
 }
 
-/// Kolom tetap (maks. [maxCols]); kartu kecil, sisanya digulir.
-_Grid _fixedCols(double aw, int n, double gap, double maxCols, double maxW) {
-  final cols = min(n, maxCols.toInt()).clamp(1, 99).toInt();
-  var w = (aw - (cols - 1) * gap) / cols;
-  if (w > maxW) w = maxW;
-  return _Grid(cols, w.floorToDouble(), gap);
-}
-
-/// Susunan yang memuat semua [n] kartu dalam ruang [aw] x [ah] dengan kartu
-/// sebesar mungkin. Seri dimenangkan susunan dengan kolom lebih banyak
-/// (satu baris lebih rapi daripada dua).
-_Grid _fit(double aw, double ah, int n,
-    {double gap = 14, double minW = 100, double maxW = 210}) {
-  var bestCols = 1;
-  var bestW = 0.0;
-  for (var cols = 1; cols <= n; cols++) {
-    final rows = (n / cols).ceil();
-    var w = (aw - (cols - 1) * gap) / cols;
-    final byH = ((ah - 24 - (rows - 1) * gap) / rows) * 7 / 9;
-    if (byH < w) w = byH;
-    if (w > maxW) w = maxW;
-    if (w >= bestW) {
-      bestW = w;
-      bestCols = cols;
-    }
-  }
-  if (bestW < minW) {
-    bestW = minW;
-    bestCols = ((aw + gap) / (minW + gap)).floor().clamp(1, n).toInt();
-  }
-  return _Grid(bestCols, bestW.floorToDouble(), gap);
-}
-
 /// Grid kartu Meja berdasarkan lebar yang tersedia.
 _Grid _mejaGrid(double aw, double minW) {
   const gap = 10.0;
@@ -83,8 +50,6 @@ _Grid _mejaGrid(double aw, double minW) {
   if (w > maxW) w = maxW;
   return _Grid(cols, w.floorToDouble(), gap);
 }
-
-enum _DetailStyle { bar, plate, column }
 
 /// Layar hari biasa: Toko (belanja), Meja (kartumu), Balai (kabar, pemberian,
 /// tawaran tukar). Tetap hidup setelah pemain menekan "Akhiri hari", jadi
@@ -246,28 +211,6 @@ class _DayViewState extends State<DayView> {
       return widget.dark ? 'Bulir hitam kurang $lack' : 'Embun kurang $lack';
     }
     return null;
-  }
-
-  void _select(int i) {
-    if (i == sel) {
-      final o = offers;
-      final def = o == null ? null : widget.defs[o[i]['card_id']];
-      if (def != null) showCardPreview(context, def);
-      return;
-    }
-    HapticFeedback.selectionClick();
-    setState(() => sel = i);
-  }
-
-  Future<void> _buy() async {
-    final o = offers;
-    if (o == null || o.isEmpty) return;
-    final id = o[sel.clamp(0, o.length - 1).toInt()]['card_id'] as String;
-    await _run(() async {
-      await widget.repo.buyCard(widget.gameId, id);
-      HapticFeedback.mediumImpact();
-      await _loadOffers();
-    }, ok: '${_cardName(id)} masuk ke mejamu');
   }
 
   Future<void> _endDay() =>
@@ -520,87 +463,6 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  /// Papan toko: jatuh dari atas, berayun mereda, cahaya menyapu. Memuat
-  /// jatah belanja dan perubahan harga di sisi kanannya.
-  Widget _marketSign({bool big = false}) => TweenAnimationBuilder<double>(
-    tween: Tween<double>(begin: _marketOpened ? 1.0 : 0.0, end: 1.0),
-    duration: const Duration(milliseconds: 1500),
-    builder: (context, t, _) {
-      final drop = Curves.easeOutCubic.transform(_c(t / 0.4));
-      final swing = sin(t * pi * 5) * 0.10 * (1 - t);
-      final sweep = _c((t - 0.2) / 0.7);
-      final mid = Color.lerp(const Color(0xFF3A2E12),
-          const Color(0xFF8A6A20), sin(sweep * pi))!;
-      return Opacity(
-        opacity: _c(drop),
-        child: Transform.rotate(
-          angle: swing,
-          alignment: Alignment.topCenter,
-          child: Transform.translate(
-            offset: Offset(0, (1 - drop) * -26),
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(big ? 12 : 6, big ? 6 : 3, big ? 14 : 8, big ? 6 : 3),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF3A2E12),
-                    mid,
-                    const Color(0xFF3A2E12)
-                  ],
-                  stops: [_c(sweep - 0.25), sweep, _c(sweep + 0.25)],
-                ),
-                borderRadius: BorderRadius.circular(big ? 14 : 12),
-                border: Border.all(
-                    color: EmbunColors.gold.withValues(alpha: 0.6)),
-                boxShadow: [
-                  BoxShadow(
-                    color: EmbunColors.gold
-                        .withValues(alpha: 0.25 * (1 - t) + 0.05),
-                    blurRadius: 14,
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  GameIcon('store', size: big ? 40 : 30),
-                  SizedBox(width: big ? 12 : 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Pasar Pagi',
-                          style: TextStyle(
-                              fontSize: big ? 21 : 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: big ? 1.2 : 0.6,
-                              color: EmbunColors.gold)),
-                      if (big)
-                        const Text('Satu kartu bisa dibeli tiap jatah',
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.white60)),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: _statusChips(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-  );
-
   Widget _boughtStamp() => Center(
     child: TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
@@ -617,116 +479,40 @@ class _DayViewState extends State<DayView> {
     ),
   );
 
-  /// Titik asal kartu saat dibagikan: tumpukan di tengah area yang terlihat.
-  Offset _dealOffset(_Grid g, int i, int n, double aw, double viewH) {
-    final rows = (n / g.cols).ceil();
-    final r = i ~/ g.cols;
-    final col = i % g.cols;
-    final inRow = (r == rows - 1) ? n - r * g.cols : g.cols;
-    final rowW = inRow * g.w + (inRow - 1) * g.gap;
-    final x = (aw - rowW) / 2 + col * (g.w + g.gap) + g.w / 2;
-    final totalH = rows * g.h + (rows - 1) * g.gap;
-    final top = totalH + 24 < viewH ? (viewH - totalH) / 2 : 16.0;
-    final y = top + r * (g.h + g.gap) + g.h / 2;
-    return Offset(aw / 2 - x, viewH / 2 - y);
-  }
 
-  Widget _marketCard(int i, int n, Map<String, dynamic> offer, _Grid g,
-      double aw, double viewH) {
-    final id = offer['card_id'] as String;
-    final price = _price(id);
-    final bought = offer['bought'] == true;
-    final picked = i == sel;
-    final blocked = _blockReason(offer, price) != null;
-    final def = widget.defs[id];
-    final bad = def?['side'] == 'antagonis';
+  // ====================== Pasar Pagi (gaya Secret Shop) ======================
 
-    final tile = CardTile(
-      def: def,
-      fallbackName: id,
-      width: g.w,
-      showCost: true,
-      costOverride: price,
-      badge: bought ? 'Terbeli' : null,
-      selected: picked,
-      dim: blocked && !picked,
-      onTap: () => _select(i),
-    );
-    final front = Stack(
-      clipBehavior: Clip.none,
+  Future<void> _buyOffer(String id) => _run(() async {
+    await widget.repo.buyCard(widget.gameId, id);
+    HapticFeedback.mediumImpact();
+    await _loadOffers();
+  }, ok: '${_cardName(id)} masuk ke mejamu');
+
+  /// Hitungan saldo berbentuk pil emas di pojok kanan atas panel.
+  Widget _balancePill({double size = 30}) => Container(
+    padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.8)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _preview(def, tile),
-        if (bought)
-          Positioned.fill(child: IgnorePointer(child: _boughtStamp())),
+        GameIcon(widget.dark ? 'bulirhitam' : 'bulirembun', size: size),
+        const SizedBox(width: 4),
+        Text(_fmt(widget.balance),
+            style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: EmbunColors.gold)),
       ],
-    );
+    ),
+  );
 
-    return FlipCard(
-      key: ValueKey('offer$i-$id'),
-      index: i,
-      width: g.w,
-      height: g.h,
-      revealed: _marketOpened,
-      animate: !_marketOpened,
-      dark: bad,
-      glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
-      dealOffset: _dealOffset(g, i, n, aw, viewH),
-      suspense: n > 2 && i == n - 1,
-      front: front,
-    );
-  }
-
-  /// Area kartu toko. [fit] memuat semua kartu tanpa gulir (desktop);
-  /// bila tidak, kolom tetap dan sisanya digulir (ponsel).
-  Widget _marketView({
-    bool fit = false,
-    double maxW = 124,
-    double minW = 92,
-    double gap = 10,
-    int cols = 3,
-  }) {
-    final o = offers;
-    if (o == null) return const EmbunLoading();
-    if (o.isEmpty) {
-      return _empty('store', 'Toko sedang sepi', 'Belum ada tawaran hari ini.');
-    }
-    return LayoutBuilder(builder: (context, c) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _armMarket());
-      // Sisakan ruang agar pendar kartu tidak terpotong tepi gulir.
-      final aw = c.maxWidth - 16;
-      final n = o.length;
-      final g = fit
-          ? _fit(aw, c.maxHeight, n, gap: gap, minW: minW, maxW: maxW)
-          : _fixedCols(aw, n, gap, cols.toDouble(), maxW);
-      return SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: c.maxHeight),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: g.gap,
-                runSpacing: g.gap,
-                children: [
-                  for (var i = 0; i < n; i++)
-                    _marketCard(i, n, o[i], g, aw, c.maxHeight),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  /// Rincian kartu terpilih dan tombol beli. Bila belum bisa dibeli, alasannya
-  /// tertulis di bawah jenis kartu.
-  Widget _detail(_DetailStyle style) {
-    final o = offers;
-    if (o == null || o.isEmpty) return const SizedBox.shrink();
-    final i = sel.clamp(0, o.length - 1).toInt();
-    final offer = o[i];
+  /// Satu kolom toko: nama di atas, kartu, tombol Beli, harga di bawahnya.
+  Widget _shopCol(int i, int n, Map<String, dynamic> offer, double w,
+      double gap) {
     final id = offer['card_id'] as String;
     final def = widget.defs[id];
     final bad = def?['side'] == 'antagonis';
@@ -734,220 +520,262 @@ class _DayViewState extends State<DayView> {
     final bought = offer['bought'] == true;
     final reason = _blockReason(offer, price);
     final can = reason == null && !busy;
-    final accent = bad ? EmbunColors.mist : EmbunColors.gold;
     final afford = price <= widget.balance;
-    final big = style == _DetailStyle.plate;
-    final description = '${def?['description'] ?? ''}';
+    final accent = bad ? EmbunColors.mist : EmbunColors.gold;
+    final h = w * 9 / 7;
 
-    final pill = Container(
-      padding: const EdgeInsets.fromLTRB(3, 2, 10, 2),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-            color: (afford ? EmbunColors.gold : EmbunColors.blood)
-                .withValues(alpha: 0.75)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: big ? 30 : 26),
-          const SizedBox(width: 4),
-          Text('$price',
-              style: TextStyle(
-                  fontSize: big ? 18 : 15,
-                  fontWeight: FontWeight.bold,
-                  color: afford ? EmbunColors.gold : EmbunColors.blood)),
-        ],
-      ),
+    final tile = CardTile(
+      def: def,
+      fallbackName: id,
+      width: w,
+      badge: bought ? 'Terbeli' : null,
+      selected: i == sel,
+      dim: reason != null && !bought && i != sel,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => sel = i);
+      },
     );
-
-    final info = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    final front = Stack(
+      clipBehavior: Clip.none,
       children: [
-        Text(_cardName(id),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                fontSize: big ? 20 : 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.4,
-                color: accent)),
-        const SizedBox(height: 2),
-        Row(
-          children: [
-            GameIcon(kindIcon[def?['kind']] ?? 'item', size: 20),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(kindLabel[def?['kind']] ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white60)),
-            ),
-          ],
-        ),
-        if (reason != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(reason,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: bought ? Colors.white54 : EmbunColors.blood)),
-          ),
-        const SizedBox(height: 4),
-        Text(description,
-            maxLines: style == _DetailStyle.bar ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                fontSize: big ? 13 : 12,
-                height: 1.3,
-                color: Colors.white70)),
+        _preview(def, tile),
+        if (bought) Positioned.fill(child: IgnorePointer(child: _boughtStamp())),
       ],
     );
 
-    final swapInfo = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      layoutBuilder: (cur, prev) => Stack(
-        alignment: Alignment.topLeft,
-        children: [...prev, ?cur],
-      ),
-      child: KeyedSubtree(key: ValueKey('$i-$id'), child: info),
-    );
+    // Kartu dibagikan dari tengah deretan.
+    final dealX = ((n - 1) / 2 - i) * (w + gap);
 
-    Widget button(double h, String label) => EmbunButton(
-      label: bought ? 'Terbeli' : label,
-      icon: bad ? 'bulirhitam' : 'bulirembun',
-      expand: true,
-      height: h,
-      onPressed: can ? _buy : null,
-    );
-
-    final deco = BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.4),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.2),
-    );
-
-    switch (style) {
-      case _DetailStyle.bar:
-        return Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-          decoration: deco,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: swapInfo),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 112,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(alignment: Alignment.centerRight, child: pill),
-                    const SizedBox(height: 6),
-                    button(44, 'Beli'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      case _DetailStyle.plate:
-        return Container(
-          padding: const EdgeInsets.fromLTRB(18, 14, 16, 14),
-          decoration: deco,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: swapInfo),
-              const SizedBox(width: 22),
-              SizedBox(
-                width: 250,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(alignment: Alignment.centerRight, child: pill),
-                    const SizedBox(height: 10),
-                    button(54, 'Beli kartu ini'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      case _DetailStyle.column:
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: deco,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              swapInfo,
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  pill,
-                  const SizedBox(width: 8),
-                  Expanded(child: button(44, 'Beli')),
-                ],
-              ),
-            ],
-          ),
-        );
-    }
-  }
-
-  /// Layar Toko di ponsel.
-  Widget _tokoPage({required bool side}) {
-    final hasKabar = !_kabarHidden &&
-        widget.events
-            .any((e) => e['kind'] == 'kabar' && e['day'] == widget.day);
-    if (side) {
-      // Layar pendek: kartu di kiri, rincian di kanan.
-      return Column(
+    return SizedBox(
+      width: w,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _marketSign(),
+          SizedBox(
+            height: 22,
+            child: Center(
+              child: Text(_cardName(id),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                      color: accent)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          FlipCard(
+            key: ValueKey('offer$i-$id'),
+            index: i,
+            width: w,
+            height: h,
+            revealed: _marketOpened,
+            animate: !_marketOpened,
+            dark: bad,
+            glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
+            dealOffset: Offset(dealX, 0),
+            suspense: n > 2 && i == n - 1,
+            front: front,
+          ),
+          const SizedBox(height: 8),
+          EmbunButton(
+            label: bought ? 'Terbeli' : 'Beli',
+            expand: true,
+            height: 38,
+            kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
+            onPressed: can ? () => _buyOffer(id) : null,
+          ),
           const SizedBox(height: 4),
-          Expanded(
+          SizedBox(
+            height: 24,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: _marketView(
-                      fit: true, minW: 84, maxW: 120, gap: 8),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 232,
-                  child: SingleChildScrollView(
-                      child: _detail(_DetailStyle.column)),
-                ),
+                GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 22),
+                const SizedBox(width: 3),
+                Text('$price',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: afford ? EmbunColors.gold : EmbunColors.blood)),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _shopColumns() {
+    final o = offers;
+    if (o == null) return const EmbunLoading();
+    if (o.isEmpty) {
+      return _empty('store', 'Toko sedang sepi', 'Belum ada tawaran hari ini.');
+    }
+    return LayoutBuilder(builder: (context, c) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _armMarket());
+      const gap = 12.0;
+      const chrome = 22 + 6 + 8 + 38 + 4 + 24 + 12.0;
+      final n = o.length;
+      var w = (c.maxWidth - 8 - (n - 1) * gap) / n;
+      final byH = (c.maxHeight - chrome) * 7 / 9;
+      if (byH < w) w = byH;
+      w = w.clamp(60.0, 190.0).toDouble().floorToDouble();
+      return Center(
+        child: SingleChildScrollView(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < n; i++) ...[
+                if (i > 0) const SizedBox(width: gap),
+                _shopCol(i, n, o[i], w, gap),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  /// Panel info di samping (seperti panel "Upgrade"): kabar, status, uraian
+  /// kartu yang disentuh, dan tombol lewati (akhiri hari).
+  Widget _shopInfo() {
+    final o = offers;
+    Widget desc = const SizedBox.shrink();
+    if (o != null && o.isNotEmpty) {
+      final i = sel.clamp(0, o.length - 1).toInt();
+      final id = o[i]['card_id'] as String;
+      final def = widget.defs[id];
+      final bad = def?['side'] == 'antagonis';
+      final reason = _blockReason(o[i], _price(id));
+      desc = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_cardName(id),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: bad ? EmbunColors.mist : EmbunColors.gold)),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              GameIcon(kindIcon[def?['kind']] ?? 'item', size: 20),
+              const SizedBox(width: 4),
+              Text(kindLabel[def?['kind']] ?? '',
+                  style: const TextStyle(fontSize: 11, color: Colors.white60)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('${def?['description'] ?? ''}',
+              style: const TextStyle(
+                  fontSize: 12.5, height: 1.35, color: Colors.white70)),
+          if (reason != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(reason,
+                  style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: EmbunColors.blood)),
+            ),
+        ],
       );
     }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const GameIcon('info', size: 24),
+              const SizedBox(width: 6),
+              const Text('Keterangan',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: EmbunColors.gold)),
+              const Spacer(),
+              _statusChips(),
+            ],
+          ),
+          const Divider(height: 16),
+          Expanded(child: SingleChildScrollView(child: desc)),
+          const SizedBox(height: 8),
+          _endButton(height: 46),
+          if (widget.iAmReady) ...[
+            const SizedBox(height: 6),
+            _progress(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Panel toko: judul + hitungan saldo, tiga kolom kartu, panel info.
+  Widget _shopPanel({required bool wide}) => OrnatePanel(
+    padding: EdgeInsets.fromLTRB(
+        wide ? 20 : 12, wide ? 14 : 10, wide ? 20 : 12, wide ? 16 : 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            GameIcon('store', size: wide ? 38 : 30),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Pasar Pagi',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: wide ? 22 : 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: EmbunColors.gold)),
+            ),
+            _balancePill(size: wide ? 32 : 26),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: wide
+              ? Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _shopColumns()),
+              const SizedBox(width: 16),
+              SizedBox(width: 240, child: _shopInfo()),
+            ],
+          )
+              : _shopColumns(),
+        ),
+      ],
+    ),
+  );
+
+  /// Layar Toko di ponsel / layar pendek.
+  Widget _tokoPage({required bool side}) {
+    final hasKabar = !_kabarHidden &&
+        widget.events
+            .any((e) => e['kind'] == 'kabar' && e['day'] == widget.day);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _marketSign(),
-        const SizedBox(height: 4),
         if (hasKabar) _kabar(compact: true),
-        Expanded(child: _marketView()),
-        const SizedBox(height: 6),
-        _detail(_DetailStyle.bar),
+        Expanded(child: _shopPanel(wide: false)),
       ],
     );
   }
+
 
   // ====================== Meja ======================
 
@@ -1301,23 +1129,8 @@ class _DayViewState extends State<DayView> {
 
   // ====================== desktop ======================
 
-  /// Panggung utama: bingkai emas berhias, papan toko, kartu besar sebaris,
-  /// lalu rincian dan tombol beli. Ini pusat perhatian layar.
-  Widget _marketHero() => OrnatePanel(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _marketSign(big: true),
-        const SizedBox(height: 6),
-        Expanded(
-          child: _marketView(fit: true, minW: 110, maxW: 220, gap: 18),
-        ),
-        const SizedBox(height: 8),
-        _detail(_DetailStyle.plate),
-      ],
-    ),
-  );
+  /// Panggung utama: panel Pasar Pagi dengan panel info di sisinya.
+  Widget _marketHero() => _shopPanel(wide: true);
 
   Widget _railPanel({
     required String icon,
