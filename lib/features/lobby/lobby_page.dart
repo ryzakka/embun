@@ -9,6 +9,7 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../prologue/prologue_page.dart';
+import 'more_games_sheet.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
@@ -329,7 +330,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V1.4',
+                                    'BALAI PERTEMUAN DESA V1.3',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -469,6 +470,12 @@ class _LobbyPageState extends State<LobbyPage>
             label: 'Cara Bermain',
             center: !wide,
             onTap: _showHowTo),
+        _MenuTile(
+            index: 3,
+            icon: 'plus',
+            label: 'Permainan Lainnya',
+            center: !wide,
+            onTap: () => showMoreGames(context)),
       ];
       final menuCol = Column(
         mainAxisSize: MainAxisSize.min,

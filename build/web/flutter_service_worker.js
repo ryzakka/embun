@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "f974cef15160bd30d2a3410119890030",
-"assets/AssetManifest.bin.json": "53af2da3ac9066c277b937716717f3a1",
+const RESOURCES = {"assets/AssetManifest.bin": "ca137c8c1bac8bfb8a640580c54a7e39",
+"assets/AssetManifest.bin.json": "8c784ae2021286ddd141f460d29ebc29",
 "assets/assets/bentang/desajembatan-kering.webp": "867d4e8dfd360f30f67d6100fc199d9f",
 "assets/assets/bentang/desajembatan-keringgulita.webp": "1837c9efac64ae6e27e37c42484f3148",
 "assets/assets/bentang/keterasingan.png": "6a15a0e84002a459d4180aa37fe69a80",
@@ -214,6 +214,8 @@ const RESOURCES = {"assets/AssetManifest.bin": "f974cef15160bd30d2a3410119890030
 "assets/assets/kartu/punggungkartu/punggungprotagonis.png": "10ee19a36be12f094cc9254d772ed308",
 "assets/assets/logo/ikon-transparent.png": "f5e0a8342591e2e562f32d9587573020",
 "assets/assets/logo/ikonapp-transparent.png": "67f4157b8885c7c010604d94a25378f1",
+"assets/assets/logo/logo-linguistichegemony.png": "678f9e984676928084092bfa5e2465b7",
+"assets/assets/logo/logo-sampahnya.png": "5ee805e72aa2fa0dd552b0c7e236de0c",
 "assets/assets/logo/logoteks-transparent.png": "7dd8bcf30cf259ca818fa76b7821342b",
 "assets/assets/pohon/pohon0-sakura.webp": "b3fed012e7b6b106f47d6facf2f9240b",
 "assets/assets/pohon/pohon0.webp": "b5e519b94b0697601945c4868d9278c0",
@@ -227,7 +229,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "f974cef15160bd30d2a3410119890030
 "assets/assets/pohon/pohon8.webp": "63e33815dc15a112d489e5733ee7c632",
 "assets/assets/pohon/pohon9.webp": "01455e4b8df0348610e57631081d21b3",
 "assets/FontManifest.json": "dc3d03800ccca4601324923c0b1d6d57",
-"assets/fonts/MaterialIcons-Regular.otf": "7f8c3c77d762bc93e59f225d0901b5a8",
+"assets/fonts/MaterialIcons-Regular.otf": "9ec624cb1478d8387c7fc5aa88fe27cd",
 "assets/NOTICES": "bacb8c5290b7c29123ff28e1114e5055",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
@@ -246,14 +248,14 @@ const RESOURCES = {"assets/AssetManifest.bin": "f974cef15160bd30d2a3410119890030
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "20a579762a576f6512e0d8c17e5a243d",
+"flutter_bootstrap.js": "7036e8cf84bbcb173f4cc95ec75c9629",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "de5cd924341a6010f14615fdbbbc0952",
 "/": "de5cd924341a6010f14615fdbbbc0952",
-"main.dart.js": "f7fef4c1d94aadf649c9c1f3adb47e32",
+"main.dart.js": "d5e55eba8550860f2936b372b0179b82",
 "manifest.json": "df5ecdba13a1656c0809325677030ab9",
 "version.json": "5f7aaaa3c3b9afbeb1df6ee4593452d9"};
 // The application shell files that are downloaded before a service worker can
