@@ -78,9 +78,23 @@ class _TablePageState extends State<TablePage> {
   bool get isAntag => widget.role == 'antagonis';
   bool get showAsAntag => isAntag && !disguiseMode;
 
+  /// Hari yang vonisnya sudah ditutup pemain (kartu vonis memakan tempat,
+  /// jadi bisa disembunyikan dengan satu ketukan).
+  int? _verdictHiddenDay;
+
   /// Di bawah lebar ini (ponsel) sidebar hari diganti header ringkas di atas.
   static const _narrowBreakpoint = 720.0;
+
+  /// Di atas lebar ini (desktop lebar) isi dipusatkan dengan lebar maksimum
+  /// supaya kartu dan kolom tidak melebar berlebihan di layar ultra-lebar.
+  static const _wideBreakpoint = 1100.0;
+  static const _maxContentWidth = 1280.0;
+
   bool get _narrow => MediaQuery.sizeOf(context).width < _narrowBreakpoint;
+  bool get _wide => MediaQuery.sizeOf(context).width >= _wideBreakpoint;
+
+  /// Layar sangat pendek (ponsel miring): rapatkan jarak antarbagian.
+  bool get _short => MediaQuery.sizeOf(context).height < 480;
 
   @override
   void initState() {
@@ -558,17 +572,26 @@ class _TablePageState extends State<TablePage> {
               : Row(
             children: [
               SizedBox(
-                  width: 120,
-                  child: _sidebar(
-                      day, cycle, leaves, worms, deadline, isHost)),
+                width: _wide ? 128 : 104,
+                child: _sidebar(
+                    day, cycle, leaves, worms, deadline, isHost),
+              ),
               const VerticalDivider(width: 1),
               Expanded(
-                child: _panel(g, day, phase, leaves, iAmReady,
-                    readyCount, jailed, myCardId, deadline,
-                    narrow: false,
-                    cycle: cycle,
-                    worms: worms,
-                    isHost: isHost),
+                // Isi dipusatkan dan dibatasi lebarnya di layar lebar.
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                        maxWidth: _maxContentWidth),
+                    child: _panel(g, day, phase, leaves, iAmReady,
+                        readyCount, jailed, myCardId, deadline,
+                        narrow: false,
+                        cycle: cycle,
+                        worms: worms,
+                        isHost: isHost),
+                  ),
+                ),
               ),
             ],
           ),
@@ -744,8 +767,17 @@ class _TablePageState extends State<TablePage> {
     final showStrip =
         phase == 'day' || phase == 'discussion' || phase == 'voting';
 
+    final gap = _short ? 6.0 : (narrow ? 8.0 : 12.0);
+    final showVerdict = verdict != null &&
+        phase == 'day' &&
+        _dayIntro == null &&
+        _verdictHiddenDay != day;
+
     return Padding(
-      padding: EdgeInsets.all(narrow ? 10 : 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: narrow ? 10 : (_wide ? 24 : 16),
+        vertical: narrow ? 8 : 14,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -765,12 +797,21 @@ class _TablePageState extends State<TablePage> {
           else
             _currencyBar(balance, rate, myCardId, day, readyCount,
                 showChat: phase != 'discussion'),
-          if (verdict != null && phase == 'day' && _dayIntro == null) ...[
-            const SizedBox(height: 8),
-            _verdictCard(verdict),
-          ],
+          // Vonis: ringkas, bisa ditutup, dan tidak menumpuk dengan bilah desa.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: showVerdict
+                ? Padding(
+              padding: EdgeInsets.only(top: gap),
+              child: _verdictCard(verdict!, day,
+                  compact: narrow || _short),
+            )
+                : const SizedBox(width: double.infinity),
+          ),
           if (showStrip) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: gap),
             VillageStrip(
               myId: repo.myId,
               players: players,
@@ -781,7 +822,7 @@ class _TablePageState extends State<TablePage> {
               onEmoteButton: () => _openEmotes(day),
             ),
           ],
-          const SizedBox(height: 8),
+          SizedBox(height: gap),
           // Selama adegan peralihan, isi hari ditahan supaya animasi Kabar Pagi
           // dan vonis baru diputar saat adegan selesai.
           Expanded(child: _dayIntro == null ? body : const SizedBox.shrink()),
@@ -792,56 +833,76 @@ class _TablePageState extends State<TablePage> {
 
   /// Vonis hari sebelumnya: palu diketuk. Kartu membesar lalu menghantam
   /// ke ukuran asli, kilat emas di titik ketukan, lalu bergetar mereda.
-  Widget _verdictCard(String text) => TweenAnimationBuilder<double>(
-    key: ValueKey(text),
-    tween: Tween<double>(begin: 0, end: 1),
-    duration: const Duration(milliseconds: 1300),
-    builder: (context, t, _) {
-      final slam =
-      Curves.easeOutBack.transform((t / 0.35).clamp(0.0, 1.0).toDouble());
-      final flash = (1 - (t - 0.35).abs() / 0.18).clamp(0.0, 1.0).toDouble();
-      final after = ((t - 0.35) / 0.65).clamp(0.0, 1.0).toDouble();
-      final dx = t > 0.35 ? sin(after * 60) * 6 * (1 - after) : 0.0;
-      return Opacity(
-        opacity: (t / 0.15).clamp(0.0, 1.0).toDouble(),
-        child: Transform.translate(
-          offset: Offset(dx, 0),
-          child: Transform.scale(
-            scale: 1.18 - 0.18 * slam,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: Colors.amber
-                        .withValues(alpha: 0.6 + 0.4 * flash)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.amber.withValues(alpha: 0.7 * flash),
-                    blurRadius: 24 * flash,
-                    spreadRadius: 2 * flash,
+  Widget _verdictCard(String text, int day, {bool compact = false}) =>
+      TweenAnimationBuilder<double>(
+        key: ValueKey(text),
+        tween: Tween<double>(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1300),
+        builder: (context, t, _) {
+          final slam =
+          Curves.easeOutBack.transform((t / 0.35).clamp(0.0, 1.0).toDouble());
+          final flash = (1 - (t - 0.35).abs() / 0.18).clamp(0.0, 1.0).toDouble();
+          final after = ((t - 0.35) / 0.65).clamp(0.0, 1.0).toDouble();
+          final dx = t > 0.35 ? sin(after * 60) * 6 * (1 - after) : 0.0;
+          return Opacity(
+            opacity: (t / 0.15).clamp(0.0, 1.0).toDouble(),
+            child: Transform.translate(
+              offset: Offset(dx, 0),
+              child: Transform.scale(
+                scale: 1.18 - 0.18 * slam,
+                child: Container(
+                  width: double.infinity,
+                  padding: compact
+                      ? const EdgeInsets.fromLTRB(10, 6, 4, 6)
+                      : const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.amber
+                            .withValues(alpha: 0.6 + 0.4 * flash)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.7 * flash),
+                        blurRadius: 24 * flash,
+                        spreadRadius: 2 * flash,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Transform.rotate(
-                    angle: -0.9 * (1 - slam),
-                    child: const GameIcon('vote', size: 32),
+                  child: Row(
+                    children: [
+                      Transform.rotate(
+                        angle: -0.9 * (1 - slam),
+                        child: GameIcon('vote', size: compact ? 26 : 32),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          text,
+                          maxLines: compact ? 2 : 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: compact ? 12 : 13, height: 1.3),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Tutup',
+                        visualDensity: VisualDensity.compact,
+                        constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
+                        padding: EdgeInsets.zero,
+                        iconSize: 18,
+                        color: Colors.white54,
+                        onPressed: () => setState(() => _verdictHiddenDay = day),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(text, style: const TextStyle(fontSize: 13))),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       );
-    },
-  );
 
   /// Header ringkas untuk ponsel: menggantikan sidebar hari dan bar mata
   /// uang. Baris 1: avatar, saldo, obrolan, menu. Baris 2: hari, daun,
@@ -895,20 +956,30 @@ class _TablePageState extends State<TablePage> {
         children: [
           Row(
             children: [
-              PlayerAvatar(path: avatar, size: 38, ring: accent),
+              PlayerAvatar(path: avatar, size: 40, ring: accent),
               const SizedBox(width: 10),
               GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 28),
-              const SizedBox(width: 4),
-              Text(_fmt(balance),
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(width: 6),
+              // Saldo di atas, laju per hari tepat di bawahnya (hemat lebar).
               Flexible(
-                child: Text('+${_fmt(rate)}/hari',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                    const TextStyle(fontSize: 12, color: Colors.white60)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_fmt(balance),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 22,
+                            height: 1.05,
+                            fontWeight: FontWeight.bold)),
+                    Text('+${_fmt(rate)}/hari',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.white60)),
+                  ],
+                ),
               ),
               const Spacer(),
               if (showChat)
@@ -961,32 +1032,48 @@ class _TablePageState extends State<TablePage> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(0, 4, 6, 4),
+            child: Divider(height: 1, color: Colors.white10),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: Row(
               children: [
-                Text('HARI $day',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5)),
-                const SizedBox(width: 10),
-                const GameIcon('helaidaun', size: 22),
-                const SizedBox(width: 3),
-                Text('$leaves', style: const TextStyle(fontSize: 13)),
-                if (worms > 0) ...[
-                  const SizedBox(width: 10),
-                  Text('🐛 $worms',
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.purpleAccent)),
-                ],
-                const Spacer(),
+                // Kiri: hari, daun, ulat. Boleh menyusut di layar sempit.
+                Expanded(
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text('HARI $day',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const GameIcon('helaidaun', size: 20),
+                          const SizedBox(width: 3),
+                          Text('$leaves',
+                              style: const TextStyle(fontSize: 13)),
+                        ],
+                      ),
+                      if (worms > 0)
+                        Text('🐛 $worms',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.purpleAccent)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Countdown(
                     deadline: deadline, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 ActionChip(
-                  avatar: const GameIcon('persona', size: 20),
+                  avatar: const GameIcon('persona', size: 18),
                   label: Text('$readyCount/${players.length}',
                       style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
@@ -996,8 +1083,13 @@ class _TablePageState extends State<TablePage> {
               ],
             ),
           ),
-          Text(due,
-              style: const TextStyle(fontSize: 10, color: Colors.white54)),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(due,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: Colors.white54)),
+          ),
         ],
       ),
     );
@@ -1025,11 +1117,24 @@ class _TablePageState extends State<TablePage> {
         Text(_fmt(balance),
             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
         const SizedBox(width: 8),
-        Text(showAsAntag ? 'bulir hitam' : 'tetes embun',
-            style: const TextStyle(fontSize: 13)),
-        const SizedBox(width: 12),
-        Text('+${_fmt(rate)}/hari',
-            style: const TextStyle(fontSize: 12, color: Colors.white60)),
+        // Label dan laju menyusut lebih dulu bila lebar terbatas.
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(showAsAntag ? 'bulir hitam' : 'tetes embun',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13)),
+              Text('+${_fmt(rate)}/hari',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                  const TextStyle(fontSize: 12, color: Colors.white60)),
+            ],
+          ),
+        ),
         const Spacer(),
         IconButton(
           tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
