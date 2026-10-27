@@ -1,3 +1,5 @@
+import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -10,13 +12,40 @@ import '../prologue/prologue_page.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
+double _seg(double v, double a, double b) =>
+    ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
+
+double _smooth(double x) => x * x * (3 - 2 * x);
+
+/// Tiga tahap sebelum ruangan: layar judul, menu utama, lalu isian
+/// (nama / kode ruangan). Bila pemain masih punya ruangan di lobi, tahap
+/// ini dilewati dan ruangan langsung tampil.
+enum _Stage { title, menu, entry }
+
+const _howTo = [
+  'Hayu, pohon tua desa, sedang meredup. Warga berusaha menyelamatkannya; '
+      'satu orang di antara kalian, Si Terbisik, berusaha menghancurkannya '
+      'tanpa ketahuan.',
+  'Main bertiga sampai berdelapan. Peranmu dibagikan rahasia di awal.',
+  'Di hari biasa, belanja kartu di Pasar Pagi dengan tetes embun. Kamu juga '
+      'bisa memberi embun atau menukar kartu dengan warga lain.',
+  'Di malam persembahan, pilih 1-2 kartu untuk dipersembahkan kepada Hayu. '
+      'Kartu baik dan kartu jahat sama-sama dilempar tanpa nama pemilik.',
+  'Lalu bermusyawarah dan memilih. Yang dituduh mayoritas dikurung sehari '
+      'dan Hayu kehilangan 1 daun. Si Terbisik tertangkap bila dituduh untuk '
+      'kedua kalinya.',
+];
+
 class LobbyPage extends StatefulWidget {
-  const LobbyPage({super.key});
+  /// true = lewati layar judul (mis. kembali dari permainan).
+  final bool startAtMenu;
+  const LobbyPage({super.key, this.startAtMenu = false});
   @override
   State<LobbyPage> createState() => _LobbyPageState();
 }
 
-class _LobbyPageState extends State<LobbyPage> {
+class _LobbyPageState extends State<LobbyPage>
+    with SingleTickerProviderStateMixin {
   final repo = LobbyRepository();
   final _gr = GameRepository();
   final nameCtrl = TextEditingController();
@@ -25,10 +54,28 @@ class _LobbyPageState extends State<LobbyPage> {
   bool busy = false;
   bool _navigated = false;
 
+  late _Stage _stage;
+  bool _joinMode = false;
+  bool _booted = false;
+
+  // Jam berkelanjutan untuk latar bergerak, kunang-kunang, dan melayang.
+  late final AnimationController _t = AnimationController(
+      vsync: this, duration: const Duration(seconds: 120))
+    ..repeat();
+
   @override
   void initState() {
     super.initState();
+    _stage = widget.startAtMenu ? _Stage.menu : _Stage.title;
     _boot();
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    nameCtrl.dispose();
+    codeCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _boot() async {
@@ -53,9 +100,10 @@ class _LobbyPageState extends State<LobbyPage> {
           return;
         }
       }
-      setState(() {});
     } catch (e) {
       if (mounted) _toast(errMsg(e));
+    } finally {
+      if (mounted) setState(() => _booted = true);
     }
   }
 
@@ -75,96 +123,534 @@ class _LobbyPageState extends State<LobbyPage> {
   void _toast(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
+  void _start() {
+    if (!_booted || _stage != _Stage.title) return;
+    HapticFeedback.lightImpact();
+    setState(() => _stage = _Stage.menu);
+  }
+
+  void _openEntry(bool join) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _joinMode = join;
+      _stage = _Stage.entry;
+    });
+  }
+
+  // ====================== kerangka & latar ======================
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Backdrop(path: sceneryPath('rumahdesa-hijau'), dim: 0.55),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: gameId == null ? 520 : 1100),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: gameId == null ? _entry() : _room(gameId!),
+    final inRoom = gameId != null;
+    final canPop = inRoom || _stage == _Stage.title;
+    final bg = _stage == _Stage.title && !inRoom
+        ? 'lembah-hijau0'
+        : 'rumahdesa-hijau';
+
+    final Widget screen;
+    if (inRoom) {
+      screen = KeyedSubtree(
+          key: const ValueKey('room'), child: _framed(1100, _room(gameId!)));
+    } else {
+      switch (_stage) {
+        case _Stage.title:
+          screen = KeyedSubtree(key: const ValueKey('title'), child: _title());
+        case _Stage.menu:
+          screen = KeyedSubtree(key: const ValueKey('menu'), child: _menu());
+        case _Stage.entry:
+          screen = KeyedSubtree(
+              key: const ValueKey('entry'), child: _framed(520, _entry()));
+      }
+    }
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        setState(() => _stage =
+        _stage == _Stage.entry ? _Stage.menu : _Stage.title);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF050A08),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            _background(bg, _stage == _Stage.title && !inRoom),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 700),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              layoutBuilder: (cur, prev) => Stack(
+                fit: StackFit.expand,
+                children: [...prev, ?cur],
+              ),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.97, end: 1.0).animate(anim),
+                  child: child,
                 ),
               ),
+              child: screen,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _panel(Widget child) =>
-      _Glass(padding: const EdgeInsets.all(20), child: child);
-
-  Widget _entry() => SingleChildScrollView(
-    child: _panel(
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 190,
-            child: GameImage(
-                path: logoPath('logoteks-transparent'),
-                fit: BoxFit.contain,
-                cacheWidth: 800),
-          ),
-          const SizedBox(height: 2),
-          const Text('Balai Pertemuan Desa 1.1',
-              style: TextStyle(
-                  color: EmbunColors.goldDim, letterSpacing: 2, fontSize: 13)),
-          const SizedBox(height: 18),
-          TextField(
-            controller: nameCtrl,
-            maxLength: 20,
-            decoration: const InputDecoration(
-              labelText: 'Namamu',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(6),
-                child: GameIcon('identity', size: 30),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          EmbunButton(
-            label: 'Buat Ruangan',
-            icon: 'roomcreate',
-            expand: true,
-            onPressed: busy
-                ? null
-                : () => _run((card) => repo.createGame(nameCtrl.text, card)),
-          ),
-          const Divider(height: 32),
-          TextField(
-            controller: codeCtrl,
-            textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(
-              labelText: 'Kode ruangan',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(6),
-                child: GameIcon('roomcode', size: 30),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          EmbunButton(
-            label: 'Gabung',
-            icon: 'joinroom',
-            kind: EmbunButtonKind.secondary,
-            expand: true,
-            onPressed: busy
-                ? null
-                : () => _run((card) =>
-                repo.joinGame(codeCtrl.text, nameCtrl.text, card)),
-          ),
-        ],
+  Widget _framed(double maxW, Widget child) => SafeArea(
+    child: Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxW),
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     ),
   );
+
+  /// Latar bentang yang bergerak pelan (zoom dan geser), dengan kunang-kunang
+  /// dan, di layar judul, berkas cahaya hangat dari atas.
+  Widget _background(String stem, bool title) => AnimatedBuilder(
+    animation: _t,
+    builder: (context, _) {
+      final time = _t.value * 120;
+      final k = 1.07 + 0.04 * sin(time * 0.12);
+      final al = Alignment(sin(time * 0.07) * 0.5, cos(time * 0.05) * 0.3);
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRect(
+            child: Transform.scale(
+              scale: k,
+              alignment: al,
+              child: Backdrop(path: sceneryPath(stem), dim: 0.4),
+            ),
+          ),
+          IgnorePointer(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: title ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 900),
+              builder: (_, beam, __) => CustomPaint(
+                painter: _Fx(time: time, beam: beam),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  // ====================== 1. LAYAR JUDUL ======================
+
+  Widget _title() {
+    return LayoutBuilder(builder: (context, c) {
+      final logoH = min(c.maxHeight * 0.5, 420.0).toDouble();
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _booted ? _start : null,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 3400),
+          builder: (context, t, _) {
+            final lt = _smooth(_seg(t, 0.0, 0.5));
+            final st = _smooth(_seg(t, 0.42, 0.7));
+            final bt = _smooth(_seg(t, 0.62, 0.9));
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                // vinyet
+                IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        radius: 1.0,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.6),
+                        ],
+                        stops: const [0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: AnimatedBuilder(
+                        animation: _t,
+                        builder: (context, _) {
+                          final time = _t.value * 120;
+                          final float = sin(time * 0.9) * 5;
+                          final pulse = 0.5 + 0.5 * sin(time * 1.4);
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Opacity(
+                                opacity: lt,
+                                child: Transform.translate(
+                                  offset: Offset(0, float),
+                                  child: Transform.scale(
+                                    scale: 0.88 + 0.12 * lt,
+                                    child: SizedBox(
+                                      width: logoH * 1.3,
+                                      height: logoH,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            width: logoH * 1.2,
+                                            height: logoH * 1.2,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: RadialGradient(colors: [
+                                                EmbunColors.gold.withValues(
+                                                    alpha: 0.18 +
+                                                        0.12 * pulse),
+                                                EmbunColors.gold
+                                                    .withValues(alpha: 0),
+                                              ]),
+                                            ),
+                                          ),
+                                          GameImage(
+                                              path: logoPath(
+                                                  'ikon-transparent'),
+                                              fit: BoxFit.contain,
+                                              cacheWidth: 1000),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Opacity(
+                                opacity: st,
+                                child: Transform.translate(
+                                  offset: Offset(0, (1 - st) * 10),
+                                  child: Text(
+                                    'BALAI PERTEMUAN DESA 1.1',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      letterSpacing: 4,
+                                      color: EmbunColors.gold
+                                          .withValues(alpha: 0.9),
+                                      shadows: const [
+                                        Shadow(
+                                            color: Colors.black,
+                                            blurRadius: 10),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 26),
+                              Opacity(
+                                opacity: bt,
+                                child: Transform.translate(
+                                  offset: Offset(0, (1 - bt) * 14),
+                                  child: SizedBox(
+                                    width: 240,
+                                    child: EmbunButton(
+                                      label: _booted ? 'Mulai' : 'Memuat...',
+                                      icon: 'start',
+                                      expand: true,
+                                      onPressed: _booted ? _start : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Opacity(
+                                opacity: bt * (0.3 + 0.3 * pulse),
+                                child: const Text('Ketuk di mana saja',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        letterSpacing: 1,
+                                        color: Colors.white70)),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  // ====================== 2. MENU UTAMA ======================
+
+  Widget _backButton(VoidCallback onTap) => IconButton(
+    tooltip: 'Kembali',
+    onPressed: onTap,
+    color: EmbunColors.gold,
+    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+  );
+
+  void _showHowTo() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: OrnatePanel(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHeader(icon: 'info', title: 'Cara Bermain'),
+                  const SizedBox(height: 12),
+                  for (final s in _howTo)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1, right: 8),
+                            child: Text('•',
+                                style: TextStyle(color: EmbunColors.gold)),
+                          ),
+                          Expanded(
+                            child: Text(s,
+                                style: const TextStyle(
+                                    fontSize: 13.5, height: 1.4)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  EmbunButton(
+                    label: 'Tutup',
+                    icon: 'silang',
+                    kind: EmbunButtonKind.secondary,
+                    expand: true,
+                    height: 46,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menu() {
+    return LayoutBuilder(builder: (context, c) {
+      final wide = c.maxWidth >= 720;
+      final items = <_MenuTile>[
+        _MenuTile(
+            index: 0,
+            icon: 'roomcreate',
+            label: 'Buat Ruangan',
+            center: !wide,
+            onTap: () => _openEntry(false)),
+        _MenuTile(
+            index: 1,
+            icon: 'joinroom',
+            label: 'Gabung Ruangan',
+            center: !wide,
+            onTap: () => _openEntry(true)),
+        _MenuTile(
+            index: 2,
+            icon: 'info',
+            label: 'Cara Bermain',
+            center: !wide,
+            onTap: _showHowTo),
+      ];
+      final menuCol = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+        wide ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: items,
+      );
+
+      Widget logo(double w) => SizedBox(
+        width: w,
+        height: w * 0.36,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOutCubic,
+          builder: (_, v, child) => Opacity(
+            opacity: v,
+            child: Transform.translate(
+                offset: Offset(0, (1 - v) * 16), child: child),
+          ),
+          child: GameImage(
+              path: logoPath('logoteks-transparent'),
+              fit: BoxFit.contain,
+              alignment: wide ? Alignment.centerLeft : Alignment.center,
+              cacheWidth: 900),
+        ),
+      );
+
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          // bayangan agar logo dan menu terbaca
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: wide
+                    ? LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.82),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.8],
+                )
+                    : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.35),
+                    Colors.black.withValues(alpha: 0.85),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: _backButton(
+                          () => setState(() => _stage = _Stage.title)),
+                ),
+                if (wide)
+                  Positioned(
+                    left: 56,
+                    bottom: 56,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        logo(min(380.0, c.maxWidth * 0.34)),
+                        const SizedBox(width: 56),
+                        menuCol,
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 48, 24, 36),
+                    child: Column(
+                      children: [
+                        logo(min(320.0, c.maxWidth - 48)),
+                        const Spacer(),
+                        menuCol,
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  // ====================== 3. ISIAN (nama / kode) ======================
+
+  Widget _panel(Widget child) =>
+      _Glass(padding: const EdgeInsets.all(20), child: child);
+
+  Widget _entry() {
+    final join = _joinMode;
+    return SingleChildScrollView(
+      child: _panel(
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                _backButton(busy
+                    ? () {}
+                    : () => setState(() => _stage = _Stage.menu)),
+                Expanded(
+                  child: SectionHeader(
+                    icon: join ? 'joinroom' : 'roomcreate',
+                    title: join ? 'Gabung Ruangan' : 'Buat Ruangan',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 84,
+              child: GameImage(
+                  path: logoPath('logoteks-transparent'),
+                  fit: BoxFit.contain,
+                  cacheWidth: 600),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: nameCtrl,
+              maxLength: 20,
+              decoration: const InputDecoration(
+                labelText: 'Namamu',
+                prefixIcon: Padding(
+                  padding: EdgeInsets.all(6),
+                  child: GameIcon('identity', size: 30),
+                ),
+              ),
+            ),
+            if (join) ...[
+              const SizedBox(height: 6),
+              TextField(
+                controller: codeCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Kode ruangan',
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: GameIcon('roomcode', size: 30),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            EmbunButton(
+              label: join ? 'Gabung' : 'Buat Ruangan',
+              icon: join ? 'joinroom' : 'roomcreate',
+              expand: true,
+              onPressed: busy
+                  ? null
+                  : join
+                  ? () {
+                if (codeCtrl.text.trim().isEmpty) {
+                  return _toast('Isi kode ruangan dulu');
+                }
+                _run((card) => repo.joinGame(
+                    codeCtrl.text.trim(), nameCtrl.text, card));
+              }
+                  : () =>
+                  _run((card) => repo.createGame(nameCtrl.text, card)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ====================== RUANGAN (lobi) ======================
 
   Future<void> _pickCard(String id, Map<String, dynamic> me) async {
     if (me['ready'] == true) return; // terkunci selama siap
@@ -237,7 +723,10 @@ class _LobbyPageState extends State<LobbyPage> {
           if (gs.connectionState != ConnectionState.waiting) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || gameId != id) return;
-              setState(() => gameId = null);
+              setState(() {
+                gameId = null;
+                _stage = _Stage.menu;
+              });
               _toast('Ruangan sudah dibubarkan');
             });
           }
@@ -364,7 +853,10 @@ class _LobbyPageState extends State<LobbyPage> {
           onPressed: () async {
             // Keluar dulu agar penghapusan ruangan tidak memicu
             // pesan "dibubarkan" untuk host sendiri.
-            setState(() => gameId = null);
+            setState(() {
+              gameId = null;
+              _stage = _Stage.menu;
+            });
             try {
               await repo.leave(id);
             } catch (e) {
@@ -508,8 +1000,8 @@ class _LobbyPageState extends State<LobbyPage> {
                     GameIcon('host', size: 20),
                     SizedBox(width: 3),
                     Text('Host',
-                        style: TextStyle(
-                            fontSize: 11, color: EmbunColors.gold)),
+                        style:
+                        TextStyle(fontSize: 11, color: EmbunColors.gold)),
                   ],
                 ),
               ),
@@ -522,7 +1014,175 @@ class _LobbyPageState extends State<LobbyPage> {
   }
 }
 
-/// Panel kaca gelap yang dipakai bersama oleh layar masuk, ruangan, dan obrolan.
+/// Satu butir menu utama: ikon medali + teks. Muncul bergantian dari kiri;
+/// saat disentuh atau disorot, teks beralih emas, bergeser, dan bertitik.
+class _MenuTile extends StatefulWidget {
+  final int index;
+  final String icon;
+  final String label;
+  final bool center;
+  final VoidCallback onTap;
+  const _MenuTile({
+    required this.index,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.center = false,
+  });
+
+  @override
+  State<_MenuTile> createState() => _MenuTileState();
+}
+
+class _MenuTileState extends State<_MenuTile> {
+  bool _on = false;
+
+  void _set(bool v) {
+    if (mounted && _on != v) setState(() => _on = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 650 + widget.index * 200),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, child) => Opacity(
+        opacity: v.clamp(0.0, 1.0).toDouble(),
+        child: Transform.translate(offset: Offset((1 - v) * -34, 0), child: child),
+      ),
+      child: MouseRegion(
+        onEnter: (_) => _set(true),
+        onExit: (_) => _set(false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _set(true),
+          onTapUp: (_) => _set(false),
+          onTapCancel: () => _set(false),
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_on ? 8 : 0, 0, 0),
+            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _on ? EmbunColors.gold : Colors.transparent,
+                    boxShadow: _on
+                        ? [
+                      BoxShadow(
+                          color:
+                          EmbunColors.gold.withValues(alpha: 0.8),
+                          blurRadius: 8),
+                    ]
+                        : null,
+                  ),
+                ),
+                GameIcon(widget.icon, size: 34),
+                const SizedBox(width: 12),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 160),
+                  style: TextStyle(
+                    fontSize: 22,
+                    letterSpacing: 1.2,
+                    fontWeight: _on ? FontWeight.bold : FontWeight.w500,
+                    color: _on ? EmbunColors.gold : EmbunColors.cream,
+                    shadows: const [
+                      Shadow(color: Colors.black, blurRadius: 10),
+                    ],
+                  ),
+                  child: Text(widget.label),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kunang-kunang emas yang melayang naik; bila [beam] > 0, ditambah
+/// berkas cahaya hangat diagonal dari kanan atas (layar judul).
+class _Fx extends CustomPainter {
+  final double time;
+  final double beam;
+  _Fx({required this.time, required this.beam});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    if (beam > 0.01) {
+      final origin = Offset(w * 0.8, -h * 0.15);
+      const ang = 2.0; // arah turun ke kiri
+      final len = h * 1.6;
+      const half = 0.2;
+      final dir = Offset(cos(ang), sin(ang));
+      final path = Path()
+        ..moveTo(origin.dx, origin.dy)
+        ..lineTo(origin.dx + cos(ang - half) * len,
+            origin.dy + sin(ang - half) * len)
+        ..lineTo(origin.dx + cos(ang + half) * len,
+            origin.dy + sin(ang + half) * len)
+        ..close();
+      final a = (0.2 * beam * (0.8 + 0.2 * sin(time * 0.5)))
+          .clamp(0.0, 1.0)
+          .toDouble();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28)
+          ..shader = ui.Gradient.linear(
+            origin,
+            origin + dir * len,
+            [
+              const Color(0xFFFFF1C0).withValues(alpha: a),
+              const Color(0xFFFFF1C0).withValues(alpha: 0),
+            ],
+          ),
+      );
+    }
+
+    final rnd = Random(5);
+    for (var i = 0; i < 26; i++) {
+      final x0 = rnd.nextDouble();
+      final y0 = rnd.nextDouble();
+      final sp = 0.015 + rnd.nextDouble() * 0.04;
+      final sz = 1.4 + rnd.nextDouble() * 2.6;
+      final ph = rnd.nextDouble() * 2 * pi;
+      final tw = 1.2 + rnd.nextDouble() * 2;
+      final f = (y0 - time * sp) % 1.0;
+      final o = Offset((x0 + sin(time * 0.3 + ph) * 0.03) * w, f * h);
+      final a = (0.35 + 0.65 * (0.5 + 0.5 * sin(time * tw + ph))) * sin(f * pi);
+      final col =
+      i.isEven ? const Color(0xFFFFE08A) : const Color(0xFFBFF5D0);
+      canvas.drawCircle(o, sz * 3,
+          Paint()..color = col.withValues(alpha: (0.14 * a).clamp(0.0, 1.0)));
+      canvas.drawCircle(
+          o,
+          sz,
+          Paint()
+            ..color = Color.lerp(col, Colors.white, 0.5)!
+                .withValues(alpha: (0.85 * a).clamp(0.0, 1.0)));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _Fx old) => true;
+}
+
+/// Panel kaca gelap yang dipakai bersama oleh layar isian, ruangan, dan obrolan.
 class _Glass extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
@@ -612,8 +1272,7 @@ class _RoomShellState extends State<_RoomShell> {
       if (page == 0)
         const Text('Geser untuk obrolan',
             style: TextStyle(fontSize: 11, color: Colors.white54)),
-      if (page == 0)
-        const GameIcon('skip2', size: 22),
+      if (page == 0) const GameIcon('skip2', size: 22),
     ],
   );
 

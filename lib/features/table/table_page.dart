@@ -266,7 +266,7 @@ class _TablePageState extends State<TablePage> {
     _leaving = true;
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LobbyPage()),
+      MaterialPageRoute(builder: (_) => const LobbyPage(startAtMenu: true)),
     );
     if (msg != null) messenger.showSnackBar(SnackBar(content: Text(msg)));
   }
