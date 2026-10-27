@@ -10,7 +10,10 @@ double _seg(double t, double a, double b) =>
 double _bump(double t, double c, double w) =>
     max(0.0, 1 - (t - c).abs() / w);
 
-/// Adegan menuju Hayu saat fase persembahan dimulai (4,8 detik).
+/// Adegan menuju Hayu saat fase persembahan dimulai (5,6 detik).
+/// Judul (gambar titlepersembahan) hanya tampil di sini: ia menghantam
+/// layar pada t = 0.48-0.60 dengan kilatan, guncangan, sinar, dan gelombang
+/// kejut.
 /// Linimasa (t = 0..1):
 ///
 ///  0.00-0.07  layar menggelap, bilah sinema menutup
@@ -53,7 +56,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
   static const finale = 0.86;
 
   late final AnimationController c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 4800));
+      vsync: this, duration: const Duration(milliseconds: 5600));
   final Set<int> _fired = {};
   bool _done = false;
 
@@ -133,7 +136,8 @@ class _OfferingTransitionState extends State<OfferingTransition>
             final master = min(_seg(t, 0, 0.07), 1 - _seg(t, 0.93, 1.0));
             final barH = h * 0.09 * Curves.easeOut.transform(_seg(t, 0, 0.15));
             final landT = Curves.easeIn.transform(_seg(t, 0.2, 0.6));
-            final flash = _bump(t, finale, 0.025) * 0.45;
+            final flash = max(
+                _bump(t, finale, 0.025) * 0.45, _bump(t, 0.52, 0.02) * 0.5);
 
             // --- Hayu: kamera mendekat + denyut ---
             final treeE = Curves.easeOutCubic.transform(_seg(t, 0.2, 0.62));
@@ -146,33 +150,46 @@ class _OfferingTransitionState extends State<OfferingTransition>
               const Shadow(color: Colors.black, blurRadius: 3),
             ];
 
-            final tt = _seg(t, 0.5, 0.62);
+            // Judul menghantam layar: membesar dari 2,4x lalu memantul ke
+            // ukuran asli, diiringi ledakan sinar dan guncangan.
+            final tt = _seg(t, 0.48, 0.60);
+            final slam = Curves.easeOutBack.transform(tt);
+            final burstP = _seg(t, 0.52, 0.80);
+            final shake = _bump(t, 0.54, 0.035);
+            final tw = min(w * 0.82, 420.0).toDouble();
+            final th = tw / 2.16; // rasio titlepersembahan.png (~1600x740)
             final title = Opacity(
-              opacity: tt,
-              child: Transform.translate(
-                offset: Offset(0, (1 - tt) * 16),
+              opacity: _seg(t, 0.48, 0.53),
+              child: Transform.scale(
+                scale: 2.4 - 1.4 * slam,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('HARI ${widget.day}',
                         style: TextStyle(
                           fontSize: 12,
-                          letterSpacing: 6,
-                          color: Colors.white60,
+                          letterSpacing: 6 + 14 * (1 - tt),
+                          color: Colors.white70,
                           shadows: shadows,
                         )),
-                    const SizedBox(height: 4),
-                    Text('MALAM PERSEMBAHAN',
-                        style: TextStyle(
-                          fontSize: 22,
-                          letterSpacing: 5,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(color: aura, blurRadius: 24),
-                            const Shadow(color: Colors.black, blurRadius: 8),
-                          ],
-                        )),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: tw,
+                      height: th,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _TitleBurst(
+                                  p: burstP, aura: aura, dark: dark),
+                            ),
+                          ),
+                          GameIcon('titlepersembahan', width: tw, height: th),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -320,7 +337,11 @@ class _OfferingTransitionState extends State<OfferingTransition>
                       seed: widget.day,
                     ),
                   ),
-                  content,
+                  Transform.translate(
+                    offset: Offset(
+                        sin(t * 420) * 9 * shake, cos(t * 380) * 5 * shake),
+                    child: content,
+                  ),
                   if (flash > 0.01)
                     ColoredBox(
                         color: Color.lerp(Colors.white, aura, 0.3)!.withValues(
@@ -359,6 +380,93 @@ class _OfferingTransitionState extends State<OfferingTransition>
       }),
     );
   }
+}
+
+/// Ledakan di belakang judul: cahaya tetap, sinar berputar, cincin kejut,
+/// dan percikan yang menyebar saat judul menghantam layar.
+class _TitleBurst extends CustomPainter {
+  final double p; // 0..1
+  final Color aura;
+  final bool dark;
+  const _TitleBurst({required this.p, required this.aura, required this.dark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (p <= 0) return;
+    final c = size.center(Offset.zero);
+    final w = size.width;
+    final fade = (1 - p).clamp(0.0, 1.0).toDouble();
+    final e = Curves.easeOutCubic.transform(p);
+    final main = dark ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A);
+    final rnd = Random(5);
+
+    // cahaya tetap di belakang judul
+    final base = (min(1.0, p * 6) * 0.34).toDouble();
+    final gr = w * 0.62;
+    canvas.drawCircle(
+      c,
+      gr,
+      Paint()
+        ..shader = RadialGradient(colors: [
+          Color.lerp(main, aura, 0.3)!.withValues(alpha: base),
+          aura.withValues(alpha: 0),
+        ]).createShader(Rect.fromCircle(center: c, radius: gr)),
+    );
+
+    // sinar berputar
+    final rayLen = w * (0.45 + 0.9 * e);
+    for (var j = 0; j < 18; j++) {
+      final ang = j * 2 * pi / 18 + p * 1.4;
+      const half = 0.045;
+      final path = Path()
+        ..moveTo(c.dx, c.dy)
+        ..lineTo(c.dx + cos(ang - half) * rayLen,
+            c.dy + sin(ang - half) * rayLen)
+        ..lineTo(c.dx + cos(ang + half) * rayLen,
+            c.dy + sin(ang + half) * rayLen)
+        ..close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..color = main.withValues(alpha: 0.26 * fade),
+      );
+    }
+
+    // cincin kejut
+    for (var r = 0; r < 3; r++) {
+      final pr = (e - r * 0.13).clamp(0.0, 1.0).toDouble();
+      if (pr <= 0) continue;
+      canvas.drawCircle(
+        c,
+        w * (0.1 + 0.9 * pr),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 * (1 - pr) + 1
+          ..color = (r.isEven ? main : aura).withValues(alpha: 0.8 * (1 - pr)),
+      );
+    }
+
+    // percikan
+    for (var j = 0; j < 40; j++) {
+      final ang = rnd.nextDouble() * 2 * pi;
+      final spd = 0.35 + rnd.nextDouble() * 0.9;
+      final d0 = w * 0.7 * e * spd;
+      final len = 5 + 16 * fade;
+      final dir = Offset(cos(ang), sin(ang));
+      canvas.drawLine(
+        c + dir * d0,
+        c + dir * (d0 + len),
+        Paint()
+          ..strokeWidth = 2.2 * fade + 0.5
+          ..strokeCap = StrokeCap.round
+          ..color = (j.isEven ? main : Colors.white).withValues(alpha: fade),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TitleBurst old) => old.p != p;
 }
 
 /// Bintang berkelip, bulan purnama yang membesar, dan kabut yang bergeser.

@@ -478,13 +478,11 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                     opacity: _smooth(_seg(ms, 400, 1200)),
                     child: Column(
                       children: [
-                        const GameIcon('titlepersembahan',
-                            width: 190, height: 50),
-                        const SizedBox(height: 2),
                         Text(
                           'Persembahan untuk Hayu  $shown/$n',
                           style: const TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 14,
+                              letterSpacing: 1,
                               color: Colors.white70,
                               shadows: [
                                 Shadow(color: Colors.black, blurRadius: 8)
