@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/asset_catalog.dart';
+import 'features/common/ornate.dart';
 import 'features/lobby/lobby_page.dart';
 
 // Sementara ditanam langsung. Kunci "anon" memang publik; keamanan dijaga RLS.
@@ -26,11 +27,7 @@ class EmbunApp extends StatelessWidget {
     return MaterialApp(
       title: 'Embun',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF3E8E7E),
-        brightness: Brightness.dark,
-      ),
+      theme: embunTheme(),
       home: const LobbyPage(),
     );
   }

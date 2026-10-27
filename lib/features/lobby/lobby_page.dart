@@ -5,6 +5,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 import '../prologue/prologue_page.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
@@ -106,50 +107,59 @@ class _LobbyPageState extends State<LobbyPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 170,
+            height: 190,
             child: GameImage(
                 path: logoPath('ikon-transparent'),
                 fit: BoxFit.contain,
-                cacheWidth: 700),
+                cacheWidth: 800),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           const Text('Balai Pertemuan Desa',
-              style: TextStyle(color: Colors.white70)),
-          const SizedBox(height: 16),
+              style: TextStyle(
+                  color: EmbunColors.goldDim, letterSpacing: 2, fontSize: 13)),
+          const SizedBox(height: 18),
           TextField(
             controller: nameCtrl,
             maxLength: 20,
-            decoration: const InputDecoration(labelText: 'Namamu'),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: busy
-                  ? null
-                  : () => _run(
-                      (card) => repo.createGame(nameCtrl.text, card)),
-              icon: const GameIcon('roomcreate', size: 22),
-              label: const Text('Buat Ruangan'),
+            decoration: const InputDecoration(
+              labelText: 'Namamu',
+              prefixIcon: Padding(
+                padding: EdgeInsets.all(6),
+                child: GameIcon('identity', size: 30),
+              ),
             ),
+          ),
+          const SizedBox(height: 6),
+          EmbunButton(
+            label: 'Buat Ruangan',
+            icon: 'roomcreate',
+            expand: true,
+            onPressed: busy
+                ? null
+                : () => _run((card) => repo.createGame(nameCtrl.text, card)),
           ),
           const Divider(height: 32),
           TextField(
             controller: codeCtrl,
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(labelText: 'Kode ruangan'),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: busy
-                  ? null
-                  : () => _run((card) =>
-                  repo.joinGame(codeCtrl.text, nameCtrl.text, card)),
-              icon: const GameIcon('joinroom', size: 22),
-              label: const Text('Gabung'),
+            decoration: const InputDecoration(
+              labelText: 'Kode ruangan',
+              prefixIcon: Padding(
+                padding: EdgeInsets.all(6),
+                child: GameIcon('roomcode', size: 30),
+              ),
             ),
+          ),
+          const SizedBox(height: 10),
+          EmbunButton(
+            label: 'Gabung',
+            icon: 'joinroom',
+            kind: EmbunButtonKind.secondary,
+            expand: true,
+            onPressed: busy
+                ? null
+                : () => _run((card) =>
+                repo.joinGame(codeCtrl.text, nameCtrl.text, card)),
           ),
         ],
       ),
@@ -168,9 +178,8 @@ class _LobbyPageState extends State<LobbyPage> {
         child: Column(
           children: [
             const Padding(
-              padding: EdgeInsets.all(14),
-              child: Text('Pilih kartu karakter',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SectionHeader(icon: 'mydeck', title: 'Pilih kartu karakter'),
             ),
             Expanded(
               child: GridView.builder(
@@ -191,7 +200,7 @@ class _LobbyPageState extends State<LobbyPage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: sel ? Colors.amberAccent : Colors.transparent,
+                          color: sel ? EmbunColors.gold : Colors.transparent,
                           width: 3,
                         ),
                       ),
@@ -292,54 +301,58 @@ class _LobbyPageState extends State<LobbyPage> {
               _codeHeader(game['code'] as String),
               const SizedBox(height: 14),
               _meCard(id, me, myCard, iReady),
+              const SizedBox(height: 12),
+              iReady
+                  ? EmbunButton(
+                label: 'Siap. Ketuk untuk batal',
+                icon: 'centang',
+                kind: EmbunButtonKind.secondary,
+                expand: true,
+                onPressed: me == null ? null : () => _setReady(id, false),
+              )
+                  : EmbunButton(
+                label: 'Siap',
+                icon: 'centang',
+                expand: true,
+                onPressed: me == null ? null : () => _setReady(id, true),
+              ),
+              const SizedBox(height: 20),
+              SectionHeader(
+                icon: 'persona',
+                title: 'Pemain ${players.length}/8 · siap $readyN',
+              ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: iReady
-                    ? OutlinedButton.icon(
-                  onPressed: me == null ? null : () => _setReady(id, false),
-                  icon: const GameIcon('centang', size: 22),
-                  label: const Text('Siap. Ketuk untuk batal'),
-                )
-                    : FilledButton(
-                  onPressed: me == null ? null : () => _setReady(id, true),
-                  child: const Text('Siap'),
-                ),
-              ),
-              const Divider(height: 28),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Pemain ${players.length}/8 · siap $readyN',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
               for (final p in players) _playerTile(p, hostId),
             ],
           ),
         ),
         const SizedBox(height: 10),
         if (isHost)
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: canStart
-                  ? () async {
-                try {
-                  await repo.startGame(id);
-                } catch (e) {
-                  _toast(errMsg(e));
-                }
+          EmbunButton(
+            label: canStart
+                ? 'Mulai'
+                : players.length < 3
+                ? 'Menunggu pemain (min. 3)'
+                : 'Menunggu semua siap ($readyN/${players.length})',
+            icon: 'start',
+            expand: true,
+            onPressed: canStart
+                ? () async {
+              try {
+                await repo.startGame(id);
+              } catch (e) {
+                _toast(errMsg(e));
               }
-                  : null,
-              child: Text(canStart
-                  ? 'Mulai'
-                  : players.length < 3
-                  ? 'Menunggu pemain (min. 3)'
-                  : 'Menunggu semua siap ($readyN/${players.length})'),
-            ),
+            }
+                : null,
           ),
-        TextButton(
+        const SizedBox(height: 8),
+        EmbunButton(
+          label: isHost ? 'Bubarkan ruangan' : 'Keluar',
+          icon: isHost ? 'bubarkan' : 'keluar',
+          kind: EmbunButtonKind.secondary,
+          expand: true,
+          height: 44,
           onPressed: () async {
             // Keluar dulu agar penghapusan ruangan tidak memicu
             // pesan "dibubarkan" untuk host sendiri.
@@ -352,39 +365,28 @@ class _LobbyPageState extends State<LobbyPage> {
               _toast(errMsg(e));
             }
           },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GameIcon(isHost ? 'bubarkan' : 'keluar', size: 20),
-              const SizedBox(width: 6),
-              Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
-            ],
-          ),
         ),
       ],
     );
   }
 
   Widget _codeHeader(String code) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.06),
+      color: Colors.black.withValues(alpha: 0.3),
       borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
     ),
     child: Row(
       children: [
+        const GameIcon('roomcode', size: 46),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
-                children: [
-                  GameIcon('roomcode', size: 18),
-                  SizedBox(width: 6),
-                  Text('Kode ruangan',
-                      style: TextStyle(fontSize: 11, color: Colors.white60)),
-                ],
-              ),
+              const Text('Kode ruangan',
+                  style: TextStyle(fontSize: 11, color: Colors.white60)),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -393,16 +395,18 @@ class _LobbyPageState extends State<LobbyPage> {
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     letterSpacing: 6,
+                    color: EmbunColors.gold,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        IconButton(
-          tooltip: 'Salin kode',
-          icon: const GameIcon('salin', size: 24),
-          onPressed: () {
+        MedallionButton(
+          icon: 'salin',
+          label: 'Salin',
+          size: 40,
+          onTap: () {
             Clipboard.setData(ClipboardData(text: code));
             _toast('Kode disalin');
           },
@@ -416,12 +420,13 @@ class _LobbyPageState extends State<LobbyPage> {
       Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: Colors.black.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
         ),
         child: Row(
           children: [
-            CardArt(path: protagonistPath(myCard), width: 72),
+            CardArt(path: protagonistPath(myCard), width: 78),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -430,15 +435,20 @@ class _LobbyPageState extends State<LobbyPage> {
                   Text(me?['name'] as String? ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge),
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: EmbunColors.gold)),
                   Text(characterTitle(myCard),
                       style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
+                  const SizedBox(height: 10),
+                  EmbunButton(
+                    label: iReady ? 'Kartu terkunci' : 'Ganti kartu',
+                    icon: iReady ? 'lock' : 'mydeck',
+                    kind: EmbunButtonKind.secondary,
+                    height: 46,
                     onPressed:
                     me == null || iReady ? null : () => _pickCard(id, me),
-                    icon: GameIcon(iReady ? 'lock' : 'mydeck', size: 20),
-                    label: Text(iReady ? 'Kartu terkunci' : 'Ganti kartu'),
                   ),
                 ],
               ),
@@ -455,20 +465,20 @@ class _LobbyPageState extends State<LobbyPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.black.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: ready
-              ? Colors.greenAccent.withValues(alpha: 0.6)
-              : Colors.white12,
+              ? EmbunColors.leaf.withValues(alpha: 0.7)
+              : EmbunColors.goldDim.withValues(alpha: 0.3),
         ),
       ),
       child: ListTile(
-        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
         leading: PlayerAvatar(
           path: protagonistPath(card),
-          size: 40,
-          ring: isMe ? Colors.amber : Colors.white38,
+          size: 44,
+          ring: isMe ? EmbunColors.gold : EmbunColors.goldDim,
         ),
         title: Row(
           children: [
@@ -479,27 +489,26 @@ class _LobbyPageState extends State<LobbyPage> {
             if (isHostP)
               Container(
                 margin: const EdgeInsets.only(left: 8),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.fromLTRB(2, 1, 8, 1),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: EmbunColors.gold.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GameIcon('host', size: 14),
+                    GameIcon('host', size: 20),
                     SizedBox(width: 3),
                     Text('Host',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.amberAccent)),
+                            fontSize: 11, color: EmbunColors.gold)),
                   ],
                 ),
               ),
           ],
         ),
         subtitle: Text(characterTitle(card)),
-        trailing: GameIcon(ready ? 'centang' : 'wait', size: 24),
+        trailing: GameIcon(ready ? 'centang' : 'wait', size: 32),
       ),
     );
   }
@@ -512,15 +521,8 @@ class _Glass extends StatelessWidget {
   const _Glass({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.62),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: Colors.white12),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) =>
+      OrnatePanel(padding: padding, child: child);
 }
 
 /// Tata letak ruangan yang responsif:
@@ -559,13 +561,7 @@ class _RoomShellState extends State<_RoomShell> {
   Widget _chatPane() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Row(
-        children: [
-          GameIcon('discuss', size: 22),
-          SizedBox(width: 8),
-          Text('Obrolan Desa', style: TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
+      const SectionHeader(icon: 'discuss', title: 'Obrolan Desa'),
       const SizedBox(height: 8),
       Expanded(
         child: ChatPanel(
@@ -586,7 +582,7 @@ class _RoomShellState extends State<_RoomShell> {
       Padding(
         padding: const EdgeInsets.only(right: 8),
         child: ChoiceChip(
-          avatar: const GameIcon('persona', size: 20),
+          avatar: const GameIcon('persona', size: 26),
           label: Text('Ruangan (${widget.players.length})'),
           selected: page == 0,
           visualDensity: VisualDensity.compact,
@@ -597,7 +593,7 @@ class _RoomShellState extends State<_RoomShell> {
         isLabelVisible: unread > 0 && page != 1,
         label: Text('$unread'),
         child: ChoiceChip(
-          avatar: const GameIcon('discuss', size: 20),
+          avatar: const GameIcon('discuss', size: 26),
           label: const Text('Obrolan'),
           selected: page == 1,
           visualDensity: VisualDensity.compact,

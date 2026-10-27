@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 import 'chat_sheet.dart' show sortChat;
 import 'countdown.dart';
 
@@ -120,16 +121,15 @@ class _DiscussionViewState extends State<DiscussionView> {
   void _showEffectLogSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF14221F),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Catatan Persembahan Hari ${widget.day}',
-                style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            SectionHeader(
+                icon: 'logorhistory',
+                title: 'Catatan Persembahan Hari ${widget.day}'),
             const SizedBox(height: 10),
             if (effectLogs.isEmpty)
               const Text('Tidak ada efek tercatat.',
@@ -145,8 +145,8 @@ class _DiscussionViewState extends State<DiscussionView> {
                     final bad = e['kind'] == 'bad';
                     return Row(
                       children: [
-                        GameIcon(bad ? 'alert' : 'helaidaun', size: 22),
-                        const SizedBox(width: 8),
+                        GameIcon(bad ? 'alert' : 'helaidaun', size: 30),
+                        const SizedBox(width: 10),
                         // Jumlah daun per baris sengaja tidak ditampilkan:
                         // akan membocorkan efek yang disamarkan Topeng Warga.
                         Expanded(child: Text(e['label'] as String)),
@@ -166,69 +166,50 @@ class _DiscussionViewState extends State<DiscussionView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const GameIcon('discuss', size: 24),
-            const SizedBox(width: 8),
-            const Text('Musyawarah Senja',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _showEffectLogSheet,
-              icon: const GameIcon('logorhistory', size: 18),
-              label: const Text('Log Efek', style: TextStyle(fontSize: 12)),
-            ),
-            const SizedBox(width: 6),
-            Countdown(deadline: widget.deadline),
-          ],
+        SectionHeader(
+          icon: 'discuss',
+          title: 'Musyawarah Senja',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MedallionButton(
+                icon: 'logorhistory',
+                label: 'Log',
+                size: 34,
+                onTap: _showEffectLogSheet,
+              ),
+              const SizedBox(width: 6),
+              Countdown(deadline: widget.deadline),
+            ],
+          ),
         ),
         for (final c in _clues)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B2A3A),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.lightBlueAccent),
-            ),
-            child: Row(
-              children: [
-                const GameIcon('announcement', size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: Text(c, style: const TextStyle(fontSize: 12))),
-              ],
-            ),
-          ),
+          NoticeStrip(
+              icon: 'announcement', text: c, accent: Colors.lightBlueAccent),
         if (counts.isNotEmpty) ...[
           const SizedBox(height: 6),
           SizedBox(
-            height: 26,
+            height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: 6),
-                    child: Text('Menyerahkan:',
-                        style:
-                        TextStyle(fontSize: 11, color: Colors.white54)),
-                  ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: GameIcon('donations', size: 30),
                 ),
                 for (final p in widget.players)
                   if (counts[p['user_id']] != null)
                     Container(
+                      alignment: Alignment.center,
                       margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: Colors.black38,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: counts[p['user_id']]! >= 2
-                              ? Colors.amberAccent
-                              : Colors.white24,
+                              ? EmbunColors.gold
+                              : EmbunColors.goldDim.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Text(
@@ -241,29 +222,10 @@ class _DiscussionViewState extends State<DiscussionView> {
             ),
           ),
         ],
-        if (mySecrets.isNotEmpty)
-          for (final s in mySecrets)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF332B10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amberAccent),
-              ),
-              child: Row(
-                children: [
-                  const GameIcon('info', size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(s['message'] as String,
-                        style: const TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-        const SizedBox(height: 4),
+        for (final s in mySecrets)
+          NoticeStrip(
+              icon: 'info', text: s['message'] as String, accent: EmbunColors.gold),
+        const SizedBox(height: 6),
         const Text(
           'Ada pengkhianat di antara kalian. Siapa yang mencurigakan?',
           style: TextStyle(fontSize: 12, color: Colors.white60),
@@ -299,16 +261,24 @@ class _DiscussionViewState extends State<DiscussionView> {
                       constraints: const BoxConstraints(maxWidth: 360),
                       decoration: BoxDecoration(
                         color: mine
-                            ? const Color(0xFF2E5A4C)
-                            : const Color(0xFF2A2F36),
-                        borderRadius: BorderRadius.circular(12),
+                            ? const Color(0xFF1F4A38)
+                            : const Color(0xFF1B2523),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: mine
+                              ? EmbunColors.gold.withValues(alpha: 0.4)
+                              : Colors.white12,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(m['name'] as String,
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.white54)),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: mine
+                                      ? EmbunColors.gold
+                                      : EmbunColors.goldDim)),
                           Text(m['body'] as String),
                         ],
                       ),
@@ -334,15 +304,18 @@ class _DiscussionViewState extends State<DiscussionView> {
                 ),
               ),
             ),
-            IconButton(onPressed: _send, icon: const GameIcon('kirim', size: 28)),
+            const SizedBox(width: 8),
+            MedallionButton(icon: 'kirim', size: 44, onTap: _send),
           ],
         ),
-        const SizedBox(height: 4),
-        FilledButton(
-          onPressed: widget.iAmReady ? null : _ready,
-          child: Text(widget.iAmReady
+        const SizedBox(height: 6),
+        EmbunButton(
+          label: widget.iAmReady
               ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
-              : 'Siap memilih'),
+              : 'Siap memilih',
+          icon: widget.iAmReady ? 'wait' : 'vote',
+          expand: true,
+          onPressed: widget.iAmReady ? null : _ready,
         ),
       ],
     );

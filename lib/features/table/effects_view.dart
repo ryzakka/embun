@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 
 List<double> _sat(double s) {
   final inv = 1 - s;
@@ -186,12 +187,13 @@ class _EffectsViewState extends State<EffectsView>
                           key: ValueKey(shown),
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const GameIcon('helaidaun', size: 34),
+                            const GameIcon('helaidaun', size: 46),
                             const SizedBox(width: 8),
                             Text('$shown daun',
                                 style: const TextStyle(
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.bold)),
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: EmbunColors.gold)),
                           ],
                         ),
                       ),
@@ -202,8 +204,27 @@ class _EffectsViewState extends State<EffectsView>
                   alignment: Alignment.topCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: Text('Hasil persembahan hari ${widget.day}',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(4, 2, 16, 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                            color: EmbunColors.gold.withValues(alpha: 0.6)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const GameIcon('hari', size: 36),
+                          const SizedBox(width: 8),
+                          Text('Hasil persembahan hari ${widget.day}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                  color: EmbunColors.gold)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 Positioned.fill(
@@ -233,13 +254,21 @@ class _EffectsViewState extends State<EffectsView>
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: !done
-                        ? const SizedBox(height: 40)
+                        ? const SizedBox(height: 52)
                         : widget.waiting
-                        ? Text(
-                        'Menunggu warga lain... ${widget.readyCount}/${widget.total}')
-                        : FilledButton(
+                        ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const GameIcon('wait', size: 36),
+                        const SizedBox(width: 8),
+                        Text(
+                            'Menunggu warga lain... ${widget.readyCount}/${widget.total}'),
+                      ],
+                    )
+                        : EmbunButton(
+                      label: 'Lanjut',
+                      icon: 'skip',
                       onPressed: widget.onContinue,
-                      child: const Text('Lanjut'),
                     ),
                   ),
                 ),
@@ -317,8 +346,7 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
             child: Transform.scale(
               scale: scale,
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(8, 6, 20, 6),
                 decoration: BoxDecoration(
                   color:
                   bad ? const Color(0xFF3A2A44) : const Color(0xFF2E7D5B),
@@ -330,11 +358,11 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GameIcon(bad ? 'poinmin1' : 'poinplus1', size: 26),
+                    GameIcon(bad ? 'poinmin1' : 'poinplus1', size: 46),
                     const SizedBox(width: 6),
                     Text(widget.row['label'] as String,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+                            fontWeight: FontWeight.bold, fontSize: 18)),
                   ],
                 ),
               ),

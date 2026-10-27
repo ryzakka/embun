@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 
 const kindLabel = {
   'persembahan': 'Persembahan',
@@ -8,19 +9,29 @@ const kindLabel = {
   'penguat': 'Penguat',
 };
 
+const kindIcon = {
+  'persembahan': 'donations',
+  'sekali_pakai': 'item',
+  'penguat': 'plus',
+};
+
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
-/// jenis, dan deskripsi efek. Deskripsi tidak tercetak di gambar, jadi
+/// jenis, harga, dan deskripsi efek. Deskripsi tidak tercetak di gambar, jadi
 /// pemain membacanya di sini.
 Future<void> showCardPreview(BuildContext context, Map<String, dynamic> def) {
   final bad = def['side'] == 'antagonis';
-  final glow = bad ? const Color(0xFFB07CE8) : const Color(0xFF7FE0A0);
+  final glow = bad ? EmbunColors.mist : EmbunColors.leaf;
   final path = cardArtPath(def);
+  final cost = def['cost'] as int?;
   return showDialog<void>(
     context: context,
     builder: (ctx) => Dialog(
-      backgroundColor: const Color(0xFF14221F),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.all(20),
+      child: OrnatePanel(
+        accent: bad ? EmbunColors.mist : EmbunColors.gold,
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -32,15 +43,38 @@ Future<void> showCardPreview(BuildContext context, Map<String, dynamic> def) {
               Text('${def['name'] ?? ''}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(kindLabel[def['kind']] ?? '',
-                  style: const TextStyle(fontSize: 12, color: Colors.white54)),
-              const SizedBox(height: 8),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: EmbunColors.gold)),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GameIcon(kindIcon[def['kind']] ?? 'item', size: 28),
+                  const SizedBox(width: 6),
+                  Text(kindLabel[def['kind']] ?? '',
+                      style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                  if (cost != null) ...[
+                    const SizedBox(width: 16),
+                    GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 28),
+                    const SizedBox(width: 4),
+                    Text('$cost',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: EmbunColors.gold)),
+                  ],
+                ],
+              ),
+              const Divider(height: 22),
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              TextButton(
+              const SizedBox(height: 14),
+              EmbunButton(
+                label: 'Tutup',
+                icon: 'silang',
+                kind: EmbunButtonKind.secondary,
+                height: 46,
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Tutup'),
               ),
             ],
           ),
@@ -99,9 +133,18 @@ class CardTile extends StatelessWidget {
             color: bad ? const Color(0xFF241F2E) : const Color(0xFF1F3A33),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? Colors.amberAccent : Colors.white24,
-              width: selected ? 3 : 1,
+              color: selected
+                  ? EmbunColors.gold
+                  : EmbunColors.goldDim.withValues(alpha: 0.6),
+              width: selected ? 3 : 1.2,
             ),
+            boxShadow: selected
+                ? [
+              BoxShadow(
+                  color: EmbunColors.gold.withValues(alpha: 0.45),
+                  blurRadius: 14),
+            ]
+                : null,
           ),
           child: path == null
               ? _textBody(bad, cost)
@@ -124,20 +167,23 @@ class CardTile extends StatelessWidget {
               top: 6,
               right: 6,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.fromLTRB(2, 1, 8, 1),
                 decoration: BoxDecoration(
                   color: Colors.black87,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white24),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: EmbunColors.gold.withValues(alpha: 0.7)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 16),
+                    GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 24),
                     const SizedBox(width: 3),
                     Text(badge ?? '$cost',
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: EmbunColors.gold)),
                   ],
                 ),
               ),
@@ -155,7 +201,7 @@ class CardTile extends StatelessWidget {
             const Positioned(
               left: 6,
               bottom: 6,
-              child: GameIcon('info', size: 18),
+              child: GameIcon('info', size: 24),
             ),
         ],
       ),
@@ -179,7 +225,7 @@ class CardTile extends StatelessWidget {
         if (showCost)
           Row(
             children: [
-              GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 16),
+              GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 24),
               const SizedBox(width: 4),
               Text(badge ?? '$cost'),
             ],

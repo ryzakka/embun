@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 import '../table/table_page.dart';
 import '../../data/game_repository.dart';
 
@@ -198,18 +199,26 @@ class _PrologueFlowState extends State<PrologueFlow>
           Positioned(
             right: 8,
             top: 8,
-            child: TextButton.icon(
-              onPressed: _toShuffling,
-              icon: const GameIcon('skip2', size: 20),
-              label: const Text('Lewati'),
+            child: MedallionButton(
+              icon: 'skip2',
+              label: 'Lewati',
+              size: 42,
+              onTap: _toShuffling,
             ),
           ),
           const Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: EdgeInsets.all(14),
-              child: Text('Ketuk untuk lanjut',
-                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GameIcon('touch', size: 30),
+                  SizedBox(width: 6),
+                  Text('Ketuk untuk lanjut',
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
             ),
           ),
         ],
@@ -226,7 +235,11 @@ class _PrologueFlowState extends State<PrologueFlow>
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('Mengocok nasib dan peran di desa...',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.6,
+                  color: EmbunColors.gold)),
           const SizedBox(height: 24),
           AnimatedBuilder(
             animation: _shuffleCtrl,
@@ -296,7 +309,7 @@ class _PrologueFlowState extends State<PrologueFlow>
               ),
               const SizedBox(height: 14),
               SizedBox(
-                height: 76,
+                height: 100,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   child: revealed
@@ -305,11 +318,20 @@ class _PrologueFlowState extends State<PrologueFlow>
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       children: [
-                        Text(isAntag ? 'Si Terbisik' : 'Warga Desa',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: glow)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GameIcon(isAntag ? 'bulirhitam' : 'helaidaun',
+                                size: 36),
+                            const SizedBox(width: 8),
+                            Text(isAntag ? 'Si Terbisik' : 'Warga Desa',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.6,
+                                    color: glow)),
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           isAntag
@@ -331,9 +353,10 @@ class _PrologueFlowState extends State<PrologueFlow>
                   ),
                 ),
               ),
-              FilledButton(
+              EmbunButton(
+                label: 'Aku sudah ingat',
+                icon: 'centang',
                 onPressed: role == null ? null : _openTable,
-                child: const Text('Aku sudah ingat'),
               ),
             ],
           ),

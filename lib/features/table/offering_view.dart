@@ -4,6 +4,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import 'card_tile.dart';
+import '../common/ornate.dart';
 
 class OfferingView extends StatefulWidget {
   final GameRepository repo;
@@ -144,12 +145,23 @@ class _OfferingViewState extends State<OfferingView> {
         Expanded(
           child: Column(
             children: [
-              const GameIcon('titlepersembahan', width: 180, height: 36),
-              const SizedBox(height: 6),
+              const GameIcon('titlepersembahan', width: 200, height: 54),
+              const SizedBox(height: 4),
               Expanded(child: TreePortrait(leaves: widget.leaves)),
-              const SizedBox(height: 6),
-              Text('${widget.leaves} daun',
-                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const GameIcon('helaidaun', size: 40),
+                  const SizedBox(width: 8),
+                  Text('${widget.leaves} daun',
+                      style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: EmbunColors.gold)),
+                ],
+              ),
+              const SizedBox(height: 2),
               Text(
                 widget.isAntag
                     ? 'Wajib menyumbang: Papan Penanda sudah terpilih. Tambah 1 kartu lagi jika mau.'
@@ -158,22 +170,39 @@ class _OfferingViewState extends State<OfferingView> {
                 textAlign: TextAlign.center,
               ),
               if (_fog != null)
-                Text(
-                  'Malam ini kabut akan menggerogoti $_fog daun.',
-                  style: const TextStyle(
-                      color: Color(0xFFB07CE8), fontSize: 12),
-                  textAlign: TextAlign.center,
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const GameIcon('bulirhitam', size: 26),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Malam ini kabut akan menggerogoti $_fog daun.',
+                          style: const TextStyle(
+                              color: EmbunColors.mist, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
         ),
         if (_needsTarget) ...[
           const SizedBox(height: 6),
-          const Text('Pilih sasaran kartumu:',
-              style: TextStyle(fontSize: 12, color: Colors.amberAccent)),
+          const Row(
+            children: [
+              GameIcon('touch', size: 26),
+              SizedBox(width: 6),
+              Text('Pilih sasaran kartumu:',
+                  style: TextStyle(fontSize: 12, color: EmbunColors.gold)),
+            ],
+          ),
           const SizedBox(height: 4),
           SizedBox(
-            height: 34,
+            height: 38,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -183,7 +212,6 @@ class _OfferingViewState extends State<OfferingView> {
                     child: ChoiceChip(
                       label: Text(p['name'] as String),
                       selected: targetId == p['user_id'],
-                      visualDensity: VisualDensity.compact,
                       onSelected: (_) =>
                           setState(() => targetId = p['user_id'] as String),
                     ),
@@ -212,13 +240,12 @@ class _OfferingViewState extends State<OfferingView> {
             },
           ),
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: busy || sel.isEmpty ? null : _submit,
-            child: Text('Serahkan (${sel.length}/2)'),
-          ),
+        const SizedBox(height: 10),
+        EmbunButton(
+          label: 'Serahkan (${sel.length}/2)',
+          icon: 'donations',
+          expand: true,
+          onPressed: busy || sel.isEmpty ? null : _submit,
         ),
       ],
     );

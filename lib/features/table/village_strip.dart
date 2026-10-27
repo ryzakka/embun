@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 
 class _Bubble {
   final String emoji;
@@ -146,15 +147,23 @@ class _VillageStripState extends State<VillageStrip> {
               children: [
                 PlayerAvatar(
                   path: protagonistPath(p['character_card'] as String),
-                  size: 34,
-                  ring: me ? Colors.amber : Colors.white38,
+                  size: 38,
+                  ring: me
+                      ? EmbunColors.gold
+                      : EmbunColors.goldDim.withValues(alpha: 0.8),
                 ),
                 Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    width: 11,
-                    height: 11,
+                  right: -5,
+                  bottom: -4,
+                  child: ready
+                      ? const DecoratedBox(
+                    decoration: BoxDecoration(
+                        shape: BoxShape.circle, color: Color(0xFF07130F)),
+                    child: GameIcon('centang', size: 20),
+                  )
+                      : Container(
+                    width: 12,
+                    height: 12,
                     decoration: BoxDecoration(
                       color: dot,
                       shape: BoxShape.circle,
@@ -164,9 +173,13 @@ class _VillageStripState extends State<VillageStrip> {
                 ),
                 if (jailed)
                   const Positioned(
-                    left: -4,
-                    top: -4,
-                    child: GameIcon('lock', size: 18),
+                    left: -6,
+                    top: -6,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle, color: Color(0xFF07130F)),
+                      child: GameIcon('lock', size: 22),
+                    ),
                   ),
               ],
             ),
@@ -177,7 +190,7 @@ class _VillageStripState extends State<VillageStrip> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                color: me ? Colors.amberAccent : Colors.white70,
+                color: me ? EmbunColors.gold : Colors.white70,
               ),
             ),
           ],
@@ -190,7 +203,7 @@ class _VillageStripState extends State<VillageStrip> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     return SizedBox(
-      height: 72,
+      height: 78,
       child: Row(
         children: [
           Expanded(
@@ -199,10 +212,25 @@ class _VillageStripState extends State<VillageStrip> {
               children: [for (final p in widget.players) _cell(p, now)],
             ),
           ),
-          IconButton(
-            tooltip: 'Isyarat',
-            onPressed: widget.onEmoteButton,
-            icon: const Text('😀', style: TextStyle(fontSize: 22)),
+          Tooltip(
+            message: 'Isyarat',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.onEmoteButton,
+              child: Container(
+                width: 44,
+                height: 44,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF0C1B17),
+                  border: Border.all(
+                      color: EmbunColors.gold.withValues(alpha: 0.7), width: 1.5),
+                ),
+                child: const Text('😀', style: TextStyle(fontSize: 20)),
+              ),
+            ),
           ),
         ],
       ),

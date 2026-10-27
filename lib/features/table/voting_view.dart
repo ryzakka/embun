@@ -4,6 +4,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../../data/errors.dart';
+import '../common/ornate.dart';
 
 class VotingView extends StatefulWidget {
   final GameRepository repo;
@@ -80,8 +81,8 @@ class _VotingViewState extends State<VotingView> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Siapa Si Terbisik?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SectionHeader(icon: 'vote', title: 'Siapa Si Terbisik?'),
+            const SizedBox(height: 6),
             Text(
               'Butuh $need suara. Siapa pun yang dituduh mayoritas dikurung '
                   'sehari dan Hayu kehilangan 1 daun. Si Terbisik tertangkap '
@@ -103,15 +104,19 @@ class _VotingViewState extends State<VotingView> {
                         margin: EdgeInsets.symmetric(
                             vertical: 3, horizontal: sel ? 0 : 4),
                         decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: sel ? Colors.redAccent : Colors.transparent,
+                            color: sel
+                                ? EmbunColors.blood
+                                : EmbunColors.goldDim.withValues(alpha: 0.35),
                             width: 2,
                           ),
                           boxShadow: [
                             if (sel)
                               BoxShadow(
-                                color: Colors.redAccent.withValues(alpha: 0.45),
+                                color:
+                                EmbunColors.blood.withValues(alpha: 0.45),
                                 blurRadius: 16,
                               ),
                           ],
@@ -119,21 +124,20 @@ class _VotingViewState extends State<VotingView> {
                         child: ListTile(
                           selected: sel,
                           selectedTileColor:
-                          Colors.redAccent.withValues(alpha: 0.12),
+                          EmbunColors.blood.withValues(alpha: 0.12),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                           leading: PlayerAvatar(
                             path: protagonistPath(card),
-                            size: 46,
-                            ring: sel ? Colors.redAccent : Colors.white38,
+                            size: 48,
+                            ring: sel ? EmbunColors.blood : EmbunColors.goldDim,
                           ),
                           title: Text(p['name'] as String),
                           trailing: AnimatedScale(
                             scale: sel ? 1 : 0,
                             duration: const Duration(milliseconds: 260),
                             curve: Curves.elasticOut,
-                            child: const Text('👀',
-                                style: TextStyle(fontSize: 24)),
+                            child: const GameIcon('danger', size: 36),
                           ),
                           onTap: busy
                               ? null
@@ -147,17 +151,29 @@ class _VotingViewState extends State<VotingView> {
                 ],
               ),
             ),
-            Wrap(
-              spacing: 8,
+            const SizedBox(height: 8),
+            Row(
               children: [
-                FilledButton(
-                  onPressed:
-                  busy || target == null ? null : () => _submit(target),
-                  child: const Text('Kunci suara'),
+                Expanded(
+                  flex: 3,
+                  child: EmbunButton(
+                    label: 'Kunci suara',
+                    icon: 'lock',
+                    expand: true,
+                    onPressed:
+                    busy || target == null ? null : () => _submit(target),
+                  ),
                 ),
-                OutlinedButton(
-                  onPressed: busy ? null : () => _submit(null),
-                  child: const Text('Tidak memilih'),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: EmbunButton(
+                    label: 'Tidak memilih',
+                    icon: 'skip',
+                    kind: EmbunButtonKind.secondary,
+                    expand: true,
+                    onPressed: busy ? null : () => _submit(null),
+                  ),
                 ),
               ],
             ),

@@ -3,6 +3,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 import 'emote_panel.dart' show kEmotes;
 
 /// Aksi terhadap satu pemain: isyarat (semua fase), Beri Embun dan Tukar
@@ -20,7 +21,6 @@ Future<void> showPlayerSheet(
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF14221F),
       builder: (_) => _PlayerSheet(
         repo: repo,
         gameId: gameId,
@@ -92,7 +92,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+          16, 0, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -100,21 +100,23 @@ class _PlayerSheetState extends State<_PlayerSheet> {
           children: [
             Row(
               children: [
-                PlayerAvatar(path: protagonistPath(card), size: 44),
+                PlayerAvatar(
+                    path: protagonistPath(card), size: 54, ring: EmbunColors.gold),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_name,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                  ],
+                Expanded(
+                  child: Text(_name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: EmbunColors.gold)),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            const Text('Isyarat',
-                style: TextStyle(fontSize: 12, color: Colors.white60)),
+            const SectionHeader(icon: 'discuss', title: 'Isyarat', iconSize: 28),
+            const SizedBox(height: 6),
             Wrap(
               spacing: 2,
               children: [
@@ -130,43 +132,54 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(6),
-                      child: Text(e, style: const TextStyle(fontSize: 24)),
+                      child: Text(e, style: const TextStyle(fontSize: 26)),
                     ),
                   ),
               ],
             ),
-            const Divider(height: 22),
+            const SizedBox(height: 14),
             if (!widget.socialOpen)
-              const Text(
-                'Memberi embun dan menukar kartu hanya bisa di hari biasa.',
-                style: TextStyle(fontSize: 12, color: Colors.white54),
+              const NoticeStrip(
+                icon: 'lock',
+                text: 'Memberi embun dan menukar kartu hanya bisa di hari biasa.',
+                accent: EmbunColors.goldDim,
               )
             else ...[
-              Text('Beri embun (saldomu ${widget.balance.floor()})',
-                  style: const TextStyle(fontSize: 12, color: Colors.white60)),
-              const SizedBox(height: 6),
+              SectionHeader(
+                icon: 'bulirembun',
+                title: 'Beri embun',
+                iconSize: 28,
+                trailing: Text('saldo ${widget.balance.floor()}',
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white70)),
+              ),
+              const SizedBox(height: 10),
               Wrap(
-                spacing: 8,
+                spacing: 18,
                 children: [
                   for (final n in [1, 2, 3])
-                    OutlinedButton.icon(
-                      onPressed: busy || widget.balance < n
+                    MedallionButton(
+                      icon: 'bulirembun',
+                      label: '×$n',
+                      size: 52,
+                      onTap: busy || widget.balance < n
                           ? null
                           : () => _run(
                             () => widget.repo
                             .giveEmbun(widget.gameId, _uid, n),
                         closeWith: 'Kamu memberi $_name $n embun',
                       ),
-                      icon: const GameIcon('bulirembun', size: 18),
-                      label: Text('$n'),
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () => setState(() => tradeOpen = !tradeOpen),
-                icon: const GameIcon('barter', size: 22),
-                label: const Text('Tukar kartu'),
+              const SizedBox(height: 14),
+              EmbunButton(
+                label: tradeOpen ? 'Tutup daftar kartu' : 'Tukar kartu',
+                icon: 'barter',
+                kind: EmbunButtonKind.secondary,
+                expand: true,
+                onPressed:
+                busy ? null : () => setState(() => tradeOpen = !tradeOpen),
               ),
               if (tradeOpen) ...[
                 const SizedBox(height: 6),
@@ -203,7 +216,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(err!,
                     style:
-                    const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                    const TextStyle(color: EmbunColors.blood, fontSize: 12)),
               ),
           ],
         ),
