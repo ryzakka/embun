@@ -14,6 +14,157 @@ double _smooth(double x) => x * x * (3 - 2 * x);
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
+/// Sebab permainan berakhir. Bila server mengirim `end_reason`
+/// (daun_penuh | tertangkap | antag_left | daun_habis | waktu_habis) nilai itu
+/// dipakai; kalau tidak, sebabnya disimpulkan dari pemenang + jumlah daun.
+enum _Kind {
+  bloom, // warga menang: daun penuh, Hayu mekar
+  caughtBarren, // Si Terbisik tertangkap, Hayu nyaris gundul (<= 12 daun)
+  caughtMid, // tertangkap, Hayu setengah pulih (13-20 daun)
+  caughtHigh, // tertangkap, Hayu hampir mekar (21-29 daun)
+  left, // Si Terbisik meninggalkan permainan
+  withered, // Si Terbisik menang: daun habis
+  dusk, // Si Terbisik menang: waktu habis, Hayu masih bertahan
+}
+
+class _Spec {
+  final String label, title, tagline;
+  final bool good; // gaya emas (warga) vs ungu (Si Terbisik)
+  final int pulih; // menang: gambar awal N tahap lebih buruk
+  final int layu; // kalah: gambar awal N tahap lebih sehat
+  final bool sakura;
+  final double rays, motes; // kekuatan sinar & kilau (0..1)
+  final bool petals, ash, cracks;
+  final double shake;
+  final double mist0, mist1; // selubung kabut gelap di awal & akhir tahap pohon
+  final double satFrom, satTo;
+  final double flash; // alpha puncak kilatan klimaks
+  final int countFrom;
+  const _Spec({
+    required this.label,
+    required this.title,
+    required this.tagline,
+    required this.good,
+    this.pulih = 0,
+    this.layu = 0,
+    this.sakura = false,
+    this.rays = 0,
+    this.motes = 1,
+    this.petals = false,
+    this.ash = false,
+    this.cracks = false,
+    this.shake = 0,
+    this.mist0 = 0,
+    this.mist1 = 0,
+    this.satFrom = 1,
+    this.satTo = 1,
+    this.flash = 0.6,
+    this.countFrom = 0,
+  });
+}
+
+const _caught = 'SI TERBISIK TERTANGKAP';
+
+_Spec _specFor(_Kind k) {
+  switch (k) {
+    case _Kind.bloom:
+      return const _Spec(
+        label: 'WARGA DESA MENANG',
+        title: 'Hayu mekar kembali!',
+        tagline: 'Daun-daunnya pulih sepenuhnya, dan lembah bernapas lega.',
+        good: true,
+        pulih: 3,
+        sakura: true,
+        rays: 1,
+        motes: 1,
+        petals: true,
+        flash: 0.85,
+      );
+    case _Kind.caughtBarren:
+      return const _Spec(
+        label: _caught,
+        title: 'Hayu tak sempat tumbuh, tetapi sang Terbisik telah tiada.',
+        tagline: 'Dahannya masih telanjang. Kelak, tunas pertama akan datang.',
+        good: true,
+        pulih: 1,
+        rays: 0.55,
+        motes: 0.35,
+        mist0: 0.45,
+        satFrom: 0.55,
+        satTo: 0.85,
+        flash: 0.5,
+      );
+    case _Kind.caughtMid:
+      return const _Spec(
+        label: _caught,
+        title: 'Bayangan itu tersingkap, dan Hayu mulai bernapas lagi.',
+        tagline: 'Beberapa daun muda mulai tampak di dahannya.',
+        good: true,
+        pulih: 2,
+        rays: 0.8,
+        motes: 0.7,
+        mist0: 0.4,
+        satFrom: 0.6,
+        flash: 0.65,
+      );
+    case _Kind.caughtHigh:
+      return const _Spec(
+        label: _caught,
+        title: 'Sang Terbisik tumbang, dan Hayu nyaris pulih!',
+        tagline: 'Sedikit lagi, dan ia akan mekar seutuhnya.',
+        good: true,
+        pulih: 3,
+        rays: 1,
+        motes: 0.9,
+        mist0: 0.3,
+        satFrom: 0.7,
+        flash: 0.75,
+      );
+    case _Kind.left:
+      return const _Spec(
+        label: 'SI TERBISIK KABUR',
+        title: 'Sang Terbisik lari dari desa, dan kabut pun surut.',
+        tagline: 'Tanpa bisikannya, Hayu perlahan menarik napas.',
+        good: true,
+        pulih: 2,
+        rays: 0.7,
+        motes: 0.6,
+        mist0: 0.4,
+        satFrom: 0.6,
+        flash: 0.6,
+      );
+    case _Kind.withered:
+      return const _Spec(
+        label: 'SI TERBISIK MENANG',
+        title: 'Hayu layu, desa kembali redup...',
+        tagline: 'Daun terakhir gugur, dan kabut menelan lembah.',
+        good: false,
+        layu: 5,
+        ash: true,
+        cracks: true,
+        shake: 1,
+        mist1: 0.38,
+        satTo: 0.45,
+        flash: 0.6,
+        countFrom: 30,
+      );
+    case _Kind.dusk:
+      return const _Spec(
+        label: 'SI TERBISIK MENANG',
+        title: 'Malam menutup lembah, dan sang Terbisik lolos.',
+        tagline: 'Waktu habis sebelum bayangan itu tertangkap.',
+        good: false,
+        layu: 2,
+        ash: true,
+        shake: 0.25,
+        mist1: 0.5,
+        satTo: 0.6,
+        flash: 0.35,
+        countFrom: 30,
+      );
+  }
+}
+
 /// Sinematik penutup permainan (sebelum layar rekap).
 ///
 /// Urutan (total 18 detik, ketuk "Lewati" kapan saja):
@@ -40,6 +191,9 @@ class EndingCinematic extends StatefulWidget {
   final List<Map<String, dynamic>> players;
   final VoidCallback onDone;
 
+  /// Opsional: games.end_reason bila server menyediakannya.
+  final String? endReason;
+
   const EndingCinematic({
     super.key,
     required this.wargaMenang,
@@ -49,6 +203,7 @@ class EndingCinematic extends StatefulWidget {
     required this.players,
     required this.onDone,
     this.verdict,
+    this.endReason,
   });
 
   @override
@@ -69,6 +224,7 @@ class _EndingCinematicState extends State<EndingCinematic>
   late final AnimationController _ctl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: _totalMs));
 
+  late final _Spec _spec;
   late final List<String?> _frames;
   late final List<(double, double)> _windows;
   final List<_Part> _parts = _makeParts();
@@ -82,6 +238,23 @@ class _EndingCinematicState extends State<EndingCinematic>
 
   bool get _win => widget.wargaMenang;
 
+  _Kind _resolveKind() {
+    final r = widget.endReason;
+    final l = widget.leaves;
+    _Kind tier() => l <= 12
+        ? _Kind.caughtBarren
+        : (l <= 20 ? _Kind.caughtMid : _Kind.caughtHigh);
+    if (_win) {
+      if (r == 'antag_left') return _Kind.left;
+      if (r == 'daun_penuh') return _Kind.bloom;
+      if (r == 'tertangkap') return tier();
+      return l >= 30 ? _Kind.bloom : tier(); // tanpa data: simpulkan dari daun
+    }
+    if (r == 'waktu_habis') return _Kind.dusk;
+    if (r == 'daun_habis') return _Kind.withered;
+    return l <= 0 ? _Kind.withered : _Kind.dusk;
+  }
+
   bool get _atEnd {
     final v = _ctl.value;
     if (v >= 0.97) return true;
@@ -91,6 +264,7 @@ class _EndingCinematicState extends State<EndingCinematic>
   @override
   void initState() {
     super.initState();
+    _spec = _specFor(_resolveKind());
     _buildFrames();
     _ctl.addListener(_onTick);
     _ctl.forward();
@@ -143,18 +317,18 @@ class _EndingCinematicState extends State<EndingCinematic>
     final fin = ((30 - widget.leaves.clamp(0, 30)) * 9.99 / 30).floor();
     final idx = <int>[];
     if (_win) {
-      for (var i = math.min(9, fin + 3); i >= fin; i--) {
+      for (var i = math.min(9, fin + _spec.pulih); i >= fin; i--) {
         idx.add(i);
       }
     } else {
-      for (var i = math.max(0, fin - 5); i <= fin; i++) {
+      for (var i = math.max(0, fin - _spec.layu); i <= fin; i++) {
         idx.add(i);
       }
     }
     final frames = <String?>[
       for (final i in idx) AssetCatalog.I.file(pohonDir, 'pohon$i'),
     ];
-    final sakura = _win && widget.leaves >= 30;
+    final sakura = _spec.sakura && widget.leaves >= 30;
     if (sakura) frames.add(AssetCatalog.I.file(pohonDir, 'pohon0-sakura'));
     _frames = frames;
 
@@ -219,30 +393,32 @@ class _EndingCinematicState extends State<EndingCinematic>
   Widget _scene(BuildContext context, double w, double h, double barH) {
     final t = _ctl.value;
     final sec = t * _totalMs / 1000;
-    final win = _win;
+    final sp = _spec;
+    final win = sp.good;
     final topPad = MediaQuery.of(context).padding.top;
 
     // Kamera + getar.
     final zoom = 1.05 + 0.16 * t;
-    final shakeEnv = win
-        ? 0.0
-        : _smooth(_seg(t, 0.36, 0.46)) * (1 - _smooth(_seg(t, 0.50, 0.58)));
-    final amp = 7 * shakeEnv;
+    final shakeEnv =
+        _smooth(_seg(t, 0.36, 0.46)) * (1 - _smooth(_seg(t, 0.50, 0.58)));
+    final amp = 7 * sp.shake * shakeEnv;
     final shake = Offset(math.sin(sec * 63) * amp, math.cos(sec * 51) * amp * 0.7);
 
-    final sat = win ? 1.0 : 1 - 0.55 * _smooth(_seg(t, 0.07, 0.50));
+    final stage = _smooth(_seg(t, 0.07, 0.50));
+    final sat = _lerp(sp.satFrom, sp.satTo, stage);
+    final mist = _lerp(sp.mist0, sp.mist1, stage);
 
     // Selubung & efek.
     final bloom = win ? _smooth(_seg(t, 0.46, 0.60)) : 0.0;
     final flashPeak = math.pow(math.sin(math.pi * _seg(t, 0.44, 0.58)), 2)
         .toDouble();
     final moteEnv = win
-        ? _smooth(_seg(t, 0.05, 0.30)) * 0.4 + bloom * 0.6
+        ? (_smooth(_seg(t, 0.05, 0.30)) * 0.4 + bloom * 0.6) * sp.motes
         : _smooth(_seg(t, 0.10, 0.50));
-    final fallEnv = win
+    final fallEnv = sp.petals
         ? _smooth(_seg(t, 0.50, 0.66))
-        : _smooth(_seg(t, 0.25, 0.55)) * 0.85;
-    final crackP = win ? 0.0 : _smooth(_seg(t, 0.40, 0.52));
+        : (sp.ash ? _smooth(_seg(t, 0.25, 0.55)) * 0.85 : 0.0);
+    final crackP = sp.cracks ? _smooth(_seg(t, 0.40, 0.52)) : 0.0;
     final crackFade = 1 - _smooth(_seg(t, 0.55, 0.68));
 
     final fadeIn = 1 - _smooth(_seg(t, 0.0, 0.05));
@@ -275,27 +451,31 @@ class _EndingCinematicState extends State<EndingCinematic>
                 center: const Alignment(0.6, -0.8),
                 radius: 1.3,
                 colors: [
-                  const Color(0xFFFFE9A6)
-                      .withValues(alpha: 0.10 + 0.30 * bloom),
+                  const Color(0xFFFFE9A6).withValues(
+                      alpha: (0.10 + 0.30 * bloom) * sp.rays.clamp(0.3, 1.0)),
                   Colors.transparent,
                 ],
               ),
             ),
           )
-              : ColoredBox(
-            color: const Color(0xFF120A1E).withValues(
-                alpha: 0.38 * _smooth(_seg(t, 0.10, 0.50))),
-          ),
+              : const SizedBox.shrink(),
         ),
+        // Kabut gelap: menipis saat Si Terbisik tumbang, menebal saat ia menang.
+        if (mist > 0.005)
+          IgnorePointer(
+            child: ColoredBox(
+              color: const Color(0xFF120A1E).withValues(alpha: mist),
+            ),
+          ),
 
-        if (win)
+        if (win && sp.rays > 0)
           IgnorePointer(
             child: CustomPaint(
-              painter: _RaysPainter(sec: sec, a: bloom),
+              painter: _RaysPainter(sec: sec, a: bloom * sp.rays),
               size: Size.infinite,
             ),
           ),
-        if (!win && crackP > 0 && crackFade > 0)
+        if (sp.cracks && crackP > 0 && crackFade > 0)
           IgnorePointer(
             child: CustomPaint(
               painter: _CrackPainter(
@@ -308,6 +488,7 @@ class _EndingCinematicState extends State<EndingCinematic>
             painter: _FxPainter(
               sec: sec,
               win: win,
+              petals: sp.petals,
               moteEnv: moteEnv,
               fallEnv: fallEnv,
               parts: _parts,
@@ -337,7 +518,7 @@ class _EndingCinematicState extends State<EndingCinematic>
           IgnorePointer(
             child: ColoredBox(
               color: (win ? const Color(0xFFFFF2C0) : const Color(0xFF2A1048))
-                  .withValues(alpha: (win ? 0.85 : 0.6) * flashPeak),
+                  .withValues(alpha: sp.flash * flashPeak),
             ),
           ),
 
@@ -368,8 +549,18 @@ class _EndingCinematicState extends State<EndingCinematic>
         Positioned(
           left: 24,
           right: 24,
+          top: topPad + barH + 10,
           bottom: barH + 84,
-          child: _title(t),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: math.max(160.0, w - 48)),
+                child: _title(t),
+              ),
+            ),
+          ),
         ),
 
         // Pengungkapan Si Terbisik.
@@ -453,20 +644,20 @@ class _EndingCinematicState extends State<EndingCinematic>
   }
 
   Widget _title(double t) {
-    final win = _win;
+    final sp = _spec;
+    final win = sp.good;
     final appear = _seg(t, 0.50, 0.62);
     final out = _antag != null ? _smooth(_seg(t, 0.70, 0.76)) : 0.0;
     if (appear <= 0 || out >= 1) return const SizedBox.shrink();
 
     final color = win ? EmbunColors.cream : const Color(0xFFE6D8F5);
     final glow = win ? EmbunColors.gold : EmbunColors.mist;
-    final label = win ? 'WARGA DESA MENANG' : 'SI TERBISIK MENANG';
-    final title = win ? 'Hayu mekar kembali!' : 'Hayu layu, desa kembali redup...';
+    final label = sp.label;
+    final title = sp.title;
 
-    final countT = _smooth(_seg(t, 0.62, 0.70));
-    final shown = win
-        ? _lerp(0, widget.leaves.toDouble(), countT)
-        : _lerp(30, widget.leaves.toDouble(), countT);
+    final countT = _smooth(_seg(t, 0.64, 0.70));
+    final shown =
+    _lerp(sp.countFrom.toDouble(), widget.leaves.toDouble(), countT);
 
     return Opacity(
       opacity: 1 - out,
@@ -493,20 +684,32 @@ class _EndingCinematicState extends State<EndingCinematic>
               t: appear,
               color: color,
               glow: glow,
-              size: 30,
+              size: title.length > 34 ? 24 : 30,
               spacing: _lerp(10, 1.5, _smooth(appear)),
             ),
+            const SizedBox(height: 8),
+            Opacity(
+              opacity: _smooth(_seg(t, 0.58, 0.64)),
+              child: Text(
+                sp.tagline,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 14, height: 1.3, color: Colors.white70),
+              ),
+            ),
             if (widget.verdict != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Opacity(
-                opacity: _smooth(_seg(t, 0.60, 0.66)),
+                opacity: _smooth(_seg(t, 0.62, 0.67)),
                 child: Text(
                   widget.verdict!,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontStyle: FontStyle.italic,
-                      color: Colors.white70),
+                      color: Colors.white54),
                 ),
               ),
             ],
@@ -746,12 +949,14 @@ List<List<Offset>> _makeCracks() {
 class _FxPainter extends CustomPainter {
   final double sec;
   final bool win;
+  final bool petals; // true: kelopak jatuh; false: abu
   final double moteEnv;
   final double fallEnv;
   final List<_Part> parts;
   const _FxPainter({
     required this.sec,
     required this.win,
+    required this.petals,
     required this.moteEnv,
     required this.fallEnv,
     required this.parts,
@@ -785,7 +990,7 @@ class _FxPainter extends CustomPainter {
         canvas.save();
         canvas.translate(x, y);
         canvas.rotate(sec * p.sway + p.phase * 6.283);
-        if (win) {
+        if (petals) {
           paint.color = (p.phase > 0.5
               ? const Color(0xFFFFE4EC)
               : const Color(0xFFF7B6C8))

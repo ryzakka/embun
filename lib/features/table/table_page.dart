@@ -15,6 +15,7 @@ import 'day_transition.dart';
 import 'day_view.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
+import 'jail_verdict_scene.dart';
 import 'emote_panel.dart';
 import 'ending_cinematic.dart';
 import 'offering_ceremony.dart';
@@ -246,7 +247,46 @@ class _TablePageState extends State<TablePage> {
       'verdict': (g['verdict_day'] == day - 1 && g['verdict'] != null)
           ? g['verdict'] as String
           : null,
+      // Siapa yang dikurung diambil dari server; sementara itu layar gelap.
+      'jailPending': day > 1,
+      'jail': null,
     };
+    if (day > 1) _resolveJail(day);
+  }
+
+  /// Ambil pemain yang dikurung hari ini; bila ada, putar adegan vonis
+  /// sebelum adegan fajar.
+  Future<void> _resolveJail(int day) async {
+    final rows = await repo.jailedAt(widget.gameId, day);
+    if (!mounted) return;
+    final cur = _dayIntro;
+    if (cur == null || cur['kind'] != 'day' || cur['day'] != day) return;
+    setState(() {
+      cur['jailPending'] = false;
+      cur['jail'] = rows.isEmpty ? null : rows.first;
+    });
+  }
+
+  bool get _jailHolds {
+    final d = _dayIntro;
+    return d != null &&
+        d['kind'] == 'day' &&
+        (d['jailPending'] == true || d['jail'] != null);
+  }
+
+  Widget _jailLayer() {
+    final intro = _dayIntro!;
+    final j = intro['jail'] as Map<String, dynamic>?;
+    if (j == null) return const ColoredBox(color: Color(0xFF05080F));
+    return JailVerdictScene(
+      key: ValueKey('jail${intro['day']}'),
+      name: j['name'] as String,
+      card: j['character_card'] as String?,
+      isMe: j['user_id'] == repo.myId,
+      onDone: () {
+        if (mounted) setState(() => intro['jail'] = null);
+      },
+    );
   }
 
   void _toast(String m) =>
@@ -469,7 +509,9 @@ class _TablePageState extends State<TablePage> {
               sceneHeight: _narrow ? 190 : 240,
             ),
           ),
-          if (_dayIntro != null)
+          if (_dayIntro != null && _jailHolds)
+            Positioned.fill(child: _jailLayer()),
+          if (_dayIntro != null && !_jailHolds)
             Positioned.fill(
               child: _dayIntro!['kind'] == 'offering'
                   ? OfferingTransition(
@@ -810,7 +852,7 @@ class _TablePageState extends State<TablePage> {
             child: showVerdict
                 ? Padding(
               padding: EdgeInsets.only(top: gap),
-              child: _verdictCard(verdict!, day,
+              child: _verdictCard(verdict, day,
                   compact: narrow || _short),
             )
                 : const SizedBox(width: double.infinity),
@@ -1208,6 +1250,7 @@ class _TablePageState extends State<TablePage> {
         wargaMenang: wargaMenang,
         leaves: leaves,
         verdict: verdict,
+        endReason: g['end_reason'] as String?,
         secrets: secretsFuture!,
         usernames: usernamesFuture!,
         players: players,

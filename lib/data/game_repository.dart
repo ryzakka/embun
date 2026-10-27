@@ -246,6 +246,22 @@ class GameRepository {
     };
   }
 
+  /// Pemain yang dikurung pada [day] (hasil voting hari sebelumnya).
+  /// Kosong bila tidak ada, atau bila gagal memuat.
+  Future<List<Map<String, dynamic>>> jailedAt(String gameId, int day) async {
+    try {
+      final rows = await _db
+          .from('game_players')
+          .select('user_id, name, character_card')
+          .eq('game_id', gameId)
+          .eq('jailed_day', day)
+          .timeout(const Duration(seconds: 2));
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Null bila permainan belum selesai.
   Future<Map<String, dynamic>?> recap(String gameId) async {
     final r = await _db.rpc('game_recap', params: {'p_game': gameId});
