@@ -101,9 +101,11 @@ class _TablePageState extends State<TablePage> {
     _subs.add(repo.myState(id).listen((s) {
       if (mounted) setState(() => myState = s);
     }, onError: (_) {}));
-    _subs.add(repo.myHand(id).listen((h) {
-      if (mounted) setState(() => hand = h);
-    }, onError: (_) {}));
+    // Stream tangan hanya dipakai sebagai PEMICU. Isinya tidak dipercaya:
+    // peristiwa hapus tidak sampai, jadi kartu yang sudah dipersembahkan
+    // atau ditukar tertinggal di sana. Daftar asli diambil dari database.
+    _subs.add(repo.myHand(id).listen((_) => _refreshHand(), onError: (_) {}));
+    _refreshHand();
     _subs.add(repo.emotes(id).listen((e) {
       if (mounted) setState(() => emotes = e);
     }, onError: (_) {}));
@@ -112,6 +114,7 @@ class _TablePageState extends State<TablePage> {
     }, onError: (_) {}));
     _subs.add(repo.trades(id).listen((t) {
       if (mounted) setState(() => trades = t);
+      _refreshHand(); // tukar kartu mengubah pemilik kartu
     }, onError: (_) {}));
     _subs.add(repo.chat(id).listen((c) {
       if (mounted) setState(() => chatMsgs = c);
@@ -141,6 +144,31 @@ class _TablePageState extends State<TablePage> {
 
   void _heartbeat() {
     repo.tick(widget.gameId).catchError((_) {});
+    _refreshHand();
+  }
+
+  bool _handBusy = false;
+  bool _handAgain = false;
+
+  /// Ambil tangan kartu yang sebenarnya. Panggilan yang menumpuk digabung.
+  Future<void> _refreshHand() async {
+    if (_handBusy) {
+      _handAgain = true;
+      return;
+    }
+    _handBusy = true;
+    try {
+      do {
+        _handAgain = false;
+        final h = await repo.handNow(widget.gameId);
+        if (!mounted) return;
+        setState(() => hand = h);
+      } while (_handAgain);
+    } catch (_) {
+      // Biarkan daftar lama; percobaan berikutnya menyusul.
+    } finally {
+      _handBusy = false;
+    }
   }
 
   void _onGame(Map<String, dynamic>? g) {
@@ -149,11 +177,14 @@ class _TablePageState extends State<TablePage> {
       if (game != null) _backToLobby('Permainan sudah dibubarkan');
       return;
     }
+    final changed = game?['day'] != g['day'] || game?['phase'] != g['phase'];
     setState(() {
       game = g;
       _checkDayIntro(g);
       _checkOfferIntro(g);
     });
+    // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
+    if (changed) _refreshHand();
   }
 
   /// Putar adegan menuju Hayu saat fase 'offering' dimulai. Data pertama
@@ -697,7 +728,10 @@ class _TablePageState extends State<TablePage> {
         hand: hand,
         defs: defs,
         players: players,
-        onSubmitted: (n) => setState(() => burst = n),
+        onSubmitted: (n) {
+          setState(() => burst = n);
+          _refreshHand();
+        },
       );
     } else {
       body = DayView(

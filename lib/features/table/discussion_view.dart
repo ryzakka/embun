@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
+import '../common/art.dart';
 import 'chat_sheet.dart' show sortChat;
 import 'countdown.dart';
 
@@ -144,11 +145,7 @@ class _DiscussionViewState extends State<DiscussionView> {
                     final bad = e['kind'] == 'bad';
                     return Row(
                       children: [
-                        Icon(
-                          bad ? Icons.warning_amber : Icons.eco,
-                          size: 18,
-                          color: bad ? Colors.purpleAccent : Colors.greenAccent,
-                        ),
+                        GameIcon(bad ? 'alert' : 'helaidaun', size: 22),
                         const SizedBox(width: 8),
                         // Jumlah daun per baris sengaja tidak ditampilkan:
                         // akan membocorkan efek yang disamarkan Topeng Warga.
@@ -171,14 +168,14 @@ class _DiscussionViewState extends State<DiscussionView> {
       children: [
         Row(
           children: [
-            const Icon(Icons.forum, size: 20),
+            const GameIcon('discuss', size: 24),
             const SizedBox(width: 8),
             const Text('Musyawarah Senja',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
             TextButton.icon(
               onPressed: _showEffectLogSheet,
-              icon: const Icon(Icons.history, size: 16),
+              icon: const GameIcon('logorhistory', size: 18),
               label: const Text('Log Efek', style: TextStyle(fontSize: 12)),
             ),
             const SizedBox(width: 6),
@@ -197,7 +194,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.air, size: 16, color: Colors.lightBlueAccent),
+                const GameIcon('announcement', size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                     child: Text(c, style: const TextStyle(fontSize: 12))),
@@ -257,8 +254,7 @@ class _DiscussionViewState extends State<DiscussionView> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lightbulb,
-                      size: 16, color: Colors.amberAccent),
+                  const GameIcon('info', size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(s['message'] as String,
@@ -338,7 +334,7 @@ class _DiscussionViewState extends State<DiscussionView> {
                 ),
               ),
             ),
-            IconButton(onPressed: _send, icon: const Icon(Icons.send)),
+            IconButton(onPressed: _send, icon: const GameIcon('kirim', size: 28)),
           ],
         ),
         const SizedBox(height: 4),

@@ -7,6 +7,11 @@ const pohonDir = 'assets/pohon';
 const bentangDir = 'assets/bentang';
 const kartuWargaDir = 'assets/kartu/powerpro';
 const kartuAntagDir = 'assets/kartu/poweranta';
+const punggungDir = 'assets/kartu/punggungkartu';
+const logoDir = 'assets/logo';
+// Bila isi assets/ikon/sudah adalah versi transparan, ganti ke
+// 'assets/ikon/sudah' (dan daftarkan foldernya di pubspec.yaml).
+const ikonDir = 'assets/ikon';
 
 /// Membaca daftar gambar dari manifest aset, jadi nama file tidak perlu
 /// ditulis satu per satu. .png dan .webp sama-sama didukung.
@@ -73,6 +78,15 @@ String? landscapePath(int leaves) => leaves <= 0
     : AssetCatalog.I.file(bentangDir, 'lembah-hijau${_scale(leaves, 5.99)}');
 
 String? sceneryPath(String stem) => AssetCatalog.I.file(bentangDir, stem);
+
+String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
+
+String? logoPath(String stem) => AssetCatalog.I.file(logoDir, stem);
+
+/// Punggung kartu. Untuk kartu yang terlihat pemain lain, jangan pakai
+/// dark: true, karena itu membocorkan sisi pemilik kartu.
+String? cardBackPath({bool dark = false}) => AssetCatalog.I.file(
+    punggungDir, dark ? 'punggungantagonis' : 'punggungprotagonis');
 
 /// Gambar kartu beli/item. Nama berkas = kolom `art` di card_definitions
 /// (jatuh ke `id` bila kosong). Warga di powerpro, antagonis di poweranta.

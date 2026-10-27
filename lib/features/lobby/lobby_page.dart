@@ -105,8 +105,13 @@ class _LobbyPageState extends State<LobbyPage> {
       Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Embun',
-              style: Theme.of(context).textTheme.displaySmall),
+          SizedBox(
+            height: 170,
+            child: GameImage(
+                path: logoPath('ikon-transparent'),
+                fit: BoxFit.contain,
+                cacheWidth: 700),
+          ),
           const SizedBox(height: 4),
           const Text('Balai Pertemuan Desa',
               style: TextStyle(color: Colors.white70)),
@@ -119,12 +124,13 @@ class _LobbyPageState extends State<LobbyPage> {
           const SizedBox(height: 4),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: FilledButton.icon(
               onPressed: busy
                   ? null
                   : () => _run(
                       (card) => repo.createGame(nameCtrl.text, card)),
-              child: const Text('Buat Ruangan'),
+              icon: const GameIcon('roomcreate', size: 22),
+              label: const Text('Buat Ruangan'),
             ),
           ),
           const Divider(height: 32),
@@ -136,12 +142,13 @@ class _LobbyPageState extends State<LobbyPage> {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: busy
                   ? null
                   : () => _run((card) =>
                   repo.joinGame(codeCtrl.text, nameCtrl.text, card)),
-              child: const Text('Gabung'),
+              icon: const GameIcon('joinroom', size: 22),
+              label: const Text('Gabung'),
             ),
           ),
         ],
@@ -291,8 +298,7 @@ class _LobbyPageState extends State<LobbyPage> {
                 child: iReady
                     ? OutlinedButton.icon(
                   onPressed: me == null ? null : () => _setReady(id, false),
-                  icon: const Icon(Icons.check_circle,
-                      color: Colors.greenAccent),
+                  icon: const GameIcon('centang', size: 22),
                   label: const Text('Siap. Ketuk untuk batal'),
                 )
                     : FilledButton(
@@ -346,7 +352,14 @@ class _LobbyPageState extends State<LobbyPage> {
               _toast(errMsg(e));
             }
           },
-          child: Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GameIcon(isHost ? 'bubarkan' : 'keluar', size: 20),
+              const SizedBox(width: 6),
+              Text(isHost ? 'Bubarkan ruangan' : 'Keluar'),
+            ],
+          ),
         ),
       ],
     );
@@ -364,8 +377,14 @@ class _LobbyPageState extends State<LobbyPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Kode ruangan',
-                  style: TextStyle(fontSize: 11, color: Colors.white60)),
+              const Row(
+                children: [
+                  GameIcon('roomcode', size: 18),
+                  SizedBox(width: 6),
+                  Text('Kode ruangan',
+                      style: TextStyle(fontSize: 11, color: Colors.white60)),
+                ],
+              ),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -382,7 +401,7 @@ class _LobbyPageState extends State<LobbyPage> {
         ),
         IconButton(
           tooltip: 'Salin kode',
-          icon: const Icon(Icons.copy, size: 20),
+          icon: const GameIcon('salin', size: 24),
           onPressed: () {
             Clipboard.setData(ClipboardData(text: code));
             _toast('Kode disalin');
@@ -418,7 +437,7 @@ class _LobbyPageState extends State<LobbyPage> {
                   OutlinedButton.icon(
                     onPressed:
                     me == null || iReady ? null : () => _pickCard(id, me),
-                    icon: Icon(iReady ? Icons.lock : Icons.style, size: 18),
+                    icon: GameIcon(iReady ? 'lock' : 'mydeck', size: 20),
                     label: Text(iReady ? 'Kartu terkunci' : 'Ganti kartu'),
                   ),
                 ],
@@ -466,17 +485,21 @@ class _LobbyPageState extends State<LobbyPage> {
                   color: Colors.amber.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Host',
-                    style: TextStyle(fontSize: 10, color: Colors.amberAccent)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GameIcon('host', size: 14),
+                    SizedBox(width: 3),
+                    Text('Host',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.amberAccent)),
+                  ],
+                ),
               ),
           ],
         ),
         subtitle: Text(characterTitle(card)),
-        trailing: Icon(
-          ready ? Icons.check_circle : Icons.hourglass_empty,
-          size: 20,
-          color: ready ? Colors.greenAccent : Colors.white38,
-        ),
+        trailing: GameIcon(ready ? 'centang' : 'wait', size: 24),
       ),
     );
   }
@@ -538,7 +561,7 @@ class _RoomShellState extends State<_RoomShell> {
     children: [
       const Row(
         children: [
-          Icon(Icons.forum, size: 18),
+          GameIcon('discuss', size: 22),
           SizedBox(width: 8),
           Text('Obrolan Desa', style: TextStyle(fontWeight: FontWeight.bold)),
         ],
@@ -563,7 +586,7 @@ class _RoomShellState extends State<_RoomShell> {
       Padding(
         padding: const EdgeInsets.only(right: 8),
         child: ChoiceChip(
-          avatar: const Icon(Icons.groups, size: 16),
+          avatar: const GameIcon('persona', size: 20),
           label: Text('Ruangan (${widget.players.length})'),
           selected: page == 0,
           visualDensity: VisualDensity.compact,
@@ -574,7 +597,7 @@ class _RoomShellState extends State<_RoomShell> {
         isLabelVisible: unread > 0 && page != 1,
         label: Text('$unread'),
         child: ChoiceChip(
-          avatar: const Icon(Icons.forum, size: 16),
+          avatar: const GameIcon('discuss', size: 20),
           label: const Text('Obrolan'),
           selected: page == 1,
           visualDensity: VisualDensity.compact,

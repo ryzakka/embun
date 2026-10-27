@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/server_clock.dart';
+import '../common/art.dart';
 
 class Countdown extends StatefulWidget {
   final DateTime? deadline;
@@ -36,10 +37,17 @@ class _CountdownState extends State<Countdown> {
     if (left < 0) left = 0;
     final m = left ~/ 60;
     final s = (left % 60).toString().padLeft(2, '0');
-    return Text(
-      '$m:$s',
-      style: (widget.style ?? const TextStyle())
-          .copyWith(color: left <= 10 ? Colors.redAccent : null),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const GameIcon('timer', size: 20),
+        const SizedBox(width: 4),
+        Text(
+          '$m:$s',
+          style: (widget.style ?? const TextStyle())
+              .copyWith(color: left <= 10 ? Colors.redAccent : null),
+        ),
+      ],
     );
   }
 }

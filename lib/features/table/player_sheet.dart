@@ -157,7 +157,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                             .giveEmbun(widget.gameId, _uid, n),
                         closeWith: 'Kamu memberi $_name $n embun',
                       ),
-                      icon: const Icon(Icons.water_drop, size: 16),
+                      icon: const GameIcon('bulirembun', size: 18),
                       label: Text('$n'),
                     ),
                 ],
@@ -165,7 +165,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: busy ? null : () => setState(() => tradeOpen = !tradeOpen),
-                icon: const Icon(Icons.swap_horiz),
+                icon: const GameIcon('barter', size: 22),
                 label: const Text('Tukar kartu'),
               ),
               if (tradeOpen) ...[

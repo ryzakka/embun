@@ -198,7 +198,11 @@ class _PrologueFlowState extends State<PrologueFlow>
           Positioned(
             right: 8,
             top: 8,
-            child: TextButton(onPressed: _toShuffling, child: const Text('Lewati')),
+            child: TextButton.icon(
+              onPressed: _toShuffling,
+              icon: const GameIcon('skip2', size: 20),
+              label: const Text('Lewati'),
+            ),
           ),
           const Align(
             alignment: Alignment.bottomCenter,
@@ -241,17 +245,19 @@ class _PrologueFlowState extends State<PrologueFlow>
     );
   }
 
+  /// Selalu punggung protagonis untuk semua pemain, supaya peran Si Terbisik
+  /// tidak bocor lewat warna punggung kartu.
   Widget _cardBack(double w, double h) => Container(
     key: const ValueKey('back'),
     width: w,
     height: h,
     decoration: BoxDecoration(
-      color: const Color(0xFF2A3A38),
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white24, width: 2),
+      boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 14)],
     ),
-    child: const Center(
-      child: Icon(Icons.help_outline, size: 64, color: Colors.white54),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: GameImage(path: cardBackPath(), cacheWidth: 700),
     ),
   );
 
@@ -314,8 +320,15 @@ class _PrologueFlowState extends State<PrologueFlow>
                       ],
                     ),
                   )
-                      : const Text('Tahan kartu untuk melihat perananmu',
-                      key: ValueKey('hint')),
+                      : const Row(
+                    key: ValueKey('hint'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GameIcon('touch', size: 24),
+                      SizedBox(width: 6),
+                      Text('Tahan kartu untuk melihat perananmu'),
+                    ],
+                  ),
                 ),
               ),
               FilledButton(

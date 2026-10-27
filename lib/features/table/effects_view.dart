@@ -182,10 +182,18 @@ class _EffectsViewState extends State<EffectsView>
                                   parent: a, curve: Curves.easeOutBack)),
                           child: FadeTransition(opacity: a, child: w),
                         ),
-                        child: Text('$shown daun',
-                            key: ValueKey(shown),
-                            style: const TextStyle(
-                                fontSize: 30, fontWeight: FontWeight.bold)),
+                        child: Row(
+                          key: ValueKey(shown),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const GameIcon('helaidaun', size: 34),
+                            const SizedBox(width: 8),
+                            Text('$shown daun',
+                                style: const TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -319,9 +327,16 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
                       color:
                       bad ? Colors.purpleAccent : Colors.lightGreenAccent),
                 ),
-                child: Text(widget.row['label'] as String,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GameIcon(bad ? 'poinmin1' : 'poinplus1', size: 26),
+                    const SizedBox(width: 6),
+                    Text(widget.row['label'] as String,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
               ),
             ),
           ),

@@ -40,6 +40,21 @@ class GameRepository {
       .eq('game_id', gameId)
       .map((rows) => rows.where((r) => r['user_id'] == myId).toList());
 
+  /// Tangan kartu yang sebenarnya, langsung dari database. Stream realtime
+  /// tidak mengirim peristiwa hapus untuk tabel ber-RLS, jadi kartu yang
+  /// sudah dipersembahkan atau ditukar tetap "tertinggal" di daftar stream.
+  /// Gunakan ini sebagai sumber kebenaran.
+  Future<List<Map<String, dynamic>>> handNow(String gameId) async {
+    final rows = await _db
+        .from('hand_cards')
+        .select()
+        .eq('game_id', gameId)
+        .eq('user_id', myId)
+        .order('acquired_day')
+        .order('id');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<void> finishDay(String gameId, {String? card}) =>
       _db.rpc('finish_day', params: {'p_game': gameId, 'p_card': card});
 

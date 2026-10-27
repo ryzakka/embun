@@ -35,7 +35,6 @@ class _OfferingViewState extends State<OfferingView> {
   final Set<String> sel = {};
   String? targetId;
   bool busy = false;
-  bool _pre = false;
   int? _fog;
 
   String? get _samaranId {
@@ -55,14 +54,17 @@ class _OfferingViewState extends State<OfferingView> {
   }
 
   /// Si Terbisik wajib menyumbang Embun Samaran: pilih otomatis begitu
-  /// kartunya ada di tangan (tangan bisa tiba belakangan lewat stream).
+  /// kartunya ada di tangan (tangan bisa tiba belakangan).
+  /// Pilihan yang kartunya sudah tidak ada di tangan dibuang dulu, supaya
+  /// sisa pilihan lama tidak ikut terkirim dan ditolak server.
   void _preselect() {
-    if (_pre || !widget.isAntag) return;
+    final ids = {for (final h in widget.hand) h['id'] as String};
+    sel.removeWhere((x) => !ids.contains(x));
+    if (!widget.isAntag) return;
     final s = _samaranId;
-    if (s != null) {
-      sel.add(s);
-      _pre = true;
-    }
+    if (s == null || sel.contains(s)) return;
+    if (sel.length >= 2) sel.remove(sel.first);
+    sel.add(s);
   }
 
   @override
@@ -142,6 +144,8 @@ class _OfferingViewState extends State<OfferingView> {
         Expanded(
           child: Column(
             children: [
+              const GameIcon('titlepersembahan', width: 180, height: 36),
+              const SizedBox(height: 6),
               Expanded(child: TreePortrait(leaves: widget.leaves)),
               const SizedBox(height: 6),
               Text('${widget.leaves} daun',

@@ -166,7 +166,7 @@ class _VillageStripState extends State<VillageStrip> {
                   const Positioned(
                     left: -4,
                     top: -4,
-                    child: Icon(Icons.lock, size: 14, color: Colors.redAccent),
+                    child: GameIcon('lock', size: 18),
                   ),
               ],
             ),

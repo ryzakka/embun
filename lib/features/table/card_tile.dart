@@ -133,11 +133,7 @@ class CardTile extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(bad ? Icons.circle : Icons.water_drop,
-                        size: 12,
-                        color: bad
-                            ? const Color(0xFFB9A3D0)
-                            : const Color(0xFF7FD3F7)),
+                    GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 16),
                     const SizedBox(width: 3),
                     Text(badge ?? '$cost',
                         style: const TextStyle(
@@ -146,14 +142,20 @@ class CardTile extends StatelessWidget {
                 ),
               ),
             ),
-          if (hasInfo)
+          if (selected)
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GameIcon('dipilih', width: width * 0.7, height: width * 0.3),
+              ),
+            ),
+          if (hasInfo && !selected)
             const Positioned(
               left: 6,
               bottom: 6,
-              child: Icon(Icons.info_outline,
-                  size: 16,
-                  color: Colors.white70,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 6)]),
+              child: GameIcon('info', size: 18),
             ),
         ],
       ),
@@ -177,11 +179,7 @@ class CardTile extends StatelessWidget {
         if (showCost)
           Row(
             children: [
-              Icon(bad ? Icons.circle : Icons.water_drop,
-                  size: 14,
-                  color: bad
-                      ? const Color(0xFF6A5A7A)
-                      : const Color(0xFF7FD3F7)),
+              GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 16),
               const SizedBox(width: 4),
               Text(badge ?? '$cost'),
             ],
@@ -192,17 +190,18 @@ class CardTile extends StatelessWidget {
 }
 
 /// Punggung kartu: sama untuk semua kartu agar identitas penyerah tidak bocor.
+/// [dark] hanya untuk kartu milik sendiri; jangan dipakai pada kartu yang
+/// terlihat pemain lain.
 class CardBack extends StatelessWidget {
-  const CardBack({super.key});
+  final bool dark;
+  const CardBack({super.key, this.dark = false});
   @override
-  Widget build(BuildContext context) => Container(
-    width: 70,
-    height: 100,
-    decoration: BoxDecoration(
-      color: const Color(0xFF2B3B52),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white38, width: 2),
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(10),
+    child: SizedBox(
+      width: 70,
+      height: 100,
+      child: GameImage(path: cardBackPath(dark: dark), cacheWidth: 200),
     ),
-    child: const Icon(Icons.eco, color: Colors.white54, size: 32),
   );
 }

@@ -83,8 +83,9 @@ class _VotingViewState extends State<VotingView> {
             const Text('Siapa Si Terbisik?',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Text(
-              'Butuh $need suara. Menuduh warga yang salah akan mengurungnya '
-                  'sehari dan Hayu kehilangan 1 daun.',
+              'Butuh $need suara. Siapa pun yang dituduh mayoritas dikurung '
+                  'sehari dan Hayu kehilangan 1 daun. Si Terbisik tertangkap '
+                  'bila dituduh untuk kedua kalinya.',
               style: const TextStyle(fontSize: 12, color: Colors.white60),
             ),
             const SizedBox(height: 8),
@@ -203,8 +204,7 @@ class _VoteStamp extends StatelessWidget {
                     if (abstain)
                       Opacity(
                         opacity: (t / 0.3).clamp(0.0, 1.0).toDouble(),
-                        child: Icon(Icons.do_not_disturb_alt,
-                            size: 80, color: color),
+                        child: const GameIcon('silang', size: 80),
                       )
                     else
                       Opacity(
@@ -231,7 +231,9 @@ class _VoteStamp extends StatelessWidget {
                         angle: -0.2,
                         child: Transform.scale(
                           scale: 2.6 - 1.6 * st,
-                          child: Container(
+                          child: !abstain
+                              ? const GameIcon('tertuduh', width: 220, height: 90)
+                              : Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(

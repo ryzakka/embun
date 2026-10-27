@@ -171,3 +171,28 @@ class CardArt extends StatelessWidget {
     );
   }
 }
+
+/// Ikon emas-hijau dari assets/ikon. Untuk ikon persegi cukup isi [size].
+/// Untuk gambar lebar (cap, judul) isi [width] dan [height].
+class GameIcon extends StatelessWidget {
+  final String name;
+  final double size;
+  final double? width;
+  final double? height;
+  const GameIcon(this.name,
+      {super.key, this.size = 20, this.width, this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = width ?? size;
+    final h = height ?? size;
+    final p = ikonPath(name);
+    return SizedBox(
+      width: w,
+      height: h,
+      child: p == null
+          ? null
+          : GameImage(path: p, fit: BoxFit.contain, cacheWidth: (w * 3).round()),
+    );
+  }
+}

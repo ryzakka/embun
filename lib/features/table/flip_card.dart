@@ -2,91 +2,32 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/asset_catalog.dart';
+import '../common/art.dart';
 
-/// Punggung kartu beli/item. Warga: hijau-emas; Si Terbisik: ungu kelam.
-/// Rasio sama dengan CardTile (lebar : tinggi = 7 : 9).
+/// Punggung kartu beli/item. Warga: punggung hijau-emas; Si Terbisik:
+/// punggung merah gelap. Rasio sama dengan CardTile (lebar : tinggi = 7 : 9).
 class CardBackFace extends StatelessWidget {
   final double width;
   final bool dark;
   const CardBackFace({super.key, required this.width, this.dark = false});
 
   @override
-  Widget build(BuildContext context) {
-    final a = dark ? const Color(0xFF2A2140) : const Color(0xFF1F3A33);
-    final b = dark ? const Color(0xFF120C1F) : const Color(0xFF0C1B17);
-    final accent = dark ? const Color(0xFFB07CE8) : const Color(0xFFE8C766);
-    return Container(
-      width: width,
-      height: width * 9 / 7,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [a, b],
-        ),
-        border: Border.all(color: accent.withValues(alpha: 0.55), width: 2),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5), blurRadius: 8),
-        ],
-      ),
-      child: CustomPaint(
-        painter: _BackPainter(accent),
-        child: Center(
-          child: Icon(
-            dark ? Icons.circle : Icons.eco,
-            size: width * 0.36,
-            color: accent.withValues(alpha: 0.85),
-            shadows: [Shadow(color: accent, blurRadius: 18)],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BackPainter extends CustomPainter {
-  final Color c;
-  _BackPainter(this.c);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rr = RRect.fromRectAndRadius(
-      Rect.fromLTWH(7, 7, size.width - 14, size.height - 14),
-      const Radius.circular(8),
-    );
-    canvas.save();
-    canvas.clipRRect(rr);
-    final line = Paint()
-      ..color = c.withValues(alpha: 0.08)
-      ..strokeWidth = 1;
-    const step = 14.0;
-    for (var x = -size.height; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), line);
-      canvas.drawLine(Offset(x + size.height, 0), Offset(x, size.height), line);
-    }
-    canvas.restore();
-    canvas.drawRRect(
-      rr,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = c.withValues(alpha: 0.4),
-    );
-    final dot = Paint()..color = c.withValues(alpha: 0.6);
-    for (final o in [
-      const Offset(14, 14),
-      Offset(size.width - 14, 14),
-      Offset(14, size.height - 14),
-      Offset(size.width - 14, size.height - 14),
-    ]) {
-      canvas.drawCircle(o, 2, dot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BackPainter old) => old.c != c;
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: width * 9 / 7,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5), blurRadius: 8),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: GameImage(path: cardBackPath(dark: dark), cacheWidth: 320),
+    ),
+  );
 }
 
 /// Kartu yang masuk sebagai punggung, lalu berbalik menampilkan [front]
