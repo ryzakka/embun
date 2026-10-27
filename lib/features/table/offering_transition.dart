@@ -210,9 +210,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.eco,
-                            size: 20,
-                            color: dark ? Colors.blueGrey : Colors.greenAccent),
+                        const GameIcon('helaidaun', size: 28),
                         const SizedBox(width: 6),
                         Text('$shownLeaves daun',
                             style: TextStyle(

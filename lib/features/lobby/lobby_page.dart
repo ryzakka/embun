@@ -241,7 +241,7 @@ class _LobbyPageState extends State<LobbyPage> {
               _toast('Ruangan sudah dibubarkan');
             });
           }
-          return const Center(child: CircularProgressIndicator());
+          return const EmbunLoading();
         }
         if (game['status'] != 'lobby') {
           if (!_navigated) {
@@ -255,7 +255,7 @@ class _LobbyPageState extends State<LobbyPage> {
               );
             });
           }
-          return const Center(child: CircularProgressIndicator());
+          return const EmbunLoading();
         }
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: repo.players(id),
@@ -298,6 +298,14 @@ class _LobbyPageState extends State<LobbyPage> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
+              SizedBox(
+                height: 48,
+                child: GameImage(
+                    path: logoPath('logoteks-transparent'),
+                    fit: BoxFit.contain,
+                    cacheWidth: 600),
+              ),
+              const SizedBox(height: 10),
               _codeHeader(game['code'] as String),
               const SizedBox(height: 14),
               _meCard(id, me, myCard, iReady),
@@ -444,7 +452,7 @@ class _LobbyPageState extends State<LobbyPage> {
                   const SizedBox(height: 10),
                   EmbunButton(
                     label: iReady ? 'Kartu terkunci' : 'Ganti kartu',
-                    icon: iReady ? 'lock' : 'mydeck',
+                    icon: iReady ? 'lock' : 'customization',
                     kind: EmbunButtonKind.secondary,
                     height: 46,
                     onPressed:
@@ -605,7 +613,7 @@ class _RoomShellState extends State<_RoomShell> {
         const Text('Geser untuk obrolan',
             style: TextStyle(fontSize: 11, color: Colors.white54)),
       if (page == 0)
-        const Icon(Icons.chevron_right, size: 16, color: Colors.white54),
+        const GameIcon('skip2', size: 22),
     ],
   );
 

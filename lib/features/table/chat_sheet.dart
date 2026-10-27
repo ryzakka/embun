@@ -7,6 +7,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 
 const _generalQuick = [
   'Aku beli kartu baik 🌿',
@@ -93,14 +94,7 @@ Future<void> showChatSheet(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.forum, size: 18),
-                      SizedBox(width: 8),
-                      Text('Obrolan Desa',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
+                  const SectionHeader(icon: 'discuss', title: 'Obrolan Desa'),
                   const SizedBox(height: 8),
                   Expanded(
                     child: ChatPanel(
@@ -494,10 +488,9 @@ class _ChatPanelState extends State<ChatPanel> {
             IconButton(
               tooltip: fx ? 'Matikan efek dramatis' : 'Nyalakan efek dramatis',
               onPressed: _toggleFx,
-              icon: Icon(
-                Icons.auto_awesome,
-                size: 20,
-                color: fx ? Colors.amberAccent : Colors.white38,
+              icon: Opacity(
+                opacity: fx ? 1 : 0.4,
+                child: const GameIcon('showaddgraphic', size: 30),
               ),
             ),
             Expanded(
@@ -525,10 +518,7 @@ class _ChatPanelState extends State<ChatPanel> {
               ),
             ),
             const SizedBox(width: 6),
-            IconButton.filled(
-              onPressed: _sendTyped,
-              icon: const Icon(Icons.send, size: 20),
-            ),
+            MedallionButton(icon: 'kirim', size: 42, onTap: _sendTyped),
           ],
         ),
       ],

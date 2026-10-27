@@ -270,11 +270,7 @@ class _DayTransitionState extends State<DayTransition>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.eco,
-                            size: 22,
-                            color: widget.dark
-                                ? Colors.blueGrey
-                                : Colors.greenAccent),
+                        const GameIcon('helaidaun', size: 30),
                         const SizedBox(width: 6),
                         Text('$shownLeaves daun',
                             style: TextStyle(
@@ -328,7 +324,7 @@ class _DayTransitionState extends State<DayTransition>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.gavel, size: 16, color: warm),
+                      const GameIcon('vote', size: 26),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(widget.verdict!,

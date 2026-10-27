@@ -6,6 +6,7 @@ import '../../data/game_repository.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/ornate.dart';
 import '../lobby/lobby_page.dart';
 import 'card_burst.dart';
 import 'chat_sheet.dart';
@@ -308,8 +309,7 @@ class _TablePageState extends State<TablePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Daftar Warga Desa',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SectionHeader(icon: 'persona', title: 'Daftar Warga Desa'),
             const SizedBox(height: 10),
             Flexible(
               child: ListView(
@@ -329,18 +329,10 @@ class _TablePageState extends State<TablePage> {
                           if (p['jailed_day'] == day)
                             const Padding(
                               padding: EdgeInsets.only(right: 8),
-                              child: Icon(Icons.lock,
-                                  size: 18, color: Colors.redAccent),
+                              child: GameIcon('lock', size: 26),
                             ),
-                          Icon(
-                            p['ready'] == true
-                                ? Icons.check_circle
-                                : Icons.schedule,
-                            size: 18,
-                            color: p['ready'] == true
-                                ? Colors.greenAccent
-                                : Colors.white38,
-                          ),
+                          GameIcon(p['ready'] == true ? 'centang' : 'wait',
+                              size: 28),
                         ],
                       ),
                     ),
@@ -443,7 +435,7 @@ class _TablePageState extends State<TablePage> {
         fit: StackFit.expand,
         children: [
           g == null
-              ? const Center(child: CircularProgressIndicator())
+              ? const EmbunLoading(text: 'Memasuki desa...')
               : _content(g),
           // Dipasang di sini (bukan di _content) supaya tetap hidup antar
           // fase dan tidak memutar ulang pesan lama.
@@ -537,15 +529,15 @@ class _TablePageState extends State<TablePage> {
                 _guard(() => repo.advanceAfterEffects(widget.gameId)),
           ),
           Positioned(
-            left: 4,
-            top: 4,
+            left: 8,
+            top: 8,
             child: SafeArea(
-              child: IconButton(
-                tooltip: isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
-                onPressed: busy ? null : () => _confirmExit(isHost),
-                icon: Icon(
-                  isHost ? Icons.stop_circle_outlined : Icons.logout,
-                  color: Colors.white70,
+              child: Tooltip(
+                message: isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
+                child: MedallionButton(
+                  icon: isHost ? 'bubarkan' : 'keluar',
+                  size: 40,
+                  onTap: busy ? null : () => _confirmExit(isHost),
                 ),
               ),
             ),
@@ -597,6 +589,7 @@ class _TablePageState extends State<TablePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const GameIcon('hari', size: 40),
                       const Text('HARI',
                           style: TextStyle(fontSize: 12, letterSpacing: 2)),
                       Text('$day',
@@ -611,11 +604,7 @@ class _TablePageState extends State<TablePage> {
                             fontSize: 10, color: Colors.white60),
                       ),
                       const SizedBox(height: 14),
-                      Icon(Icons.eco,
-                          size: 36,
-                          color: showAsAntag
-                              ? Colors.blueGrey
-                              : Colors.greenAccent),
+                      const GameIcon('helaidaun', size: 44),
                       Text('$leaves', style: const TextStyle(fontSize: 28)),
                       const Text('daun', style: TextStyle(fontSize: 12)),
                       if (worms > 0) ...[
@@ -633,8 +622,6 @@ class _TablePageState extends State<TablePage> {
                         ),
                       ],
                       const SizedBox(height: 18),
-                      const Icon(Icons.hourglass_bottom,
-                          size: 16, color: Colors.white54),
                       Countdown(
                         deadline: deadline,
                         style: const TextStyle(fontSize: 18),
@@ -656,8 +643,7 @@ class _TablePageState extends State<TablePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(isHost ? Icons.stop_circle_outlined : Icons.logout,
-                        size: 18),
+                    GameIcon(isHost ? 'bubarkan' : 'keluar', size: 30),
                     const SizedBox(height: 2),
                     Text(
                       isHost ? 'Sudahi\npermainan' : 'Tinggalkan\npermainan',
@@ -842,8 +828,7 @@ class _TablePageState extends State<TablePage> {
                 children: [
                   Transform.rotate(
                     angle: -0.9 * (1 - slam),
-                    child: const Icon(Icons.gavel,
-                        size: 20, color: Colors.amber),
+                    child: const GameIcon('vote', size: 32),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -884,12 +869,12 @@ class _TablePageState extends State<TablePage> {
         ? 'Malam persembahan'
         : 'Persembahan ${cycle - day % cycle} hari lagi';
 
-    PopupMenuItem<String> item(String v, IconData i, String t, {Color? c}) =>
+    PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
         PopupMenuItem<String>(
           value: v,
           child: Row(
             children: [
-              Icon(i, size: 18, color: c ?? Colors.white70),
+              GameIcon(i, size: 26),
               const SizedBox(width: 10),
               Text(t, style: TextStyle(color: c)),
             ],
@@ -911,11 +896,7 @@ class _TablePageState extends State<TablePage> {
             children: [
               PlayerAvatar(path: avatar, size: 38, ring: accent),
               const SizedBox(width: 10),
-              Icon(showAsAntag ? Icons.circle : Icons.water_drop,
-                  size: 20,
-                  color: showAsAntag
-                      ? const Color(0xFF8A74A8)
-                      : const Color(0xFF7FD3F7)),
+              GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 28),
               const SizedBox(width: 4),
               Text(_fmt(balance),
                   style: const TextStyle(
@@ -937,12 +918,12 @@ class _TablePageState extends State<TablePage> {
                     tooltip: 'Obrolan',
                     visualDensity: VisualDensity.compact,
                     onPressed: _openChat,
-                    icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                    icon: const GameIcon('discuss', size: 30),
                   ),
                 ),
               PopupMenuButton<String>(
                 tooltip: 'Menu',
-                icon: const Icon(Icons.more_vert, size: 20),
+                icon: const GameIcon('menu', size: 30),
                 padding: EdgeInsets.zero,
                 onSelected: (v) {
                   switch (v) {
@@ -957,22 +938,22 @@ class _TablePageState extends State<TablePage> {
                   }
                 },
                 itemBuilder: (_) => [
-                  item('players', Icons.people, 'Daftar warga'),
+                  item('players', 'persona', 'Daftar warga'),
                   item(
                       'fx',
-                      Icons.auto_awesome,
+                      'showaddgraphic',
                       chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
                       c: chatFx ? Colors.amberAccent : null),
                   if (isAntag)
                     item(
                         'mask',
-                        disguiseMode ? Icons.visibility_off : Icons.visibility,
+                        disguiseMode ? 'hide' : 'show',
                         disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
                         c: disguiseMode ? Colors.amberAccent : null),
                   const PopupMenuDivider(),
                   item(
                       'exit',
-                      isHost ? Icons.stop_circle_outlined : Icons.logout,
+                      isHost ? 'bubarkan' : 'keluar',
                       isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
                       c: Colors.redAccent),
                 ],
@@ -990,9 +971,7 @@ class _TablePageState extends State<TablePage> {
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.5)),
                 const SizedBox(width: 10),
-                Icon(Icons.eco,
-                    size: 14,
-                    color: showAsAntag ? Colors.blueGrey : Colors.greenAccent),
+                const GameIcon('helaidaun', size: 22),
                 const SizedBox(width: 3),
                 Text('$leaves', style: const TextStyle(fontSize: 13)),
                 if (worms > 0) ...[
@@ -1002,14 +981,11 @@ class _TablePageState extends State<TablePage> {
                           fontSize: 12, color: Colors.purpleAccent)),
                 ],
                 const Spacer(),
-                const Icon(Icons.hourglass_bottom,
-                    size: 13, color: Colors.white54),
-                const SizedBox(width: 3),
                 Countdown(
                     deadline: deadline, style: const TextStyle(fontSize: 14)),
                 const SizedBox(width: 8),
                 ActionChip(
-                  avatar: const Icon(Icons.people, size: 14),
+                  avatar: const GameIcon('persona', size: 20),
                   label: Text('$readyCount/${players.length}',
                       style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
@@ -1043,11 +1019,7 @@ class _TablePageState extends State<TablePage> {
           ring: showAsAntag ? const Color(0xFFB07CE8) : const Color(0xFF6FBF73),
         ),
         const SizedBox(width: 12),
-        Icon(showAsAntag ? Icons.circle : Icons.water_drop,
-            size: 26,
-            color: showAsAntag
-                ? const Color(0xFF8A74A8)
-                : const Color(0xFF7FD3F7)),
+        GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 34),
         const SizedBox(width: 6),
         Text(_fmt(balance),
             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
@@ -1062,10 +1034,9 @@ class _TablePageState extends State<TablePage> {
           tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
           visualDensity: VisualDensity.compact,
           onPressed: () => setState(() => chatFx = !chatFx),
-          icon: Icon(
-            Icons.auto_awesome,
-            size: 20,
-            color: chatFx ? Colors.amberAccent : Colors.white38,
+          icon: Opacity(
+            opacity: chatFx ? 1 : 0.4,
+            child: const GameIcon('showaddgraphic', size: 30),
           ),
         ),
         if (showChat)
@@ -1075,21 +1046,17 @@ class _TablePageState extends State<TablePage> {
             child: IconButton(
               tooltip: 'Obrolan',
               onPressed: _openChat,
-              icon: const Icon(Icons.chat_bubble_outline, size: 20),
+              icon: const GameIcon('discuss', size: 30),
             ),
           ),
         if (isAntag)
           IconButton(
             tooltip: disguiseMode ? 'Matikan Samaran' : 'Samarkan Layar',
             onPressed: () => setState(() => disguiseMode = !disguiseMode),
-            icon: Icon(
-              disguiseMode ? Icons.visibility_off : Icons.visibility,
-              size: 20,
-              color: disguiseMode ? Colors.amberAccent : Colors.white54,
-            ),
+            icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
         ActionChip(
-          avatar: const Icon(Icons.people, size: 16),
+          avatar: const GameIcon('persona', size: 22),
           label: Text('$readyCount/${players.length}'),
           visualDensity: VisualDensity.compact,
           onPressed: () => _showPlayersSheet(day),
@@ -1102,7 +1069,7 @@ class _TablePageState extends State<TablePage> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const CircularProgressIndicator(),
+        const GameIcon('wait', size: 72),
         const SizedBox(height: 16),
         Text(text),
         Text('$ready/$total siap'),
@@ -1142,6 +1109,14 @@ class _TablePageState extends State<TablePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
+                      height: 48,
+                      child: GameImage(
+                          path: logoPath('logoteks-transparent'),
+                          fit: BoxFit.contain,
+                          cacheWidth: 600),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
                       height: 260,
                       child:
                       TreePortrait(leaves: leaves, pathOverride: sakura),
@@ -1176,9 +1151,10 @@ class _TablePageState extends State<TablePage> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    FilledButton(
+                    EmbunButton(
+                      label: 'Kembali ke balai',
+                      icon: 'home',
                       onPressed: () => _backToLobby(),
-                      child: const Text('Kembali ke balai'),
                     ),
                   ],
                 ),

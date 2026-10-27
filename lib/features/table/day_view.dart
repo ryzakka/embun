@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
+import '../common/art.dart';
+import '../common/ornate.dart';
 import 'card_tile.dart';
 import 'flip_card.dart';
 
@@ -206,12 +208,12 @@ class _DayViewState extends State<DayView> {
 
   // ---------- bagian kecil yang dipakai ulang ----------
 
-  Widget _section(String title, {IconData? icon, String? trailing}) => Padding(
+  Widget _section(String title, {String? icon, String? trailing}) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 16, color: Colors.white60),
+          GameIcon(icon, size: 26),
           const SizedBox(width: 6),
         ],
         Text(title,
@@ -224,7 +226,7 @@ class _DayViewState extends State<DayView> {
     ),
   );
 
-  Widget _chip(IconData icon, String text, {Color? color}) {
+  Widget _chip(String icon, String text, {Color? color}) {
     final c = color ?? Colors.white70;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -236,7 +238,7 @@ class _DayViewState extends State<DayView> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: c),
+          GameIcon(icon, size: 22),
           const SizedBox(width: 5),
           Text(text, style: TextStyle(fontSize: 12, color: c)),
         ],
@@ -255,7 +257,7 @@ class _DayViewState extends State<DayView> {
     ),
     child: const Row(
       children: [
-        Icon(Icons.lock, size: 16, color: Colors.redAccent),
+        GameIcon('lock', size: 26),
         SizedBox(width: 8),
         Expanded(
           child: Text('Kamu dikurung hari ini: tidak bisa berbelanja.',
@@ -265,11 +267,11 @@ class _DayViewState extends State<DayView> {
     ),
   );
 
-  Widget _empty(IconData icon, String title, String hint) => Center(
+  Widget _empty(String icon, String title, String hint) => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 40, color: Colors.white24),
+        Opacity(opacity: 0.55, child: GameIcon(icon, size: 64)),
         const SizedBox(height: 8),
         Text(title, style: const TextStyle(color: Colors.white60)),
         const SizedBox(height: 2),
@@ -342,8 +344,7 @@ class _DayViewState extends State<DayView> {
                     angle: (1 - pop) * -1.2,
                     child: Transform.scale(
                       scale: (0.4 + 0.6 * pop).clamp(0.1, 1.6).toDouble(),
-                      child: const Icon(Icons.wb_twilight,
-                          size: 18, color: Colors.amberAccent),
+                      child: const GameIcon('announcement', size: 30),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -359,8 +360,7 @@ class _DayViewState extends State<DayView> {
                       onTap: () => setState(() => _kabarHidden = true),
                       child: const Padding(
                         padding: EdgeInsets.only(left: 8),
-                        child: Icon(Icons.close,
-                            size: 16, color: Colors.white54),
+                        child: GameIcon('x', size: 22),
                       ),
                     ),
                 ],
@@ -374,7 +374,7 @@ class _DayViewState extends State<DayView> {
 
   Widget _tabs() {
     final n = _incoming.length;
-    Widget item(int i, IconData icon, String label, {int badge = 0}) {
+    Widget item(int i, String icon, String label, {int badge = 0}) {
       final sel = tab == i;
       return Expanded(
         child: GestureDetector(
@@ -395,9 +395,9 @@ class _DayViewState extends State<DayView> {
                 Badge(
                   isLabelVisible: badge > 0,
                   label: Text('$badge'),
-                  child: Icon(icon,
-                      size: 18,
-                      color: sel ? Colors.amberAccent : Colors.white60),
+                  child: Opacity(
+                      opacity: sel ? 1 : 0.6,
+                      child: GameIcon(icon, size: 28)),
                 ),
                 const SizedBox(width: 6),
                 Text(label,
@@ -422,9 +422,9 @@ class _DayViewState extends State<DayView> {
       ),
       child: Row(
         children: [
-          item(0, Icons.style, 'Meja'),
-          item(1, Icons.storefront, 'Pasar'),
-          item(2, Icons.campaign, 'Balai', badge: n),
+          item(0, 'mydeck2', 'Meja'),
+          item(1, 'store', 'Pasar'),
+          item(2, 'announcement', 'Balai', badge: n),
         ],
       ),
     );
@@ -437,10 +437,10 @@ class _DayViewState extends State<DayView> {
       children: [
         if (widget.jailed) _jailBanner(),
         _section('Kartu di mejamu',
-            icon: Icons.style, trailing: '${hand.length} kartu'),
+            icon: 'mydeck2', trailing: '${hand.length} kartu'),
         Expanded(
           child: hand.isEmpty
-              ? _empty(Icons.style, 'Mejamu masih kosong',
+              ? _empty('mydeck2', 'Mejamu masih kosong',
               'Beli kartu di Pasar untuk dipersembahkan.')
               : LayoutBuilder(builder: (context, box) {
             final g = _metrics(box.maxWidth);
@@ -523,8 +523,7 @@ class _DayViewState extends State<DayView> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.storefront,
-                      size: 18, color: Colors.amberAccent),
+                  const GameIcon('store', size: 28),
                   const SizedBox(width: 8),
                   const Text('Pasar Pagi',
                       style: TextStyle(
@@ -557,20 +556,7 @@ class _DayViewState extends State<DayView> {
           child: Transform.scale(scale: 2.2 - 1.2 * t, child: child),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.greenAccent, width: 3),
-        ),
-        child: const Text('TERBELI',
-            style: TextStyle(
-                color: Colors.greenAccent,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2)),
-      ),
+      child: const GameIcon('dibeli', width: 104, height: 56),
     ),
   );
 
@@ -638,13 +624,13 @@ class _DayViewState extends State<DayView> {
           spacing: 8,
           runSpacing: 6,
           children: [
-            _chip(Icons.water_drop, _fmt(widget.balance),
+            _chip('bulirembun', _fmt(widget.balance),
                 color: const Color(0xFF7FD3F7)),
             if (!widget.jailed)
-              _chip(Icons.shopping_basket, 'Jatah belanja: $remain',
+              _chip('item', 'Jatah belanja: $remain',
                   color: remain > 0 ? Colors.white70 : Colors.white38),
             if (mod != 0)
-              _chip(Icons.sell, 'Harga ${mod > 0 ? '+' : ''}$mod',
+              _chip(mod > 0 ? 'plus' : 'minus', 'Harga ${mod > 0 ? '+' : ''}$mod',
                   color: mod < 0 ? Colors.greenAccent : Colors.orangeAccent),
           ],
         ),
@@ -657,7 +643,7 @@ class _DayViewState extends State<DayView> {
           child: o == null
               ? const Center(child: CircularProgressIndicator())
               : o.isEmpty
-              ? _empty(Icons.storefront, 'Pasar sedang sepi',
+              ? _empty('store', 'Pasar sedang sepi',
               'Belum ada tawaran hari ini.')
               : LayoutBuilder(builder: (context, c) {
             _armMarket();
@@ -680,15 +666,16 @@ class _DayViewState extends State<DayView> {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
+          child: EmbunButton(
+            label: selected == null
+                ? 'Pilih kartu untuk dibeli'
+                : 'Beli ${_cardName(selected!)} (${_price(selected!)})',
+            icon: selected != null &&
+                widget.defs[selected]?['side'] == 'antagonis'
+                ? 'bulirhitam'
+                : 'bulirembun',
+            expand: true,
             onPressed: busy || selected == null ? null : _buy,
-            icon: const Icon(Icons.water_drop, size: 16),
-            label: Text(
-              selected == null
-                  ? 'Pilih kartu untuk dibeli'
-                  : 'Beli ${_cardName(selected!)} (${_price(selected!)})',
-              overflow: TextOverflow.ellipsis,
-            ),
           ),
         ),
       ],
@@ -717,7 +704,7 @@ class _DayViewState extends State<DayView> {
           ),
           child: const Row(
             children: [
-              Icon(Icons.info_outline, size: 16, color: Colors.white54),
+              GameIcon('info', size: 26),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -731,7 +718,7 @@ class _DayViewState extends State<DayView> {
         const SizedBox(height: 14),
         if (inc.isNotEmpty) ...[
           _section('Tawaran tukar untukmu',
-              icon: Icons.swap_horiz, trailing: '${inc.length}'),
+              icon: 'barter', trailing: '${inc.length}'),
           for (final t in inc)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
@@ -762,20 +749,21 @@ class _DayViewState extends State<DayView> {
                       ],
                     ),
                   ),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact),
-                    onPressed: busy
+                  MedallionButton(
+                    icon: 'silang',
+                    label: 'Tolak',
+                    size: 44,
+                    onTap: busy
                         ? null
                         : () => _run(() =>
                         widget.repo.respondTrade(t['id'] as String, false)),
-                    child: const Text('Tolak'),
                   ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact),
-                    onPressed: busy ? null : () => _accept(t),
-                    child: const Text('Terima'),
+                  const SizedBox(width: 8),
+                  MedallionButton(
+                    icon: 'centang',
+                    label: 'Terima',
+                    size: 44,
+                    onTap: busy ? null : () => _accept(t),
                   ),
                 ],
               ),
@@ -783,7 +771,7 @@ class _DayViewState extends State<DayView> {
           const SizedBox(height: 6),
         ],
         if (out.isNotEmpty) ...[
-          _section('Menunggu jawaban', icon: Icons.hourglass_top),
+          _section('Menunggu jawaban', icon: 'wait'),
           for (final t in out)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -794,7 +782,7 @@ class _DayViewState extends State<DayView> {
             ),
           const SizedBox(height: 6),
         ],
-        _section('Kabar desa', icon: Icons.campaign),
+        _section('Kabar desa', icon: 'announcement'),
         if (feed.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -812,13 +800,8 @@ class _DayViewState extends State<DayView> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    e['kind'] == 'give' ? Icons.water_drop : Icons.swap_horiz,
-                    size: 14,
-                    color: e['kind'] == 'give'
-                        ? const Color(0xFF7FD3F7)
-                        : Colors.amberAccent,
-                  ),
+                  GameIcon(e['kind'] == 'give' ? 'bulirembun' : 'barter',
+                      size: 24),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(e['text'] as String,
@@ -844,15 +827,15 @@ class _DayViewState extends State<DayView> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
+          child: EmbunButton(
+            label: ready
+                ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
+                : 'Akhiri hari ${widget.day}',
+            icon: ready ? 'wait' : 'endday',
+            expand: true,
             onPressed: ready || busy
                 ? null
                 : () => _run(() => widget.repo.finishDay(widget.gameId)),
-            icon: Icon(ready ? Icons.hourglass_top : Icons.nightlight_round,
-                size: 18),
-            label: Text(ready
-                ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
-                : 'Akhiri hari ${widget.day}'),
           ),
         ),
         if (ready)
@@ -878,7 +861,7 @@ class _DayViewState extends State<DayView> {
     final progress =
     widget.total == 0 ? 0.0 : (widget.readyCount / widget.total);
 
-    Widget item(int i, IconData icon, String label, {int badge = 0}) {
+    Widget item(int i, String icon, String label, {int badge = 0}) {
       final sel = tab == i;
       return Expanded(
         child: GestureDetector(
@@ -899,9 +882,9 @@ class _DayViewState extends State<DayView> {
                 Badge(
                   isLabelVisible: badge > 0,
                   label: Text('$badge'),
-                  child: Icon(icon,
-                      size: 22,
-                      color: sel ? Colors.amberAccent : Colors.white60),
+                  child: Opacity(
+                      opacity: sel ? 1 : 0.6,
+                      child: GameIcon(icon, size: 32)),
                 ),
                 const SizedBox(height: 2),
                 Text(label,
@@ -929,9 +912,9 @@ class _DayViewState extends State<DayView> {
           ),
           child: Row(
             children: [
-              item(0, Icons.style, 'Meja'),
-              item(1, Icons.storefront, 'Pasar'),
-              item(2, Icons.campaign, 'Balai', badge: n),
+              item(0, 'mydeck2', 'Meja'),
+              item(1, 'store', 'Pasar'),
+              item(2, 'announcement', 'Balai', badge: n),
               const SizedBox(width: 6),
               SizedBox(
                 width: 104,
@@ -949,11 +932,7 @@ class _DayViewState extends State<DayView> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                          ready
-                              ? Icons.hourglass_top
-                              : Icons.nightlight_round,
-                          size: 16),
+                      GameIcon(ready ? 'wait' : 'endday', size: 24),
                       const SizedBox(height: 2),
                       Text(
                         ready

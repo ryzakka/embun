@@ -132,7 +132,7 @@ class PlayerAvatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: path == null
-            ? Icon(Icons.person, size: size * 0.6)
+            ? GameIcon('character', size: size * 0.8)
             : GameImage(
           path: path,
           alignment: const Alignment(0, -0.6),
@@ -195,4 +195,63 @@ class GameIcon extends StatelessWidget {
           : GameImage(path: p, fit: BoxFit.contain, cacheWidth: (w * 3).round()),
     );
   }
+}
+/// Layar muat: ikon aplikasi berdenyut pelan di atas indikator tipis.
+class EmbunLoading extends StatefulWidget {
+  final String? text;
+  const EmbunLoading({super.key, this.text});
+
+  @override
+  State<EmbunLoading> createState() => _EmbunLoadingState();
+}
+
+class _EmbunLoadingState extends State<EmbunLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1400))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _c,
+          builder: (_, child) {
+            final t = Curves.easeInOut.transform(_c.value);
+            return Opacity(
+              opacity: 0.7 + 0.3 * t,
+              child: Transform.scale(scale: 0.96 + 0.06 * t, child: child),
+            );
+          },
+          child: SizedBox(
+            width: 96,
+            height: 96,
+            child: GameImage(
+                path: logoPath('ikonapp-transparent'),
+                fit: BoxFit.contain,
+                cacheWidth: 288),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: 120,
+          child: LinearProgressIndicator(
+              minHeight: 3, borderRadius: BorderRadius.circular(2)),
+        ),
+        if (widget.text != null) ...[
+          const SizedBox(height: 10),
+          Text(widget.text!,
+              style: const TextStyle(fontSize: 12, color: Colors.white60)),
+        ],
+      ],
+    ),
+  );
 }
