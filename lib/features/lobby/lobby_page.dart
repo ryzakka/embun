@@ -109,7 +109,7 @@ class _LobbyPageState extends State<LobbyPage> {
           SizedBox(
             height: 190,
             child: GameImage(
-                path: logoPath('ikon-transparent'),
+                path: logoPath('logoteks-transparent'),
                 fit: BoxFit.contain,
                 cacheWidth: 800),
           ),

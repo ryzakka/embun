@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' show sin, pi, min;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/errors.dart';
@@ -11,52 +12,48 @@ import 'flip_card.dart';
 
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
 
-const _tabMeja = 0;
-const _tabPasar = 1;
-const _tabBalai = 2;
+/// Tiga susunan layar, dipilih dari ruang yang diberikan induk (bukan ukuran
+/// layar), jadi tetap benar di jendela desktop, tablet, dan ponsel diputar:
+///
+/// * [phone]     panggung pasar penuh + bilah navigasi di bawah. Meja dan
+///               Balai naik sebagai panel di atas panggung.
+/// * [landscape] panggung di kiri, dok aksi (beli, meja, balai, akhiri hari)
+///               di kanan. Untuk layar pendek.
+/// * [wide]      panggung pasar + baki kartu di bawahnya, Balai Desa dan
+///               tombol akhiri hari di panel kanan.
+enum _Mode { phone, landscape, wide }
 
-/// Ukuran kartu dan jumlah kolom, dihitung dari lebar yang tersedia.
+_Mode _modeFor(BoxConstraints c) {
+  final w = c.maxWidth, h = c.maxHeight;
+  if (h < 430) return w >= 520 ? _Mode.landscape : _Mode.phone;
+  if (w >= 760) return _Mode.wide;
+  return _Mode.phone;
+}
+
+enum _Panel { none, meja, balai }
+
+/// Ukuran kartu dan jumlah kolom untuk grid kartu di Meja.
 class _Grid {
   final int cols;
   final double w;
   final double gap;
   const _Grid(this.cols, this.w, this.gap);
-  double get h => w * 9 / 7;
 }
 
 _Grid _metrics(double aw) {
   const gap = 10.0;
-  final minW = aw < 600 ? 120.0 : 136.0;
-  const maxW = 168.0;
+  const minW = 96.0;
+  const maxW = 140.0;
   var cols = ((aw + gap) / (minW + gap)).floor();
   if (cols < 2) cols = 2;
   var w = (aw - (cols - 1) * gap) / cols;
   if (w > maxW) w = maxW;
-  // Bulatkan ke bawah: selisih desimal bisa membuat Wrap turun satu kolom.
   return _Grid(cols, w.floorToDouble(), gap);
 }
 
-/// Empat susunan layar, dipilih dari ukuran ruang yang diberikan induk
-/// (bukan ukuran layar), jadi tetap benar di jendela desktop yang diubah
-/// ukurannya, tablet, maupun ponsel yang diputar:
-///
-/// * [phone]     satu panel + bilah tab di bawah (ponsel tegak).
-/// * [rail]      satu panel + rel ikon di kiri (ponsel mendatar / layar pendek).
-/// * [split]     Pasar di kiri, Meja/Balai bertab di kanan (tablet, jendela sedang).
-/// * [dashboard] Meja, Pasar, dan Balai tampil bersamaan (desktop).
-enum _Mode { phone, rail, split, dashboard }
-
-_Mode _modeFor(BoxConstraints c) {
-  final w = c.maxWidth, h = c.maxHeight;
-  if (h < 430) return w >= 520 ? _Mode.rail : _Mode.phone;
-  if (w >= 1060) return _Mode.dashboard;
-  if (w >= 700) return _Mode.split;
-  return _Mode.phone;
-}
-
-/// Layar hari biasa: Meja (kartumu), Pasar (belanja), Balai (kabar,
-/// pemberian, tawaran tukar). Tetap hidup setelah pemain menekan "Akhiri
-/// hari", jadi tidak ada lagi layar tunggu yang kosong.
+/// Layar hari biasa: Pasar (panggung kartu belanja), Meja (kartumu), Balai
+/// (kabar, pemberian, tawaran tukar). Tetap hidup setelah pemain menekan
+/// "Akhiri hari", jadi tidak ada layar tunggu yang kosong.
 class DayView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
@@ -74,7 +71,7 @@ class DayView extends StatefulWidget {
   final List<Map<String, dynamic>> events;
   final List<Map<String, dynamic>> trades;
 
-  /// Peran gelap yang sedang tampil (bukan samaran): saldo ditandai
+  /// Peran gelap yang sedang tampil (bukan samaran): harga ditandai
   /// bulir hitam, bukan tetes embun.
   final bool dark;
 
@@ -103,10 +100,9 @@ class DayView extends StatefulWidget {
 }
 
 class _DayViewState extends State<DayView> {
-  int tab = _tabMeja; // mode phone / rail
-  int side = _tabMeja; // mode split: panel kanan (Meja atau Balai)
+  _Panel panel = _Panel.none;
+  int focus = 0; // kartu pasar yang sedang di tengah panggung
   List<Map<String, dynamic>>? offers;
-  String? selected;
   bool busy = false;
 
   // Pembukaan pasar: kartu dibagikan sebagai punggung, lalu berbalik. Hanya
@@ -197,13 +193,25 @@ class _DayViewState extends State<DayView> {
       t['from_id'] == widget.repo.myId)
       .toList();
 
+  /// Alasan kartu belum bisa dibeli; null bila bisa.
+  String? _blockReason(Map<String, dynamic> offer, int price) {
+    if (offer['bought'] == true) return 'Sudah kamu beli';
+    if (widget.jailed) return 'Kamu dikurung hari ini';
+    if (_remaining <= 0) return 'Jatah belanja habis';
+    if (price > widget.balance) {
+      final lack = _fmt(price - widget.balance);
+      return widget.dark ? 'Bulir hitam kurang $lack' : 'Embun kurang $lack';
+    }
+    return null;
+  }
+
   Future<void> _buy() async {
-    final id = selected;
-    if (id == null) return;
+    final o = offers;
+    if (o == null || o.isEmpty) return;
+    final id = o[focus.clamp(0, o.length - 1).toInt()]['card_id'] as String;
     await _run(() async {
       await widget.repo.buyCard(widget.gameId, id);
       HapticFeedback.mediumImpact();
-      if (mounted) setState(() => selected = null);
       await _loadOffers();
     }, ok: '${_cardName(id)} masuk ke mejamu');
   }
@@ -238,6 +246,9 @@ class _DayViewState extends State<DayView> {
     );
   }
 
+  void _togglePanel(_Panel p) =>
+      setState(() => panel = panel == p ? _Panel.none : p);
+
   // ====================== bahan dasar ======================
 
   BoxDecoration _glassDeco({double radius = 16}) => BoxDecoration(
@@ -247,34 +258,17 @@ class _DayViewState extends State<DayView> {
         color: EmbunColors.goldDim.withValues(alpha: 0.4), width: 1.2),
   );
 
-  /// Kartu kaca untuk satu panel (dipakai di layar lebar dan mode rel).
+  /// Kartu kaca untuk satu panel (layar lebar).
   Widget _card(Widget child) => Container(
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
     decoration: _glassDeco(radius: 18),
     child: child,
   );
 
-  /// Panel: judul berikon + isi. [framed] membungkusnya dengan kartu kaca.
-  Widget _frame({
-    required bool framed,
-    required Widget child,
-    String? icon,
-    String? title,
-    Widget? trailing,
-  }) {
-    final inner = title == null
-        ? child
-        : Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SectionHeader(
-            icon: icon, title: title, trailing: trailing, iconSize: 28),
-        const SizedBox(height: 8),
-        Expanded(child: child),
-      ],
-    );
-    return framed ? _card(inner) : inner;
-  }
+  Widget _fadeLayout(Widget? current, List<Widget> previous) => Stack(
+    fit: StackFit.expand,
+    children: [...previous, ?current],
+  );
 
   Widget _section(String title, {String? icon, String? trailing}) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
@@ -298,7 +292,7 @@ class _DayViewState extends State<DayView> {
   Widget _chip(String icon, String text, {Color? color}) {
     final c = color ?? Colors.white70;
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
+      padding: const EdgeInsets.fromLTRB(3, 2, 9, 2),
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(16),
@@ -307,34 +301,13 @@ class _DayViewState extends State<DayView> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GameIcon(icon, size: 24),
+          GameIcon(icon, size: 22),
           const SizedBox(width: 4),
           Text(text, style: TextStyle(fontSize: 12, color: c)),
         ],
       ),
     );
   }
-
-  Widget _jailBanner() => Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: EmbunColors.blood.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: EmbunColors.blood.withValues(alpha: 0.5)),
-    ),
-    child: const Row(
-      children: [
-        GameIcon('lock', size: 28),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text('Kamu dikurung hari ini: tidak bisa berbelanja.',
-              style: TextStyle(fontSize: 12, color: EmbunColors.blood)),
-        ),
-      ],
-    ),
-  );
 
   Widget _empty(String icon, String title, String hint) => Center(
     child: Padding(
@@ -373,66 +346,6 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  Widget _fadeLayout(Widget? current, List<Widget> previous) => Stack(
-    fit: StackFit.expand,
-    children: [...previous, ?current],
-  );
-
-  /// Tab satu baris (ikon + teks) atau dua baris (ikon di atas teks).
-  Widget _tabButton({
-    required bool sel,
-    required String icon,
-    required String label,
-    required VoidCallback onTap,
-    int badge = 0,
-    bool vertical = false,
-  }) {
-    final ic = Badge(
-      isLabelVisible: badge > 0,
-      label: Text('$badge'),
-      child: Opacity(
-          opacity: sel ? 1 : 0.6,
-          child: GameIcon(icon, size: vertical ? 32 : 28)),
-    );
-    final txt = Text(label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: vertical ? 11 : 13,
-          fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-          color: sel ? EmbunColors.cream : Colors.white70,
-        ));
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(vertical: vertical ? 5 : 6, horizontal: 6),
-          decoration: BoxDecoration(
-            color: sel
-                ? EmbunColors.gold.withValues(alpha: 0.16)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: sel
-                  ? EmbunColors.gold.withValues(alpha: 0.55)
-                  : Colors.transparent,
-            ),
-          ),
-          child: vertical
-              ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [ic, const SizedBox(height: 2), txt])
-              : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [ic, const SizedBox(width: 6), Flexible(child: txt)]),
-        ),
-      ),
-    );
-  }
-
   // ====================== Kabar Pagi ======================
 
   /// Fajar menyingsing: spanduk meluncur turun, ikon bergema, cahaya
@@ -464,7 +377,7 @@ class _DayViewState extends State<DayView> {
               width: double.infinity,
               margin: EdgeInsets.only(bottom: compact ? 6 : 10),
               padding: EdgeInsets.fromLTRB(
-                  compact ? 6 : 8, compact ? 4 : 6, compact ? 10 : 12, compact ? 4 : 6),
+                  compact ? 6 : 8, compact ? 3 : 6, compact ? 8 : 12, compact ? 3 : 6),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -495,13 +408,13 @@ class _DayViewState extends State<DayView> {
                     angle: (1 - pop) * -1.2,
                     child: Transform.scale(
                       scale: (0.4 + 0.6 * pop).clamp(0.1, 1.6).toDouble(),
-                      child: const GameIcon('announcement', size: 34),
+                      child: GameIcon('announcement', size: compact ? 28 : 34),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('Kabar Pagi: $text',
-                        maxLines: compact ? 3 : 2,
+                        maxLines: compact ? 2 : 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12)),
                   ),
@@ -510,8 +423,8 @@ class _DayViewState extends State<DayView> {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => setState(() => _kabarHidden = true),
                       child: const Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: GameIcon('x', size: 24),
+                        padding: EdgeInsets.fromLTRB(8, 6, 2, 6),
+                        child: GameIcon('x', size: 22),
                       ),
                     ),
                 ],
@@ -523,93 +436,31 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  // ====================== isi panel ======================
-
-  // ---- Meja ----
-
-  Widget _mejaBody() {
-    final hand = widget.hand;
-    if (hand.isEmpty) {
-      return _empty('mydeck2', 'Mejamu masih kosong',
-          'Beli kartu di Pasar untuk dipersembahkan.');
-    }
-    return LayoutBuilder(builder: (context, box) {
-      final g = _metrics(box.maxWidth);
-      return SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 6, bottom: 8),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: g.gap,
-          runSpacing: g.gap,
-          children: [
-            for (final h in hand)
-              _preview(
-                widget.defs[h['card_id']],
-                CardTile(
-                  def: widget.defs[h['card_id']],
-                  fallbackName: h['card_id'] as String,
-                  width: g.w,
-                ),
-              ),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _mejaPane({required bool framed}) => _frame(
-    framed: framed,
-    icon: 'mydeck2',
-    title: 'Kartu di mejamu',
-    trailing: Text('${widget.hand.length} kartu',
-        style: const TextStyle(fontSize: 11, color: Colors.white54)),
-    child: _mejaBody(),
-  );
-
-  // ---- Pasar ----
+  // ====================== Pasar: papan, kartu, panel beli ======================
 
   Widget _statusChips() {
     final mod = widget.priceMod;
     final remain = _remaining;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _chip(widget.dark ? 'bulirhitam' : 'bulirembun', _fmt(widget.balance),
-            color: widget.dark
-                ? EmbunColors.mist
-                : const Color(0xFF7FD3F7)),
         if (widget.jailed)
           _chip('lock', 'Dikurung', color: EmbunColors.blood)
         else
-          _chip('item', 'Jatah belanja: $remain',
+          _chip('item', 'Jatah $remain',
               color: remain > 0 ? Colors.white70 : Colors.white38),
-        if (mod != 0)
+        if (mod != 0) ...[
+          const SizedBox(width: 6),
           _chip(mod > 0 ? 'plus' : 'minus', 'Harga ${mod > 0 ? '+' : ''}$mod',
               color: mod < 0 ? Colors.greenAccent : Colors.orangeAccent),
+        ],
       ],
     );
   }
 
-  /// Posisi tumpukan dikurangi posisi akhir kartu ke-[i]: titik asal saat
-  /// kartu dibagikan. Tumpukan berada di tengah area yang terlihat.
-  Offset _dealOffset(_Grid g, int i, int n, double aw, double viewH) {
-    final rows = (n / g.cols).ceil();
-    final r = i ~/ g.cols;
-    final col = i % g.cols;
-    final inRow = (r == rows - 1) ? n - r * g.cols : g.cols;
-    final rowW = inRow * g.w + (inRow - 1) * g.gap;
-    final x = (aw - rowW) / 2 + col * (g.w + g.gap) + g.w / 2;
-    final totalH = rows * g.h + (rows - 1) * g.gap;
-    final y = 14 + r * (g.h + g.gap) + g.h / 2;
-    final vh = viewH > 22 ? viewH - 22 : viewH;
-    final deckY = 14 + min(totalH, vh) / 2;
-    return Offset(aw / 2 - x, deckY - y);
-  }
-
-  /// Papan pasar: jatuh dari atas, berayun mereda, cahaya menyapu.
-  Widget _marketSign(int n) => TweenAnimationBuilder<double>(
+  /// Papan pasar: jatuh dari atas, berayun mereda, cahaya menyapu. Memuat
+  /// juga jatah belanja dan perubahan harga, jadi tidak perlu baris chip lagi.
+  Widget _marketSign() => TweenAnimationBuilder<double>(
     // Setelah pasar pernah dibuka hari ini, papan langsung tampil tenang.
     tween: Tween<double>(begin: _marketOpened ? 1.0 : 0.0, end: 1.0),
     duration: const Duration(milliseconds: 1500),
@@ -628,7 +479,7 @@ class _DayViewState extends State<DayView> {
             offset: Offset(0, (1 - drop) * -26),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(6, 3, 12, 3),
+              padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -651,7 +502,7 @@ class _DayViewState extends State<DayView> {
               ),
               child: Row(
                 children: [
-                  const GameIcon('store', size: 32),
+                  const GameIcon('store', size: 30),
                   const SizedBox(width: 8),
                   const Text('Pasar Pagi',
                       style: TextStyle(
@@ -659,10 +510,17 @@ class _DayViewState extends State<DayView> {
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.6,
                           color: EmbunColors.gold)),
-                  const Spacer(),
-                  Text('$n kartu hari ini',
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.white70)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: _statusChips(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -689,33 +547,32 @@ class _DayViewState extends State<DayView> {
     ),
   );
 
-  Widget _marketCard(int i, int n, Map<String, dynamic> offer, _Grid g,
-      double aw, double viewH, int remain) {
+  Widget _marketCard({
+    required int i,
+    required int n,
+    required Map<String, dynamic> offer,
+    required double w,
+    required double h,
+    required double extent,
+    required int dealtCount,
+  }) {
     final id = offer['card_id'] as String;
     final price = _price(id);
     final bought = offer['bought'] == true;
-    final ok = !widget.jailed &&
-        !bought &&
-        remain > 0 &&
-        price <= widget.balance;
+    final focused = i == focus;
+    final canBuy = _blockReason(offer, price) == null;
     final def = widget.defs[id];
     final bad = def?['side'] == 'antagonis';
 
     final tile = CardTile(
       def: def,
       fallbackName: id,
-      width: g.w,
+      width: w,
       showCost: true,
       costOverride: price,
       badge: bought ? 'Terbeli' : null,
-      selected: selected == id,
-      dim: !ok,
-      onTap: ok
-          ? () {
-        HapticFeedback.selectionClick();
-        setState(() => selected = id);
-      }
-          : null,
+      selected: focused && canBuy,
+      dim: !canBuy && !focused,
     );
     final front = Stack(
       clipBehavior: Clip.none,
@@ -729,95 +586,363 @@ class _DayViewState extends State<DayView> {
     return FlipCard(
       key: ValueKey('offer$i-$id'),
       index: i,
-      width: g.w,
-      height: g.h,
+      width: w,
+      height: h,
       revealed: _marketOpened,
       animate: !_marketOpened,
       dark: bad,
       glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
-      dealOffset: _dealOffset(g, i, n, aw, viewH),
-      suspense: n > 2 && i == n - 1,
+      // Tumpukan ada di tengah panggung; tiap kartu dibagikan ke tempatnya.
+      dealOffset: Offset(-(i - focus) * extent, 0),
+      suspense: n > 2 && i == dealtCount - 1,
       front: front,
     );
   }
 
-  Widget _buyBar() {
-    final sel = selected;
-    final bad = sel != null && widget.defs[sel]?['side'] == 'antagonis';
-    return Row(
-      children: [
-        Expanded(
-          child: EmbunButton(
-            label: sel == null
-                ? 'Pilih kartu untuk dibeli'
-                : 'Beli ${_cardName(sel)} (${_price(sel)})',
-            icon: bad ? 'bulirhitam' : 'bulirembun',
-            expand: true,
-            onPressed: busy || sel == null ? null : _buy,
-          ),
+  Widget _carouselArea({bool arrows = false}) {
+    final o = offers;
+    if (o == null) return const EmbunLoading();
+    if (o.isEmpty) {
+      return _empty('store', 'Pasar sedang sepi', 'Belum ada tawaran hari ini.');
+    }
+    return LayoutBuilder(builder: (context, c) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _armMarket());
+      // Sisakan ruang untuk titik halaman (14) dan kartu terangkat (12).
+      final availH = c.maxHeight - 14 - 12;
+      var w = availH * 7 / 9;
+      final maxW = min(220.0, c.maxWidth * 0.6);
+      if (w > maxW) w = maxW;
+      if (w < 84) w = 84;
+      w = w.floorToDouble();
+      final h = w * 9 / 7;
+      final extent = w + 14;
+      final dealt = (c.maxWidth / extent).ceil().clamp(1, o.length).toInt();
+      final f = focus.clamp(0, o.length - 1).toInt();
+      return _MarketCarousel(
+        key: ValueKey('mc${extent.round()}-${c.maxWidth.round()}-${o.length}'),
+        count: o.length,
+        initialPage: f,
+        viewW: c.maxWidth,
+        extent: extent,
+        arrows: arrows,
+        onFocus: (i) {
+          HapticFeedback.selectionClick();
+          setState(() => focus = i);
+        },
+        onTapFocused: (i) {
+          final def = widget.defs[o[i]['card_id']];
+          if (def != null) showCardPreview(context, def);
+        },
+        itemBuilder: (i) => _marketCard(
+          i: i,
+          n: o.length,
+          offer: o[i],
+          w: w,
+          h: h,
+          extent: extent,
+          dealtCount: dealt,
         ),
-        if (sel != null) ...[
-          const SizedBox(width: 8),
-          MedallionButton(
-            icon: 'silang',
-            size: 46,
-            onTap: busy ? null : () => setState(() => selected = null),
-          ),
-        ],
-      ],
-    );
+      );
+    });
   }
 
-  Widget _pasarBody({required bool chips}) {
+  /// Panel beli di bawah panggung: nama, jenis, harga, deskripsi, dan tombol.
+  /// Bila tidak bisa dibeli, tombolnya sendiri menyebut alasannya.
+  Widget _buyPanel({required bool desc, bool inline = false}) {
     final o = offers;
-    final remain = _remaining;
-    return Column(
+    if (o == null || o.isEmpty) return const SizedBox.shrink();
+    final i = focus.clamp(0, o.length - 1).toInt();
+    final offer = o[i];
+    final id = offer['card_id'] as String;
+    final def = widget.defs[id];
+    final bad = def?['side'] == 'antagonis';
+    final price = _price(id);
+    final reason = _blockReason(offer, price);
+    final can = reason == null && !busy;
+    final accent = bad ? EmbunColors.mist : EmbunColors.gold;
+    final afford = price <= widget.balance;
+    final description = '${def?['description'] ?? ''}';
+
+    final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.jailed) _jailBanner(),
-        if (chips) ...[
-          _statusChips(),
-          const SizedBox(height: 10),
+        Text(_cardName(id),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+                color: accent)),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            GameIcon(kindIcon[def?['kind']] ?? 'item', size: 20),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(kindLabel[def?['kind']] ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Colors.white60)),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final pricePill = Container(
+      padding: const EdgeInsets.fromLTRB(3, 2, 10, 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: (afford ? EmbunColors.gold : EmbunColors.blood)
+                .withValues(alpha: 0.75)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 26),
+          const SizedBox(width: 4),
+          Text('$price',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: afford ? EmbunColors.gold : EmbunColors.blood)),
         ],
-        if (o != null && o.isNotEmpty) ...[
-          _marketSign(o.length),
-          const SizedBox(height: 4),
-        ],
-        Expanded(
-          child: o == null
-              ? const EmbunLoading()
-              : o.isEmpty
-              ? _empty('store', 'Pasar sedang sepi',
-              'Belum ada tawaran hari ini.')
-              : LayoutBuilder(builder: (context, c) {
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _armMarket());
-            final g = _metrics(c.maxWidth);
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 14, bottom: 8),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: g.gap,
-                runSpacing: g.gap,
+      ),
+    );
+
+    final descText = !desc
+        ? null
+        : GestureDetector(
+      onTap: def == null ? null : () => showCardPreview(context, def),
+      child: Text(description,
+          maxLines: inline ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontSize: 12, height: 1.3, color: Colors.white70)),
+    );
+
+    final button = EmbunButton(
+      label: reason ?? 'Beli kartu ini',
+      icon: bad ? 'bulirhitam' : 'bulirembun',
+      expand: true,
+      height: inline ? 50 : 46,
+      onPressed: can ? _buy : null,
+    );
+
+    // Bagian teks berganti halus saat kartu fokus berpindah.
+    Widget swap(Widget child) => AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      layoutBuilder: (cur, prev) => Stack(
+        alignment: Alignment.topLeft,
+        children: [...prev, ?cur],
+      ),
+      child: KeyedSubtree(key: ValueKey('$i-$id'), child: child),
+    );
+
+    final deco = BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.38),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: accent.withValues(alpha: 0.4), width: 1.2),
+    );
+
+    if (inline) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+        decoration: deco,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: swap(Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0; i < o.length; i++)
-                    _marketCard(i, o.length, o[i], g, c.maxWidth,
-                        c.maxHeight, remain),
+                  title,
+                  if (descText != null) ...[
+                    const SizedBox(height: 6),
+                    descText,
+                  ],
+                ],
+              )),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 232,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(alignment: Alignment.centerRight, child: pricePill),
+                  const SizedBox(height: 8),
+                  button,
                 ],
               ),
-            );
-          }),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        _buyBar(),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: deco,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: swap(title)),
+              const SizedBox(width: 8),
+              pricePill,
+            ],
+          ),
+          if (descText != null) ...[
+            const SizedBox(height: 6),
+            swap(descText),
+          ],
+          const SizedBox(height: 8),
+          button,
+        ],
+      ),
+    );
+  }
+
+  /// Panggung: papan pasar, carousel kartu, dan (opsional) panel beli.
+  Widget _stage({
+    required bool buy,
+    bool inline = false,
+    bool desc = true,
+    bool arrows = false,
+  }) {
+    final o = offers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _marketSign(),
+        const SizedBox(height: 4),
+        Expanded(child: _carouselArea(arrows: arrows)),
+        if (buy && o != null && o.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          _buyPanel(desc: desc, inline: inline),
+        ],
       ],
     );
   }
 
-  Widget _pasarPane({required bool framed, required bool chips}) =>
-      _frame(framed: framed, child: _pasarBody(chips: chips));
+  // ====================== Meja (kartumu) ======================
 
-  // ---- Balai ----
+  Widget _mejaBody() {
+    final hand = widget.hand;
+    if (hand.isEmpty) {
+      return _empty('mydeck2', 'Mejamu masih kosong',
+          'Beli kartu di Pasar untuk dipersembahkan.');
+    }
+    return LayoutBuilder(builder: (context, box) {
+      final g = _metrics(box.maxWidth);
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Column(
+          children: [
+            const Text('Tekan lama kartu untuk membaca efeknya.',
+                style: TextStyle(fontSize: 11, color: Colors.white38)),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: g.gap,
+              runSpacing: g.gap,
+              children: [
+                for (final h in hand)
+                  _preview(
+                    widget.defs[h['card_id']],
+                    CardTile(
+                      def: widget.defs[h['card_id']],
+                      fallbackName: h['card_id'] as String,
+                      width: g.w,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Baki kartu di bawah panggung (layar lebar): kartumu berjajar seperti
+  /// kartu di tangan.
+  Widget _tray(double height) {
+    final hand = widget.hand;
+    return SizedBox(
+      height: height,
+      child: _card(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const GameIcon('mydeck2', size: 26),
+                const SizedBox(width: 8),
+                const Text('Mejamu',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.6,
+                        color: EmbunColors.gold)),
+                const Spacer(),
+                Text('${hand.length} kartu',
+                    style:
+                    const TextStyle(fontSize: 11, color: Colors.white54)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: hand.isEmpty
+                  ? const Center(
+                child: Text(
+                    'Beli kartu di Pasar untuk dipersembahkan.',
+                    style: TextStyle(fontSize: 12, color: Colors.white38)),
+              )
+                  : LayoutBuilder(builder: (context, c) {
+                final h = (c.maxHeight - 6).clamp(80.0, 400.0).toDouble();
+                final w = (h * 7 / 9).floorToDouble();
+                return Center(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final cardRow in hand)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: _preview(
+                              widget.defs[cardRow['card_id']],
+                              CardTile(
+                                def: widget.defs[cardRow['card_id']],
+                                fallbackName: cardRow['card_id'] as String,
+                                width: w,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ====================== Balai ======================
 
   Widget _tradeCard(Map<String, dynamic> t) => Container(
     margin: const EdgeInsets.only(bottom: 8),
@@ -960,184 +1085,238 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  Widget _balaiPane({required bool framed, bool kabar = false}) {
+  /// Balai Desa sebagai panel tetap di kanan (layar lebar), dengan tombol
+  /// akhiri hari di dasarnya.
+  Widget _balaiCard() {
     final n = _incoming.length;
-    return _frame(
-      framed: framed,
-      icon: 'announcement',
-      title: 'Balai Desa',
-      trailing: n == 0 ? null : _chip('barter', '$n tawaran', color: EmbunColors.gold),
-      child: _balaiBody(kabar: kabar),
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(
+            icon: 'announcement',
+            title: 'Balai Desa',
+            iconSize: 28,
+            trailing: n == 0
+                ? null
+                : _chip('barter', '$n tawaran', color: EmbunColors.gold),
+          ),
+          const SizedBox(height: 8),
+          Expanded(child: _balaiBody()),
+          const SizedBox(height: 10),
+          _endButton(height: 52),
+        ],
+      ),
     );
   }
 
-  // ====================== navigasi & tombol akhiri hari ======================
+  // ====================== navigasi & akhiri hari ======================
 
-  Widget _endLabelIcon() => GameIcon(widget.iAmReady ? 'wait' : 'endday', size: 24);
-
-  /// Bilah bawah ponsel: tiga tab (ikon di atas label) dan tombol ringkas
-  /// "Akhiri hari", mudah dijangkau ibu jari.
-  Widget _bottomBar() {
-    final n = _incoming.length;
+  /// Tombol akhiri hari. Menonjol (hijau) begitu tidak ada lagi yang bisa
+  /// dibeli; selain itu tampil tenang supaya tidak tertekan tak sengaja.
+  Widget _endButton({double height = 48}) {
     final ready = widget.iAmReady;
+    final nothingLeft = _remaining == 0 || widget.jailed;
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: _glassDeco(),
-          child: Row(
-            children: [
-              _tabButton(
-                  sel: tab == _tabMeja,
-                  icon: 'mydeck2',
-                  label: 'Meja',
-                  vertical: true,
-                  onTap: () => setState(() => tab = _tabMeja)),
-              _tabButton(
-                  sel: tab == _tabPasar,
-                  icon: 'store',
-                  label: 'Pasar',
-                  vertical: true,
-                  onTap: () => setState(() => tab = _tabPasar)),
-              _tabButton(
-                  sel: tab == _tabBalai,
-                  icon: 'announcement',
-                  label: 'Balai',
-                  badge: n,
-                  vertical: true,
-                  onTap: () => setState(() => tab = _tabBalai)),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 104,
-                child: FilledButton(
-                  onPressed: ready || busy ? null : _endDay,
-                  style: FilledButton.styleFrom(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    minimumSize: const Size(0, 52),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _endLabelIcon(),
-                      Text(
-                        ready
-                            ? '${widget.readyCount}/${widget.total} siap'
-                            : 'Akhiri hari ${widget.day}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11, height: 1.1),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        EmbunButton(
+          label: ready
+              ? 'Siap ${widget.readyCount}/${widget.total}'
+              : 'Akhiri hari',
+          icon: ready ? 'wait' : 'endday',
+          expand: true,
+          height: height,
+          kind: (ready || !nothingLeft)
+              ? EmbunButtonKind.secondary
+              : EmbunButtonKind.primary,
+          onPressed: ready || busy ? null : _endDay,
         ),
         if (ready) _readyBar(),
       ],
     );
   }
 
-  /// Rel ikon di kiri untuk layar pendek (ponsel mendatar).
-  Widget _rail() {
-    final n = _incoming.length;
-    final ready = widget.iAmReady;
-    Widget nav(int i, String icon, String label, {int badge = 0}) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: MedallionButton(
-        icon: icon,
-        label: label,
-        size: 40,
-        selected: tab == i,
-        badge: badge > 0 ? '$badge' : null,
-        onTap: () => setState(() => tab = i),
+  Widget _navButton({
+    required String icon,
+    required String label,
+    required bool sel,
+    required VoidCallback onTap,
+    int badge = 0,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: sel
+              ? EmbunColors.gold.withValues(alpha: 0.16)
+              : Colors.black.withValues(alpha: 0.32),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: sel
+                ? EmbunColors.gold.withValues(alpha: 0.7)
+                : EmbunColors.goldDim.withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Badge(
+              isLabelVisible: badge > 0,
+              label: Text('$badge'),
+              child: Opacity(
+                  opacity: sel ? 1 : 0.8, child: GameIcon(icon, size: 26)),
+            ),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                  color: sel ? EmbunColors.cream : Colors.white70,
+                )),
+          ],
+        ),
       ),
     );
-    return Container(
-      width: 76,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      decoration: _glassDeco(),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  nav(_tabMeja, 'mydeck2', 'Meja'),
-                  nav(_tabPasar, 'store', 'Pasar'),
-                  nav(_tabBalai, 'announcement', 'Balai', badge: n),
-                ],
+  }
+
+  Widget _mejaNav() => _navButton(
+    icon: 'mydeck2',
+    label: 'Meja · ${widget.hand.length}',
+    sel: panel == _Panel.meja,
+    onTap: () => _togglePanel(_Panel.meja),
+  );
+
+  Widget _balaiNav() => _navButton(
+    icon: 'announcement',
+    label: 'Balai',
+    sel: panel == _Panel.balai,
+    badge: _incoming.length,
+    onTap: () => _togglePanel(_Panel.balai),
+  );
+
+  /// Bilah bawah ponsel: Meja, Balai, dan Akhiri hari dalam satu baris
+  /// yang mudah dijangkau ibu jari.
+  Widget _navRow() => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 78, child: _mejaNav()),
+      const SizedBox(width: 6),
+      SizedBox(width: 78, child: _balaiNav()),
+      const SizedBox(width: 8),
+      Expanded(child: _endButton()),
+    ],
+  );
+
+  /// Dok kanan untuk layar pendek (ponsel mendatar).
+  Widget _sideDock() => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buyPanel(desc: false),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _mejaNav()),
+            const SizedBox(width: 8),
+            Expanded(child: _balaiNav()),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _endButton(height: 46),
+      ],
+    ),
+  );
+
+  // ====================== panel yang naik dari bawah ======================
+
+  /// Meja atau Balai sebagai panel yang menutupi panggung, naik dari bawah.
+  /// Berada di dalam pohon widget ini (bukan sheet modal), jadi isinya ikut
+  /// hidup saat kartu atau tawaran berubah.
+  Widget _overlayHost(Widget base, {required bool kabarInBalai}) {
+    return Stack(
+      children: [
+        Positioned.fill(child: base),
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: panel == _Panel.none,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              layoutBuilder: _fadeLayout,
+              transitionBuilder: (child, anim) {
+                final slide = Tween<Offset>(
+                    begin: const Offset(0, 0.06), end: Offset.zero)
+                    .animate(CurvedAnimation(
+                    parent: anim, curve: Curves.easeOutCubic));
+                return FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(position: slide, child: child),
+                );
+              },
+              child: panel == _Panel.none
+                  ? const SizedBox.shrink(key: ValueKey('none'))
+                  : KeyedSubtree(
+                key: ValueKey(panel),
+                child: _panelCard(kabarInBalai),
               ),
             ),
           ),
-          MedallionButton(
-            icon: ready ? 'wait' : 'endday',
-            label: ready ? '${widget.readyCount}/${widget.total}' : 'Akhiri',
-            size: 44,
-            onTap: ready || busy ? null : _endDay,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Tab kecil di panel kanan mode split: Meja atau Balai.
-  Widget _segment() {
-    final n = _incoming.length;
+  Widget _panelCard(bool kabarInBalai) {
+    final meja = panel == _Panel.meja;
     return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: _glassDeco(radius: 14),
-      child: Row(
-        children: [
-          _tabButton(
-              sel: side == _tabMeja,
-              icon: 'mydeck2',
-              label: 'Meja (${widget.hand.length})',
-              onTap: () => setState(() => side = _tabMeja)),
-          _tabButton(
-              sel: side == _tabBalai,
-              icon: 'announcement',
-              label: 'Balai',
-              badge: n,
-              onTap: () => setState(() => side = _tabBalai)),
-        ],
+      padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
+      decoration: BoxDecoration(
+        color: EmbunColors.panel.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: EmbunColors.gold.withValues(alpha: 0.55), width: 1.5),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 18)],
       ),
-    );
-  }
-
-  /// Bilah bawah layar lebar: saldo, jatah, harga di kiri; akhiri hari di kanan.
-  Widget _footer() {
-    final ready = widget.iAmReady;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
-      decoration: _glassDeco(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _statusChips()),
-          const SizedBox(width: 12),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          Row(
             children: [
-              SizedBox(
-                width: 236,
-                child: EmbunButton(
-                  label: ready
-                      ? 'Menunggu ${widget.readyCount}/${widget.total} siap'
-                      : 'Akhiri hari ${widget.day}',
-                  icon: ready ? 'wait' : 'endday',
-                  expand: true,
-                  height: 48,
-                  onPressed: ready || busy ? null : _endDay,
-                ),
+              GameIcon(meja ? 'mydeck2' : 'announcement', size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(meja ? 'Kartu di mejamu' : 'Balai Desa',
+                    style: const TextStyle(
+                        color: EmbunColors.gold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 0.8)),
               ),
-              if (ready) _readyBar(),
+              if (meja)
+                Text('${widget.hand.length} kartu',
+                    style:
+                    const TextStyle(fontSize: 11, color: Colors.white54)),
+              MedallionButton(
+                icon: 'silang',
+                size: 30,
+                onTap: () => setState(() => panel = _Panel.none),
+              ),
             ],
+          ),
+          const Divider(height: 8),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: meja ? _mejaBody() : _balaiBody(kabar: kabarInBalai),
+            ),
           ),
         ],
       ),
@@ -1146,66 +1325,42 @@ class _DayViewState extends State<DayView> {
 
   // ====================== susunan per mode ======================
 
-  Widget _single({required bool framed, bool kabar = false}) {
-    final Widget pane;
-    if (tab == _tabMeja) {
-      pane = _mejaPane(framed: framed);
-    } else if (tab == _tabPasar) {
-      pane = _pasarPane(framed: framed, chips: true);
-    } else {
-      pane = _balaiPane(framed: framed, kabar: kabar);
-    }
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      layoutBuilder: _fadeLayout,
-      child: KeyedSubtree(key: ValueKey(tab), child: pane),
-    );
-  }
-
-  Widget _sidePane() => _card(
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _segment(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            layoutBuilder: _fadeLayout,
-            child: KeyedSubtree(
-              key: ValueKey('side$side'),
-              child: side == _tabMeja ? _mejaBody() : _balaiBody(),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       switch (_modeFor(box)) {
         case _Mode.phone:
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (!_kabarHidden) _kabar(compact: true),
-              Expanded(child: _single(framed: false)),
+              Expanded(
+                child: _overlayHost(
+                  _stage(buy: true),
+                  kabarInBalai: false,
+                ),
+              ),
               const SizedBox(height: 8),
-              _bottomBar(),
+              _navRow(),
             ],
           );
-        case _Mode.rail:
+        case _Mode.landscape:
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _rail(),
+              Expanded(
+                child: _overlayHost(
+                  _stage(buy: false),
+                  kabarInBalai: true,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _single(framed: true, kabar: true)),
+              SizedBox(width: 236, child: _sideDock()),
             ],
           );
-        case _Mode.split:
+        case _Mode.wide:
+          final trayH = (box.maxHeight * 0.3).clamp(160.0, 220.0).toDouble();
+          final sideW = (box.maxWidth * 0.28).clamp(290.0, 360.0).toDouble();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1215,41 +1370,190 @@ class _DayViewState extends State<DayView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                        flex: 3,
-                        child: _pasarPane(framed: true, chips: false)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _card(_stage(
+                                buy: true, inline: true, arrows: true)),
+                          ),
+                          const SizedBox(height: 12),
+                          _tray(trayH),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(flex: 2, child: _sidePane()),
+                    SizedBox(width: sideW, child: _balaiCard()),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              _footer(),
-            ],
-          );
-        case _Mode.dashboard:
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _kabar(),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 3, child: _mejaPane(framed: true)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        flex: 5,
-                        child: _pasarPane(framed: true, chips: false)),
-                    const SizedBox(width: 12),
-                    Expanded(flex: 3, child: _balaiPane(framed: true)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              _footer(),
             ],
           );
       }
     });
+  }
+}
+
+/// Carousel kartu pasar: kartu di tengah membesar dan terang, tetangganya
+/// mengecil dan meredup. Ketuk tetangga untuk menggesernya ke tengah; ketuk
+/// kartu tengah untuk membaca detailnya. Controller dibuat per ukuran (lihat
+/// key di pemanggil), karena viewportFraction tidak bisa diubah belakangan.
+class _MarketCarousel extends StatefulWidget {
+  final int count;
+  final int initialPage;
+  final double viewW;
+  final double extent;
+  final bool arrows;
+  final ValueChanged<int> onFocus;
+  final ValueChanged<int> onTapFocused;
+  final Widget Function(int i) itemBuilder;
+
+  const _MarketCarousel({
+    super.key,
+    required this.count,
+    required this.initialPage,
+    required this.viewW,
+    required this.extent,
+    required this.arrows,
+    required this.onFocus,
+    required this.onTapFocused,
+    required this.itemBuilder,
+  });
+
+  @override
+  State<_MarketCarousel> createState() => _MarketCarouselState();
+}
+
+class _MarketCarouselState extends State<_MarketCarousel> {
+  late final PageController _pc = PageController(
+    viewportFraction: (widget.extent / widget.viewW).clamp(0.2, 1.0).toDouble(),
+    initialPage: widget.initialPage,
+  );
+  late int _cur = widget.initialPage;
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  double _page() => (_pc.hasClients && _pc.position.haveDimensions)
+      ? (_pc.page ?? _cur.toDouble())
+      : _cur.toDouble();
+
+  void _go(int i) => _pc.animateToPage(
+    i.clamp(0, widget.count - 1).toInt(),
+    duration: const Duration(milliseconds: 320),
+    curve: Curves.easeOutCubic,
+  );
+
+  Widget _arrow(bool left) {
+    final enabled = left ? _cur > 0 : _cur < widget.count - 1;
+    return Positioned(
+      left: left ? 0 : null,
+      right: left ? null : 0,
+      top: 0,
+      bottom: 0,
+      child: Center(
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: enabled ? 1 : 0.25,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled ? () => _go(_cur + (left ? -1 : 1)) : null,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black54,
+                border: Border.all(
+                    color: EmbunColors.gold.withValues(alpha: 0.7)),
+              ),
+              child: Icon(
+                left ? Icons.chevron_left : Icons.chevron_right,
+                color: EmbunColors.gold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final behavior = ScrollConfiguration.of(context).copyWith(
+      dragDevices: {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      },
+    );
+    return Column(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              ScrollConfiguration(
+                behavior: behavior,
+                child: PageView.builder(
+                  controller: _pc,
+                  clipBehavior: Clip.none,
+                  itemCount: widget.count,
+                  onPageChanged: (i) {
+                    setState(() => _cur = i);
+                    widget.onFocus(i);
+                  },
+                  itemBuilder: (_, i) => AnimatedBuilder(
+                    animation: _pc,
+                    builder: (_, child) {
+                      final d = (_page() - i).abs().clamp(0.0, 1.0).toDouble();
+                      return Opacity(
+                        opacity: 1 - 0.4 * d,
+                        child: Transform.scale(scale: 1 - 0.15 * d, child: child),
+                      );
+                    },
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () =>
+                      i == _cur ? widget.onTapFocused(i) : _go(i),
+                      child: Center(child: widget.itemBuilder(i)),
+                    ),
+                  ),
+                ),
+              ),
+              if (widget.arrows && widget.count > 1) ...[
+                _arrow(true),
+                _arrow(false),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 14,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.count > 1)
+                for (var i = 0; i < widget.count; i++)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: i == _cur ? 18 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
+                      color: i == _cur
+                          ? EmbunColors.gold
+                          : Colors.white24,
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
