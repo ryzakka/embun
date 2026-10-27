@@ -737,6 +737,7 @@ class _TablePageState extends State<TablePage> {
         players: players,
         events: events,
         trades: trades,
+        dark: showAsAntag,
       );
     }
 
