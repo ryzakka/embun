@@ -30,7 +30,7 @@ const _games = <_OtherGame>[
   ),
   _OtherGame(
     title: 'Linguistic Hegemony',
-    desc: 'Mainkan langsung di peramban.',
+    desc: 'Buat bahasa, bangun kepercayaan, kuasai dunia!.',
     url: 'https://linguistify.vercel.app/',
     logoStem: 'logo-linguistichegemony',
   ),
