@@ -16,6 +16,7 @@ import 'day_view.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'emote_panel.dart';
+import 'ending_cinematic.dart';
 import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
@@ -73,6 +74,7 @@ class _TablePageState extends State<TablePage> {
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
   Future<Map<String, String>>? usernamesFuture;
+  bool _endingSeen = false; // sinematik akhir cukup diputar sekali per sesi
   Map<String, String> usernames = {}; // user_id -> username asli (akhir game)
 
   bool get isAntag => widget.role == 'antagonis';
@@ -1200,6 +1202,20 @@ class _TablePageState extends State<TablePage> {
       if (mounted) setState(() => usernames = m);
       return m;
     }).catchError((_) => <String, String>{});
+    if (!bubar && !_endingSeen) {
+      return EndingCinematic(
+        key: const ValueKey('ending'),
+        wargaMenang: wargaMenang,
+        leaves: leaves,
+        verdict: verdict,
+        secrets: secretsFuture!,
+        usernames: usernamesFuture!,
+        players: players,
+        onDone: () {
+          if (mounted) setState(() => _endingSeen = true);
+        },
+      );
+    }
     final sakura =
     leaves >= 30 ? AssetCatalog.I.file(pohonDir, 'pohon0-sakura') : null;
 
