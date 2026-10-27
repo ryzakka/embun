@@ -114,7 +114,7 @@ class _LobbyPageState extends State<LobbyPage> {
                 cacheWidth: 800),
           ),
           const SizedBox(height: 2),
-          const Text('Balai Pertemuan Desa',
+          const Text('Balai Pertemuan Desa 1.1',
               style: TextStyle(
                   color: EmbunColors.goldDim, letterSpacing: 2, fontSize: 13)),
           const SizedBox(height: 18),
