@@ -21,6 +21,7 @@ import 'ending_cinematic.dart';
 import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
+import '../guide/guide_page.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -461,6 +462,9 @@ class _TablePageState extends State<TablePage> {
     }
   }
 
+  void _openGuide() => Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => const GuidePage()));
+
   void _openEmotes(int day) {
     showModalBottomSheet<void>(
       context: context,
@@ -842,7 +846,6 @@ class _TablePageState extends State<TablePage> {
         readyCount: readyCount,
         total: alive.length,
         onSubmitted: _refreshHand,
-        jailed: jailed,
         out: iAmOut,
       );
     } else if (iAmOut) {
@@ -960,8 +963,8 @@ class _TablePageState extends State<TablePage> {
           'permainan selesai.';
     } else if (jailed) {
       title = 'Kamu dikurung sampai musyawarah hari ${until ?? day}';
-      sub = 'Tidak bisa membeli atau menyerahkan kartu. Kamu masih bisa '
-          'menerima kartu, bicara, dan memilih. '
+      sub = 'Tidak bisa membeli kartu. Kamu masih bisa menerima kartu, '
+          'mempersembahkan, bicara, dan memilih. '
           '${isAntag ? 'Dituduh sekali lagi, kamu tertangkap.' : 'Dituduh sekali lagi, kamu keluar dari desa.'}';
     } else {
       title = 'Kamu pernah dituduh sekali';
@@ -1213,6 +1216,8 @@ class _TablePageState extends State<TablePage> {
                 padding: EdgeInsets.zero,
                 onSelected: (v) {
                   switch (v) {
+                    case 'guide':
+                      _openGuide();
                     case 'players':
                       _showPlayersSheet(day);
                     case 'fx':
@@ -1225,6 +1230,7 @@ class _TablePageState extends State<TablePage> {
                 },
                 itemBuilder: (_) => [
                   item('players', 'persona', 'Daftar warga'),
+                  item('guide', 'info', 'Panduan'),
                   item(
                       'fx',
                       'showaddgraphic',
@@ -1375,6 +1381,13 @@ class _TablePageState extends State<TablePage> {
             onPressed: () => setState(() => disguiseMode = !disguiseMode),
             icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
+        IconButton(
+          tooltip: 'Panduan',
+          visualDensity: VisualDensity.compact,
+          onPressed: _openGuide,
+          icon: const Icon(Icons.menu_book_rounded,
+              size: 26, color: EmbunColors.gold),
+        ),
         ActionChip(
           avatar: const GameIcon('persona', size: 22),
           label: Text('$readyCount/${_alive.length}'),

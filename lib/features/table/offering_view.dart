@@ -27,9 +27,6 @@ class OfferingView extends StatefulWidget {
   final int total;
   final VoidCallback? onSubmitted;
 
-  /// Terkurung: tidak boleh menyerahkan persembahan (server ikut menolak).
-  final bool jailed;
-
   /// Sudah keluar dari desa: hanya menonton.
   final bool out;
 
@@ -46,7 +43,6 @@ class OfferingView extends StatefulWidget {
     this.readyCount = 0,
     this.total = 0,
     this.onSubmitted,
-    this.jailed = false,
     this.out = false,
   });
 
@@ -313,15 +309,11 @@ class _OfferingViewState extends State<OfferingView> {
     ],
   );
 
-  /// Terkurung / keluar: tidak ada kartu untuk dipilih, hanya menunggu.
+  /// Sudah keluar dari desa: tidak ada kartu untuk dipilih, hanya menunggu.
   Widget _blocked() {
-    final title =
-    widget.out ? 'Kamu sudah keluar dari desa' : 'Kamu sedang dikurung';
-    final body = widget.out
-        ? 'Kamu tidak lagi ikut mempersembahkan kartu. Tonton saja bagaimana '
-        'nasib Hayu malam ini.'
-        : 'Pemain yang dikurung tidak bisa menyerahkan persembahan sampai '
-        'musyawarah berikutnya. Kartumu tetap aman di tangan.';
+    const title = 'Kamu sudah keluar dari desa';
+    const body = 'Kamu tidak lagi ikut mempersembahkan kartu. Tonton saja '
+        'bagaimana nasib Hayu malam ini.';
     return Column(
       children: [
         _header(),
@@ -380,7 +372,7 @@ class _OfferingViewState extends State<OfferingView> {
         .where((p) => p['user_id'] != widget.repo.myId)
         .toList();
 
-    if (widget.jailed || widget.out) return _blocked();
+    if (widget.out) return _blocked();
 
     if (widget.submitted) {
       return Column(

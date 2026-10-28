@@ -9,6 +9,7 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../prologue/prologue_page.dart';
+import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
@@ -22,20 +23,6 @@ double _smooth(double x) => x * x * (3 - 2 * x);
 /// (nama / kode ruangan). Bila pemain masih punya ruangan di lobi, tahap
 /// ini dilewati dan ruangan langsung tampil.
 enum _Stage { title, menu, entry }
-
-const _howTo = [
-  'Hayu, pohon tua desa, sedang meredup. Warga berusaha menyelamatkannya; '
-      'satu orang di antara kalian, Si Terbisik, berusaha menghancurkannya '
-      'tanpa ketahuan.',
-  'Main bertiga sampai berdelapan. Peranmu dibagikan rahasia di awal.',
-  'Di hari biasa, belanja kartu di Pasar Pagi dengan tetes embun. Kamu juga '
-      'bisa memberi embun atau menukar kartu dengan warga lain.',
-  'Di malam persembahan, pilih 1-2 kartu untuk dipersembahkan kepada Hayu. '
-      'Kartu baik dan kartu jahat sama-sama dilempar tanpa nama pemilik.',
-  'Lalu bermusyawarah dan memilih. Yang dituduh mayoritas dikurung sehari '
-      'dan Hayu kehilangan 1 daun. Si Terbisik tertangkap bila dituduh untuk '
-      'kedua kalinya.',
-];
 
 class LobbyPage extends StatefulWidget {
   /// true = lewati layar judul (mis. kembali dari permainan).
@@ -330,7 +317,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V1.4',
+                                    'BALAI PERTEMUAN DESA V1.3',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -394,59 +381,9 @@ class _LobbyPageState extends State<LobbyPage>
     icon: const Icon(Icons.arrow_back_ios_new, size: 20),
   );
 
-  void _showHowTo() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.all(20),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: OrnatePanel(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionHeader(icon: 'info', title: 'Cara Bermain'),
-                  const SizedBox(height: 12),
-                  for (final s in _howTo)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 1, right: 8),
-                            child: Text('•',
-                                style: TextStyle(color: EmbunColors.gold)),
-                          ),
-                          Expanded(
-                            child: Text(s,
-                                style: const TextStyle(
-                                    fontSize: 13.5, height: 1.4)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  EmbunButton(
-                    label: 'Tutup',
-                    icon: 'silang',
-                    kind: EmbunButtonKind.secondary,
-                    expand: true,
-                    height: 46,
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  /// Panduan kini layar penuh (cara bermain, karakter, dan kartu item).
+  void _openGuide() => Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => const GuidePage()));
 
   Widget _menu() {
     return LayoutBuilder(builder: (context, c) {
@@ -467,9 +404,9 @@ class _LobbyPageState extends State<LobbyPage>
         _MenuTile(
             index: 2,
             icon: 'info',
-            label: 'Cara Bermain',
+            label: 'Panduan',
             center: !wide,
-            onTap: _showHowTo),
+            onTap: _openGuide),
         _MenuTile(
             index: 3,
             icon: 'plus',
