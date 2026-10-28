@@ -3,11 +3,12 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "ca137c8c1bac8bfb8a640580c54a7e39",
-"assets/AssetManifest.bin.json": "8c784ae2021286ddd141f460d29ebc29",
+const RESOURCES = {"assets/AssetManifest.bin": "bc2e3c38ab5f0598c89cf6b27fe14eff",
+"assets/AssetManifest.bin.json": "7bffda08c3bc136d33d746d17e899766",
 "assets/assets/bentang/desajembatan-kering.webp": "867d4e8dfd360f30f67d6100fc199d9f",
 "assets/assets/bentang/desajembatan-keringgulita.webp": "1837c9efac64ae6e27e37c42484f3148",
 "assets/assets/bentang/keterasingan.png": "6a15a0e84002a459d4180aa37fe69a80",
+"assets/assets/bentang/ladang-gersang.png": "c2b5e56523936ae38336d92356a1967d",
 "assets/assets/bentang/lembah-hijau0.webp": "01bc0854745fd8265063d4e38cf5dc80",
 "assets/assets/bentang/lembah-hijau1.webp": "ce1e854a2a3e22f58e59d2321aee7a8e",
 "assets/assets/bentang/lembah-hijau2.webp": "bcdec857c2a94e8a4b311306b00786de",
@@ -17,6 +18,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "ca137c8c1bac8bfb8a640580c54a7e39
 "assets/assets/bentang/pohon-zoom.webp": "2fd7b4b702bad09165522c186f3ac4a9",
 "assets/assets/bentang/rumahdesa-gersang.webp": "25e01c63ab0de2503256006a11a88c8e",
 "assets/assets/bentang/rumahdesa-hijau.webp": "7123a012b194dffd0539de4de97a40fc",
+"assets/assets/bentang/rumahdesa2-gersang.png": "9e880f332879783339aabd8be004aa38",
 "assets/assets/bentang/tertunjuk.png": "9252816677ce910c44bafc8e14038620",
 "assets/assets/ikon/alert.png": "1f3ce9cc662ccdcda651a2e46456ced6",
 "assets/assets/ikon/announcement.png": "03aab79106d72a54d72e5021ad239bc7",
@@ -229,7 +231,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "ca137c8c1bac8bfb8a640580c54a7e39
 "assets/assets/pohon/pohon8.webp": "63e33815dc15a112d489e5733ee7c632",
 "assets/assets/pohon/pohon9.webp": "01455e4b8df0348610e57631081d21b3",
 "assets/FontManifest.json": "dc3d03800ccca4601324923c0b1d6d57",
-"assets/fonts/MaterialIcons-Regular.otf": "9ec624cb1478d8387c7fc5aa88fe27cd",
+"assets/fonts/MaterialIcons-Regular.otf": "d65a9b5cd8958e11c2f2a7d83e796d21",
 "assets/NOTICES": "bacb8c5290b7c29123ff28e1114e5055",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
@@ -248,14 +250,14 @@ const RESOURCES = {"assets/AssetManifest.bin": "ca137c8c1bac8bfb8a640580c54a7e39
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "1cec23d68df01e5a5404f00f7dbb9261",
+"flutter_bootstrap.js": "7490af8c3fc0f0b402efc94e6dcf3922",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "de5cd924341a6010f14615fdbbbc0952",
 "/": "de5cd924341a6010f14615fdbbbc0952",
-"main.dart.js": "6ec8f23a7b1629b79b3d81118fef6997",
+"main.dart.js": "94ce494f3eb7cd05d55d35da882320f8",
 "manifest.json": "df5ecdba13a1656c0809325677030ab9",
 "version.json": "5f7aaaa3c3b9afbeb1df6ee4593452d9"};
 // The application shell files that are downloaded before a service worker can

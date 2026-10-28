@@ -17,6 +17,9 @@ class DiscussionView extends StatefulWidget {
   final List<Map<String, dynamic>> players;
   final List<Map<String, dynamic>> events;
 
+  /// Sudah keluar dari desa: boleh membaca obrolan, tidak boleh menulis.
+  final bool readOnly;
+
   const DiscussionView({
     super.key,
     required this.repo,
@@ -28,6 +31,7 @@ class DiscussionView extends StatefulWidget {
     required this.total,
     this.players = const [],
     this.events = const [],
+    this.readOnly = false,
   });
 
   @override
@@ -290,33 +294,44 @@ class _DiscussionViewState extends State<DiscussionView> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: ctrl,
-                maxLength: 200,
-                onSubmitted: (_) => _send(),
-                decoration: const InputDecoration(
-                  hintText: 'Tulis sesuatu...',
-                  counterText: '',
-                  isDense: true,
+        if (widget.readOnly)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              'Kamu sudah keluar dari desa. Kamu hanya bisa menonton.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.white54),
+            ),
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: ctrl,
+                  maxLength: 200,
+                  onSubmitted: (_) => _send(),
+                  decoration: const InputDecoration(
+                    hintText: 'Tulis sesuatu...',
+                    counterText: '',
+                    isDense: true,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            MedallionButton(icon: 'kirim', size: 44, onTap: _send),
-          ],
-        ),
-        const SizedBox(height: 6),
-        EmbunButton(
-          label: widget.iAmReady
-              ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
-              : 'Siap memilih',
-          icon: widget.iAmReady ? 'wait' : 'vote',
-          expand: true,
-          onPressed: widget.iAmReady ? null : _ready,
-        ),
+              const SizedBox(width: 8),
+              MedallionButton(icon: 'kirim', size: 44, onTap: _send),
+            ],
+          ),
+          const SizedBox(height: 6),
+          EmbunButton(
+            label: widget.iAmReady
+                ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
+                : 'Siap memilih',
+            icon: widget.iAmReady ? 'wait' : 'vote',
+            expand: true,
+            onPressed: widget.iAmReady ? null : _ready,
+          ),
+        ],
       ],
     );
   }

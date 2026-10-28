@@ -204,7 +204,7 @@ class _DayViewState extends State<DayView> {
   /// Alasan kartu belum bisa dibeli; null bila bisa.
   String? _blockReason(Map<String, dynamic> offer, int price) {
     if (offer['bought'] == true) return 'Sudah kamu beli';
-    if (widget.jailed) return 'Kamu dikurung hari ini';
+    if (widget.jailed) return 'Dikurung sampai musyawarah berikutnya';
     if (_remaining <= 0) return 'Jatah belanja habis';
     if (price > widget.balance) {
       final lack = _fmt(price - widget.balance);
@@ -217,6 +217,14 @@ class _DayViewState extends State<DayView> {
       _run(() => widget.repo.finishDay(widget.gameId));
 
   Future<void> _accept(Map<String, dynamic> t) async {
+    // Terkurung: tidak boleh menyerahkan kartu, jadi hanya menerima.
+    if (widget.jailed) {
+      await _run(
+            () => widget.repo.respondTrade(t['id'] as String, true),
+        ok: 'Kartu diterima',
+      );
+      return;
+    }
     final tradable =
     widget.hand.where((h) => h['card_id'] != 'embun_samaran').toList();
     if (tradable.isEmpty) {
@@ -853,6 +861,13 @@ class _DayViewState extends State<DayView> {
                 style:
                 const TextStyle(fontSize: 11, color: Colors.white60),
               ),
+              if (widget.jailed) ...[
+                const SizedBox(height: 4),
+                const Text(
+                  'Kamu dikurung: kartu ini diterima tanpa balasan.',
+                  style: TextStyle(fontSize: 11, color: EmbunColors.gold),
+                ),
+              ],
             ],
           ),
         ),

@@ -22,6 +22,7 @@ import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
 import 'player_sheet.dart';
+import 'player_status.dart';
 import 'village_strip.dart';
 import 'voting_view.dart';
 
@@ -79,6 +80,17 @@ class _TablePageState extends State<TablePage> {
   Map<String, String> usernames = {}; // user_id -> username asli (akhir game)
 
   bool get isAntag => widget.role == 'antagonis';
+
+  /// Pemain yang masih di desa (yang sudah keluar tidak dihitung).
+  List<Map<String, dynamic>> get _alive =>
+      players.where((p) => !isOut(p)).toList();
+
+  Map<String, dynamic>? get _meRow {
+    for (final p in players) {
+      if (p['user_id'] == repo.myId) return p;
+    }
+    return null;
+  }
   bool get showAsAntag => isAntag && !disguiseMode;
 
   /// Hari yang vonisnya sudah ditutup pemain (kartu vonis memakan tempat,
@@ -374,20 +386,49 @@ class _TablePageState extends State<TablePage> {
                   for (final p in players)
                     ListTile(
                       dense: true,
-                      leading: PlayerAvatar(
-                        path: protagonistPath(p['character_card'] as String),
-                        size: 36,
+                      leading: Opacity(
+                        opacity: isOut(p) ? 0.4 : 1,
+                        child: PlayerAvatar(
+                          path: protagonistPath(p['character_card'] as String),
+                          size: 36,
+                          ring: isJailed(p, day)
+                              ? EmbunColors.blood
+                              : Colors.white38,
+                        ),
                       ),
-                      title: Text(p['name'] as String),
-                      trailing: Row(
+                      title: Text(
+                        p['name'] as String,
+                        style: TextStyle(
+                            color: isOut(p) ? Colors.white38 : null),
+                      ),
+                      subtitle: isOut(p)
+                          ? null
+                          : Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: LivesRow(lives: livesLeft(p), size: 14),
+                        ),
+                      ),
+                      trailing: isOut(p)
+                          ? const StatusTag(
+                          text: 'Keluar',
+                          color: Colors.white54,
+                          fontSize: 11)
+                          : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (p['jailed_day'] == day)
+                          if (isJailed(p, day))
                             const Padding(
                               padding: EdgeInsets.only(right: 8),
-                              child: GameIcon('lock', size: 26),
+                              child: StatusTag(
+                                  text: 'Dikurung',
+                                  color: EmbunColors.blood,
+                                  icon: Icons.lock_rounded,
+                                  fontSize: 11),
                             ),
-                          GameIcon(p['ready'] == true ? 'centang' : 'wait',
+                          GameIcon(
+                              p['ready'] == true ? 'centang' : 'wait',
                               size: 28),
                         ],
                       ),
@@ -430,7 +471,7 @@ class _TablePageState extends State<TablePage> {
           repo: repo,
           gameId: widget.gameId,
           day: day,
-          players: players,
+          players: _alive,
         ),
       ),
     );
@@ -446,6 +487,9 @@ class _TablePageState extends State<TablePage> {
       defs: defs,
       balance: (myState?['balance'] as num?)?.toDouble() ?? 0,
       socialOpen: phase == 'day',
+      day: (game?['day'] as int?) ?? 0,
+      iAmJailed: _meRow != null &&
+          isJailed(_meRow!, (game?['day'] as int?) ?? 0),
     );
   }
 
@@ -549,11 +593,11 @@ class _TablePageState extends State<TablePage> {
     final deadline = _deadline(g);
     final isHost = g['host_id'] == repo.myId;
 
-    final me = players.where((p) => p['user_id'] == repo.myId);
-    final meRow = me.isEmpty ? null : me.first;
+    final meRow = _meRow;
+    final alive = _alive;
     final iAmReady = meRow?['ready'] == true;
-    final readyCount = players.where((p) => p['ready'] == true).length;
-    final jailed = meRow?['jailed_day'] == day;
+    final readyCount = alive.where((p) => p['ready'] == true).length;
+    final jailed = meRow != null && isJailed(meRow, day);
     final myCardId = (meRow?['character_card'] as String?) ?? 'default';
 
     if (g['status'] == 'finished') return _result(g);
@@ -587,7 +631,7 @@ class _TablePageState extends State<TablePage> {
             isAntag: showAsAntag,
             waiting: iAmReady,
             readyCount: readyCount,
-            total: players.length,
+            total: alive.length,
             onContinue: () =>
                 _guard(() => repo.advanceAfterEffects(widget.gameId)),
           ),
@@ -747,6 +791,9 @@ class _TablePageState extends State<TablePage> {
       }) {
     final balance = (myState?['balance'] as num?)?.toDouble() ?? 0;
     final rate = (myState?['rate'] as num?)?.toDouble() ?? 0;
+    final alive = _alive;
+    final meRow = _meRow;
+    final iAmOut = meRow != null && isOut(meRow);
     final verdict = (g['verdict_day'] == day - 1 && g['verdict'] != null)
         ? g['verdict'] as String
         : null;
@@ -761,18 +808,25 @@ class _TablePageState extends State<TablePage> {
         deadline: deadline,
         iAmReady: iAmReady,
         readyCount: readyCount,
-        total: players.length,
+        total: alive.length,
         players: players,
         events: events,
+        readOnly: iAmOut,
       );
     } else if (phase == 'voting') {
       body = iAmReady
-          ? _waiting(readyCount, players.length, 'Menunggu suara lain...')
+          ? _waiting(
+          readyCount,
+          alive.length,
+          iAmOut
+              ? 'Kamu hanya menonton pemungutan suara...'
+              : 'Menunggu suara lain...')
           : VotingView(
         key: ValueKey('vote$day'),
         repo: repo,
         gameId: widget.gameId,
-        players: players,
+        players: alive,
+        day: day,
       );
     } else if (phase == 'offering') {
       body = OfferingView(
@@ -783,12 +837,16 @@ class _TablePageState extends State<TablePage> {
         isAntag: isAntag,
         hand: hand,
         defs: defs,
-        players: players,
+        players: alive,
         submitted: iAmReady,
         readyCount: readyCount,
-        total: players.length,
+        total: alive.length,
         onSubmitted: _refreshHand,
+        jailed: jailed,
+        out: iAmOut,
       );
+    } else if (iAmOut) {
+      body = _spectatorBody();
     } else {
       body = DayView(
         key: ValueKey('day$day'),
@@ -803,8 +861,8 @@ class _TablePageState extends State<TablePage> {
         jailed: jailed,
         iAmReady: iAmReady,
         readyCount: readyCount,
-        total: players.length,
-        players: players,
+        total: alive.length,
+        players: alive,
         events: events,
         trades: trades,
         dark: showAsAntag,
@@ -844,6 +902,12 @@ class _TablePageState extends State<TablePage> {
           else
             _currencyBar(balance, rate, myCardId, day, readyCount,
                 showChat: phase != 'discussion'),
+          // Penanda jelas bagi diri sendiri: terkurung, pernah dituduh, atau keluar.
+          if (meRow != null &&
+              (iAmOut || jailed || strikesOf(meRow) > 0)) ...[
+            SizedBox(height: gap),
+            _selfStatus(meRow, day, iAmOut, jailed, compact: narrow || _short),
+          ],
           // Vonis: ringkas, bisa ditutup, dan tidak menumpuk dengan bilah desa.
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
@@ -877,6 +941,109 @@ class _TablePageState extends State<TablePage> {
       ),
     );
   }
+
+  /// Kartu status diri: terkurung (merah), pernah dituduh sekali (emas), atau
+  /// sudah keluar (abu-abu). Selalu menyebut akibatnya, bukan hanya ikon.
+  Widget _selfStatus(Map<String, dynamic> me, int day, bool out, bool jailed,
+      {bool compact = false}) {
+    final until = jailUntil(me);
+    final color = out
+        ? Colors.white54
+        : jailed
+        ? EmbunColors.blood
+        : EmbunColors.gold;
+    final String title;
+    final String sub;
+    if (out) {
+      title = 'Kamu sudah keluar dari desa';
+      sub = 'Kamu dituduh mayoritas dua kali. Kamu hanya menonton sampai '
+          'permainan selesai.';
+    } else if (jailed) {
+      title = 'Kamu dikurung sampai musyawarah hari ${until ?? day}';
+      sub = 'Tidak bisa membeli atau menyerahkan kartu. Kamu masih bisa '
+          'menerima kartu, bicara, dan memilih. '
+          '${isAntag ? 'Dituduh sekali lagi, kamu tertangkap.' : 'Dituduh sekali lagi, kamu keluar dari desa.'}';
+    } else {
+      title = 'Kamu pernah dituduh sekali';
+      sub = isAntag
+          ? 'Dituduh mayoritas sekali lagi, Si Terbisik tertangkap dan warga menang.'
+          : 'Dituduh mayoritas sekali lagi, kamu keluar dari desa.';
+    }
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(10, compact ? 6 : 8, 12, compact ? 6 : 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.75), width: 1.4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          out
+              ? Icon(Icons.visibility_rounded, size: 26, color: color)
+              : jailed
+              ? const GameIcon('lock', size: 30)
+              : Icon(Icons.warning_amber_rounded, size: 26, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: compact ? 12.5 : 14,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
+                if (!compact || out)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(sub,
+                        style: const TextStyle(
+                            fontSize: 11.5,
+                            height: 1.3,
+                            color: Colors.white70)),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (!out) LivesRow(lives: livesLeft(me), size: 18),
+        ],
+      ),
+    );
+  }
+
+  /// Tampilan pemain yang sudah keluar pada fase hari / persembahan.
+  Widget _spectatorBody() => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.visibility_rounded,
+              size: 56, color: Colors.white38),
+          const SizedBox(height: 12),
+          const Text('Kamu menonton dari luar desa',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: const Text(
+              'Kamu tidak bisa membeli, mempersembahkan, memilih, atau '
+                  'bicara lagi. Ikuti terus nasib Hayu sampai permainan berakhir.',
+              textAlign: TextAlign.center,
+              style:
+              TextStyle(fontSize: 13, height: 1.35, color: Colors.white60),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   /// Vonis hari sebelumnya: palu diketuk. Kartu membesar lalu menghantam
   /// ke ukuran asli, kilat emas di titik ketukan, lalu bergetar mereda.
@@ -973,7 +1140,7 @@ class _TablePageState extends State<TablePage> {
     final accent =
     showAsAntag ? const Color(0xFFB07CE8) : const Color(0xFF6FBF73);
     final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
-    final readyCount = players.where((p) => p['ready'] == true).length;
+    final readyCount = _alive.where((p) => p['ready'] == true).length;
     final due = day % cycle == 0
         ? 'Malam persembahan'
         : 'Persembahan ${cycle - day % cycle} hari lagi';
@@ -1121,7 +1288,7 @@ class _TablePageState extends State<TablePage> {
                 const SizedBox(width: 6),
                 ActionChip(
                   avatar: const GameIcon('persona', size: 18),
-                  label: Text('$readyCount/${players.length}',
+                  label: Text('$readyCount/${_alive.length}',
                       style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1210,7 +1377,7 @@ class _TablePageState extends State<TablePage> {
           ),
         ActionChip(
           avatar: const GameIcon('persona', size: 22),
-          label: Text('$readyCount/${players.length}'),
+          label: Text('$readyCount/${_alive.length}'),
           visualDensity: VisualDensity.compact,
           onPressed: () => _showPlayersSheet(day),
         ),

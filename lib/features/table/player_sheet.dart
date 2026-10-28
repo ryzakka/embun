@@ -6,6 +6,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'emote_panel.dart' show kEmotes;
+import 'player_status.dart';
 
 /// Aksi terhadap satu pemain: isyarat (semua fase), Beri Embun dan Tukar
 /// Kartu (hanya hari biasa, ditegakkan juga oleh server).
@@ -21,6 +22,8 @@ Future<void> showPlayerSheet(
       required Map<String, Map<String, dynamic>> defs,
       required double balance,
       required bool socialOpen,
+      required int day,
+      required bool iAmJailed,
     }) =>
     showModalBottomSheet<void>(
       context: context,
@@ -38,6 +41,8 @@ Future<void> showPlayerSheet(
         defs: defs,
         balance: balance,
         socialOpen: socialOpen,
+        day: day,
+        iAmJailed: iAmJailed,
       ),
     );
 
@@ -49,6 +54,8 @@ class _PlayerSheet extends StatefulWidget {
   final Map<String, Map<String, dynamic>> defs;
   final double balance;
   final bool socialOpen;
+  final int day;
+  final bool iAmJailed;
   const _PlayerSheet({
     required this.repo,
     required this.gameId,
@@ -57,6 +64,8 @@ class _PlayerSheet extends StatefulWidget {
     required this.defs,
     required this.balance,
     required this.socialOpen,
+    required this.day,
+    required this.iAmJailed,
   });
 
   @override
@@ -70,6 +79,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
 
   String get _uid => widget.player['user_id'] as String;
   String get _name => widget.player['name'] as String;
+  bool get _targetJailed => isJailed(widget.player, widget.day);
 
   /// [closeWith] != null: tutup sheet lalu tampilkan toast itu.
   Future<void> _run(Future<void> Function() action, {String? closeWith}) async {
@@ -172,7 +182,15 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                   else ...[
                     _giveEmbun(medal),
                     const SizedBox(height: 12),
-                    _trade(tradable),
+                    if (widget.iAmJailed)
+                      const NoticeStrip(
+                        icon: 'lock',
+                        text: 'Kamu dikurung: kartu hanya bisa kamu terima, '
+                            'tidak bisa kamu tawarkan.',
+                        accent: EmbunColors.blood,
+                      )
+                    else
+                      _trade(tradable),
                   ],
                   AnimatedSize(
                     duration: const Duration(milliseconds: 200),
@@ -214,16 +232,36 @@ class _PlayerSheetState extends State<_PlayerSheet> {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Text(
-            _name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: short ? 20 : 24,
-              fontWeight: FontWeight.w800,
-              color: EmbunColors.gold,
-              letterSpacing: 0.4,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: short ? 20 : 24,
+                  fontWeight: FontWeight.w800,
+                  color: EmbunColors.gold,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  LivesRow(lives: livesLeft(widget.player), size: 16),
+                  if (_targetJailed)
+                    const StatusTag(
+                        text: 'Dikurung',
+                        color: EmbunColors.blood,
+                        icon: Icons.lock_rounded,
+                        fontSize: 11),
+                ],
+              ),
+            ],
           ),
         ),
         // Tombol tutup eksplisit: berguna di desktop yang tak bisa menyeret.
@@ -342,6 +380,9 @@ class _PlayerSheetState extends State<_PlayerSheet> {
               Text(
                 tradable.isEmpty
                     ? 'Tidak ada kartu yang bisa ditukar.'
+                    : _targetJailed
+                    ? '$_name sedang dikurung, jadi ia hanya bisa menerima. '
+                    'Kartu ini diberikan tanpa balasan.'
                     : 'Pilih kartu yang kamu tawarkan. $_name memilih kartu '
                     'balasannya sendiri.',
                 style: const TextStyle(

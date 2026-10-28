@@ -6,17 +6,21 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../../data/errors.dart';
 import '../common/ornate.dart';
+import 'player_status.dart';
 
 class VotingView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
+  /// Hanya pemain yang masih di desa.
   final List<Map<String, dynamic>> players;
+  final int day;
 
   const VotingView({
     super.key,
     required this.repo,
     required this.gameId,
     required this.players,
+    required this.day,
   });
 
   @override
@@ -158,6 +162,7 @@ class _VotingViewState extends State<VotingView>
             selected: sel,
             dimmed: busy && !sel,
             enabled: !busy,
+            jailed: isJailed(p, widget.day),
             pulse: _pulse,
             onTap: () => _select(id),
           );
@@ -191,11 +196,21 @@ class _VotingViewState extends State<VotingView>
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (strikesOf(chosen) >= 1)
+              const TextSpan(
+                text: '\nSudah dituduh sekali. Bila mayoritas sepakat, '
+                    'ia KELUAR dari desa (atau tertangkap, jika Si Terbisik).',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: EmbunColors.gold,
+                ),
+              ),
           ],
         ),
         key: ValueKey('sel${chosen['user_id']}'),
         textAlign: TextAlign.center,
-        maxLines: 1,
+        maxLines: 3,
         overflow: TextOverflow.ellipsis,
       ),
     );
@@ -284,9 +299,10 @@ class _RulesPanel extends StatelessWidget {
               ),
             ),
             const TextSpan(
-              text: 'Siapa pun yang dituduh mayoritas dikurung sehari dan '
-                  'Hayu kehilangan 1 daun. Si Terbisik tertangkap bila '
-                  'dituduh untuk kedua kalinya.',
+              text: 'Tuduhan pertama: dikurung sampai musyawarah berikutnya '
+                  'dan Hayu kehilangan 1 daun. Tuduhan kedua: Si Terbisik '
+                  'tertangkap, tapi warga yang salah tuduh keluar dari desa. '
+                  'Tiap pemain punya 2 nyawa.',
             ),
           ],
         ),
@@ -304,6 +320,7 @@ class _SuspectCard extends StatelessWidget {
   final bool selected;
   final bool dimmed;
   final bool enabled;
+  final bool jailed;
   final Animation<double> pulse;
   final VoidCallback onTap;
 
@@ -312,6 +329,7 @@ class _SuspectCard extends StatelessWidget {
     required this.selected,
     required this.dimmed,
     required this.enabled,
+    required this.jailed,
     required this.pulse,
     required this.onTap,
   });
@@ -375,7 +393,9 @@ class _SuspectCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(radius),
                 onTap: enabled ? onTap : null,
                 child: LayoutBuilder(builder: (context, c) {
-                  final avatar = (c.maxHeight * 0.55).clamp(40.0, 96.0);
+                  // Nyawa (dan label Dikurung) ikut memakan tinggi, jadi potret mengecil.
+                  final avatar =
+                  (c.maxHeight * (jailed ? 0.40 : 0.48)).clamp(36.0, 96.0);
                   return Stack(
                     children: [
                       Center(
@@ -406,6 +426,15 @@ class _SuspectCard extends StatelessWidget {
                                   selected ? Colors.white : Colors.white70,
                                 ),
                               ),
+                              SizedBox(height: c.maxHeight < 110 ? 2 : 5),
+                              LivesRow(lives: livesLeft(player), size: 15),
+                              if (jailed) ...[
+                                const SizedBox(height: 4),
+                                const StatusTag(
+                                    text: 'Dikurung',
+                                    color: EmbunColors.blood,
+                                    icon: Icons.lock_rounded),
+                              ],
                             ],
                           ),
                         ),

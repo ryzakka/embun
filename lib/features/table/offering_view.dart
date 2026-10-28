@@ -27,6 +27,12 @@ class OfferingView extends StatefulWidget {
   final int total;
   final VoidCallback? onSubmitted;
 
+  /// Terkurung: tidak boleh menyerahkan persembahan (server ikut menolak).
+  final bool jailed;
+
+  /// Sudah keluar dari desa: hanya menonton.
+  final bool out;
+
   const OfferingView({
     super.key,
     required this.repo,
@@ -40,6 +46,8 @@ class OfferingView extends StatefulWidget {
     this.readyCount = 0,
     this.total = 0,
     this.onSubmitted,
+    this.jailed = false,
+    this.out = false,
   });
 
   @override
@@ -305,11 +313,74 @@ class _OfferingViewState extends State<OfferingView> {
     ],
   );
 
+  /// Terkurung / keluar: tidak ada kartu untuk dipilih, hanya menunggu.
+  Widget _blocked() {
+    final title =
+    widget.out ? 'Kamu sudah keluar dari desa' : 'Kamu sedang dikurung';
+    final body = widget.out
+        ? 'Kamu tidak lagi ikut mempersembahkan kartu. Tonton saja bagaimana '
+        'nasib Hayu malam ini.'
+        : 'Pemain yang dikurung tidak bisa menyerahkan persembahan sampai '
+        'musyawarah berikutnya. Kartumu tetap aman di tangan.';
+    return Column(
+      children: [
+        _header(),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const GameIcon('lock', size: 72),
+                  const SizedBox(height: 12),
+                  Text(title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: EmbunColors.blood)),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: Text(body,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 13, height: 1.35, color: Colors.white70)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: widget.total == 0
+                ? 0
+                : (widget.readyCount / widget.total).clamp(0.0, 1.0).toDouble(),
+            minHeight: 4,
+          ),
+        ),
+        const SizedBox(height: 10),
+        EmbunButton(
+          label: 'Menunggu ${widget.readyCount}/${widget.total} warga...',
+          icon: 'wait',
+          expand: true,
+          kind: EmbunButtonKind.secondary,
+          onPressed: null,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final others = widget.players
         .where((p) => p['user_id'] != widget.repo.myId)
         .toList();
+
+    if (widget.jailed || widget.out) return _blocked();
 
     if (widget.submitted) {
       return Column(

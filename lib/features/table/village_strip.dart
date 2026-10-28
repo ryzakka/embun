@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import 'player_status.dart';
 
 class _Bubble {
   final String emoji;
@@ -101,7 +102,8 @@ class _VillageStripState extends State<VillageStrip> {
     final me = id == widget.myId;
     final ready = p['ready'] == true;
     final online = widget.online.contains(id);
-    final jailed = p['jailed_day'] == widget.day;
+    final out = isOut(p);
+    final jailed = isJailed(p, widget.day);
     final b = _bubbles[id];
     final showB = b != null && now.difference(b.at).inSeconds < 6;
     final dot = ready
@@ -112,7 +114,7 @@ class _VillageStripState extends State<VillageStrip> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: me ? null : () => widget.onTapPlayer(p),
+      onTap: (me || out) ? null : () => widget.onTapPlayer(p),
       child: Container(
         width: 62,
         margin: const EdgeInsets.only(right: 6),
@@ -145,54 +147,105 @@ class _VillageStripState extends State<VillageStrip> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                PlayerAvatar(
-                  path: protagonistPath(p['character_card'] as String),
-                  size: 38,
-                  ring: me
-                      ? EmbunColors.gold
-                      : EmbunColors.goldDim.withValues(alpha: 0.8),
-                ),
-                Positioned(
-                  right: -5,
-                  bottom: -4,
-                  child: ready
-                      ? const DecoratedBox(
-                    decoration: BoxDecoration(
-                        shape: BoxShape.circle, color: Color(0xFF07130F)),
-                    child: GameIcon('centang', size: 20),
-                  )
-                      : Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: dot,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 1.5),
-                    ),
+                Opacity(
+                  opacity: out ? 0.35 : 1,
+                  child: PlayerAvatar(
+                    path: protagonistPath(p['character_card'] as String),
+                    size: 38,
+                    ring: out
+                        ? Colors.white30
+                        : jailed
+                        ? EmbunColors.blood
+                        : me
+                        ? EmbunColors.gold
+                        : EmbunColors.goldDim.withValues(alpha: 0.8),
                   ),
                 ),
-                if (jailed)
-                  const Positioned(
-                    left: -6,
-                    top: -6,
+                if (out)
+                  const Positioned.fill(
+                    child: Center(
+                      child: Icon(Icons.close_rounded,
+                          size: 30, color: EmbunColors.blood),
+                    ),
+                  )
+                else
+                  Positioned(
+                    right: -5,
+                    bottom: -4,
+                    child: ready
+                        ? const DecoratedBox(
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF07130F)),
+                      child: GameIcon('centang', size: 20),
+                    )
+                        : Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: dot,
+                        shape: BoxShape.circle,
+                        border:
+                        Border.all(color: Colors.black, width: 1.5),
+                      ),
+                    ),
+                  ),
+                // Nyawa: dua hati di kiri bawah avatar.
+                if (!out)
+                  Positioned(
+                    left: -4,
+                    bottom: -5,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                          shape: BoxShape.circle, color: Color(0xFF07130F)),
-                      child: GameIcon('lock', size: 22),
+                        color: const Color(0xCC07130F),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 2, vertical: 1),
+                        child: LivesRow(lives: livesLeft(p), size: 11),
+                      ),
+                    ),
+                  ),
+                if (jailed)
+                  Positioned(
+                    left: -7,
+                    top: -7,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF07130F),
+                        border: Border.all(color: EmbunColors.blood, width: 1.5),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(1),
+                        child: GameIcon('lock', size: 22),
+                      ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               p['name'] as String,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                color: me ? EmbunColors.gold : Colors.white70,
+                color: out
+                    ? Colors.white38
+                    : jailed
+                    ? EmbunColors.blood
+                    : me
+                    ? EmbunColors.gold
+                    : Colors.white70,
               ),
             ),
+            if (out)
+              const StatusTag(text: 'Keluar', color: Colors.white54, fontSize: 9)
+            else if (jailed)
+              const StatusTag(
+                  text: 'Dikurung', color: EmbunColors.blood, fontSize: 9),
           ],
         ),
       ),
@@ -203,7 +256,7 @@ class _VillageStripState extends State<VillageStrip> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     return SizedBox(
-      height: 78,
+      height: 92,
       child: Row(
         children: [
           Expanded(

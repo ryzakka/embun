@@ -12,7 +12,8 @@ double _smooth(double x) => x * x * (3 - 2 * x);
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
-/// Adegan vonis: pemain yang dituduh mayoritas dikurung sehari.
+/// Adegan vonis: pemain yang dituduh mayoritas (atau terkena kartu kurungan)
+/// dikurung sampai musyawarah berikutnya.
 ///
 /// Aset (assets/bentang/): `tertunjuk` (tangan-tangan menunjuk, PNG
 /// transparan) dan `keterasingan` (ladang orang-orangan sawah).
@@ -410,7 +411,7 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
                   Opacity(
                     opacity: _smooth(_seg(t, 0.68, 0.76)),
                     child: const Text(
-                      'dikurung seorang diri, sehari penuh',
+                      'dikurung sampai musyawarah berikutnya',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: Colors.white70),
                     ),

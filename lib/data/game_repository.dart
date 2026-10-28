@@ -246,7 +246,8 @@ class GameRepository {
     };
   }
 
-  /// Pemain yang dikurung pada [day] (hasil voting hari sebelumnya).
+  /// Pemain yang mulai dikurung pada [day] (vonis vote atau kartu malam
+  /// persembahan). Kurungan berlanjut sampai vote berikutnya.
   /// Kosong bila tidak ada, atau bila gagal memuat.
   Future<List<Map<String, dynamic>>> jailedAt(String gameId, int day) async {
     try {
@@ -255,6 +256,7 @@ class GameRepository {
           .select('user_id, name, character_card')
           .eq('game_id', gameId)
           .eq('jailed_day', day)
+          .isFilter('out_day', null)
           .timeout(const Duration(seconds: 2));
       return List<Map<String, dynamic>>.from(rows);
     } catch (_) {
