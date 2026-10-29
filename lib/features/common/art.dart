@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
+import 'web_video_player.dart';
 
 const _placeholder = ColoredBox(color: Color(0x33000000));
 
@@ -84,6 +86,8 @@ class TreePortrait extends StatelessWidget {
         w = h * 16 / 9;
       }
       final path = pathOverride ?? treePath(leaves);
+      final isPohon0 = path != null && path.contains('pohon0');
+
       return Center(
         child: SizedBox(
           width: w,
@@ -99,7 +103,16 @@ class TreePortrait extends StatelessWidget {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 900),
                 layoutBuilder: _fadeLayout,
-                child: GameImage(key: ValueKey(path), path: path, cacheWidth: 1000),
+                child: (kIsWeb && isPohon0)
+                    ? const WebVideoPlayer(
+                  key: ValueKey('pohon-gerak-mp4'),
+                  src: 'assets/assets/pohon/pohongerak0.mp4',
+                )
+                    : GameImage(
+                  key: ValueKey(path),
+                  path: path,
+                  cacheWidth: 1000,
+                ),
               ),
             ),
           ),
@@ -196,6 +209,7 @@ class GameIcon extends StatelessWidget {
     );
   }
 }
+
 /// Layar muat: ikon aplikasi berdenyut pelan di atas indikator tipis.
 class EmbunLoading extends StatefulWidget {
   final String? text;

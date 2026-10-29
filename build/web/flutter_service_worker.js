@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "bc2e3c38ab5f0598c89cf6b27fe14eff",
-"assets/AssetManifest.bin.json": "7bffda08c3bc136d33d746d17e899766",
+const RESOURCES = {"assets/AssetManifest.bin": "e39b7439138760f1ab4ff4d419798e41",
+"assets/AssetManifest.bin.json": "a87686303614a3a14ef7d74bfb0ca764",
 "assets/assets/bentang/desajembatan-kering.webp": "867d4e8dfd360f30f67d6100fc199d9f",
 "assets/assets/bentang/desajembatan-keringgulita.webp": "1837c9efac64ae6e27e37c42484f3148",
 "assets/assets/bentang/keterasingan.png": "6a15a0e84002a459d4180aa37fe69a80",
@@ -212,6 +212,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "bc2e3c38ab5f0598c89cf6b27fe14eff
 "assets/assets/kartu/protagonis/warga7.webp": "20cfbcf539a4ac31d82e6586f44c87bb",
 "assets/assets/kartu/protagonis/warga8.webp": "d31528ae956b2bc5f533b32744989d3b",
 "assets/assets/kartu/protagonis/warga9.webp": "f9f69f0d82c2253f926e1b6634a5225c",
+"assets/assets/kartu/punggungkartu/Kunci%2520Astral%2520dalam%2520Kristal%2520Biru.png": "8183000320a44d78834ad80bc4f62d08",
 "assets/assets/kartu/punggungkartu/punggungantagonis.png": "4c80ac4b37b81ad403647632c71205e6",
 "assets/assets/kartu/punggungkartu/punggungprotagonis.png": "10ee19a36be12f094cc9254d772ed308",
 "assets/assets/logo/ikon-transparent.png": "f5e0a8342591e2e562f32d9587573020",
@@ -250,14 +251,14 @@ const RESOURCES = {"assets/AssetManifest.bin": "bc2e3c38ab5f0598c89cf6b27fe14eff
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "1de263d77c64e16c1c3455a772dc1378",
+"flutter_bootstrap.js": "a7d5fb4ae50557e304647d703eaa33cf",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "de5cd924341a6010f14615fdbbbc0952",
 "/": "de5cd924341a6010f14615fdbbbc0952",
-"main.dart.js": "82c4fc34c4f88dfa71c3c36a47e75c44",
+"main.dart.js": "5dfb1c5846bf827f57b0d1150fa43580",
 "manifest.json": "df5ecdba13a1656c0809325677030ab9",
 "version.json": "5f7aaaa3c3b9afbeb1df6ee4593452d9"};
 // The application shell files that are downloaded before a service worker can
