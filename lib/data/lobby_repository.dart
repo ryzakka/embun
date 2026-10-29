@@ -72,23 +72,41 @@ class LobbyRepository {
   Future<String?> myRole(String gameId) async =>
       (await mySecret(gameId))?['role'] as String?;
 
-  /// Peran dan benih kartu gelap milik sendiri.
+  /// Peran, benih kartu gelap, dan kemampuan milik sendiri.
   Future<Map<String, dynamic>?> mySecret(String gameId) async {
-    final row = await _db
-        .from('player_secrets')
-        .select('role, dark_seed')
-        .eq('game_id', gameId)
-        .eq('user_id', _db.auth.currentUser!.id)
-        .maybeSingle();
-    return row == null ? null : Map<String, dynamic>.from(row);
+    final uid = _db.auth.currentUser!.id;
+    Future<Map<String, dynamic>?> q(String cols) async {
+      final row = await _db
+          .from('player_secrets')
+          .select(cols)
+          .eq('game_id', gameId)
+          .eq('user_id', uid)
+          .maybeSingle();
+      return row == null ? null : Map<String, dynamic>.from(row);
+    }
+
+    try {
+      return await q('role, dark_seed, ability, ability_used');
+    } catch (_) {
+      // Kolom kemampuan belum ada (migrasi v4 belum dijalankan): pakai yang lama.
+      return q('role, dark_seed');
+    }
   }
 
   /// Hanya terbaca setelah permainan selesai (diatur RLS).
   Future<Map<String, Map<String, dynamic>>> allSecrets(String gameId) async {
-    final rows = await _db
-        .from('player_secrets')
-        .select('user_id, role, dark_seed')
-        .eq('game_id', gameId);
+    List<Map<String, dynamic>> rows;
+    try {
+      rows = List<Map<String, dynamic>>.from(await _db
+          .from('player_secrets')
+          .select('user_id, role, dark_seed, ability')
+          .eq('game_id', gameId));
+    } catch (_) {
+      rows = List<Map<String, dynamic>>.from(await _db
+          .from('player_secrets')
+          .select('user_id, role, dark_seed')
+          .eq('game_id', gameId));
+    }
     return {
       for (final r in rows)
         r['user_id'] as String: Map<String, dynamic>.from(r)

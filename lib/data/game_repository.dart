@@ -264,6 +264,22 @@ class GameRepository {
     }
   }
 
+  // ---- kemampuan warga ----
+  Future<Map<String, Map<String, dynamic>>> abilityDefs() async {
+    final rows = await _db.from('ability_definitions').select();
+    return {
+      for (final r in rows) r['id'] as String: Map<String, dynamic>.from(r)
+    };
+  }
+
+  /// Memakai kemampuan sekali pakai. Hasil: {result, message, ...}.
+  Future<Map<String, dynamic>> useAbility(String gameId,
+      {String? target}) async {
+    final r = await _db.rpc('use_ability',
+        params: {'p_game': gameId, 'p_target': target});
+    return Map<String, dynamic>.from(r as Map);
+  }
+
   /// Null bila permainan belum selesai.
   Future<Map<String, dynamic>?> recap(String gameId) async {
     final r = await _db.rpc('game_recap', params: {'p_game': gameId});

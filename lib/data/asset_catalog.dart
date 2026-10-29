@@ -9,6 +9,7 @@ const kartuWargaDir = 'assets/kartu/powerpro';
 const kartuAntagDir = 'assets/kartu/poweranta';
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
+const kemampuanDir = 'assets/kartu/kemampuan';
 // Bila isi assets/ikon/sudah adalah versi transparan, ganti ke
 // 'assets/ikon/sudah' (dan daftarkan foldernya di pubspec.yaml).
 const ikonDir = 'assets/ikon';
@@ -96,6 +97,15 @@ String? cardArtPath(Map<String, dynamic>? def) {
   if (stem == null) return null;
   final dir = def['side'] == 'antagonis' ? kartuAntagDir : kartuWargaDir;
   return AssetCatalog.I.file(dir, stem);
+}
+
+/// Gambar kartu kemampuan warga. Nama berkas = kolom `art` di
+/// ability_definitions (jatuh ke `id`). Bila belum ada, kartu tampil berikon.
+String? abilityArtPath(Map<String, dynamic>? def) {
+  if (def == null) return null;
+  final stem = (def['art'] as String?) ?? (def['id'] as String?);
+  if (stem == null) return null;
+  return AssetCatalog.I.file(kemampuanDir, stem);
 }
 
 String characterTitle(String stem) {

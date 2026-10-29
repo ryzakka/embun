@@ -113,7 +113,10 @@ class _PlayerSheetState extends State<_PlayerSheet> {
     final short = mq.size.height < 480; // ponsel miring
     final card = widget.player['character_card'] as String;
     final tradable =
-    widget.hand.where((h) => h['card_id'] != 'embun_samaran').toList();
+    widget.hand
+        .where((h) =>
+    h['card_id'] != 'embun_samaran' && h['card_id'] != 'kunci_segel')
+        .toList();
     final medal = short ? 46.0 : 56.0;
 
     return Container(

@@ -8,6 +8,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
 import 'flip_card.dart';
+import 'package:flutter/foundation.dart';
 
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
 
@@ -60,6 +61,9 @@ class DayView extends StatefulWidget {
   final int day;
   final int priceMod;
   final int extraBuy;
+
+  /// Naik tiap kali pasar perlu dimuat ulang dari luar (mis. Pedagang Ulung).
+  final ValueListenable<int>? marketTick;
   final List<Map<String, dynamic>> hand;
   final Map<String, Map<String, dynamic>> defs;
   final double balance;
@@ -82,6 +86,7 @@ class DayView extends StatefulWidget {
     required this.day,
     required this.priceMod,
     required this.extraBuy,
+    this.marketTick,
     required this.hand,
     required this.defs,
     required this.balance,
@@ -117,6 +122,7 @@ class _DayViewState extends State<DayView> {
   void initState() {
     super.initState();
     _loadOffers();
+    widget.marketTick?.addListener(_loadOffers);
     // Banner Kabar Pagi di layar Toko menyingkir sendiri supaya kartu lega;
     // isinya tetap bisa dibaca di Balai.
     _kabarTimer = Timer(const Duration(seconds: 9), () {
@@ -126,6 +132,7 @@ class _DayViewState extends State<DayView> {
 
   @override
   void dispose() {
+    widget.marketTick?.removeListener(_loadOffers);
     _openTimer?.cancel();
     _kabarTimer?.cancel();
     _pager.dispose();
@@ -179,7 +186,10 @@ class _DayViewState extends State<DayView> {
   }
 
   int get _remaining {
-    final bought = (offers ?? []).where((o) => o['bought'] == true).length;
+    // Kartu bonus Pedagang Ulung tidak memakai jatah belanja.
+    final bought = (offers ?? [])
+        .where((o) => o['bought'] == true && o['bonus'] != true)
+        .length;
     final left = 1 + widget.extraBuy - bought;
     return left < 0 ? 0 : left;
   }
@@ -226,7 +236,10 @@ class _DayViewState extends State<DayView> {
       return;
     }
     final tradable =
-    widget.hand.where((h) => h['card_id'] != 'embun_samaran').toList();
+    widget.hand
+        .where((h) =>
+    h['card_id'] != 'embun_samaran' && h['card_id'] != 'kunci_segel')
+        .toList();
     if (tradable.isEmpty) {
       _toast('Kamu tidak punya kartu untuk ditukar');
       return;

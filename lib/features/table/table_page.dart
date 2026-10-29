@@ -22,6 +22,7 @@ import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
 import '../guide/guide_page.dart';
+import 'ability_panel.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -74,6 +75,14 @@ class _TablePageState extends State<TablePage> {
   bool disguiseMode = false; // Mode samaran layar untuk Si Terbisik
   int? _ceremonyDay; // hari yang adegan pelemparan kartunya sudah selesai
   int? darkSeed;
+
+  // Kemampuan acak warga (hanya terlihat oleh pemiliknya).
+  Map<String, Map<String, dynamic>> abilityDefs = {};
+  String abilityId = 'biasa';
+  bool abilityUsed = false;
+  bool _abilityKnown = false;
+  bool _abilityRevealed = false;
+  final ValueNotifier<int> _marketTick = ValueNotifier<int>(0);
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
   Future<Map<String, String>>? usernamesFuture;
@@ -123,6 +132,10 @@ class _TablePageState extends State<TablePage> {
         setState(() => darkSeed = s['dark_seed'] as int?);
       }
     });
+    repo.abilityDefs().then((d) {
+      if (mounted) setState(() => abilityDefs = d);
+    }).catchError((_) {});
+    _loadAbility(reveal: true);
 
     final id = widget.gameId;
     _subs.add(lobby.game(id).listen(_onGame, onError: (_) {}));
@@ -166,6 +179,7 @@ class _TablePageState extends State<TablePage> {
 
   @override
   void dispose() {
+    _marketTick.dispose();
     _beat?.cancel();
     for (final s in _subs) {
       s.cancel();
@@ -460,6 +474,92 @@ class _TablePageState extends State<TablePage> {
         _chatSeen = _othersChatCount();
       });
     }
+  }
+
+  // ===================== kemampuan warga =====================
+
+  /// Memuat kemampuan milikku dari server. Si Terbisik tidak punya kemampuan
+  /// (ia memakai kartu), jadi tidak ada yang ditampilkan untuknya.
+  Future<void> _loadAbility({bool reveal = false}) async {
+    if (isAntag) return;
+    try {
+      final s = await lobby.mySecret(widget.gameId);
+      if (!mounted || s == null) return;
+      setState(() {
+        abilityId = (s['ability'] as String?) ?? 'biasa';
+        abilityUsed = s['ability_used'] == true;
+        _abilityKnown = true;
+      });
+      if (reveal) _tryRevealAbility();
+    } catch (_) {
+      // Kolom belum ada (migrasi belum dijalankan): sembunyikan saja.
+    }
+  }
+
+  /// Pengungkapan di awal permainan, setelah adegan pembuka selesai.
+  void _tryRevealAbility([int attempt = 0]) {
+    if (_abilityRevealed || !_abilityKnown || isAntag) return;
+    if (((game?['day'] as int?) ?? 0) > 1) {
+      _abilityRevealed = true;
+      return;
+    }
+    Future.delayed(Duration(milliseconds: attempt == 0 ? 2800 : 1500), () {
+      if (!mounted || _abilityRevealed) return;
+      if (_dayIntro != null && attempt < 8) {
+        _tryRevealAbility(attempt + 1);
+        return;
+      }
+      _abilityRevealed = true;
+      _openAbility(intro: true);
+    });
+  }
+
+  Future<void> _openAbility({bool intro = false}) async {
+    if (isAntag) return;
+    await _loadAbility(); // data segar (mis. Lidah Manis baru terpakai)
+    final def = abilityDefs[abilityId];
+    if (!mounted || def == null) return;
+    final day = (game?['day'] as int?) ?? 0;
+    final me = _meRow;
+    await showAbilityDialog(
+      context,
+      def: def,
+      used: abilityUsed,
+      repo: repo,
+      gameId: widget.gameId,
+      phase: (game?['phase'] as String?) ?? '',
+      jailed: me != null && isJailed(me, day),
+      others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
+      intro: intro,
+      onUsed: () {
+        _loadAbility();
+        _refreshHand();
+        _marketTick.value++;
+      },
+    );
+  }
+
+  /// Tombol kemampuan di bar atas (hanya untuk warga). Titik kecil muncul
+  /// selama kemampuan sekali pakai belum dipakai.
+  Widget _abilityButton() {
+    final def = abilityDefs[abilityId];
+    if (isAntag || !_abilityKnown || def == null) return const SizedBox.shrink();
+    final ready = !abilityUsed && abilityIsManual(abilityId);
+    return Badge(
+      isLabelVisible: ready,
+      smallSize: 10,
+      backgroundColor: EmbunColors.gold,
+      child: IconButton(
+        tooltip: '${def['name']}',
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _openAbility(),
+        icon: Icon(
+          abilityIcon(abilityId),
+          size: 26,
+          color: abilityUsed ? Colors.white38 : abilityAccent(abilityId),
+        ),
+      ),
+    );
   }
 
   void _openGuide() => Navigator.of(context)
@@ -839,7 +939,8 @@ class _TablePageState extends State<TablePage> {
         gameId: widget.gameId,
         leaves: leaves,
         isAntag: isAntag,
-        hand: hand,
+        // Kunci Segel terpakai otomatis saat dituduh; tak bisa dipersembahkan.
+        hand: hand.where((h) => h['card_id'] != 'kunci_segel').toList(),
         defs: defs,
         players: alive,
         submitted: iAmReady,
@@ -852,6 +953,7 @@ class _TablePageState extends State<TablePage> {
       body = _spectatorBody();
     } else {
       body = DayView(
+        marketTick: _marketTick,
         key: ValueKey('day$day'),
         repo: repo,
         gameId: widget.gameId,
@@ -1210,6 +1312,7 @@ class _TablePageState extends State<TablePage> {
                     icon: const GameIcon('discuss', size: 30),
                   ),
                 ),
+              _abilityButton(),
               PopupMenuButton<String>(
                 tooltip: 'Menu',
                 icon: const GameIcon('menu', size: 30),
@@ -1381,6 +1484,7 @@ class _TablePageState extends State<TablePage> {
             onPressed: () => setState(() => disguiseMode = !disguiseMode),
             icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
+        _abilityButton(),
         IconButton(
           tooltip: 'Panduan',
           visualDensity: VisualDensity.compact,
@@ -1610,6 +1714,11 @@ class _TablePageState extends State<TablePage> {
       ) {
     final uid = p['user_id'] as String;
     final antag = secrets[uid]?['role'] == 'antagonis';
+    // Kemampuan warga dibuka saat permainan berakhir (yang sudah keluar dari
+    // desa tidak punya catatan rahasia lagi).
+    final abName = antag
+        ? null
+        : abilityDefs['${secrets[uid]?['ability']}']?['name'] as String?;
 
     // key = hari*10 + urutan (beli, persembahan, suara) agar urut stabil.
     final lines = <MapEntry<int, String>>[];
@@ -1646,7 +1755,8 @@ class _TablePageState extends State<TablePage> {
       title: Text(p['name'] as String),
       subtitle: Text(
         '${usernames[uid] != null ? '${usernames[uid]} · ' : ''}'
-            '${antag ? 'Si Terbisik' : 'Warga Desa'}',
+            '${antag ? 'Si Terbisik' : 'Warga Desa'}'
+            '${abName == null ? '' : ' · $abName'}',
         style: TextStyle(
           fontSize: 12,
           color: antag ? const Color(0xFFB07CE8) : Colors.white60,
