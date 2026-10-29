@@ -244,7 +244,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
 
   Widget _stageArea() => LayoutBuilder(builder: (context, c) {
     final cardW = math
-        .min(math.min(c.maxWidth * 0.28, (c.maxHeight - 90) * 3 / 4), 128.0)
+        .min(math.min(c.maxWidth * 0.28, (c.maxHeight - 90) / kProtagonistAspect), 128.0)
         .clamp(52.0, 128.0)
         .toDouble();
     final Widget body = switch (_phase) {
@@ -305,7 +305,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
             ),
             SizedBox(
               width: cardW * 0.62,
-              height: cardW * 4 / 3 + 22,
+              height: cardW * kProtagonistAspect + 22,
               child: showTarget
                   ? TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),

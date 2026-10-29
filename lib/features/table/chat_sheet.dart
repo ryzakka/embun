@@ -658,9 +658,10 @@ class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth, h = c.maxHeight;
         var portraitH = (h * 0.84).clamp(100.0, 420.0).toDouble();
-        var cardW = portraitH * 3 / 4;
+        final aspect = cardAspectFor(protagonistPath(widget.card ?? 'default'));
+        var cardW = portraitH / aspect;
         if (cardW > w * 0.58) cardW = w * 0.58;
-        final cardH = cardW * 4 / 3;
+        final cardH = cardW * aspect;
         final sideGap = w * 0.05;
 
         return AnimatedBuilder(

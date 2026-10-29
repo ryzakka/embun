@@ -712,7 +712,7 @@ class _PrologueFlowState extends State<PrologueFlow>
 
     return LayoutBuilder(builder: (context, c) {
       final cardH = (c.maxHeight - 190).clamp(150.0, 340.0).toDouble();
-      final cardW = cardH * 3 / 4;
+      final cardW = cardH / cardAspectFor(cardPath);
       return Center(
         child: SingleChildScrollView(
           child: Column(

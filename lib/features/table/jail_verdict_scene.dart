@@ -132,7 +132,8 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
     final handsW = math.min(w * 1.25, h * 1.5);
     final handsH = handsW / 1.5;
     final ph = handsH * 0.5;
-    final pw = ph * 3 / 4;
+    final pw = ph /
+        cardAspectFor(widget.card == null ? null : protagonistPath(widget.card!));
 
     // Latar keterasingan.
     final scrimA = _lerp(0.9, 0.2, _smooth(_seg(t, 0.62, 0.84)));

@@ -108,9 +108,43 @@ String? abilityArtPath(Map<String, dynamic>? def) {
   return AssetCatalog.I.file(kemampuanDir, stem);
 }
 
+/// Rasio tinggi : lebar kartu karakter. Kartu protagonis baru berukuran
+/// 1024 x 1536 (2:3). Kartu gelap (antagonis) tetap 3:4; ubah
+/// [kAntagonisAspect] ke 1.5 bila kartu gelap juga dibuat ulang 2:3.
+const kProtagonistAspect = 1.5;
+const kAntagonisAspect = 4 / 3;
+
+double cardAspectFor(String? path) {
+  if (path == null || path.startsWith(protagonisDir)) return kProtagonistAspect;
+  if (path.startsWith(antagonisDir)) return kAntagonisAspect;
+  return 4 / 3; // kartu lain (mis. pratinjau item) seperti semula
+}
+
+/// Nama karakter dari nama berkas. Nama berkas = <pekerjaan><jenis>, mis.
+/// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
+/// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
-  final base = stem.replaceAll(RegExp(r'\d+$'), '');
+  if (stem == 'default') return 'Belum memilih';
+  final base = stem
+      .replaceAll(RegExp(r'\d+$'), '')
+      .replaceAll(RegExp(r'(pria|wanita)$'), '');
   const names = {
+    // kartu baru
+    'bangsawan-bangsawan': 'Bangsawan',
+    'bangsawan-gouverneur': 'Gubernur',
+    'bangsawan-pangeran': 'Pangeran',
+    'bangsawan-puteri': 'Puteri',
+    'buruhangkat': 'Buruh Angkat',
+    'burungangkat': 'Buruh Angkat', // salah ketik pada nama berkas
+    'kriyawan': 'Kriyawan',
+    'nelayanikan': 'Nelayan',
+    'pekebunteh': 'Pekebun Teh',
+    'penenun': 'Penenun',
+    'penjahit': 'Penjahit',
+    'perajintembikar': 'Perajin Tembikar',
+    'petanipadi': 'Petani Padi',
+    'wargadesa': 'Warga Desa',
+    // kartu lama (tetap dikenali bila masih ada)
     'atlet': 'Atlet',
     'besi': 'Pandai Besi',
     'guru': 'Guru',
@@ -130,7 +164,15 @@ String characterTitle(String stem) {
     'pustakawan': 'Pustakawan',
     'warga': 'Warga Desa',
   };
-  if (stem == 'default') return 'Belum memilih';
-  return names[base] ??
-      (base.isEmpty ? stem : base[0].toUpperCase() + base.substring(1));
+  final known = names[base];
+  if (known != null) return known;
+  if (base.isEmpty) return stem;
+  // Tak dikenal: rapikan seadanya ("abc-def" -> "Abc Def"), maks 16 huruf
+  // supaya nama (batas 20 karakter) masih muat dengan nomor.
+  final words = base
+      .split('-')
+      .where((w) => w.isNotEmpty)
+      .map((w) => w[0].toUpperCase() + w.substring(1))
+      .join(' ');
+  return words.length > 16 ? words.substring(0, 16) : words;
 }

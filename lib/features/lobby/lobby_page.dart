@@ -317,7 +317,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V1.9',
+                                    'BALAI PERTEMUAN DESA V1.3',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -616,7 +616,7 @@ class _LobbyPageState extends State<LobbyPage>
                 padding: const EdgeInsets.all(12),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 130,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 1 / kProtagonistAspect,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
@@ -637,7 +637,7 @@ class _LobbyPageState extends State<LobbyPage>
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: GameImage(
-                            path: protagonistPath(s), cacheWidth: 260),
+                            path: protagonistPath(s), cacheWidth: 300),
                       ),
                     ),
                   );
