@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -8,6 +9,7 @@ import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/web_video_player.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
@@ -211,7 +213,21 @@ class _LobbyPageState extends State<LobbyPage>
             child: Transform.scale(
               scale: k,
               alignment: al,
-              child: Backdrop(path: sceneryPath(stem), dim: 0.4),
+              child: (kIsWeb && title)
+                  ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  const WebVideoPlayer(
+                    key: ValueKey('pohon-bg-mp4'),
+                    src: 'assets/assets/pohon/pohongerak0.mp4',
+                    fit: BoxFit.cover,
+                  ),
+                  ColoredBox(
+                    color: const Color(0xFF07130F).withValues(alpha: 0.4),
+                  ),
+                ],
+              )
+                  : Backdrop(path: sceneryPath(stem), dim: 0.4),
             ),
           ),
           IgnorePointer(
@@ -317,7 +333,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V1.6',
+                                    'BALAI PERTEMUAN DESA V1.7',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
