@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "e39b7439138760f1ab4ff4d419798e41",
-"assets/AssetManifest.bin.json": "a87686303614a3a14ef7d74bfb0ca764",
+const RESOURCES = {"assets/AssetManifest.bin": "1273961eb476158e8371a87c30bda72d",
+"assets/AssetManifest.bin.json": "c2662ec4a7cd16f764f173f75df8e8a7",
 "assets/assets/bentang/desajembatan-kering.webp": "867d4e8dfd360f30f67d6100fc199d9f",
 "assets/assets/bentang/desajembatan-keringgulita.webp": "1837c9efac64ae6e27e37c42484f3148",
 "assets/assets/bentang/keterasingan.png": "6a15a0e84002a459d4180aa37fe69a80",
@@ -231,6 +231,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "e39b7439138760f1ab4ff4d419798e41
 "assets/assets/pohon/pohon7.webp": "c5f523007df07bbf2cade5fb82abe55d",
 "assets/assets/pohon/pohon8.webp": "63e33815dc15a112d489e5733ee7c632",
 "assets/assets/pohon/pohon9.webp": "01455e4b8df0348610e57631081d21b3",
+"assets/assets/pohon/pohongerak0.mp4": "65ef12026946455360bc6b736105fac6",
 "assets/FontManifest.json": "dc3d03800ccca4601324923c0b1d6d57",
 "assets/fonts/MaterialIcons-Regular.otf": "138bac17b083d8a70c67b9e7bea6e236",
 "assets/NOTICES": "bacb8c5290b7c29123ff28e1114e5055",
@@ -251,7 +252,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "e39b7439138760f1ab4ff4d419798e41
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "101e7dee8b8b1fac076f63b0f09b88d2",
+"flutter_bootstrap.js": "72379dffed74c89e645ffa3ddd698a77",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
