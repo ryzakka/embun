@@ -264,6 +264,18 @@ class GameRepository {
     }
   }
 
+  /// Semua suara satu putaran voting, urutan server (yang tidak memilih di
+  /// akhir). Hanya terisi setelah voting selesai (tabel vote_reveal).
+  Future<List<Map<String, dynamic>>> voteReveal(String gameId, int day) async {
+    final rows = await _db
+        .from('vote_reveal')
+        .select()
+        .eq('game_id', gameId)
+        .eq('day', day)
+        .order('seq');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   // ---- kemampuan warga ----
   Future<Map<String, Map<String, dynamic>>> abilityDefs() async {
     final rows = await _db.from('ability_definitions').select();

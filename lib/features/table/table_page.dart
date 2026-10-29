@@ -23,6 +23,7 @@ import 'offering_transition.dart';
 import 'offering_view.dart';
 import '../guide/guide_page.dart';
 import 'ability_panel.dart';
+import 'vote_reveal_scene.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -65,6 +66,12 @@ class _TablePageState extends State<TablePage> {
   // mencegah adegan diputar ulang (mis. saat masuk kembali di tengah
   // permainan).
   Map<String, dynamic>? _dayIntro;
+
+  // Pembukaan suara (siapa memilih siapa) setelah voting. Berjalan SEBELUM
+  // adegan kurungan/fajar/akhir, yang ditahan selama adegan ini tampil.
+  // _voteReveal['rows'] null = data masih diambil (layar gelap sebentar).
+  Map<String, dynamic>? _voteReveal;
+  int? _lastRevealDay;
   int? _lastIntroDay;
   int? _lastOfferDay;
   bool _offerSeeded = false;
@@ -223,13 +230,68 @@ class _TablePageState extends State<TablePage> {
       return;
     }
     final changed = game?['day'] != g['day'] || game?['phase'] != g['phase'];
+    final prev = game;
     setState(() {
       game = g;
+      _checkVoteReveal(prev, g);
       _checkDayIntro(g);
       _checkOfferIntro(g);
     });
     // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
     if (changed) _refreshHand();
+  }
+
+  /// Voting baru saja selesai (fase 'voting' berganti hari baru, atau permainan
+  /// berakhir): putar pembukaan suara untuk hari yang baru lewat. Riwayat
+  /// (masuk kembali sesudahnya) tidak memutarnya lagi.
+  void _checkVoteReveal(Map<String, dynamic>? prev, Map<String, dynamic> g) {
+    if (prev == null) return;
+    if (prev['status'] != 'playing' || prev['phase'] != 'voting') return;
+    final prevDay = prev['day'] as int;
+    final finished = g['status'] == 'finished';
+    final moved = ((g['day'] as int?) ?? prevDay) > prevDay;
+    if (!(finished || moved)) return;
+    if (g['winner'] == 'dibatalkan') return; // dibatalkan, bukan hasil voting
+    if (_lastRevealDay == prevDay) return;
+    _lastRevealDay = prevDay;
+    _voteReveal = {'day': prevDay, 'rows': null};
+    _loadVoteReveal(prevDay);
+  }
+
+  Future<void> _loadVoteReveal(int day, [int attempt = 0]) async {
+    var rows = <Map<String, dynamic>>[];
+    try {
+      rows = await repo.voteReveal(widget.gameId, day);
+    } catch (_) {}
+    if (!mounted) return;
+    if (rows.isEmpty && attempt < 1) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return _loadVoteReveal(day, attempt + 1);
+    }
+    setState(() {
+      final cur = _voteReveal;
+      if (cur == null || cur['day'] != day) return;
+      if (rows.isEmpty) {
+        _voteReveal = null; // tidak ada data (mis. migrasi belum dijalankan)
+      } else {
+        cur['rows'] = rows;
+      }
+    });
+  }
+
+  Widget _voteRevealLayer() {
+    final v = _voteReveal!;
+    final rows = v['rows'] as List<Map<String, dynamic>>?;
+    if (rows == null) return const ColoredBox(color: Color(0xFF05080F));
+    return VoteRevealScene(
+      key: ValueKey('votes${v['day']}'),
+      day: v['day'] as int,
+      rows: rows,
+      myId: repo.myId,
+      onDone: () {
+        if (mounted) setState(() => _voteReveal = null);
+      },
+    );
   }
 
   /// Putar adegan menuju Hayu saat fase 'offering' dimulai. Data pertama
@@ -657,9 +719,9 @@ class _TablePageState extends State<TablePage> {
               sceneHeight: _narrow ? 190 : 240,
             ),
           ),
-          if (_dayIntro != null && _jailHolds)
+          if (_dayIntro != null && _voteReveal == null && _jailHolds)
             Positioned.fill(child: _jailLayer()),
-          if (_dayIntro != null && !_jailHolds)
+          if (_dayIntro != null && _voteReveal == null && !_jailHolds)
             Positioned.fill(
               child: _dayIntro!['kind'] == 'offering'
                   ? OfferingTransition(
@@ -683,6 +745,8 @@ class _TablePageState extends State<TablePage> {
                 },
               ),
             ),
+          // Paling atas: menahan adegan lain sampai semua suara dibuka.
+          if (_voteReveal != null) Positioned.fill(child: _voteRevealLayer()),
         ],
       ),
     );
@@ -1517,6 +1581,8 @@ class _TablePageState extends State<TablePage> {
   // ---------- hasil + rekap ----------
 
   Widget _result(Map<String, dynamic> g) {
+    // Voting yang mengakhiri permainan: buka suara dulu, baru sinematik akhir.
+    if (_voteReveal != null) return const ColoredBox(color: Color(0xFF05080F));
     final wargaMenang = g['winner'] == 'warga';
     final bubar = g['winner'] == 'dibatalkan';
     final leaves = g['leaves'] as int;
