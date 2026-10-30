@@ -276,6 +276,35 @@ class GameRepository {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  // ---- serangan malam ----
+  /// Laporan malam hari [day]: pengumuman untuk semua + baris pribadi milikku.
+  Future<List<Map<String, dynamic>>> nightReports(String gameId, int day) async {
+    final rows = await _db
+        .from('night_reports')
+        .select()
+        .eq('game_id', gameId)
+        .eq('day', day)
+        .order('id');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// Rencana serangan malam milikku (Si Terbisik) untuk hari [day], atau null.
+  Future<Map<String, dynamic>?> nightPlan(String gameId, int day) async {
+    final r = await _db
+        .from('night_plan')
+        .select()
+        .eq('game_id', gameId)
+        .eq('day', day)
+        .eq('user_id', myId)
+        .maybeSingle();
+    return r == null ? null : Map<String, dynamic>.from(r);
+  }
+
+  /// Siapkan kartu serangan malam. Tanpa [handId] = batalkan rencana.
+  Future<void> armNightCard(String gameId, {String? handId, String? target}) =>
+      _db.rpc('arm_night_card',
+          params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target});
+
   // ---- kemampuan warga ----
   Future<Map<String, Map<String, dynamic>>> abilityDefs() async {
     final rows = await _db.from('ability_definitions').select();

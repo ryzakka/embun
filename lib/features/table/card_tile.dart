@@ -7,12 +7,14 @@ const kindLabel = {
   'persembahan': 'Persembahan',
   'sekali_pakai': 'Sekali pakai',
   'penguat': 'Penguat',
+  'malam': 'Serangan malam',
 };
 
 const kindIcon = {
   'persembahan': 'donations',
   'sekali_pakai': 'item',
   'penguat': 'plus',
+  'malam': 'danger',
 };
 
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,

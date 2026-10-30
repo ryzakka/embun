@@ -24,6 +24,8 @@ import 'offering_view.dart';
 import '../guide/guide_page.dart';
 import 'ability_panel.dart';
 import 'vote_reveal_scene.dart';
+import 'night_scene.dart';
+import 'night_plan_dialog.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -72,6 +74,12 @@ class _TablePageState extends State<TablePage> {
   // _voteReveal['rows'] null = data masih diambil (layar gelap sebentar).
   Map<String, dynamic>? _voteReveal;
   int? _lastRevealDay;
+
+  // Layar malam di antara dua hari biasa (pengumuman serangan Si Terbisik).
+  // Sama seperti pembukaan suara: menahan adegan fajar sampai selesai.
+  Map<String, dynamic>? _nightScene;
+  int? _lastNightDay;
+  bool _nightArmed = false; // Si Terbisik: sudah menyiapkan serangan malam ini
   int? _lastIntroDay;
   int? _lastOfferDay;
   bool _offerSeeded = false;
@@ -97,6 +105,9 @@ class _TablePageState extends State<TablePage> {
   Map<String, String> usernames = {}; // user_id -> username asli (akhir game)
 
   bool get isAntag => widget.role == 'antagonis';
+
+  /// Adegan yang harus selesai dulu sebelum fajar / adegan persembahan.
+  bool get _holdIntro => _voteReveal != null || _nightScene != null;
 
   /// Pemain yang masih di desa (yang sudah keluar tidak dihitung).
   List<Map<String, dynamic>> get _alive =>
@@ -234,11 +245,116 @@ class _TablePageState extends State<TablePage> {
     setState(() {
       game = g;
       _checkVoteReveal(prev, g);
+      _checkNight(prev, g);
       _checkDayIntro(g);
       _checkOfferIntro(g);
     });
     // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
     if (changed) _refreshHand();
+  }
+
+  // ===================== malam di antara hari biasa =====================
+
+  /// Hari biasa baru saja berakhir (fase 'day' berganti hari berikutnya):
+  /// putar layar malam. Voting tidak diikuti malam. Masuk kembali sesudahnya
+  /// tidak memutarnya lagi.
+  void _checkNight(Map<String, dynamic>? prev, Map<String, dynamic> g) {
+    if (isAntag &&
+        (prev == null ||
+            prev['day'] != g['day'] ||
+            prev['phase'] != g['phase'])) {
+      _loadNightPlan();
+    }
+    if (prev == null) return;
+    if (prev['status'] != 'playing' || prev['phase'] != 'day') return;
+    if (g['status'] != 'playing') return;
+    final prevDay = prev['day'] as int;
+    if (((g['day'] as int?) ?? prevDay) != prevDay + 1) return;
+    if (_lastNightDay == prevDay) return;
+    _lastNightDay = prevDay;
+    _nightScene = {'day': prevDay, 'rows': null};
+    _loadNight(prevDay);
+  }
+
+  Future<void> _loadNight(int day, [int attempt = 0]) async {
+    var rows = <Map<String, dynamic>>[];
+    try {
+      rows = await repo.nightReports(widget.gameId, day);
+    } catch (_) {}
+    if (!mounted) return;
+    if (rows.isEmpty && attempt < 1) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return _loadNight(day, attempt + 1);
+    }
+    setState(() {
+      final cur = _nightScene;
+      if (cur == null || cur['day'] != day) return;
+      if (rows.isEmpty) {
+        _nightScene = null; // tak ada data (mis. migrasi belum dijalankan)
+      } else {
+        cur['rows'] = rows;
+      }
+    });
+  }
+
+  Widget _nightLayer() {
+    final v = _nightScene!;
+    final rows = v['rows'] as List<Map<String, dynamic>>?;
+    if (rows == null) return const ColoredBox(color: Color(0xFF040813));
+    return NightScene(
+      key: ValueKey('night${v['day']}'),
+      day: v['day'] as int,
+      rows: rows,
+      onDone: () {
+        if (mounted) setState(() => _nightScene = null);
+      },
+    );
+  }
+
+  Future<void> _loadNightPlan() async {
+    if (!isAntag) return;
+    final day = (game?['day'] as int?) ?? 0;
+    try {
+      final p = await repo.nightPlan(widget.gameId, day);
+      if (mounted) setState(() => _nightArmed = p != null);
+    } catch (_) {}
+  }
+
+  Future<void> _openNightPlan() async {
+    final day = (game?['day'] as int?) ?? 0;
+    await showNightPlanDialog(
+      context,
+      repo: repo,
+      gameId: widget.gameId,
+      day: day,
+      hand: hand,
+      defs: defs,
+      others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
+      onChanged: _loadNightPlan,
+    );
+    _loadNightPlan();
+  }
+
+  /// Ikon bulan di bar atas, hanya untuk Si Terbisik di hari biasa. Titik
+  /// kecil muncul bila serangan malam ini sudah disiapkan.
+  Widget _nightButton() {
+    final phase = (game?['phase'] as String?) ?? '';
+    if (!isAntag || phase != 'day') return const SizedBox.shrink();
+    return Badge(
+      isLabelVisible: _nightArmed,
+      smallSize: 10,
+      backgroundColor: EmbunColors.mist,
+      child: IconButton(
+        tooltip: 'Serangan malam',
+        visualDensity: VisualDensity.compact,
+        onPressed: _openNightPlan,
+        icon: Icon(
+          Icons.nightlight_round,
+          size: 26,
+          color: _nightArmed ? EmbunColors.mist : Colors.white70,
+        ),
+      ),
+    );
   }
 
   /// Voting baru saja selesai (fase 'voting' berganti hari baru, atau permainan
@@ -719,9 +835,9 @@ class _TablePageState extends State<TablePage> {
               sceneHeight: _narrow ? 190 : 240,
             ),
           ),
-          if (_dayIntro != null && _voteReveal == null && _jailHolds)
+          if (_dayIntro != null && !_holdIntro && _jailHolds)
             Positioned.fill(child: _jailLayer()),
-          if (_dayIntro != null && _voteReveal == null && !_jailHolds)
+          if (_dayIntro != null && !_holdIntro && !_jailHolds)
             Positioned.fill(
               child: _dayIntro!['kind'] == 'offering'
                   ? OfferingTransition(
@@ -747,6 +863,7 @@ class _TablePageState extends State<TablePage> {
             ),
           // Paling atas: menahan adegan lain sampai semua suara dibuka.
           if (_voteReveal != null) Positioned.fill(child: _voteRevealLayer()),
+          if (_nightScene != null) Positioned.fill(child: _nightLayer()),
         ],
       ),
     );
@@ -1004,7 +1121,11 @@ class _TablePageState extends State<TablePage> {
         leaves: leaves,
         isAntag: isAntag,
         // Kunci Segel terpakai otomatis saat dituduh; tak bisa dipersembahkan.
-        hand: hand.where((h) => h['card_id'] != 'kunci_segel').toList(),
+        hand: hand
+            .where((h) =>
+        h['card_id'] != 'kunci_segel' &&
+            defs[h['card_id']]?['kind'] != 'malam')
+            .toList(),
         defs: defs,
         players: alive,
         submitted: iAmReady,
@@ -1377,6 +1498,7 @@ class _TablePageState extends State<TablePage> {
                   ),
                 ),
               _abilityButton(),
+              _nightButton(),
               PopupMenuButton<String>(
                 tooltip: 'Menu',
                 icon: const GameIcon('menu', size: 30),
@@ -1549,6 +1671,7 @@ class _TablePageState extends State<TablePage> {
             icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
         _abilityButton(),
+        _nightButton(),
         IconButton(
           tooltip: 'Panduan',
           visualDensity: VisualDensity.compact,

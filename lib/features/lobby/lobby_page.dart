@@ -317,7 +317,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V1.3',
+                                    'BALAI PERTEMUAN DESA V2.1.0',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,

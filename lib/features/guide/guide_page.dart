@@ -1065,7 +1065,7 @@ class _CharactersTabState extends State<_CharactersTab>
 /// Disimpan selama aplikasi hidup supaya tab tidak memuat ulang.
 Map<String, Map<String, dynamic>>? _defsCache;
 
-const _kinds = ['persembahan', 'sekali_pakai', 'penguat'];
+const _kinds = ['persembahan', 'sekali_pakai', 'penguat', 'malam'];
 
 const _kindHelp = {
   'persembahan':
@@ -1076,6 +1076,10 @@ const _kindHelp = {
       'dilihat pemakainya saja.',
   'penguat':
   'Menaikkan laju embun (atau bulir hitam) pemakainya untuk seterusnya.',
+  'malam':
+  'Disiapkan di hari biasa dan dipakai saat malam tiba: mencuri embun, '
+      'menurunkan laju embun, atau menebalkan kabut. Semua pemain hanya '
+      'mendengar bahwa ada serangan, tanpa sasaran.',
 };
 
 class _ItemsTab extends StatefulWidget {
@@ -1196,8 +1200,11 @@ class _ItemsTabState extends State<_ItemsTab>
     final all = dark ? bad : good;
     final accent = dark ? EmbunColors.mist : EmbunColors.leaf;
     int n(String k) => all.where((d) => d['kind'] == k).length;
-    final selectedKind = kindIdx == 0 ? null : _kinds[kindIdx - 1];
-    final kinds = selectedKind == null ? _kinds : [selectedKind];
+    // Hanya jenis yang ada pada fraksi ini (Warga tidak punya "Serangan malam").
+    final present = [for (final k in _kinds) if (n(k) > 0) k];
+    final idx = kindIdx.clamp(0, present.length).toInt();
+    final selectedKind = idx == 0 ? null : present[idx - 1];
+    final kinds = selectedKind == null ? present : [selectedKind];
 
     return _Page(
       children: [
@@ -1229,14 +1236,12 @@ class _ItemsTabState extends State<_ItemsTab>
               ),
               const SizedBox(height: 12),
               _Segmented(
-                labels: const [
+                labels: [
                   'Semua',
-                  'Persembahan',
-                  'Sekali pakai',
-                  'Penguat',
+                  for (final k in present) kindLabel[k] ?? k,
                 ],
-                counts: [all.length, n(_kinds[0]), n(_kinds[1]), n(_kinds[2])],
-                selected: kindIdx,
+                counts: [all.length, for (final k in present) n(k)],
+                selected: idx,
                 accent: accent,
                 onSelect: (i) => setState(() => kindIdx = i),
               ),
