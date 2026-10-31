@@ -430,7 +430,10 @@ class _DayTransitionState extends State<DayTransition>
                     child: Transform.scale(
                       scale: zoom,
                       child: Backdrop(
-                        path: landscapePath(widget.leaves),
+                        path: (widget.leaves >= 12
+                            ? firstScenery(const ['langit-fajar'])
+                            : null) ??
+                            landscapePath(widget.leaves),
                         dark: widget.dark,
                         dim: 0.5,
                       ),

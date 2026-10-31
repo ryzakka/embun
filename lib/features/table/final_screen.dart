@@ -392,7 +392,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         fit: StackFit.expand,
         children: [
           Backdrop(
-              path: landscapePath(widget.leaves), dark: !_win, dim: 0.62),
+              path: _win
+                  ? landscapePath(widget.leaves)
+                  : (firstScenery(const ['keterasingan']) ??
+                  landscapePath(widget.leaves)),
+              dark: !_win,
+              dim: 0.62),
           IgnorePointer(
             child: AnimatedBuilder(
               animation: _loop,

@@ -80,6 +80,46 @@ String? landscapePath(int leaves) => leaves <= 0
 
 String? sceneryPath(String stem) => AssetCatalog.I.file(bentangDir, stem);
 
+/// Gambar bentang pertama yang ada dari daftar [stems]; null bila tak satu
+/// pun ada. Dipakai agar aplikasi tidak rusak bila sebuah aset belum diunggah.
+String? firstScenery(List<String> stems) {
+  for (final s in stems) {
+    final p = AssetCatalog.I.file(bentangDir, s);
+    if (p != null) return p;
+  }
+  return null;
+}
+
+/// Latar meja menurut fase dan hari. Selama Hayu masih sehat (>= 12 daun)
+/// tiap fase punya adegan sendiri; di bawah itu latar kembali ke
+/// [landscapePath] supaya kemerosotan Hayu tetap terlihat.
+String? phaseScenery(String phase, int day, int leaves) {
+  final fallback = landscapePath(leaves);
+  if (leaves < 12) return fallback;
+  final List<String> stems;
+  switch (phase) {
+    case 'day':
+      const rot = [
+        'pasar-sianghari',
+        'balaidesa-luarsiang',
+        'peternakan-sianghari',
+        'sumur-sianghari',
+        'menaralonceng-sianghari',
+        'gerobakdankeranjang',
+      ];
+      stems = [rot[day.abs() % rot.length]];
+    case 'discussion':
+      stems = const ['balaidesa-dalamsiang', 'perpustakaantua'];
+    case 'voting':
+      stems = const ['alunalun-tiangberpita'];
+    case 'offering':
+      stems = const ['pohon-keranjangbuah', 'pohon-zoom'];
+    default:
+      stems = const [];
+  }
+  return firstScenery(stems) ?? fallback;
+}
+
 String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
 
 String? logoPath(String stem) => AssetCatalog.I.file(logoDir, stem);

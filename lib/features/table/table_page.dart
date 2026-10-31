@@ -1235,7 +1235,10 @@ class _TablePageState extends State<TablePage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Backdrop(path: landscapePath(leaves), dark: showAsAntag, dim: 0.74),
+        Backdrop(
+            path: phaseScenery(phase, day, leaves),
+            dark: showAsAntag,
+            dim: 0.74),
         SafeArea(
           child: _narrow
               ? _panel(g, day, phase, leaves, iAmReady, readyCount, jailed,
