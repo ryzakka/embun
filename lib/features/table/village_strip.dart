@@ -26,6 +26,9 @@ class VillageStrip extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onTapPlayer;
   final VoidCallback onEmoteButton;
 
+  /// Kunci global per avatar, supaya animasi pemberian tahu posisinya.
+  final GlobalKey Function(String userId)? avatarKeyFor;
+
   const VillageStrip({
     super.key,
     required this.myId,
@@ -35,6 +38,7 @@ class VillageStrip extends StatefulWidget {
     required this.day,
     required this.onTapPlayer,
     required this.onEmoteButton,
+    this.avatarKeyFor,
   });
 
   @override
@@ -150,6 +154,7 @@ class _VillageStripState extends State<VillageStrip> {
                 Opacity(
                   opacity: out ? 0.35 : 1,
                   child: PlayerAvatar(
+                    key: widget.avatarKeyFor?.call(id),
                     path: protagonistPath(p['character_card'] as String),
                     size: 38,
                     ring: out

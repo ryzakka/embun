@@ -24,6 +24,10 @@ Future<void> showPlayerSheet(
       required bool socialOpen,
       required int day,
       required bool iAmJailed,
+      /// Dipanggil setelah embun berhasil diberikan (sasaran, jumlah).
+      void Function(String targetId, int amount)? onGiveEmbun,
+      /// Dipanggil setelah tawaran tukar terkirim (sasaran, baris kartu).
+      void Function(String targetId, Map<String, dynamic> hand)? onOfferCard,
     }) =>
     showModalBottomSheet<void>(
       context: context,
@@ -43,6 +47,8 @@ Future<void> showPlayerSheet(
         socialOpen: socialOpen,
         day: day,
         iAmJailed: iAmJailed,
+        onGiveEmbun: onGiveEmbun,
+        onOfferCard: onOfferCard,
       ),
     );
 
@@ -56,6 +62,8 @@ class _PlayerSheet extends StatefulWidget {
   final bool socialOpen;
   final int day;
   final bool iAmJailed;
+  final void Function(String targetId, int amount)? onGiveEmbun;
+  final void Function(String targetId, Map<String, dynamic> hand)? onOfferCard;
   const _PlayerSheet({
     required this.repo,
     required this.gameId,
@@ -66,6 +74,8 @@ class _PlayerSheet extends StatefulWidget {
     required this.socialOpen,
     required this.day,
     required this.iAmJailed,
+    this.onGiveEmbun,
+    this.onOfferCard,
   });
 
   @override
@@ -342,7 +352,10 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                   onTap: busy || widget.balance < n
                       ? null
                       : () => _run(
-                        () => widget.repo.giveEmbun(widget.gameId, _uid, n),
+                        () async {
+                      await widget.repo.giveEmbun(widget.gameId, _uid, n);
+                      widget.onGiveEmbun?.call(_uid, n);
+                    },
                     closeWith: 'Kamu memberi $_name $n embun',
                   ),
                 ),
@@ -401,8 +414,11 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                   onTap: busy
                       ? null
                       : () => _run(
-                        () => widget.repo.proposeTrade(
-                        widget.gameId, _uid, h['id'] as String),
+                        () async {
+                      await widget.repo.proposeTrade(
+                          widget.gameId, _uid, h['id'] as String);
+                      widget.onOfferCard?.call(_uid, h);
+                    },
                     closeWith: 'Tawaran dikirim ke $_name',
                   ),
                 ),

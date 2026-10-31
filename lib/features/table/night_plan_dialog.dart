@@ -5,6 +5,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
+import 'night_arm_fx.dart';
 
 /// Dialog Si Terbisik untuk menyiapkan SATU serangan malam (kartu jenis
 /// 'malam' yang ia pegang). Kartu dipakai saat malam tiba, setelah hari
@@ -63,6 +64,8 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
   String? error;
   String? selHand;
   String? target;
+  Map<String, dynamic>? _arming; // kartu yang sedang berubah jadi asap
+  bool _armingOn = false;
 
   List<Map<String, dynamic>> get _cards => [
     for (final h in widget.hand)
@@ -106,6 +109,7 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
   }
 
   Future<void> _save() async {
+    final armedDef = _def(selHand);
     setState(() {
       busy = true;
       error = null;
@@ -114,12 +118,23 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
       await widget.repo.armNightCard(widget.gameId,
           handId: selHand, target: _needsTarget ? target : null);
       widget.onChanged();
-      if (mounted) Navigator.pop(context);
+      // Kartu berubah jadi asap + bulan berdenyut; dialog menutup sendiri
+      // saat animasinya selesai.
+      if (mounted) {
+        setState(() {
+          _arming = armedDef;
+          _armingOn = true;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => error = errMsg(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  void _closeAfterArm() {
+    if (mounted) Navigator.pop(context);
   }
 
   Future<void> _cancelPlan() async {
@@ -153,7 +168,7 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.nightlight_round, color: EmbunColors.mist),
+          const PulsingMoon(armed: true, size: 24),
           const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
@@ -195,152 +210,168 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
         constraints: const BoxConstraints(maxWidth: 440),
         child: OrnatePanel(
           accent: EmbunColors.mist,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.nightlight_round,
-                        size: 26, color: EmbunColors.mist),
-                    SizedBox(width: 8),
-                    Text('Serangan malam',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: EmbunColors.mist)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Siapkan satu kartu di sini; ia dipakai saat malam tiba, '
-                      'setelah hari ini berakhir. Semua pemain hanya mendengar '
-                      '"Si Terbisik melancarkan serangan", tanpa sasaran dan '
-                      'tanpa jenis serangan.',
-                  style: TextStyle(
-                      fontSize: 12.5, height: 1.4, color: Colors.white60),
-                ),
-                const SizedBox(height: 14),
-                if (loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 18),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else ...[
-                  if (plan != null) _planStrip(),
-                  if (cards.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        'Kamu belum punya kartu serangan malam. Belilah di '
-                            'Pasar Pagi (kartu bertanda "Serangan malam").',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, height: 1.4),
-                      ),
-                    )
-                  else ...[
-                    Text(plan == null ? 'Pilih kartu:' : 'Ganti dengan:',
-                        style: const TextStyle(
-                            fontSize: 12.5, color: EmbunColors.gold)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+          child: Stack(
+            children: [
+              AnimatedOpacity(
+                opacity: _armingOn ? 0 : 1,
+                duration: const Duration(milliseconds: 250),
+                child: IgnorePointer(
+                  ignoring: _armingOn,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final h in cards)
-                          SizedBox(
-                            width: 92,
-                            child: Column(
+                        const Row(
+                          children: [
+                            Icon(Icons.nightlight_round,
+                                size: 26, color: EmbunColors.mist),
+                            SizedBox(width: 8),
+                            Text('Serangan malam',
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: EmbunColors.mist)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Siapkan satu kartu di sini; ia dipakai saat malam tiba, '
+                              'setelah hari ini berakhir. Semua pemain hanya mendengar '
+                              '"Si Terbisik melancarkan serangan", tanpa sasaran dan '
+                              'tanpa jenis serangan.',
+                          style: TextStyle(
+                              fontSize: 12.5, height: 1.4, color: Colors.white60),
+                        ),
+                        const SizedBox(height: 14),
+                        if (loading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 18),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else ...[
+                          if (plan != null) _planStrip(),
+                          if (cards.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                'Kamu belum punya kartu serangan malam. Belilah di '
+                                    'Pasar Pagi (kartu bertanda "Serangan malam").',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white54, height: 1.4),
+                              ),
+                            )
+                          else ...[
+                            Text(plan == null ? 'Pilih kartu:' : 'Ganti dengan:',
+                                style: const TextStyle(
+                                    fontSize: 12.5, color: EmbunColors.gold)),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
                               children: [
-                                CardTile(
-                                  def: widget.defs[h['card_id']],
-                                  fallbackName: '${h['card_id']}',
-                                  width: 92,
-                                  selected: selHand == h['id'],
-                                  onTap: () => setState(() {
-                                    selHand = h['id'] as String;
-                                    target = null;
-                                  }),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${widget.defs[h['card_id']]?['name'] ?? ''}',
-                                  maxLines: 2,
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 11.5, color: Colors.white70),
-                                ),
+                                for (final h in cards)
+                                  SizedBox(
+                                    width: 92,
+                                    child: Column(
+                                      children: [
+                                        CardTile(
+                                          def: widget.defs[h['card_id']],
+                                          fallbackName: '${h['card_id']}',
+                                          width: 92,
+                                          selected: selHand == h['id'],
+                                          onTap: () => setState(() {
+                                            selHand = h['id'] as String;
+                                            target = null;
+                                          }),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${widget.defs[h['card_id']]?['name'] ?? ''}',
+                                          maxLines: 2,
+                                          textAlign: TextAlign.center,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 11.5, color: Colors.white70),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
+                            if (selDef != null) ...[
+                              const SizedBox(height: 10),
+                              Text('${selDef['description']}',
+                                  style: const TextStyle(
+                                      fontSize: 12.5,
+                                      height: 1.4,
+                                      color: Colors.white70)),
+                            ],
+                            if (_needsTarget) ...[
+                              const SizedBox(height: 12),
+                              const Text('Pilih sasaran:',
+                                  style: TextStyle(
+                                      fontSize: 12.5, color: EmbunColors.gold)),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  for (final p in widget.others)
+                                    ChoiceChip(
+                                      avatar: PlayerAvatar(
+                                        path: protagonistPath(
+                                            p['character_card'] as String),
+                                        size: 24,
+                                      ),
+                                      label: Text(p['name'] as String),
+                                      selected: target == p['user_id'],
+                                      showCheckmark: false,
+                                      selectedColor:
+                                      EmbunColors.mist.withValues(alpha: 0.3),
+                                      onSelected: busy
+                                          ? null
+                                          : (_) => setState(
+                                              () => target = p['user_id'] as String),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            EmbunButton(
+                              label: 'Siapkan untuk malam ini',
+                              icon: 'show',
+                              expand: true,
+                              onPressed: canSave ? _save : null,
+                            ),
+                          ],
+                        ],
+                        if (error != null) ...[
+                          const SizedBox(height: 8),
+                          Text(error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 12.5, color: EmbunColors.blood)),
+                        ],
+                        const SizedBox(height: 12),
+                        EmbunButton(
+                          label: 'Tutup',
+                          icon: 'silang',
+                          kind: EmbunButtonKind.secondary,
+                          height: 46,
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
-                    if (selDef != null) ...[
-                      const SizedBox(height: 10),
-                      Text('${selDef['description']}',
-                          style: const TextStyle(
-                              fontSize: 12.5,
-                              height: 1.4,
-                              color: Colors.white70)),
-                    ],
-                    if (_needsTarget) ...[
-                      const SizedBox(height: 12),
-                      const Text('Pilih sasaran:',
-                          style: TextStyle(
-                              fontSize: 12.5, color: EmbunColors.gold)),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          for (final p in widget.others)
-                            ChoiceChip(
-                              avatar: PlayerAvatar(
-                                path: protagonistPath(
-                                    p['character_card'] as String),
-                                size: 24,
-                              ),
-                              label: Text(p['name'] as String),
-                              selected: target == p['user_id'],
-                              showCheckmark: false,
-                              selectedColor:
-                              EmbunColors.mist.withValues(alpha: 0.3),
-                              onSelected: busy
-                                  ? null
-                                  : (_) => setState(
-                                      () => target = p['user_id'] as String),
-                            ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    EmbunButton(
-                      label: 'Siapkan untuk malam ini',
-                      icon: 'show',
-                      expand: true,
-                      onPressed: canSave ? _save : null,
-                    ),
-                  ],
-                ],
-                if (error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 12.5, color: EmbunColors.blood)),
-                ],
-                const SizedBox(height: 12),
-                EmbunButton(
-                  label: 'Tutup',
-                  icon: 'silang',
-                  kind: EmbunButtonKind.secondary,
-                  height: 46,
-                  onPressed: () => Navigator.pop(context),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              if (_armingOn)
+                Positioned.fill(
+                  child: NightArmOverlay(
+                      def: _arming, onDone: _closeAfterArm),
+                ),
+            ],
           ),
         ),
       ),

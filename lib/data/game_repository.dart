@@ -264,6 +264,23 @@ class GameRepository {
     }
   }
 
+  /// Pemain yang keluar dari desa pada [day] (vonis tuduhan kedua).
+  /// Barisnya tetap ada di game_players (out_day terisi), jadi bisa dibaca
+  /// semua anggota. Kosong bila tidak ada, atau bila gagal memuat.
+  Future<List<Map<String, dynamic>>> evictedAt(String gameId, int day) async {
+    try {
+      final rows = await _db
+          .from('game_players')
+          .select('user_id, name, character_card')
+          .eq('game_id', gameId)
+          .eq('out_day', day)
+          .timeout(const Duration(seconds: 2));
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Semua suara satu putaran voting, urutan server (yang tidak memilih di
   /// akhir). Hanya terisi setelah voting selesai (tabel vote_reveal).
   Future<List<Map<String, dynamic>>> voteReveal(String gameId, int day) async {

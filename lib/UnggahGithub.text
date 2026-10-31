@@ -9,3 +9,10 @@ git commit -m "feat: perbarui konten aplikasi"
 git push origin main
 
 buatkan versi 1 baris
+
+RENCANA
+OKE - animasi saat pemain dikeluarkan dari desa,
+OKE - membeli kartu, pendapatan embun perharinya,
+ - memberikan embun/kartu ke pemain lain (menerima kartu/embun dari pemain lain),
+ - pengungkapan peran di awal,
+OKE - persiapaan serangan malam (saat menyiapkan serangan, kartunya berubah jadi asap dan ikon bulan berdenyut)

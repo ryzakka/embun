@@ -7,6 +7,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
+import 'economy_fx.dart';
 import 'flip_card.dart';
 import 'package:flutter/foundation.dart';
 
@@ -79,6 +80,10 @@ class DayView extends StatefulWidget {
   /// bulir hitam, bukan tetes embun.
   final bool dark;
 
+  /// Kunci untuk tab / panel Meja bila induk perlu tahu posisinya (animasi
+  /// kartu masuk / keluar dari pemain lain). Opsional.
+  final GlobalKey? mejaKey;
+
   const DayView({
     super.key,
     required this.repo,
@@ -98,6 +103,7 @@ class DayView extends StatefulWidget {
     required this.events,
     required this.trades,
     this.dark = false,
+    this.mejaKey,
   });
 
   @override
@@ -117,6 +123,26 @@ class _DayViewState extends State<DayView> {
   Timer? _openTimer;
   Timer? _kabarTimer;
   bool _kabarHidden = false;
+
+  // Titik rujukan animasi beli: kartu di rak, pil saldo, dan tab/panel Meja.
+  final GlobalKey _payKey = GlobalKey();
+  final GlobalKey _ownMejaKey = GlobalKey();
+  GlobalKey get _mejaKey => widget.mejaKey ?? _ownMejaKey;
+  final List<GlobalKey> _offerKeys = [];
+
+  GlobalKey _offerKey(int i) {
+    while (_offerKeys.length <= i) {
+      _offerKeys.add(GlobalKey());
+    }
+    return _offerKeys[i];
+  }
+
+  /// Persegi widget dalam koordinat layar, atau null bila belum terpasang.
+  Rect? _rectOf(GlobalKey k) {
+    final ro = k.currentContext?.findRenderObject();
+    if (ro is! RenderBox || !ro.attached || !ro.hasSize) return null;
+    return ro.localToGlobal(Offset.zero) & ro.size;
+  }
 
   @override
   void initState() {
@@ -503,31 +529,59 @@ class _DayViewState extends State<DayView> {
 
   // ====================== Pasar Pagi (gaya Secret Shop) ======================
 
-  Future<void> _buyOffer(String id) => _run(() async {
-    await widget.repo.buyCard(widget.gameId, id);
-    HapticFeedback.mediumImpact();
-    await _loadOffers();
-  }, ok: '${_cardName(id)} masuk ke mejamu');
+  Future<void> _buyOffer(String id, int index) {
+    // Ukur posisi SEBELUM membeli: sesudahnya rak dimuat ulang.
+    final from = _rectOf(_offerKey(index));
+    final to = _rectOf(_mejaKey);
+    final pay = _rectOf(_payKey);
+    final price = _price(id);
+    final def = widget.defs[id];
+    return _run(() async {
+      await widget.repo.buyCard(widget.gameId, id);
+      if (mounted && from != null) {
+        // Haptic sudah ada di dalam animasi terbang.
+        showCardFlight(
+          context,
+          def: def,
+          from: from,
+          to: to,
+          pay: pay,
+          price: price,
+          dark: def?['side'] == 'antagonis',
+        );
+      } else {
+        HapticFeedback.mediumImpact();
+      }
+      await _loadOffers();
+    }, ok: '${_cardName(id)} masuk ke mejamu');
+  }
 
   /// Hitungan saldo berbentuk pil emas di pojok kanan atas panel.
-  Widget _balancePill({double size = 30}) => Container(
-    padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.8)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GameIcon(widget.dark ? 'bulirhitam' : 'bulirembun', size: size),
-        const SizedBox(width: 4),
-        Text(_fmt(widget.balance),
-            style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: EmbunColors.gold)),
-      ],
+  Widget _balancePill({double size = 30}) => BalanceFx(
+    key: _payKey,
+    balance: widget.balance,
+    day: widget.day,
+    dark: widget.dark,
+    side: FxSide.left,
+    builder: (context, shown) => Container(
+      padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.8)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GameIcon(widget.dark ? 'bulirhitam' : 'bulirembun', size: size),
+          const SizedBox(width: 4),
+          Text(_fmt(shown),
+              style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: EmbunColors.gold)),
+        ],
+      ),
     ),
   );
 
@@ -588,18 +642,21 @@ class _DayViewState extends State<DayView> {
             ),
           ),
           const SizedBox(height: 6),
-          FlipCard(
-            key: ValueKey('offer$i-$id'),
-            index: i,
-            width: w,
-            height: h,
-            revealed: _marketOpened,
-            animate: !_marketOpened,
-            dark: bad,
-            glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
-            dealOffset: Offset(dealX, 0),
-            suspense: n > 2 && i == n - 1,
-            front: front,
+          KeyedSubtree(
+            key: _offerKey(i),
+            child: FlipCard(
+              key: ValueKey('offer$i-$id'),
+              index: i,
+              width: w,
+              height: h,
+              revealed: _marketOpened,
+              animate: !_marketOpened,
+              dark: bad,
+              glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
+              dealOffset: Offset(dealX, 0),
+              suspense: n > 2 && i == n - 1,
+              front: front,
+            ),
           ),
           const SizedBox(height: 8),
           EmbunButton(
@@ -607,7 +664,7 @@ class _DayViewState extends State<DayView> {
             expand: true,
             height: 38,
             kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
-            onPressed: can ? () => _buyOffer(id) : null,
+            onPressed: can ? () => _buyOffer(id, i) : null,
           ),
           const SizedBox(height: 4),
           SizedBox(
@@ -1019,6 +1076,7 @@ class _DayViewState extends State<DayView> {
     final on = tab == i;
     final badge = i == _tabBalai ? _incoming.length : 0;
     return GestureDetector(
+      key: i == 1 ? _mejaKey : null,
       behavior: HitTestBehavior.opaque,
       onTap: () => _goTab(i),
       child: AnimatedContainer(
@@ -1186,12 +1244,15 @@ class _DayViewState extends State<DayView> {
       children: [
         Expanded(
           flex: 5,
-          child: _railPanel(
-            icon: 'mydeck2',
-            title: 'Mejamu',
-            trailing: Text('${widget.hand.length} kartu',
-                style: const TextStyle(fontSize: 12, color: Colors.white60)),
-            child: _mejaBody(minW: 84),
+          child: KeyedSubtree(
+            key: _mejaKey,
+            child: _railPanel(
+              icon: 'mydeck2',
+              title: 'Mejamu',
+              trailing: Text('${widget.hand.length} kartu',
+                  style: const TextStyle(fontSize: 12, color: Colors.white60)),
+              child: _mejaBody(minW: 84),
+            ),
           ),
         ),
         const SizedBox(height: 12),

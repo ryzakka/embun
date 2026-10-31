@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -10,14 +11,26 @@ double _seg(double t, double a, double b) =>
 double _bump(double t, double c, double w) =>
     max(0.0, 1 - (t - c).abs() / w);
 
-/// Adegan sinematik peralihan hari (4,2 detik). Linimasa (t = 0..1):
+double _hillY(double x, double w, double h) =>
+    h * 0.80 +
+        sin(x / w * pi * 2 + 0.6) * h * 0.018 +
+        sin(x / w * pi * 5 + 1.3) * h * 0.007;
+
+double _hill2Y(double x, double w, double h) =>
+    h * 0.89 + sin(x / w * pi * 3 + 2.0) * h * 0.016;
+
+/// Adegan sinematik peralihan hari (4,4 detik). Menyambung dari NightScene:
+/// dunia yang sama (bulan, bukit, rumah desa, pohon Hayu) tetapi sekarang
+/// fajar menyingsing. Linimasa (t = 0..1):
 ///
 ///  0.00-0.06  layar menggelap, bilah sinema menutup
-///  0.00-0.50  malam sunyi: bulan tenggelam, bintang berkelip, kabut
-///             bergeser. Tulisan "HARI" jatuh huruf demi huruf, angka hari
-///             kemarin tampak redup lalu terangkat dan lenyap (0.26-0.38)
-///  0.15-0.65  matahari terbit, langit berubah dari malam ke fajar, sinar
-///             berputar; lanskap Hayu muncul dengan zoom perlahan (Ken Burns)
+///  0.00-0.50  malam sunyi: bulan tenggelam di balik bukit, bintang memudar,
+///             kabut bergeser. Tulisan "HARI" jatuh huruf demi huruf, angka
+///             hari kemarin tampak redup lalu terangkat dan lenyap
+///  0.05-0.30  jendela rumah desa menyala satu per satu (desa terbangun)
+///  0.15-0.65  matahari terbit di balik bukit, langit beralih dari malam ke
+///             fajar, sinar berputar, tepi bukit berpendar, burung melintas
+///  0.30-0.70  lanskap Hayu muncul menggantikan siluet dengan zoom perlahan
 ///  0.40-0.52  angka hari baru menghantam dari besar ke ukuran asli
 ///  0.52       kilatan, tiga cincin kejut, percikan, layar terhentak dan
 ///             bergetar, getar haptic ganda
@@ -27,9 +40,10 @@ double _bump(double t, double c, double w) =>
 ///  0.78-0.90  vonis hari sebelumnya (bila ada)
 ///  0.90-1.00  seluruh adegan memudar
 ///
-/// Malam persembahan (hari kelipatan siklus) memakai palet bara jingga
-/// kemerahan, Si Terbisik yang tidak menyamar memakai palet ungu.
-/// Ketuk untuk melewati.
+/// Pohon Hayu pada siluet mengikuti kesehatan: rimbun saat daun banyak,
+/// jarang dan berwarna kelabu saat daun sedikit. Malam persembahan (hari
+/// kelipatan siklus) memakai palet bara jingga, Si Terbisik yang tidak
+/// menyamar memakai palet ungu. Ketuk untuk melewati.
 class DayTransition extends StatefulWidget {
   final int day;
   final int leaves;
@@ -58,7 +72,7 @@ class _DayTransitionState extends State<DayTransition>
   static const _land = 0.52;
 
   late final AnimationController c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 4200));
+      vsync: this, duration: const Duration(milliseconds: 4400));
   final Set<int> _fired = {};
   bool _done = false;
 
@@ -82,6 +96,7 @@ class _DayTransitionState extends State<DayTransition>
     c.addListener(() {
       final t = c.value;
       if (t >= 0.04 && _fired.add(0)) HapticFeedback.lightImpact();
+      if (t >= 0.32 && _fired.add(3)) HapticFeedback.selectionClick();
       if (t >= _land && _fired.add(1)) {
         HapticFeedback.heavyImpact();
         Future.delayed(
@@ -292,7 +307,8 @@ class _DayTransitionState extends State<DayTransition>
                                 child: ColoredBox(color: Colors.white12)),
                             FractionallySizedBox(
                               alignment: Alignment.centerLeft,
-                              widthFactor: (vit * lvE).clamp(0.0, 1.0).toDouble(),
+                              widthFactor:
+                              (vit * lvE).clamp(0.0, 1.0).toDouble(),
                               child: SizedBox.expand(
                                   child: ColoredBox(color: barColor)),
                             ),
@@ -319,7 +335,8 @@ class _DayTransitionState extends State<DayTransition>
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: warm.withValues(alpha: 0.6)),
+                    border:
+                    Border.all(color: warm.withValues(alpha: 0.6)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -381,15 +398,32 @@ class _DayTransitionState extends State<DayTransition>
                         colors: [
                           Color.lerp(_night, _cool, sky)!,
                           Color.lerp(
-                              _night, Color.lerp(_cool, warm, 0.5)!, sky)!,
+                              _night, Color.lerp(_cool, warm, 0.6)!, sky)!,
+                          Color.lerp(
+                              _night, Color.lerp(_cool, warm, 0.95)!, sky)!,
                         ],
+                        stops: const [0.0, 0.6, 1.0],
                       ),
                     ),
                   ),
-                  // bulan, bintang, matahari terbit, sinar
+                  // bintang, bulan tenggelam, matahari terbit, sinar
                   CustomPaint(
                     painter: _SkyPainter(t: t, warm: warm, seed: widget.day),
                   ),
+                  // siluet desa + Hayu (menyambung dari layar malam)
+                  if (reveal < 0.99)
+                    Opacity(
+                      opacity: (1 - reveal).clamp(0.0, 1.0).toDouble(),
+                      child: CustomPaint(
+                        painter: _GroundPainter(
+                          t: t,
+                          warm: warm,
+                          vit: vit,
+                          dark: widget.dark,
+                          leaves: widget.leaves,
+                        ),
+                      ),
+                    ),
                   // lanskap Hayu: muncul + zoom perlahan + terhentak
                   Opacity(
                     opacity: reveal * 0.82,
@@ -425,8 +459,8 @@ class _DayTransitionState extends State<DayTransition>
                   content,
                   if (flash > 0.01)
                     ColoredBox(
-                        color: Colors.white
-                            .withValues(alpha: flash.clamp(0.0, 1.0).toDouble())),
+                        color: Colors.white.withValues(
+                            alpha: flash.clamp(0.0, 1.0).toDouble())),
                   // bilah sinema
                   Align(
                     alignment: Alignment.topCenter,
@@ -464,8 +498,8 @@ class _DayTransitionState extends State<DayTransition>
   }
 }
 
-/// Bulan yang tenggelam, bintang berkelip yang memudar, matahari terbit,
-/// dan sinar yang berputar.
+/// Bintang yang memudar, bulan yang tenggelam (posisinya sama dengan layar
+/// malam), matahari terbit, dan sinar yang berputar.
 class _SkyPainter extends CustomPainter {
   final double t;
   final Color warm;
@@ -480,9 +514,9 @@ class _SkyPainter extends CustomPainter {
     final starFade = 1 - Curves.easeIn.transform(_seg(t, 0.05, 0.55));
     if (starFade > 0) {
       final rnd = Random(seed * 97 + 5);
-      for (var i = 0; i < 46; i++) {
+      for (var i = 0; i < 60; i++) {
         final x = rnd.nextDouble() * w;
-        final y = rnd.nextDouble() * h * 0.65;
+        final y = rnd.nextDouble() * h * 0.62;
         final r = 0.8 + rnd.nextDouble() * 1.8;
         final ph = rnd.nextDouble() * 2 * pi;
         final tw = 0.55 + 0.45 * sin(t * 14 + ph);
@@ -490,48 +524,57 @@ class _SkyPainter extends CustomPainter {
           Offset(x, y),
           r,
           Paint()
-            ..color = Colors.white
-                .withValues(alpha: (starFade * tw).clamp(0.0, 1.0).toDouble()),
+            ..color = Colors.white.withValues(
+                alpha: (starFade * tw).clamp(0.0, 1.0).toDouble()),
         );
       }
     }
 
-    // bulan tenggelam
-    final moonT = 1 - _seg(t, 0.08, 0.5);
+    // bulan tenggelam ke balik bukit
+    final moonT = 1 - Curves.easeIn.transform(_seg(t, 0.04, 0.5));
     if (moonT > 0.01) {
-      final mc = Offset(w * 0.22, h * (0.2 + 0.32 * (1 - moonT)));
-      final mr = min(w, h) * 0.07;
+      final r = min(w, h) * 0.11;
+      final mc = Offset(w * 0.74, h * (0.2 + 0.62 * (1 - moonT)));
+      final tint = const Color(0xFFF3E9B8);
       canvas.drawCircle(
         mc,
-        mr * 3.2,
+        r * 3.4,
         Paint()
           ..shader = RadialGradient(colors: [
-            const Color(0xFFDCE6FF).withValues(alpha: 0.28 * moonT),
-            const Color(0xFFDCE6FF).withValues(alpha: 0),
-          ]).createShader(Rect.fromCircle(center: mc, radius: mr * 3.2)),
+            tint.withValues(alpha: 0.30 * moonT),
+            tint.withValues(alpha: 0),
+          ]).createShader(Rect.fromCircle(center: mc, radius: r * 3.4)),
       );
       canvas.drawCircle(
         mc,
-        mr,
+        r,
         Paint()
-          ..color = const Color(0xFFEFF3FF)
-              .withValues(alpha: (0.9 * moonT).clamp(0.0, 1.0).toDouble()),
+          ..color = const Color(0xFFF6EDBF)
+              .withValues(alpha: (0.95 * moonT).clamp(0.0, 1.0).toDouble()),
       );
+      for (final k in const [
+        [-0.3, -0.25, 0.22],
+        [0.28, 0.12, 0.16],
+        [-0.08, 0.42, 0.12],
+      ]) {
+        canvas.drawCircle(mc + Offset(k[0] * r, k[1] * r), k[2] * r,
+            Paint()..color = Colors.black.withValues(alpha: 0.08 * moonT));
+      }
     }
 
-    // matahari
+    // matahari terbit dari balik bukit
     final sunT = Curves.easeOutCubic.transform(_seg(t, 0.15, 0.62));
     final r = min(w, h) * 0.14;
-    final c = Offset(w * 0.5, h * (1.1 - 0.5 * sunT));
+    final c = Offset(w * 0.45, h * (0.98 - 0.52 * sunT));
 
     canvas.drawCircle(
       c,
-      r * 5,
+      r * 5.5,
       Paint()
         ..shader = RadialGradient(colors: [
-          warm.withValues(alpha: 0.6 * sunT),
+          warm.withValues(alpha: 0.65 * sunT),
           warm.withValues(alpha: 0),
-        ]).createShader(Rect.fromCircle(center: c, radius: r * 5)),
+        ]).createShader(Rect.fromCircle(center: c, radius: r * 5.5)),
     );
 
     const n = 16;
@@ -560,6 +603,213 @@ class _SkyPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SkyPainter old) => old.t != t;
+}
+
+/// Siluet bukit, rumah desa, dan pohon Hayu. Rumah terbangun (jendela
+/// menyala), tepi bukit berpendar disinari matahari, burung melintas.
+/// Pohon mengikuti kesehatan Hayu: jarang dan kelabu bila daun sedikit.
+class _GroundPainter extends CustomPainter {
+  final double t;
+  final Color warm;
+  final double vit;
+  final bool dark;
+  final int leaves;
+  _GroundPainter({
+    required this.t,
+    required this.warm,
+    required this.vit,
+    required this.dark,
+    required this.leaves,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final sunT = Curves.easeOutCubic.transform(_seg(t, 0.15, 0.62));
+    final dawn = _seg(t, 0.3, 0.7);
+    final u = min(w, h);
+
+    // ---- bukit belakang ----
+    final ridge = Path()..moveTo(0, _hillY(0, w, h));
+    final hill = Path()..moveTo(0, h);
+    hill.lineTo(0, _hillY(0, w, h));
+    for (double x = 6; x <= w + 6; x += 6) {
+      final y = _hillY(x, w, h);
+      ridge.lineTo(x, y);
+      hill.lineTo(x, y);
+    }
+    hill.lineTo(w, h);
+    hill.close();
+
+    final topCol = Color.lerp(const Color(0xFF0B1630),
+        Color.lerp(const Color(0xFF1A2438), warm, 0.4)!, sunT)!;
+    canvas.drawPath(
+      hill,
+      Paint()
+        ..shader = ui.Gradient.linear(Offset(0, h * 0.75), Offset(0, h),
+            [topCol, const Color(0xFF050A14)]),
+    );
+    // tepi bukit berpendar
+    canvas.drawPath(
+      ridge,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
+        ..color = warm.withValues(alpha: 0.65 * sunT),
+    );
+
+    // ---- rumah desa terbangun ----
+    final bw = u * 0.055, bh = bw * 0.8, rh = bw * 0.5;
+    const hx = [0.50, 0.61, 0.73, 0.85];
+    final wake = _seg(t, 0.05, 0.28) * (1 - _seg(t, 0.45, 0.7));
+    for (var i = 0; i < hx.length; i++) {
+      final x = w * hx[i];
+      final by = _hillY(x, w, h) + 2;
+      canvas.drawRect(Rect.fromLTWH(x - bw / 2, by - bh, bw, bh),
+          Paint()..color = const Color(0xFF040810));
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - bw * 0.62, by - bh)
+          ..lineTo(x, by - bh - rh)
+          ..lineTo(x + bw * 0.62, by - bh)
+          ..close(),
+        Paint()..color = const Color(0xFF03060D),
+      );
+      // tiap rumah bangun bergantian
+      final lit = (_seg(t, 0.05 + i * 0.05, 0.12 + i * 0.05)) *
+          (1 - _seg(t, 0.45 + i * 0.03, 0.62 + i * 0.03)) *
+          (0.85 + 0.15 * sin(t * 40 + i * 2));
+      if (lit > 0.01 && wake >= 0) {
+        final win = Rect.fromCenter(
+            center: Offset(x, by - bh * 0.5),
+            width: bw * 0.3,
+            height: bw * 0.3);
+        canvas.drawCircle(
+          win.center,
+          bw * 1.2,
+          Paint()
+            ..shader = ui.Gradient.radial(win.center, bw * 1.2, [
+              const Color(0xFFFFC857).withValues(alpha: 0.32 * lit),
+              const Color(0xFFFFC857).withValues(alpha: 0),
+            ]),
+        );
+        canvas.drawRect(win,
+            Paint()..color = const Color(0xFFFFD27A).withValues(alpha: lit));
+      }
+    }
+
+    // ---- pohon Hayu ----
+    final tx = w * 0.20;
+    final baseY = _hillY(tx, w, h);
+    final th = h * 0.06;
+    final ch = h * 0.045;
+    final trunkW = h * 0.011;
+    final canopyBase = baseY - th;
+    final nightTree = const Color(0xFF06101A);
+    final aliveCol = vit >= 0.95
+        ? const Color(0xFF8A4A62) // sakura: rona merah muda gelap
+        : Color.lerp(const Color(0xFF3A3640), const Color(0xFF1F5A3A), vit)!;
+    final treeCol = Color.lerp(nightTree, aliveCol, dawn * 0.85)!;
+
+    // aura Hayu menyala seiring fajar
+    final auraA = (0.10 + 0.22 * vit) * dawn * (1 - _seg(t, 0.62, 0.7));
+    final ac = Offset(tx, canopyBase - ch * 0.4);
+    final auraCol = dark ? const Color(0xFFB07CE8) : const Color(0xFF7FE0A0);
+    canvas.drawCircle(
+      ac,
+      ch * 3.6,
+      Paint()
+        ..shader = ui.Gradient.radial(ac, ch * 3.6, [
+          auraCol.withValues(alpha: auraA.clamp(0.0, 1.0)),
+          auraCol.withValues(alpha: 0),
+        ]),
+    );
+
+    final trunkPaint = Paint()..color = nightTree;
+    canvas.drawPath(
+      Path()
+        ..moveTo(tx - trunkW, baseY + 2)
+        ..lineTo(tx - trunkW * 0.55, canopyBase)
+        ..lineTo(tx + trunkW * 0.55, canopyBase)
+        ..lineTo(tx + trunkW, baseY + 2)
+        ..close(),
+      trunkPaint,
+    );
+    // dahan telanjang, tampak jelas bila daun sedikit
+    final branch = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = trunkW * 0.55
+      ..color = nightTree;
+    const br = [
+      [-1.0, 1.5],
+      [1.0, 1.6],
+      [-0.5, 2.0],
+      [0.55, 2.1],
+    ];
+    for (final b in br) {
+      canvas.drawLine(
+          Offset(tx, canopyBase),
+          Offset(tx + b[0] * ch * 1.3, canopyBase - b[1] * ch),
+          branch);
+    }
+
+    const crown = [
+      [0.0, 0.2, 1.0],
+      [-0.9, 0.0, 0.7],
+      [0.9, 0.05, 0.75],
+      [-0.4, 0.9, 0.7],
+      [0.45, 0.85, 0.65],
+    ];
+    final count = (1 + vit * 4).round().clamp(1, 5);
+    final fill = Paint()..color = treeCol;
+    final rim = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = warm.withValues(alpha: 0.5 * sunT);
+    for (var i = 0; i < count; i++) {
+      final c = crown[i];
+      final p = Offset(tx + c[0] * ch, canopyBase - c[1] * ch);
+      canvas.drawCircle(p, c[2] * ch, fill);
+      canvas.drawCircle(p, c[2] * ch, rim);
+    }
+
+    // ---- bukit depan ----
+    final front = Path()..moveTo(0, h);
+    for (double x = 0; x <= w + 6; x += 6) {
+      front.lineTo(x, _hill2Y(x, w, h));
+    }
+    front.lineTo(w, h);
+    front.close();
+    canvas.drawPath(front, Paint()..color = const Color(0xFF03060D));
+
+    // ---- burung melintas ----
+    final bt = _seg(t, 0.5, 0.9);
+    if (!dark && bt > 0 && bt < 1) {
+      final bp = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 1.6
+        ..color = const Color(0xFF05080F)
+            .withValues(alpha: 0.75 * sin(bt * pi).clamp(0.0, 1.0));
+      for (var i = 0; i < 5; i++) {
+        final f = (bt * 1.15 - i * 0.05).clamp(0.0, 1.0);
+        final x = w * (-0.08 + 1.16 * f);
+        final y = h * (0.26 + 0.035 * i) + sin(f * 9 + i) * h * 0.012;
+        final s = u * (0.016 + 0.003 * (i % 3));
+        final flap = sin(t * 70 + i * 1.7) * s * 0.7;
+        final path = Path()
+          ..moveTo(x - s, y - flap)
+          ..quadraticBezierTo(x - s * 0.4, y - s * 0.5, x, y)
+          ..quadraticBezierTo(x + s * 0.4, y - s * 0.5, x + s, y - flap);
+        canvas.drawPath(path, bp);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GroundPainter old) => old.t != t;
 }
 
 /// Kabut malam yang bergeser dan memudar saat fajar, lalu butiran cahaya
@@ -602,7 +852,8 @@ class _MotesPainter extends CustomPainter {
         canvas.drawCircle(
           Offset(x, y),
           sz,
-          Paint()..color = (i.isEven ? warm : Colors.white).withValues(alpha: a),
+          Paint()
+            ..color = (i.isEven ? warm : Colors.white).withValues(alpha: a),
         );
       }
     }
