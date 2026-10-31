@@ -184,6 +184,23 @@ String characterTitle(String stem) {
     'perajintembikar': 'Perajin Tembikar',
     'petanipadi': 'Petani Padi',
     'wargadesa': 'Warga Desa',
+    // kartu baru (gelombang 2)
+    'petanirumputlaut': 'Petani Rumput Laut',
+    'bangsawan-pangeranmelayu': 'Pangeran Melayu',
+    'bangsawan-puterimelayu': 'Puteri Melayu',
+    'bangsawan-pangeranjawa': 'Pangeran Jawa',
+    'bangsawan-puterijawa': 'Puteri Jawa',
+    'bangsawan-pangerantailan': 'Pangeran Tailan',
+    'bangsawan-puteritailan': 'Puteri Tailan',
+    'bangsawan-pangeranasiatenggara': 'Pangeran Asia Tenggara',
+    'bangsawan-puteriasiatenggara': 'Puteri Asia Tenggara',
+    'bangsawan-pangerantimurtengah': 'Pangeran Timur Tengah',
+    'bangsawan-puteritimurtengah': 'Puteri Timur Tengah',
+    'penggembala': 'Penggembala',
+    'pelukis': 'Pelukis',
+    'penatu': 'Penatu',
+    'penjaga': 'Penjaga',
+    'pemburu': 'Pemburu',
     // kartu lama (tetap dikenali bila masih ada)
     'atlet': 'Atlet',
     'besi': 'Pandai Besi',
@@ -207,12 +224,12 @@ String characterTitle(String stem) {
   final known = names[base];
   if (known != null) return known;
   if (base.isEmpty) return stem;
-  // Tak dikenal: rapikan seadanya ("abc-def" -> "Abc Def"), maks 16 huruf
-  // supaya nama (batas 20 karakter) masih muat dengan nomor.
+  // Tak dikenal: rapikan seadanya ("abc-def" -> "Abc Def"), maks 24 huruf
+  // supaya nama (batas 26 karakter) masih muat dengan nomor.
   final words = base
       .split('-')
       .where((w) => w.isNotEmpty)
       .map((w) => w[0].toUpperCase() + w.substring(1))
       .join(' ');
-  return words.length > 16 ? words.substring(0, 16) : words;
+  return words.length > 24 ? words.substring(0, 24) : words;
 }

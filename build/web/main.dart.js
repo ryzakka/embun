@@ -8061,11 +8061,11 @@ s=A.cp("\\d+$",!0,!1)
 s=A.h_(a,s,"")
 r=A.cp("(pria|wanita)$",!0,!1)
 q=A.h_(s,r,"")
-p=B.Xp.h(0,q)
+p=B.Xx.h(0,q)
 if(p!=null)return p
 if(q.length===0)return a
 o=new A.fo(new A.aD(A.a(q.split("-"),t.s),new A.aMu(),t.Hd),new A.aMv(),t.lJ).bj(0," ")
-return o.length>16?B.d.a6(o,0,16):o},
+return o.length>24?B.d.a6(o,0,24):o},
 fH:function fH(a){this.a=a},
 a6a:function a6a(){},
 aMu:function aMu(){},
@@ -34430,7 +34430,7 @@ A.ae3.prototype={
 $0(){this.a.f.H(0,this.b)},
 $S:0}
 A.adX.prototype={
-$0(){var s,r,q,p,o,n,m=this,l=m.b,k=B.Xr.h(0,l)
+$0(){var s,r,q,p,o,n,m=this,l=m.b,k=B.Xq.h(0,l)
 if(k!=null)return k
 s=m.c
 r=s.a
@@ -35398,7 +35398,7 @@ switch(s.a){case"activateSystemCursor":q=a.gdJ().b
 q=A.aU4(new A.bx(q,A.o(q).i("bx<2>")))
 if(q!=null){if(q.w===$){q.gfY()
 q.w!==$&&A.ad()
-q.w=new A.ahJ()}h=B.Xs.h(0,A.az(m.h(0,"kind")))
+q.w=new A.ahJ()}h=B.Xr.h(0,A.az(m.h(0,"kind")))
 if(h==null)h="default"
 q=v.G
 if(h==="default")q.document.body.style.removeProperty("cursor")
@@ -48548,7 +48548,7 @@ o=p*1.2
 n=t.p
 q=A.an(A.c1(A.bI(B.j,new A.a7(p*1.3,p,A.aO(B.j,A.a([A.aw(k,k,B.l,k,k,new A.a3(k,k,k,k,k,new A.bU(B.j,0.5,B.x,k,0,A.a([B.m.p(0.18+0.12*r),B.m.p(0)],t.O),k,k),B.bv),k,o,k,k,k,k,o),new A.cT(A.bz().by("assets/logo","ikon-transparent"),B.cF,B.j,1000,k)],n),B.t,B.W),k),0.88+0.12*q),new A.f(0,i*5)),q)
 i=l.d
-i=A.an(A.c1(A.I("BALAI PERTEMUAN DESA V2.1.4",k,k,k,k,k,A.b_(k,k,B.m.p(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.nj,k,k),k,k),new A.f(0,(1-i)*10)),i)
+i=A.an(A.c1(A.I("BALAI PERTEMUAN DESA V2.1.5",k,k,k,k,k,A.b_(k,k,B.m.p(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.nj,k,k),k,k),new A.f(0,(1-i)*10)),i)
 o=l.e
 p=j.as
 m=p?"Mulai":"Memuat..."
@@ -64195,7 +64195,7 @@ n=o.e
 o=o.cx
 r=q.gamG()
 q.a.toString
-return new A.GX(p,p,p,new A.aBG(),p,p,p,p,p,n,B.Xw,p,p,p,B.UM,q.gamQ(),o,p,B.a4s,s,p,r,p,p,B.tF,!1,!1,p,p,p,new A.rw(q,t.bT))},
+return new A.GX(p,p,p,new A.aBG(),p,p,p,p,p,n,B.Xv,p,p,p,B.UM,q.gamQ(),o,p,B.a4s,s,p,r,p,p,B.tF,!1,!1,p,p,p,new A.rw(q,t.bT))},
 J(a){var s,r=null,q=A.we(!1,!1,this.adv(a),r,r,r,r,!0,r,r,r,new A.aBH(),r,r)
 this.a.toString
 s=this.d
@@ -87631,9 +87631,9 @@ A.a00.prototype={}
 A.RW.prototype={
 gkE(){var s=this.a,r=B.yV.h(0,s)
 return r==null?new A.C(98784247808+B.d.gC(s)):r},
-gNA(){var s,r=this.b,q=B.Xx.h(0,r),p=q==null?null:q[this.c]
+gNA(){var s,r=this.b,q=B.Xw.h(0,r),p=q==null?null:q[this.c]
 if(p!=null)return p
-s=B.Xq.h(0,r)
+s=B.Xp.h(0,r)
 if(s!=null)return s
 if(r.length===1)return new A.i(r.toLowerCase().charCodeAt(0))
 return new A.i(B.d.gC(this.a)+98784247808)},
@@ -90453,7 +90453,7 @@ else q=!0
 if(q){q=B.r5
 break $label0$0}q=null}return q}return a>0?B.r6:B.N4},
 gIc(){this.a.toString
-B.Xv.h(0,this.v9(this.w))
+B.Xu.h(0,this.v9(this.w))
 return 0.4},
 gWi(){var s=this.c.gt()
 s.toString
@@ -94285,7 +94285,7 @@ a.b=r.d
 a.c=null},
 $S:153}
 A.jA.prototype={
-a3(){return new A.xo(B.Xu)}}
+a3(){return new A.xo(B.Xt)}}
 A.xo.prototype={
 ai(){var s,r=this
 r.az()
@@ -116388,13 +116388,11 @@ B.Xe=new A.cf(B.Yc,[458907,458873,458978,458982,458833,458832,458831,458834,4588
 B.Yn={daun_penuh:0,tertangkap:1,antag_left:2,daun_habis:3,waktu_habis:4}
 B.Xn=new A.cf(B.Yn,["Daun Hayu kembali penuh.","Si Terbisik berhasil ditangkap.","Si Terbisik meninggalkan desa.","Daun terakhir Hayu gugur.","Waktu habis sebelum desa pulih."],t.li)
 B.Xo=new A.di([0,"FontWeight.w100",1,"FontWeight.w200",2,"FontWeight.w300",3,"FontWeight.w400",4,"FontWeight.w500",5,"FontWeight.w600",6,"FontWeight.w700",7,"FontWeight.w800",8,"FontWeight.w900"],A.aN("di<n,j>"))
-B.Yi={"bangsawan-bangsawan":0,"bangsawan-gouverneur":1,"bangsawan-pangeran":2,"bangsawan-puteri":3,buruhangkat:4,burungangkat:5,kriyawan:6,nelayanikan:7,pekebunteh:8,penenun:9,penjahit:10,perajintembikar:11,petanipadi:12,wargadesa:13,atlet:14,besi:15,guru:16,masak:17,montir:18,nelayan:19,pekebun:20,pekerja:21,pemadam:22,perajut:23,peramu:24,perawat:25,petani:26,petua:27,pianis:28,polisi:29,pustakawan:30,warga:31}
-B.Xp=new A.cf(B.Yi,["Bangsawan","Gubernur","Pangeran","Puteri","Buruh Angkat","Buruh Angkat","Kriyawan","Nelayan","Pekebun Teh","Penenun","Penjahit","Perajin Tembikar","Petani Padi","Warga Desa","Atlet","Pandai Besi","Guru","Juru Masak","Montir","Nelayan","Pekebun","Pekerja","Pemadam","Perajut","Peramu","Perawat","Petani","Petua","Pianis","Polisi","Pustakawan","Warga Desa"],t.li)
 B.z6={AVRInput:0,AVRPower:1,Accel:2,Accept:3,Again:4,AllCandidates:5,Alphanumeric:6,AltGraph:7,AppSwitch:8,ArrowDown:9,ArrowLeft:10,ArrowRight:11,ArrowUp:12,Attn:13,AudioBalanceLeft:14,AudioBalanceRight:15,AudioBassBoostDown:16,AudioBassBoostToggle:17,AudioBassBoostUp:18,AudioFaderFront:19,AudioFaderRear:20,AudioSurroundModeNext:21,AudioTrebleDown:22,AudioTrebleUp:23,AudioVolumeDown:24,AudioVolumeMute:25,AudioVolumeUp:26,Backspace:27,BrightnessDown:28,BrightnessUp:29,BrowserBack:30,BrowserFavorites:31,BrowserForward:32,BrowserHome:33,BrowserRefresh:34,BrowserSearch:35,BrowserStop:36,Call:37,Camera:38,CameraFocus:39,Cancel:40,CapsLock:41,ChannelDown:42,ChannelUp:43,Clear:44,Close:45,ClosedCaptionToggle:46,CodeInput:47,ColorF0Red:48,ColorF1Green:49,ColorF2Yellow:50,ColorF3Blue:51,ColorF4Grey:52,ColorF5Brown:53,Compose:54,ContextMenu:55,Convert:56,Copy:57,CrSel:58,Cut:59,DVR:60,Delete:61,Dimmer:62,DisplaySwap:63,Eisu:64,Eject:65,End:66,EndCall:67,Enter:68,EraseEof:69,Esc:70,Escape:71,ExSel:72,Execute:73,Exit:74,F1:75,F10:76,F11:77,F12:78,F13:79,F14:80,F15:81,F16:82,F17:83,F18:84,F19:85,F2:86,F20:87,F21:88,F22:89,F23:90,F24:91,F3:92,F4:93,F5:94,F6:95,F7:96,F8:97,F9:98,FavoriteClear0:99,FavoriteClear1:100,FavoriteClear2:101,FavoriteClear3:102,FavoriteRecall0:103,FavoriteRecall1:104,FavoriteRecall2:105,FavoriteRecall3:106,FavoriteStore0:107,FavoriteStore1:108,FavoriteStore2:109,FavoriteStore3:110,FinalMode:111,Find:112,Fn:113,FnLock:114,GoBack:115,GoHome:116,GroupFirst:117,GroupLast:118,GroupNext:119,GroupPrevious:120,Guide:121,GuideNextDay:122,GuidePreviousDay:123,HangulMode:124,HanjaMode:125,Hankaku:126,HeadsetHook:127,Help:128,Hibernate:129,Hiragana:130,HiraganaKatakana:131,Home:132,Hyper:133,Info:134,Insert:135,InstantReplay:136,JunjaMode:137,KanaMode:138,KanjiMode:139,Katakana:140,Key11:141,Key12:142,LastNumberRedial:143,LaunchApplication1:144,LaunchApplication2:145,LaunchAssistant:146,LaunchCalendar:147,LaunchContacts:148,LaunchControlPanel:149,LaunchMail:150,LaunchMediaPlayer:151,LaunchMusicPlayer:152,LaunchPhone:153,LaunchScreenSaver:154,LaunchSpreadsheet:155,LaunchWebBrowser:156,LaunchWebCam:157,LaunchWordProcessor:158,Link:159,ListProgram:160,LiveContent:161,Lock:162,LogOff:163,MailForward:164,MailReply:165,MailSend:166,MannerMode:167,MediaApps:168,MediaAudioTrack:169,MediaClose:170,MediaFastForward:171,MediaLast:172,MediaPause:173,MediaPlay:174,MediaPlayPause:175,MediaRecord:176,MediaRewind:177,MediaSkip:178,MediaSkipBackward:179,MediaSkipForward:180,MediaStepBackward:181,MediaStepForward:182,MediaStop:183,MediaTopMenu:184,MediaTrackNext:185,MediaTrackPrevious:186,MicrophoneToggle:187,MicrophoneVolumeDown:188,MicrophoneVolumeMute:189,MicrophoneVolumeUp:190,ModeChange:191,NavigateIn:192,NavigateNext:193,NavigateOut:194,NavigatePrevious:195,New:196,NextCandidate:197,NextFavoriteChannel:198,NextUserProfile:199,NonConvert:200,Notification:201,NumLock:202,OnDemand:203,Open:204,PageDown:205,PageUp:206,Pairing:207,Paste:208,Pause:209,PinPDown:210,PinPMove:211,PinPToggle:212,PinPUp:213,Play:214,PlaySpeedDown:215,PlaySpeedReset:216,PlaySpeedUp:217,Power:218,PowerOff:219,PreviousCandidate:220,Print:221,PrintScreen:222,Process:223,Props:224,RandomToggle:225,RcLowBattery:226,RecordSpeedNext:227,Redo:228,RfBypass:229,Romaji:230,STBInput:231,STBPower:232,Save:233,ScanChannelsToggle:234,ScreenModeNext:235,ScrollLock:236,Select:237,Settings:238,ShiftLevel5:239,SingleCandidate:240,Soft1:241,Soft2:242,Soft3:243,Soft4:244,Soft5:245,Soft6:246,Soft7:247,Soft8:248,SpeechCorrectionList:249,SpeechInputToggle:250,SpellCheck:251,SplitScreenToggle:252,Standby:253,Subtitle:254,Super:255,Symbol:256,SymbolLock:257,TV:258,TV3DMode:259,TVAntennaCable:260,TVAudioDescription:261,TVAudioDescriptionMixDown:262,TVAudioDescriptionMixUp:263,TVContentsMenu:264,TVDataService:265,TVInput:266,TVInputComponent1:267,TVInputComponent2:268,TVInputComposite1:269,TVInputComposite2:270,TVInputHDMI1:271,TVInputHDMI2:272,TVInputHDMI3:273,TVInputHDMI4:274,TVInputVGA1:275,TVMediaContext:276,TVNetwork:277,TVNumberEntry:278,TVPower:279,TVRadioService:280,TVSatellite:281,TVSatelliteBS:282,TVSatelliteCS:283,TVSatelliteToggle:284,TVTerrestrialAnalog:285,TVTerrestrialDigital:286,TVTimer:287,Tab:288,Teletext:289,Undo:290,Unidentified:291,VideoModeNext:292,VoiceDial:293,WakeUp:294,Wink:295,Zenkaku:296,ZenkakuHankaku:297,ZoomIn:298,ZoomOut:299,ZoomToggle:300}
-B.Xq=new A.cf(B.z6,[B.wm,B.wn,B.u2,B.uh,B.ui,B.uG,B.uH,B.jY,B.xQ,B.d0,B.cK,B.cL,B.d1,B.uj,B.wf,B.wg,B.wh,B.xH,B.wi,B.wj,B.wk,B.wl,B.xI,B.xJ,B.vR,B.vT,B.vS,B.bK,B.uv,B.uw,B.w8,B.w9,B.wa,B.wb,B.wc,B.wd,B.we,B.xR,B.ux,B.xS,B.uk,B.hE,B.wo,B.wp,B.nu,B.vE,B.ww,B.uI,B.wq,B.wr,B.ws,B.wt,B.wu,B.wv,B.uJ,B.ul,B.uK,B.u9,B.ua,B.ub,B.xu,B.bD,B.wx,B.wy,B.uZ,B.uy,B.ef,B.xT,B.jX,B.uc,B.hD,B.hD,B.ud,B.um,B.wz,B.v8,B.vh,B.vi,B.vj,B.vk,B.vl,B.vm,B.vn,B.vo,B.vp,B.vq,B.v9,B.vr,B.vs,B.vt,B.vu,B.vv,B.va,B.vb,B.vc,B.vd,B.ve,B.vf,B.vg,B.wA,B.wB,B.wC,B.wD,B.wE,B.wF,B.wG,B.wH,B.wI,B.wJ,B.wK,B.wL,B.uL,B.un,B.nt,B.u3,B.xU,B.xV,B.uM,B.uN,B.uO,B.uP,B.wM,B.wN,B.wO,B.uW,B.uX,B.v_,B.xW,B.uo,B.uD,B.v0,B.v1,B.eg,B.u4,B.wP,B.nv,B.wQ,B.uY,B.v2,B.v3,B.v4,B.yr,B.ys,B.xX,B.vZ,B.vU,B.w6,B.vV,B.w4,B.w7,B.vW,B.vX,B.vY,B.w5,B.w_,B.w0,B.w1,B.w2,B.w3,B.wR,B.wS,B.wT,B.wU,B.uz,B.vF,B.vG,B.vH,B.xZ,B.wV,B.xv,B.xG,B.wW,B.wX,B.wY,B.wZ,B.vI,B.x_,B.x0,B.x1,B.xw,B.xx,B.xy,B.xz,B.vJ,B.xA,B.vK,B.vL,B.xK,B.xL,B.xN,B.xM,B.uQ,B.xB,B.xC,B.xD,B.xE,B.vM,B.uR,B.x2,B.x3,B.uS,B.xY,B.jZ,B.x4,B.vN,B.hF,B.hG,B.xF,B.ue,B.up,B.x5,B.x6,B.x7,B.x8,B.uq,B.x9,B.xa,B.xb,B.uA,B.uB,B.uT,B.vO,B.uC,B.uU,B.ur,B.xc,B.xd,B.xe,B.uf,B.xf,B.v5,B.xk,B.xl,B.vP,B.xg,B.xh,B.k_,B.us,B.xi,B.u8,B.uV,B.vw,B.vx,B.vy,B.vz,B.vA,B.vB,B.vC,B.vD,B.xO,B.xP,B.vQ,B.xj,B.uE,B.xm,B.u5,B.u6,B.u7,B.xo,B.y0,B.y1,B.y2,B.y3,B.y4,B.y5,B.y6,B.xp,B.y7,B.y8,B.y9,B.ya,B.yb,B.yc,B.yd,B.ye,B.yf,B.yg,B.yh,B.yi,B.xq,B.yj,B.yk,B.yl,B.ym,B.yn,B.yo,B.yp,B.yq,B.jW,B.xn,B.ug,B.u1,B.xr,B.y_,B.uF,B.xs,B.v6,B.v7,B.ut,B.uu,B.xt],A.aN("cf<j,i>"))
-B.Xr=new A.cf(B.z6,[4294970632,4294970633,4294967553,4294968577,4294968578,4294969089,4294969090,4294967555,4294971393,4294968065,4294968066,4294968067,4294968068,4294968579,4294970625,4294970626,4294970627,4294970882,4294970628,4294970629,4294970630,4294970631,4294970884,4294970885,4294969871,4294969873,4294969872,4294967304,4294968833,4294968834,4294970369,4294970370,4294970371,4294970372,4294970373,4294970374,4294970375,4294971394,4294968835,4294971395,4294968580,4294967556,4294970634,4294970635,4294968321,4294969857,4294970642,4294969091,4294970636,4294970637,4294970638,4294970639,4294970640,4294970641,4294969092,4294968581,4294969093,4294968322,4294968323,4294968324,4294970703,4294967423,4294970643,4294970644,4294969108,4294968836,4294968069,4294971396,4294967309,4294968325,4294967323,4294967323,4294968326,4294968582,4294970645,4294969345,4294969354,4294969355,4294969356,4294969357,4294969358,4294969359,4294969360,4294969361,4294969362,4294969363,4294969346,4294969364,4294969365,4294969366,4294969367,4294969368,4294969347,4294969348,4294969349,4294969350,4294969351,4294969352,4294969353,4294970646,4294970647,4294970648,4294970649,4294970650,4294970651,4294970652,4294970653,4294970654,4294970655,4294970656,4294970657,4294969094,4294968583,4294967558,4294967559,4294971397,4294971398,4294969095,4294969096,4294969097,4294969098,4294970658,4294970659,4294970660,4294969105,4294969106,4294969109,4294971399,4294968584,4294968841,4294969110,4294969111,4294968070,4294967560,4294970661,4294968327,4294970662,4294969107,4294969112,4294969113,4294969114,4294971905,4294971906,4294971400,4294970118,4294970113,4294970126,4294970114,4294970124,4294970127,4294970115,4294970116,4294970117,4294970125,4294970119,4294970120,4294970121,4294970122,4294970123,4294970663,4294970664,4294970665,4294970666,4294968837,4294969858,4294969859,4294969860,4294971402,4294970667,4294970704,4294970715,4294970668,4294970669,4294970670,4294970671,4294969861,4294970672,4294970673,4294970674,4294970705,4294970706,4294970707,4294970708,4294969863,4294970709,4294969864,4294969865,4294970886,4294970887,4294970889,4294970888,4294969099,4294970710,4294970711,4294970712,4294970713,4294969866,4294969100,4294970675,4294970676,4294969101,4294971401,4294967562,4294970677,4294969867,4294968071,4294968072,4294970714,4294968328,4294968585,4294970678,4294970679,4294970680,4294970681,4294968586,4294970682,4294970683,4294970684,4294968838,4294968839,4294969102,4294969868,4294968840,4294969103,4294968587,4294970685,4294970686,4294970687,4294968329,4294970688,4294969115,4294970693,4294970694,4294969869,4294970689,4294970690,4294967564,4294968588,4294970691,4294967569,4294969104,4294969601,4294969602,4294969603,4294969604,4294969605,4294969606,4294969607,4294969608,4294971137,4294971138,4294969870,4294970692,4294968842,4294970695,4294967566,4294967567,4294967568,4294970697,4294971649,4294971650,4294971651,4294971652,4294971653,4294971654,4294971655,4294970698,4294971656,4294971657,4294971658,4294971659,4294971660,4294971661,4294971662,4294971663,4294971664,4294971665,4294971666,4294971667,4294970699,4294971668,4294971669,4294971670,4294971671,4294971672,4294971673,4294971674,4294971675,4294967305,4294970696,4294968330,4294967297,4294970700,4294971403,4294968843,4294970701,4294969116,4294969117,4294968589,4294968590,4294970702],t.eL)
+B.Xp=new A.cf(B.z6,[B.wm,B.wn,B.u2,B.uh,B.ui,B.uG,B.uH,B.jY,B.xQ,B.d0,B.cK,B.cL,B.d1,B.uj,B.wf,B.wg,B.wh,B.xH,B.wi,B.wj,B.wk,B.wl,B.xI,B.xJ,B.vR,B.vT,B.vS,B.bK,B.uv,B.uw,B.w8,B.w9,B.wa,B.wb,B.wc,B.wd,B.we,B.xR,B.ux,B.xS,B.uk,B.hE,B.wo,B.wp,B.nu,B.vE,B.ww,B.uI,B.wq,B.wr,B.ws,B.wt,B.wu,B.wv,B.uJ,B.ul,B.uK,B.u9,B.ua,B.ub,B.xu,B.bD,B.wx,B.wy,B.uZ,B.uy,B.ef,B.xT,B.jX,B.uc,B.hD,B.hD,B.ud,B.um,B.wz,B.v8,B.vh,B.vi,B.vj,B.vk,B.vl,B.vm,B.vn,B.vo,B.vp,B.vq,B.v9,B.vr,B.vs,B.vt,B.vu,B.vv,B.va,B.vb,B.vc,B.vd,B.ve,B.vf,B.vg,B.wA,B.wB,B.wC,B.wD,B.wE,B.wF,B.wG,B.wH,B.wI,B.wJ,B.wK,B.wL,B.uL,B.un,B.nt,B.u3,B.xU,B.xV,B.uM,B.uN,B.uO,B.uP,B.wM,B.wN,B.wO,B.uW,B.uX,B.v_,B.xW,B.uo,B.uD,B.v0,B.v1,B.eg,B.u4,B.wP,B.nv,B.wQ,B.uY,B.v2,B.v3,B.v4,B.yr,B.ys,B.xX,B.vZ,B.vU,B.w6,B.vV,B.w4,B.w7,B.vW,B.vX,B.vY,B.w5,B.w_,B.w0,B.w1,B.w2,B.w3,B.wR,B.wS,B.wT,B.wU,B.uz,B.vF,B.vG,B.vH,B.xZ,B.wV,B.xv,B.xG,B.wW,B.wX,B.wY,B.wZ,B.vI,B.x_,B.x0,B.x1,B.xw,B.xx,B.xy,B.xz,B.vJ,B.xA,B.vK,B.vL,B.xK,B.xL,B.xN,B.xM,B.uQ,B.xB,B.xC,B.xD,B.xE,B.vM,B.uR,B.x2,B.x3,B.uS,B.xY,B.jZ,B.x4,B.vN,B.hF,B.hG,B.xF,B.ue,B.up,B.x5,B.x6,B.x7,B.x8,B.uq,B.x9,B.xa,B.xb,B.uA,B.uB,B.uT,B.vO,B.uC,B.uU,B.ur,B.xc,B.xd,B.xe,B.uf,B.xf,B.v5,B.xk,B.xl,B.vP,B.xg,B.xh,B.k_,B.us,B.xi,B.u8,B.uV,B.vw,B.vx,B.vy,B.vz,B.vA,B.vB,B.vC,B.vD,B.xO,B.xP,B.vQ,B.xj,B.uE,B.xm,B.u5,B.u6,B.u7,B.xo,B.y0,B.y1,B.y2,B.y3,B.y4,B.y5,B.y6,B.xp,B.y7,B.y8,B.y9,B.ya,B.yb,B.yc,B.yd,B.ye,B.yf,B.yg,B.yh,B.yi,B.xq,B.yj,B.yk,B.yl,B.ym,B.yn,B.yo,B.yp,B.yq,B.jW,B.xn,B.ug,B.u1,B.xr,B.y_,B.uF,B.xs,B.v6,B.v7,B.ut,B.uu,B.xt],A.aN("cf<j,i>"))
+B.Xq=new A.cf(B.z6,[4294970632,4294970633,4294967553,4294968577,4294968578,4294969089,4294969090,4294967555,4294971393,4294968065,4294968066,4294968067,4294968068,4294968579,4294970625,4294970626,4294970627,4294970882,4294970628,4294970629,4294970630,4294970631,4294970884,4294970885,4294969871,4294969873,4294969872,4294967304,4294968833,4294968834,4294970369,4294970370,4294970371,4294970372,4294970373,4294970374,4294970375,4294971394,4294968835,4294971395,4294968580,4294967556,4294970634,4294970635,4294968321,4294969857,4294970642,4294969091,4294970636,4294970637,4294970638,4294970639,4294970640,4294970641,4294969092,4294968581,4294969093,4294968322,4294968323,4294968324,4294970703,4294967423,4294970643,4294970644,4294969108,4294968836,4294968069,4294971396,4294967309,4294968325,4294967323,4294967323,4294968326,4294968582,4294970645,4294969345,4294969354,4294969355,4294969356,4294969357,4294969358,4294969359,4294969360,4294969361,4294969362,4294969363,4294969346,4294969364,4294969365,4294969366,4294969367,4294969368,4294969347,4294969348,4294969349,4294969350,4294969351,4294969352,4294969353,4294970646,4294970647,4294970648,4294970649,4294970650,4294970651,4294970652,4294970653,4294970654,4294970655,4294970656,4294970657,4294969094,4294968583,4294967558,4294967559,4294971397,4294971398,4294969095,4294969096,4294969097,4294969098,4294970658,4294970659,4294970660,4294969105,4294969106,4294969109,4294971399,4294968584,4294968841,4294969110,4294969111,4294968070,4294967560,4294970661,4294968327,4294970662,4294969107,4294969112,4294969113,4294969114,4294971905,4294971906,4294971400,4294970118,4294970113,4294970126,4294970114,4294970124,4294970127,4294970115,4294970116,4294970117,4294970125,4294970119,4294970120,4294970121,4294970122,4294970123,4294970663,4294970664,4294970665,4294970666,4294968837,4294969858,4294969859,4294969860,4294971402,4294970667,4294970704,4294970715,4294970668,4294970669,4294970670,4294970671,4294969861,4294970672,4294970673,4294970674,4294970705,4294970706,4294970707,4294970708,4294969863,4294970709,4294969864,4294969865,4294970886,4294970887,4294970889,4294970888,4294969099,4294970710,4294970711,4294970712,4294970713,4294969866,4294969100,4294970675,4294970676,4294969101,4294971401,4294967562,4294970677,4294969867,4294968071,4294968072,4294970714,4294968328,4294968585,4294970678,4294970679,4294970680,4294970681,4294968586,4294970682,4294970683,4294970684,4294968838,4294968839,4294969102,4294969868,4294968840,4294969103,4294968587,4294970685,4294970686,4294970687,4294968329,4294970688,4294969115,4294970693,4294970694,4294969869,4294970689,4294970690,4294967564,4294968588,4294970691,4294967569,4294969104,4294969601,4294969602,4294969603,4294969604,4294969605,4294969606,4294969607,4294969608,4294971137,4294971138,4294969870,4294970692,4294968842,4294970695,4294967566,4294967567,4294967568,4294970697,4294971649,4294971650,4294971651,4294971652,4294971653,4294971654,4294971655,4294970698,4294971656,4294971657,4294971658,4294971659,4294971660,4294971661,4294971662,4294971663,4294971664,4294971665,4294971666,4294971667,4294970699,4294971668,4294971669,4294971670,4294971671,4294971672,4294971673,4294971674,4294971675,4294967305,4294970696,4294968330,4294967297,4294970700,4294971403,4294968843,4294970701,4294969116,4294969117,4294968589,4294968590,4294970702],t.eL)
 B.Yj={alias:0,allScroll:1,basic:2,cell:3,click:4,contextMenu:5,copy:6,forbidden:7,grab:8,grabbing:9,help:10,move:11,none:12,noDrop:13,precise:14,progress:15,text:16,resizeColumn:17,resizeDown:18,resizeDownLeft:19,resizeDownRight:20,resizeLeft:21,resizeLeftRight:22,resizeRight:23,resizeRow:24,resizeUp:25,resizeUpDown:26,resizeUpLeft:27,resizeUpRight:28,resizeUpLeftDownRight:29,resizeUpRightDownLeft:30,verticalText:31,wait:32,zoomIn:33,zoomOut:34}
-B.Xs=new A.cf(B.Yj,["alias","all-scroll","default","cell","pointer","context-menu","copy","not-allowed","grab","grabbing","help","move","none","no-drop","crosshair","progress","text","col-resize","s-resize","sw-resize","se-resize","w-resize","ew-resize","e-resize","row-resize","n-resize","ns-resize","nw-resize","ne-resize","nwse-resize","nesw-resize","vertical-text","wait","zoom-in","zoom-out"],t.li)
+B.Xr=new A.cf(B.Yj,["alias","all-scroll","default","cell","pointer","context-menu","copy","not-allowed","grab","grabbing","help","move","none","no-drop","crosshair","progress","text","col-resize","s-resize","sw-resize","se-resize","w-resize","ew-resize","e-resize","row-resize","n-resize","ns-resize","nw-resize","ne-resize","nwse-resize","nesw-resize","vertical-text","wait","zoom-in","zoom-out"],t.li)
 B.a2p=new A.aB(B.bK,!1,!1,!1,!1,B.I)
 B.a1X=new A.aB(B.bK,!1,!0,!1,!1,B.I)
 B.a1W=new A.aB(B.bD,!1,!1,!1,!1,B.I)
@@ -116405,15 +116403,15 @@ B.a2u=new A.aB(B.bD,!1,!0,!0,!1,B.I)
 B.a2k=new A.aB(B.bD,!1,!1,!0,!1,B.I)
 B.yO=new A.di([B.a2p,B.O,B.a1X,B.O,B.a1W,B.O,B.a1L,B.O,B.a2g,B.O,B.a27,B.O,B.a2u,B.O,B.a2k,B.O],t.Fp)
 B.Ym={type:0}
-B.Xt=new A.cf(B.Ym,["line"],t.li)
-B.Xv=new A.cf(B.ck,[],A.aN("cf<ke,M>"))
+B.Xs=new A.cf(B.Ym,["line"],t.li)
+B.Xu=new A.cf(B.ck,[],A.aN("cf<ke,M>"))
 B.yR=new A.cf(B.ck,[],A.aN("cf<Q,z3>"))
 B.k4=new A.cf(B.ck,[],A.aN("cf<xN,bk>"))
-B.Xw=new A.cf(B.ck,[],A.aN("cf<j,e(F)>"))
+B.Xv=new A.cf(B.ck,[],A.aN("cf<j,e(F)>"))
 B.yP=new A.cf(B.ck,[],A.aN("cf<j,R<j>>"))
 B.en=new A.cf(B.ck,[],A.aN("cf<j,@>"))
 B.yS=new A.cf(B.ck,[],A.aN("cf<G6,@>"))
-B.Xu=new A.cf(B.ck,[],A.aN("cf<j6,dV>"))
+B.Xt=new A.cf(B.ck,[],A.aN("cf<j6,dV>"))
 B.yQ=new A.cf(B.ck,[],A.aN("cf<j6,rv<dV>>"))
 B.SK=s([42,null,null,8589935146],t.Z)
 B.SL=s([43,null,null,8589935147],t.Z)
@@ -116480,7 +116478,9 @@ B.Th=s([B.hJ,B.hJ,B.k2,null],t.L)
 B.TQ=s([B.hF,null,null,B.hL],t.L)
 B.UI=s([B.hG,null,null,B.hN],t.L)
 B.Ti=s([B.dQ,B.dQ,B.eh,null],t.L)
-B.Xx=new A.di(["*",B.T2,"+",B.V_,"-",B.TB,".",B.Uh,"/",B.Sm,"0",B.Vo,"1",B.Vh,"2",B.Tc,"3",B.Vz,"4",B.Vf,"5",B.T7,"6",B.Sv,"7",B.Tq,"8",B.V1,"9",B.V4,"Alt",B.Tf,"AltGraph",B.Vp,"ArrowDown",B.TL,"ArrowLeft",B.TM,"ArrowRight",B.TN,"ArrowUp",B.Vu,"Clear",B.Vd,"Control",B.Tg,"Delete",B.Uy,"End",B.TO,"Enter",B.T5,"Home",B.TP,"Insert",B.Ve,"Meta",B.Th,"PageDown",B.TQ,"PageUp",B.UI,"Shift",B.Ti],A.aN("di<j,R<i?>>"))
+B.Xw=new A.di(["*",B.T2,"+",B.V_,"-",B.TB,".",B.Uh,"/",B.Sm,"0",B.Vo,"1",B.Vh,"2",B.Tc,"3",B.Vz,"4",B.Vf,"5",B.T7,"6",B.Sv,"7",B.Tq,"8",B.V1,"9",B.V4,"Alt",B.Tf,"AltGraph",B.Vp,"ArrowDown",B.TL,"ArrowLeft",B.TM,"ArrowRight",B.TN,"ArrowUp",B.Vu,"Clear",B.Vd,"Control",B.Tg,"Delete",B.Uy,"End",B.TO,"Enter",B.T5,"Home",B.TP,"Insert",B.Ve,"Meta",B.Th,"PageDown",B.TQ,"PageUp",B.UI,"Shift",B.Ti],A.aN("di<j,R<i?>>"))
+B.Yg={"bangsawan-bangsawan":0,"bangsawan-gouverneur":1,"bangsawan-pangeran":2,"bangsawan-puteri":3,buruhangkat:4,burungangkat:5,kriyawan:6,nelayanikan:7,pekebunteh:8,penenun:9,penjahit:10,perajintembikar:11,petanipadi:12,wargadesa:13,petanirumputlaut:14,"bangsawan-pangeranmelayu":15,"bangsawan-puterimelayu":16,"bangsawan-pangeranjawa":17,"bangsawan-puterijawa":18,"bangsawan-pangerantailan":19,"bangsawan-puteritailan":20,"bangsawan-pangeranasiatenggara":21,"bangsawan-puteriasiatenggara":22,"bangsawan-pangerantimurtengah":23,"bangsawan-puteritimurtengah":24,penggembala:25,pelukis:26,penatu:27,penjaga:28,pemburu:29,atlet:30,besi:31,guru:32,masak:33,montir:34,nelayan:35,pekebun:36,pekerja:37,pemadam:38,perajut:39,peramu:40,perawat:41,petani:42,petua:43,pianis:44,polisi:45,pustakawan:46,warga:47}
+B.Xx=new A.cf(B.Yg,["Bangsawan","Gubernur","Pangeran","Puteri","Buruh Angkat","Buruh Angkat","Kriyawan","Nelayan","Pekebun Teh","Penenun","Penjahit","Perajin Tembikar","Petani Padi","Warga Desa","Petani Rumput Laut","Pangeran Melayu","Puteri Melayu","Pangeran Jawa","Puteri Jawa","Pangeran Tailan","Puteri Tailan","Pangeran Asia Tenggara","Puteri Asia Tenggara","Pangeran Timur Tengah","Puteri Timur Tengah","Penggembala","Pelukis","Penatu","Penjaga","Pemburu","Atlet","Pandai Besi","Guru","Juru Masak","Montir","Nelayan","Pekebun","Pekerja","Pemadam","Perajut","Peramu","Perawat","Petani","Petua","Pianis","Polisi","Pustakawan","Warga Desa"],t.li)
 B.Yf={KeyA:0,KeyB:1,KeyC:2,KeyD:3,KeyE:4,KeyF:5,KeyG:6,KeyH:7,KeyI:8,KeyJ:9,KeyK:10,KeyL:11,KeyM:12,KeyN:13,KeyO:14,KeyP:15,KeyQ:16,KeyR:17,KeyS:18,KeyT:19,KeyU:20,KeyV:21,KeyW:22,KeyX:23,KeyY:24,KeyZ:25,Digit1:26,Digit2:27,Digit3:28,Digit4:29,Digit5:30,Digit6:31,Digit7:32,Digit8:33,Digit9:34,Digit0:35,Minus:36,Equal:37,BracketLeft:38,BracketRight:39,Backslash:40,Semicolon:41,Quote:42,Backquote:43,Comma:44,Period:45,Slash:46}
 B.yU=new A.cf(B.Yf,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","-","=","[","]","\\",";","'","`",",",".","/"],t.li)
 B.Yb={Abort:0,Again:1,AltLeft:2,AltRight:3,ArrowDown:4,ArrowLeft:5,ArrowRight:6,ArrowUp:7,AudioVolumeDown:8,AudioVolumeMute:9,AudioVolumeUp:10,Backquote:11,Backslash:12,Backspace:13,BracketLeft:14,BracketRight:15,BrightnessDown:16,BrightnessUp:17,BrowserBack:18,BrowserFavorites:19,BrowserForward:20,BrowserHome:21,BrowserRefresh:22,BrowserSearch:23,BrowserStop:24,CapsLock:25,Comma:26,ContextMenu:27,ControlLeft:28,ControlRight:29,Convert:30,Copy:31,Cut:32,Delete:33,Digit0:34,Digit1:35,Digit2:36,Digit3:37,Digit4:38,Digit5:39,Digit6:40,Digit7:41,Digit8:42,Digit9:43,DisplayToggleIntExt:44,Eject:45,End:46,Enter:47,Equal:48,Escape:49,Esc:50,F1:51,F10:52,F11:53,F12:54,F13:55,F14:56,F15:57,F16:58,F17:59,F18:60,F19:61,F2:62,F20:63,F21:64,F22:65,F23:66,F24:67,F3:68,F4:69,F5:70,F6:71,F7:72,F8:73,F9:74,Find:75,Fn:76,FnLock:77,GameButton1:78,GameButton10:79,GameButton11:80,GameButton12:81,GameButton13:82,GameButton14:83,GameButton15:84,GameButton16:85,GameButton2:86,GameButton3:87,GameButton4:88,GameButton5:89,GameButton6:90,GameButton7:91,GameButton8:92,GameButton9:93,GameButtonA:94,GameButtonB:95,GameButtonC:96,GameButtonLeft1:97,GameButtonLeft2:98,GameButtonMode:99,GameButtonRight1:100,GameButtonRight2:101,GameButtonSelect:102,GameButtonStart:103,GameButtonThumbLeft:104,GameButtonThumbRight:105,GameButtonX:106,GameButtonY:107,GameButtonZ:108,Help:109,Home:110,Hyper:111,Insert:112,IntlBackslash:113,IntlRo:114,IntlYen:115,KanaMode:116,KeyA:117,KeyB:118,KeyC:119,KeyD:120,KeyE:121,KeyF:122,KeyG:123,KeyH:124,KeyI:125,KeyJ:126,KeyK:127,KeyL:128,KeyM:129,KeyN:130,KeyO:131,KeyP:132,KeyQ:133,KeyR:134,KeyS:135,KeyT:136,KeyU:137,KeyV:138,KeyW:139,KeyX:140,KeyY:141,KeyZ:142,KeyboardLayoutSelect:143,Lang1:144,Lang2:145,Lang3:146,Lang4:147,Lang5:148,LaunchApp1:149,LaunchApp2:150,LaunchAssistant:151,LaunchControlPanel:152,LaunchMail:153,LaunchScreenSaver:154,MailForward:155,MailReply:156,MailSend:157,MediaFastForward:158,MediaPause:159,MediaPlay:160,MediaPlayPause:161,MediaRecord:162,MediaRewind:163,MediaSelect:164,MediaStop:165,MediaTrackNext:166,MediaTrackPrevious:167,MetaLeft:168,MetaRight:169,MicrophoneMuteToggle:170,Minus:171,NonConvert:172,NumLock:173,Numpad0:174,Numpad1:175,Numpad2:176,Numpad3:177,Numpad4:178,Numpad5:179,Numpad6:180,Numpad7:181,Numpad8:182,Numpad9:183,NumpadAdd:184,NumpadBackspace:185,NumpadClear:186,NumpadClearEntry:187,NumpadComma:188,NumpadDecimal:189,NumpadDivide:190,NumpadEnter:191,NumpadEqual:192,NumpadMemoryAdd:193,NumpadMemoryClear:194,NumpadMemoryRecall:195,NumpadMemoryStore:196,NumpadMemorySubtract:197,NumpadMultiply:198,NumpadParenLeft:199,NumpadParenRight:200,NumpadSubtract:201,Open:202,PageDown:203,PageUp:204,Paste:205,Pause:206,Period:207,Power:208,PrintScreen:209,PrivacyScreenToggle:210,Props:211,Quote:212,Resume:213,ScrollLock:214,Select:215,SelectTask:216,Semicolon:217,ShiftLeft:218,ShiftRight:219,ShowAllWindows:220,Slash:221,Sleep:222,Space:223,Super:224,Suspend:225,Tab:226,Turbo:227,Undo:228,WakeUp:229,ZoomToggle:230}
@@ -116719,8 +116719,8 @@ B.Yo={"deleteBackward:":0,"deleteWordBackward:":1,"deleteToBeginningOfLine:":2,"
 B.DE=new A.nu(!1)
 B.DF=new A.nu(!0)
 B.XB=new A.cf(B.Yo,[B.md,B.mg,B.me,B.hk,B.hl,B.mf,B.f2,B.f3,B.f3,B.f2,B.f6,B.f7,B.jw,B.jx,B.hs,B.ht,B.jA,B.jB,B.eb,B.ec,B.rS,B.rT,B.rO,B.rP,B.eb,B.ec,B.f4,B.f5,B.rE,B.rF,B.n2,B.n3,B.pY,B.DE,B.DF,B.o6,B.kq,B.jC,B.jD,B.pM,B.pR,B.pU],A.aN("cf<j,bk>"))
-B.Yg={BU:0,DD:1,FX:2,TP:3,YD:4,ZR:5}
-B.dq=new A.cf(B.Yg,["MM","DE","FR","TL","YE","CD"],t.li)
+B.Yh={BU:0,DD:1,FX:2,TP:3,YD:4,ZR:5}
+B.dq=new A.cf(B.Yh,["MM","DE","FR","TL","YE","CD"],t.li)
 B.Zz=new A.C(458752)
 B.ZA=new A.C(458753)
 B.ZB=new A.C(458754)
@@ -117278,8 +117278,8 @@ B.E0=new A.fI(B.Yl,12,t.fF)
 B.Y8={"canvaskit.js":0}
 B.a1v=new A.fI(B.Y8,1,t.fF)
 B.a1w=new A.f2([B.d3,B.bM,B.ba,B.cl,B.bY],t.Lu)
-B.Yh={javascript:0}
-B.a1x=new A.fI(B.Yh,1,t.fF)
+B.Yi={javascript:0}
+B.a1x=new A.fI(B.Yi,1,t.fF)
 B.Yk={click:0,keyup:1,keydown:2,mouseup:3,mousedown:4,pointerdown:5,pointerup:6}
 B.a1y=new A.fI(B.Yk,7,t.fF)
 B.a1z=new A.f2([B.bb,B.ak,B.cO],A.aN("f2<hy>"))
@@ -118585,7 +118585,7 @@ return new A.a0m(A.aPe(20,q,p),n,o)})
 s($,"biD","b0L",()=>A.a8([B.tp,A.aYR("grapheme"),B.tq,A.aYR("word")],A.aN("CZ"),t.m))
 s($,"bjE","b1u",()=>{var q="v8BreakIterator"
 if(A.P(A.P(A.l5(),"Intl"),q)==null)A.ab(A.j7("v8BreakIterator is not supported."))
-return A.bah(A.A2(A.A2(A.l5(),"Intl"),q),A.b5b([]),A.aUT(B.Xt))})
+return A.bah(A.A2(A.A2(A.l5(),"Intl"),q),A.b5b([]),A.aUT(B.Xs))})
 s($,"bjC","b1s",()=>A.aPj(4))
 s($,"bjA","aRZ",()=>A.aPj(16))
 s($,"bjB","b1r",()=>A.b5m($.aRZ()))
