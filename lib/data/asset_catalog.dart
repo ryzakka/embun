@@ -124,10 +124,36 @@ String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
 
 String? logoPath(String stem) => AssetCatalog.I.file(logoDir, stem);
 
-/// Punggung kartu. Untuk kartu yang terlihat pemain lain, jangan pakai
-/// dark: true, karena itu membocorkan sisi pemilik kartu.
+/// Punggung kartu KARAKTER (protagonis hijau, kartu gelap merah). Untuk kartu
+/// yang terlihat pemain lain, jangan pakai dark: true, karena itu membocorkan
+/// sisi pemilik kartu.
 String? cardBackPath({bool dark = false}) => AssetCatalog.I.file(
     punggungDir, dark ? 'punggungantagonis' : 'punggungprotagonis');
+
+/// Punggung kartu beli/item, terpisah dari punggung kartu karakter: item warga
+/// hijau (peti), item antagonis merah (peti), serangan malam ungu (bulan).
+/// Kartu yang terlihat pemain lain WAJIB memakai bentuk tanpa argumen
+/// (punggung warga): merah/ungu membocorkan peran dan kartu samaran. Bila
+/// berkasnya belum ada, jatuh ke punggung kartu karakter.
+String? itemBackPath({bool dark = false, bool night = false}) =>
+    AssetCatalog.I.file(
+        punggungDir,
+        night
+            ? 'punggungitemmalam'
+            : dark
+            ? 'punggungitemantagonis'
+            : 'punggungitemprotagonis') ??
+        cardBackPath(dark: dark || night);
+
+/// Punggung item menurut definisinya (`side`, `kind`). Hanya untuk kartu milik
+/// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
+/// ungu, item antagonis merah, item warga hijau.
+String? itemBackFor(Map<String, dynamic>? def) => itemBackPath(
+    dark: def?['side'] == 'antagonis', night: def?['kind'] == 'malam');
+
+/// Punggung kartu kemampuan warga.
+String? abilityBackPath() =>
+    AssetCatalog.I.file(punggungDir, 'punggungkemampuan') ?? cardBackPath();
 
 /// Gambar kartu beli/item. Nama berkas = kolom `art` di card_definitions
 /// (jatuh ke `id` bila kosong). Warga di powerpro, antagonis di poweranta.
@@ -148,11 +174,10 @@ String? abilityArtPath(Map<String, dynamic>? def) {
   return AssetCatalog.I.file(kemampuanDir, stem);
 }
 
-/// Rasio tinggi : lebar kartu karakter. Kartu protagonis baru berukuran
-/// 1024 x 1536 (2:3). Kartu gelap (antagonis) tetap 3:4; ubah
-/// [kAntagonisAspect] ke 1.5 bila kartu gelap juga dibuat ulang 2:3.
+/// Rasio tinggi : lebar kartu karakter. Kartu protagonis dan kartu gelap
+/// (antagonis, kegelapan1..20) sama-sama berukuran 1024 x 1536 (2:3).
 const kProtagonistAspect = 1.5;
-const kAntagonisAspect = 4 / 3;
+const kAntagonisAspect = 1.5;
 
 double cardAspectFor(String? path) {
   if (path == null || path.startsWith(protagonisDir)) return kProtagonistAspect;

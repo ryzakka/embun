@@ -237,9 +237,9 @@ class CardTile extends StatelessWidget {
   }
 }
 
-/// Punggung kartu: sama untuk semua kartu agar identitas penyerah tidak bocor.
-/// [dark] hanya untuk kartu milik sendiri; jangan dipakai pada kartu yang
-/// terlihat pemain lain.
+/// Punggung kartu item: sama untuk semua kartu agar identitas penyerah tidak
+/// bocor. [dark] hanya untuk kartu milik sendiri; jangan dipakai pada kartu
+/// yang terlihat pemain lain.
 class CardBack extends StatelessWidget {
   final bool dark;
   const CardBack({super.key, this.dark = false});
@@ -249,7 +249,7 @@ class CardBack extends StatelessWidget {
     child: SizedBox(
       width: 70,
       height: 100,
-      child: GameImage(path: cardBackPath(dark: dark), cacheWidth: 200),
+      child: GameImage(path: itemBackPath(dark: dark), cacheWidth: 200),
     ),
   );
 }

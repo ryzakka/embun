@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
@@ -652,6 +653,9 @@ class _DayViewState extends State<DayView> {
               revealed: _marketOpened,
               animate: !_marketOpened,
               dark: bad,
+              // Pasar pribadi: item warga hijau, item antagonis merah,
+              // serangan malam ungu.
+              backPath: itemBackFor(def),
               glow: bad ? EmbunColors.mist : const Color(0xFFFFD866),
               dealOffset: Offset(dealX, 0),
               suspense: n > 2 && i == n - 1,

@@ -267,7 +267,7 @@ class _OfferingViewState extends State<OfferingView> {
                         borderRadius: BorderRadius.circular(10),
                         // Punggung sama untuk semua pemain: tidak membocorkan peran.
                         child: GameImage(
-                            path: cardBackPath(), cacheWidth: 320),
+                            path: itemBackPath(), cacheWidth: 320),
                       ),
                     ),
                   ),

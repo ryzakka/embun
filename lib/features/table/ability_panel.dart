@@ -5,6 +5,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import 'flip_card.dart';
 
 /// Kemampuan acak khusus warga. Definisinya ada di tabel `ability_definitions`;
 /// berkas ini hanya tampilan dan pemakaiannya.
@@ -374,9 +375,23 @@ class _AbilityDialogState extends State<_AbilityDialog> {
                           color: EmbunColors.gold)),
                   const SizedBox(height: 12),
                 ],
+                // Pengungkapan di awal: kartu muncul sebagai punggung
+                // kemampuan, lalu berbalik.
                 Center(
-                    child: AbilityCardView(
-                        def: widget.def, used: _usedNow, width: 170)),
+                  child: widget.intro
+                      ? FlipCard(
+                    index: 0,
+                    width: 170,
+                    height: 170 * 4 / 3,
+                    revealed: true,
+                    glow: accent,
+                    backPath: abilityBackPath(),
+                    front: AbilityCardView(
+                        def: widget.def, used: _usedNow, width: 170),
+                  )
+                      : AbilityCardView(
+                      def: widget.def, used: _usedNow, width: 170),
+                ),
                 const SizedBox(height: 14),
                 Text('${widget.def['name']}',
                     textAlign: TextAlign.center,

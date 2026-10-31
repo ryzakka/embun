@@ -5,17 +5,32 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 
-/// Punggung kartu beli/item. Warga: punggung hijau-emas; Si Terbisik:
-/// punggung merah gelap. Rasio sama dengan CardTile (lebar : tinggi = 7 : 9).
+/// Punggung kartu yang berbalik. Bawaannya punggung kartu karakter (warga
+/// hijau, Si Terbisik merah); isi [backPath] untuk punggung lain, mis.
+/// [itemBackFor] (item/serangan malam) atau [abilityBackPath] (kemampuan).
+/// Tinggi bawaan sama dengan CardTile (lebar : tinggi = 7 : 9).
 class CardBackFace extends StatelessWidget {
   final double width;
+
+  /// Tinggi; bila kosong mengikuti 7 : 9. FlipCard mengisinya supaya punggung
+  /// seukuran mukanya (kartu karakter gelap 2:3 lebih tinggi dari 7 : 9).
+  final double? height;
   final bool dark;
-  const CardBackFace({super.key, required this.width, this.dark = false});
+
+  /// Berkas punggung; null = punggung kartu karakter menurut [dark].
+  final String? backPath;
+  const CardBackFace({
+    super.key,
+    required this.width,
+    this.height,
+    this.dark = false,
+    this.backPath,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
     width: width,
-    height: width * 9 / 7,
+    height: height ?? width * 9 / 7,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(12),
       boxShadow: [
@@ -25,7 +40,8 @@ class CardBackFace extends StatelessWidget {
     ),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: GameImage(path: cardBackPath(dark: dark), cacheWidth: 320),
+      child: GameImage(
+          path: backPath ?? cardBackPath(dark: dark), cacheWidth: 320),
     ),
   );
 }
@@ -60,6 +76,9 @@ class FlipCard extends StatefulWidget {
   final bool suspense;
   final bool shine;
 
+  /// Punggung kartu; null = punggung karakter menurut [dark].
+  final String? backPath;
+
   const FlipCard({
     super.key,
     required this.index,
@@ -73,6 +92,7 @@ class FlipCard extends StatefulWidget {
     this.dealOffset,
     this.suspense = false,
     this.shine = true,
+    this.backPath,
   });
 
   @override
@@ -246,7 +266,11 @@ class _FlipCardState extends State<FlipCard> with TickerProviderStateMixin {
             transform: Matrix4.rotationY(pi),
             child: widget.front,
           )
-              : CardBackFace(width: widget.width, dark: widget.dark);
+              : CardBackFace(
+              width: widget.width,
+              height: widget.height,
+              dark: widget.dark,
+              backPath: widget.backPath);
 
           final glowA = (0.75 * peak + 0.5 * sus).clamp(0.0, 1.0).toDouble();
 

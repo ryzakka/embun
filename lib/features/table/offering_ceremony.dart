@@ -55,8 +55,8 @@ String? _treeFor(int leaves) {
 /// Setelah kartu terakhir, Hayu "menimbang": layar meredup, jantung pohon
 /// berdetak, lalu layar menggelap menuju hasil.
 ///
-/// Punggung kartu selalu punggung warga supaya peran tidak bocor sebelum
-/// kartu berbalik. Pohon tetap pada keadaan SEBELUM efek; jumlah daun yang
+/// Punggung kartu selalu punggung ITEM warga (hijau) supaya peran dan kartu
+/// samaran tidak bocor sebelum kartu berbalik. Pohon tetap pada keadaan SEBELUM efek; jumlah daun yang
 /// berubah baru diperlihatkan di layar hasil. Ketuk untuk melewati.
 class OfferingCeremony extends StatefulWidget {
   final GameRepository repo;
@@ -683,7 +683,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     ),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: GameImage(path: cardBackPath(), cacheWidth: 360),
+      child: GameImage(path: itemBackPath(), cacheWidth: 360),
     ),
   );
 

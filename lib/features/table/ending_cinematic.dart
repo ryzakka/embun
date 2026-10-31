@@ -746,8 +746,8 @@ class _EndingCinematicState extends State<EndingCinematic>
     final lab = _smooth(_seg(t, 0.76, 0.82));
     final nameA = _smooth(_seg(t, 0.92, 0.97));
     final ch = (h * 0.40).clamp(120.0, 300.0).toDouble();
-    final cw = ch * 7 / 9;
     final path = darkCardPath(a['seed'] as int);
+    final cw = ch / cardAspectFor(path);
     final uname = a['username'] as String?;
 
     Widget card;

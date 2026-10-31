@@ -133,7 +133,8 @@ class PlayerAvatar extends StatelessWidget {
       child: ClipOval(
         child: path == null
             ? GameIcon('character', size: size * 0.8)
-            : path!.startsWith(protagonisDir)
+            : (path!.startsWith(protagonisDir) ||
+            path!.startsWith(antagonisDir))
             ? _FaceCrop(path: path!, size: size)
             : GameImage(
           path: path,
@@ -145,7 +146,8 @@ class PlayerAvatar extends StatelessWidget {
   }
 }
 
-/// Potongan wajah dari kartu protagonis 2:3: kartu diperbesar ke arah wajah
+/// Potongan wajah dari kartu karakter 2:3 (protagonis dan kartu gelap): kartu
+/// diperbesar ke arah wajah
 /// (sekitar 27% dari atas) sehingga bingkai berhias dan plat nama tidak ikut
 /// tampak di avatar bulat.
 class _FaceCrop extends StatelessWidget {
@@ -180,7 +182,7 @@ class _FaceCrop extends StatelessWidget {
 }
 
 /// Kartu karakter potret. Rasio mengikuti jenis kartu ([cardAspectFor]):
-/// protagonis 2:3, kartu gelap 3:4.
+/// protagonis dan kartu gelap sama-sama 2:3.
 class CardArt extends StatelessWidget {
   final String? path;
   final double width;
