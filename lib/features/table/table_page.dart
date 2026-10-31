@@ -2075,6 +2075,7 @@ class _TablePageState extends State<TablePage> {
         defs: defs,
         abilityDefs: abilityDefs,
         usernames: usernames,
+        myId: repo.myId,
         secrets: secretsFuture!,
         recap: recapFuture!,
         detailsBuilder: _recapSection,

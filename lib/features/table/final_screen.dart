@@ -71,14 +71,15 @@ class _Stats {
 
 const _pageTitles = [
   'Akhir Kisah',
+  'Barisan Akhir',
   'Dalam Angka',
   'Sidang Desa',
   'Cahaya & Kabut',
   'Gelar Para Pemain',
   'Siapa Mereka Sebenarnya',
 ];
-const _pageMs = [6200, 3000, 3400, 3600, 4400, 2400];
-const _lastPage = 5;
+const _pageMs = [6200, 5600, 3000, 3400, 3600, 4400, 2400];
+const _lastPage = 6;
 
 const _endReasonText = {
   'daun_penuh': 'Daun Hayu kembali penuh.',
@@ -92,11 +93,13 @@ const _endReasonText = {
 ///
 ///  0 Akhir Kisah    pohon, ring daun yang terisi (30 titik menyala satu per
 ///                   satu), judul, sebab berakhir, vonis
-///  1 Dalam Angka    hari bertahan, persembahan, pembelian, suara (hitung naik)
-///  2 Sidang Desa    batang suara tiap voting: tepat / keliru / abstain
-///  3 Cahaya & Kabut tarik tambang kartu persembahan + kartu terbanyak
-///  4 Gelar          penghargaan yang dihitung dari catatan permainan
-///  5 Para Pemain    peran asli, nyawa, tombol catatan lengkap & pulang
+///  1 Barisan Akhir  kartu semua pemain muncul per fraksi: pemenang ala juara,
+///                   yang kalah ala runtuh (lihat [_pFaction])
+///  2 Dalam Angka    hari bertahan, persembahan, pembelian, suara (hitung naik)
+///  3 Sidang Desa    batang suara tiap voting: tepat / keliru / abstain
+///  4 Cahaya & Kabut tarik tambang kartu persembahan + kartu terbanyak
+///  5 Gelar          penghargaan yang dihitung dari catatan permainan
+///  6 Para Pemain    peran asli, nyawa, tombol catatan lengkap & pulang
 ///
 /// Geser ke kiri/kanan atau pakai tombol bawah. "Lewati" langsung ke bab akhir.
 /// Semua statistik dihitung dari data game_recap + rahasia yang terbuka di
@@ -111,6 +114,10 @@ class FinalResultScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> defs;
   final Map<String, Map<String, dynamic>> abilityDefs;
   final Map<String, String> usernames;
+
+  /// Id pemain yang sedang melihat layar ini; dipakai untuk menentukan
+  /// fraksi "milikku" di bab Barisan Akhir.
+  final String? myId;
   final Future<Map<String, Map<String, dynamic>>> secrets;
   final Future<Map<String, dynamic>?> recap;
 
@@ -121,6 +128,7 @@ class FinalResultScreen extends StatefulWidget {
 
   const FinalResultScreen({
     super.key,
+    this.myId,
     required this.wargaMenang,
     required this.leaves,
     required this.day,
@@ -153,6 +161,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   Map<String, dynamic>? _recap;
   _Stats? _stats;
   bool _hapGauge = false;
+  final Set<int> _hap = {};
 
   bool get _win => widget.wargaMenang;
   Color get _accent => _win ? EmbunColors.leaf : EmbunColors.mist;
@@ -174,6 +183,13 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   }
 
   void _onTick() {
+    if (_page == 1) {
+      final t = _pa.value;
+      // Pemenang tiba: berat. Pihak kalah menghantam tanah sedikit lebih lambat.
+      final arrive = _viewerWon == false ? 0.20 : 0.10;
+      if (t >= arrive && _hap.add(1)) HapticFeedback.heavyImpact();
+      if (t >= 0.55 && _hap.add(2)) HapticFeedback.mediumImpact();
+    }
     if (_page == 0 && !_hapGauge && _pa.value >= 0.62) {
       _hapGauge = true;
       HapticFeedback.mediumImpact();
@@ -190,12 +206,16 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     if (!mounted) return;
     setState(() => _stats = _compute());
     // Statistik baru tiba saat pemain sudah di bab statistik: putar ulang.
-    if (_page >= 1 && _page <= 4) _pa.forward(from: 0);
+    if (_page >= 1 && _page <= 5) {
+      _hap.clear();
+      _pa.forward(from: 0);
+    }
   }
 
   void _goto(int p) {
     if (p < 0 || p > _lastPage || p == _page) return;
     HapticFeedback.selectionClick();
+    _hap.clear();
     setState(() => _page = p);
     _pa.duration = Duration(milliseconds: _pageMs[p]);
     _pa.forward(from: 0);
@@ -527,7 +547,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
 
   Widget _pageBody() {
     return AnimatedBuilder(
-      animation: _pa,
+      animation: _page == 1 ? Listenable.merge([_pa, _loop]) : _pa,
       builder: (context, _) {
         final t = _pa.value;
         final Widget content;
@@ -542,9 +562,10 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           );
         } else {
           content = switch (_page) {
-            1 => _p1(t),
-            2 => _p2(t),
-            3 => _p3(t),
+            1 => _pFaction(t),
+            2 => _p1(t),
+            3 => _p2(t),
+            4 => _p3(t),
             _ => _p4(t),
           };
         }
@@ -679,6 +700,421 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           ],
         ),
       ],
+    );
+  }
+
+  // ------------------------------------------------------------ bab barisan
+
+  bool _isAntag(String uid) => _secrets[uid]?['role'] == 'antagonis';
+
+  String _factionName(bool antag) => antag ? 'Si Terbisik' : 'Warga Desa';
+
+  /// true = fraksi pemain ini menang, false = kalah, null = tak diketahui.
+  bool? get _viewerWon {
+    final id = widget.myId;
+    final role = id == null ? null : _secrets[id]?['role'];
+    if (role == null) return null;
+    final antag = role == 'antagonis';
+    return antag != widget.wargaMenang;
+  }
+
+  /// Kartu semua pemain muncul per fraksi. Fraksi pemenang muncul ala juara
+  /// (kartu naik membal, berpendar, kilau menyapu, berkas cahaya, piala);
+  /// fraksi yang kalah muncul ala runtuh (kartu jatuh menghantam, memucat,
+  /// retak, dicap KALAH). Keduanya muncul bersamaan; kata KEMENANGAN /
+  /// KEKALAHAN untuk fraksi pemain ini baru dicap setelah kartu mendarat.
+  Widget _pFaction(double t) {
+    if (_secrets.isEmpty) {
+      return const Text('Peran para pemain tidak dapat dimuat.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white60));
+    }
+    final ids = [for (final p in widget.players) p['user_id'] as String];
+    final antagIds = [for (final u in ids) if (_isAntag(u)) u];
+    final wargaIds = [for (final u in ids) if (!_isAntag(u)) u];
+    final winners = widget.wargaMenang ? wargaIds : antagIds;
+    final losers = widget.wargaMenang ? antagIds : wargaIds;
+    final time = _loop.value * 600;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _factionHeadline(t),
+        const SizedBox(height: 12),
+        if (winners.isNotEmpty) _group(winners, true, t, time),
+        const SizedBox(height: 14),
+        if (losers.isNotEmpty) _group(losers, false, t, time),
+      ],
+    );
+  }
+
+  Widget _factionHeadline(double t) {
+    final won = _viewerWon;
+    final String word;
+    final String sub;
+    if (won == null) {
+      word = widget.wargaMenang ? 'WARGA MENANG' : 'SI TERBISIK MENANG';
+      sub = '';
+    } else if (won) {
+      word = 'KEMENANGAN!';
+      sub = 'Fraksimu, ${_factionName(!widget.wargaMenang)}, berjaya.';
+    } else {
+      word = 'KEKALAHAN';
+      sub = '${_factionName(!widget.wargaMenang)} meraih kemenangan.';
+    }
+    final col = won == false ? EmbunColors.blood : EmbunColors.gold;
+    final p = _seg(t, 0.52, 0.64);
+    final e = Curves.easeOutCubic.transform(p);
+    return SizedBox(
+      height: 78,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Opacity(
+            opacity: _smooth(_seg(p, 0, 0.5)),
+            child: Transform.scale(
+              scale: _lerp(2.2, 1, e),
+              child: Text(
+                word,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                  color: col,
+                  shadows: [
+                    Shadow(color: col.withValues(alpha: 0.8), blurRadius: 22),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          _up(t, 0.62, 0.78,
+              Text(sub, style: const TextStyle(color: Colors.white70)),
+              dy: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _group(List<String> uids, bool winner, double t, double time) {
+    final antagGroup = _isAntag(uids.first);
+    final accent = winner
+        ? (antagGroup ? EmbunColors.mist : EmbunColors.gold)
+        : Colors.white54;
+    final n = uids.length;
+    final cw = antagGroup
+        ? (winner ? 124.0 : 104.0)
+        : (n <= 4 ? 92.0 : (n <= 6 ? 80.0 : 68.0));
+    final stag = math.min(0.05, 0.28 / math.max(1, n - 1));
+    final start = winner ? 0.04 : 0.06;
+    final mine = widget.myId != null && uids.contains(widget.myId);
+    final name = _factionName(antagGroup);
+
+    final head = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(winner ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+            size: 20, color: winner ? EmbunColors.gold : EmbunColors.blood),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            winner ? 'PEMENANG · $name' : 'KALAH · $name',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.6,
+              color: winner ? EmbunColors.gold : Colors.white60,
+            ),
+          ),
+        ),
+        if (mine)
+          const Text('  ·  FRAKSIMU',
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                  color: EmbunColors.cream)),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: winner ? accent.withValues(alpha: 0.7) : Colors.white24),
+        boxShadow: winner
+            ? [
+          BoxShadow(
+              color: accent.withValues(alpha: 0.22 * _smooth(_seg(t, 0.05, 0.4))),
+              blurRadius: 26),
+        ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _StagePainter(
+                      time: time, t: t, winner: winner, color: accent),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  head,
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 14,
+                    children: [
+                      for (var i = 0; i < uids.length; i++)
+                        _fcard(uids[i], i, stag, start, winner, cw, t, time,
+                            accent),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 0 = warna asli, 1 = abu-abu.
+  List<double> _grayMatrix(double g) {
+    const List<double> id = [
+      1.0, 0, 0, 0, 0, //
+      0, 1, 0, 0, 0, //
+      0, 0, 1, 0, 0, //
+      0, 0, 0, 1, 0,
+    ];
+    const List<double> gr = [
+      0.33, 0.59, 0.11, 0, 0, //
+      0.33, 0.59, 0.11, 0, 0, //
+      0.33, 0.59, 0.11, 0, 0, //
+      0, 0, 0, 1, 0,
+    ];
+    return [for (var i = 0; i < 20; i++) _lerp(id[i], gr[i], g)];
+  }
+
+  Widget _fcard(String uid, int i, double stag, double start, bool winner,
+      double cw, double t, double time, Color accent) {
+    final antag = _isAntag(uid);
+    final String? path = antag
+        ? darkCardPath((_secrets[uid]?['dark_seed'] as int?) ?? 0)
+        : protagonistPath(_cardOf(uid) ?? 'default');
+    final ch = cw * cardAspectFor(path);
+    final a = start + stag * i;
+    final me = uid == widget.myId;
+
+    final Widget body;
+    final Offset off;
+    final double scale, rot, op;
+
+    if (winner) {
+      final p = _seg(t, a, a + 0.26);
+      final e = Curves.easeOutBack.transform(p);
+      off = Offset(
+          0, (1 - e) * 90 + (p >= 1 ? math.sin(time * 1.6 + i) * 3 : 0.0));
+      scale = _lerp(0.55, 1, e);
+      rot = (1 - e) * (i.isEven ? -0.25 : 0.25);
+      op = _smooth(_seg(p, 0, 0.4));
+      final pulse = 0.75 + 0.25 * math.sin(time * 2.4 + i);
+      final glowA =
+      (0.30 + 0.55 * _smooth(p) * pulse).clamp(0.0, 1.0).toDouble();
+      final sheen = _seg(t, a + 0.26, a + 0.52);
+      final se = Curves.easeInOut.transform(sheen);
+      body = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: glowA),
+                    blurRadius: 14 + 22 * p,
+                    spreadRadius: 1 + 2 * p,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          CardArt(path: path, width: cw, glow: accent),
+          if (sheen > 0 && sheen < 1)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment(-1.6 + 3.2 * se, -1),
+                        end: Alignment(-0.6 + 3.2 * se, 1),
+                        colors: [
+                          Colors.white.withValues(alpha: 0),
+                          Colors.white.withValues(
+                              alpha: 0.55 * math.sin(sheen * math.pi)),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            top: -12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Opacity(
+                opacity: _smooth(_seg(p, 0.6, 1)),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  size: 22,
+                  color: EmbunColors.gold,
+                  shadows: [Shadow(color: EmbunColors.gold, blurRadius: 10)],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      final p = _seg(t, a, a + 0.30);
+      final fall = Curves.bounceOut.transform(p);
+      final land = _seg(p, 0.55, 0.85);
+      final shakeX =
+      (land > 0 && land < 1) ? math.sin(land * 40) * 5 * (1 - land) : 0.0;
+      off = Offset(shakeX, (1 - fall) * -150);
+      final droop = _smooth(_seg(p, 0.7, 1));
+      scale = 1.0 - 0.03 * droop;
+      rot = (1 - p) * (i.isEven ? -0.3 : 0.3) + (i.isEven ? 0.05 : -0.05) * droop;
+      op = _smooth(_seg(p, 0, 0.2));
+      final g = _smooth(_seg(p, 0.6, 1));
+      final crack = _seg(p, 0.75, 1);
+      final stamp = _seg(p, 0.85, 1);
+      body = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ColorFiltered(
+            colorFilter: ColorFilter.matrix(_grayMatrix(g)),
+            child: CardArt(path: path, width: cw),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.38 * g)),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                  painter: _CrackPainter(progress: crack, seed: i + 1)),
+            ),
+          ),
+          Positioned.fill(
+            child: Center(
+              child: Opacity(
+                opacity: _smooth(stamp),
+                child: Transform.rotate(
+                  angle: -0.35,
+                  child: Transform.scale(
+                    scale: _lerp(1.8, 1, Curves.easeOutCubic.transform(stamp)),
+                    child: Container(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: EmbunColors.blood, width: 2),
+                      ),
+                      child: Text('KALAH',
+                          style: TextStyle(
+                              fontSize: cw * 0.16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                              color: EmbunColors.blood)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final card = Transform.translate(
+      offset: off,
+      child: Transform.rotate(
+        angle: rot,
+        child: Transform.scale(
+          scale: scale,
+          child: Opacity(
+            opacity: op,
+            child: SizedBox(width: cw, height: ch, child: body),
+          ),
+        ),
+      ),
+    );
+
+    return SizedBox(
+      width: cw,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: cw,
+            height: ch,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [card],
+            ),
+          ),
+          const SizedBox(height: 5),
+          Opacity(
+            opacity: _smooth(_seg(t, 0.3, 0.5)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_nameOf(uid),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        color: winner ? Colors.white : Colors.white54)),
+                if (me)
+                  const Text('KAMU',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: EmbunColors.gold)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1293,6 +1729,121 @@ class _FinalResultScreenState extends State<FinalResultScreen>
 // ====================================================================
 // Pelukis
 // ====================================================================
+
+/// Latar panggung satu fraksi.
+///  Pemenang: berkas cahaya berputar pelan + kunang-kunang naik.
+///  Kalah   : abu jatuh + bayang gelap dari atas.
+class _StagePainter extends CustomPainter {
+  final double time, t;
+  final bool winner;
+  final Color color;
+  const _StagePainter(
+      {required this.time,
+        required this.t,
+        required this.winner,
+        required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final env = _smooth(_seg(t, 0.05, 0.35));
+    if (winner) {
+      final c = size.center(Offset.zero);
+      final len = size.longestSide * 0.8;
+      final paint = Paint();
+      for (var i = 0; i < 12; i++) {
+        final ang = i * 2 * math.pi / 12 + time * 0.1;
+        final w = 0.06 + 0.04 * _rnd(i, 1);
+        final l = len * (0.6 + 0.4 * _rnd(i, 2));
+        final path = Path()
+          ..moveTo(c.dx, c.dy)
+          ..lineTo(c.dx + math.cos(ang - w) * l, c.dy + math.sin(ang - w) * l)
+          ..lineTo(c.dx + math.cos(ang + w) * l, c.dy + math.sin(ang + w) * l)
+          ..close();
+        paint.shader = RadialGradient(colors: [
+          color.withValues(alpha: 0.20 * env),
+          color.withValues(alpha: 0),
+        ]).createShader(Rect.fromCircle(center: c, radius: l));
+        canvas.drawPath(path, paint);
+      }
+      final sp = Paint()
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      for (var i = 0; i < 22; i++) {
+        final u = (time * 0.25 + _rnd(i, 3)) % 1.0;
+        final x = _rnd(i, 4) * size.width;
+        final y = size.height * (1.05 - 1.1 * u);
+        final a = (math.sin(u * math.pi) * 0.8 * env).clamp(0.0, 1.0).toDouble();
+        sp.color = Color.lerp(color, Colors.white, 0.4)!.withValues(alpha: a);
+        canvas.drawCircle(Offset(x, y), 1.5 + 2 * _rnd(i, 5), sp);
+      }
+    } else {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.35 * env),
+              Colors.transparent,
+            ],
+          ).createShader(Offset.zero & size),
+      );
+      final ash = Paint();
+      for (var i = 0; i < 22; i++) {
+        final u = (time * 0.05 + _rnd(i, 3)) % 1.0;
+        final x = _rnd(i, 4) * size.width + math.sin(time * 0.5 + i) * 8;
+        final y = size.height * u;
+        final a = (math.sin(u * math.pi) * 0.5 * env).clamp(0.0, 1.0).toDouble();
+        ash.color = const Color(0xFFB9B2C8).withValues(alpha: a);
+        canvas.drawCircle(Offset(x, y), 1.1 + 1.6 * _rnd(i, 5), ash);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StagePainter old) => true;
+}
+
+/// Retakan yang menjalar dari satu titik di muka kartu.
+class _CrackPainter extends CustomPainter {
+  final double progress;
+  final int seed;
+  const _CrackPainter({required this.progress, required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final origin = Offset(size.width * (0.3 + 0.4 * _rnd(seed, 1)),
+        size.height * (0.3 + 0.35 * _rnd(seed, 2)));
+    final dark = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.8
+      ..color = Colors.black.withValues(alpha: 0.85);
+    final light = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.35);
+    const segs = 6;
+    for (var k = 0; k < 5; k++) {
+      var ang = k * 2 * math.pi / 5 + _rnd(seed, 3 + k) * 0.8;
+      var pos = origin;
+      final path = Path()..moveTo(pos.dx, pos.dy);
+      for (var s = 0; s < segs; s++) {
+        if (s / segs >= progress) break;
+        ang += (_rnd(seed * 10 + k, s) - 0.5) * 0.9;
+        pos += Offset.fromDirection(
+            ang, size.shortestSide * 0.14 * (0.7 + 0.6 * _rnd(seed + k, s + 7)));
+        path.lineTo(pos.dx, pos.dy);
+      }
+      canvas.drawPath(path, dark);
+      canvas.drawPath(path.shift(const Offset(1, 1)), light);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CrackPainter old) => old.progress != progress;
+}
 
 /// Cincin 30 titik: tiap titik menyala menurut jumlah daun; titik terbaru
 /// berpijar.
