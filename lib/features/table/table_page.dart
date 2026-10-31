@@ -21,6 +21,7 @@ import 'jail_verdict_scene.dart';
 import 'eviction_verdict_scene.dart';
 import 'emote_panel.dart';
 import 'ending_cinematic.dart';
+import 'final_screen.dart';
 import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
@@ -2060,6 +2061,24 @@ class _TablePageState extends State<TablePage> {
         onDone: () {
           if (mounted) setState(() => _endingSeen = true);
         },
+      );
+    }
+    if (!bubar) {
+      return FinalResultScreen(
+        key: const ValueKey('final'),
+        wargaMenang: wargaMenang,
+        leaves: leaves,
+        day: day,
+        verdict: verdict,
+        endReason: g['end_reason'] as String?,
+        players: players,
+        defs: defs,
+        abilityDefs: abilityDefs,
+        usernames: usernames,
+        secrets: secretsFuture!,
+        recap: recapFuture!,
+        detailsBuilder: _recapSection,
+        onExit: () => _backToLobby(),
       );
     }
     final sakura =

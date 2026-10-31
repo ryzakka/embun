@@ -8,6 +8,7 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/table_page.dart';
+import 'role_reveal.dart';
 import '../../data/game_repository.dart';
 
 double _seg(double v, double a, double b) =>
@@ -159,7 +160,6 @@ class _PrologueFlowState extends State<PrologueFlow>
   String? role;
   int darkSeed = 0;
   String myCard = 'default';
-  bool revealed = false;
   final _gr = GameRepository();
   Timer? _beat;
 
@@ -319,9 +319,14 @@ class _PrologueFlowState extends State<PrologueFlow>
         fit: StackFit.expand,
         children: [
           Backdrop(path: sceneryPath('desajembatan-keringgulita'), dim: 0.5),
-          SafeArea(
-            child: step == _Step.shuffling ? _shufflingStep() : _roleStep(),
-          ),
+          if (step == _Step.shuffling)
+            SafeArea(child: _shufflingStep())
+          else
+            RoleReveal(
+              role: role,
+              cardPath: _roleCardPath(),
+              onContinue: role == null ? () {} : _openTable,
+            ),
         ],
       ),
     );
@@ -685,112 +690,11 @@ class _PrologueFlowState extends State<PrologueFlow>
     );
   }
 
-  /// Selalu punggung protagonis untuk semua pemain, supaya peran Si Terbisik
-  /// tidak bocor lewat warna punggung kartu.
-  Widget _cardBack(double w, double h) => Container(
-    key: const ValueKey('back'),
-    width: w,
-    height: h,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(10),
-      boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 14)],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: GameImage(path: cardBackPath(), cacheWidth: 700),
-    ),
-  );
-
-  Widget _roleStep() {
-    final isAntag = role == 'antagonis';
-    final String? cardPath = role == null
-        ? null
-        : isAntag
-        ? darkCardPath(darkSeed)
-        : protagonistPath(myCard);
-    final glow = isAntag ? const Color(0xFFB07CE8) : const Color(0xFF7FE0A0);
-
-    return LayoutBuilder(builder: (context, c) {
-      final cardH = (c.maxHeight - 190).clamp(150.0, 340.0).toDouble();
-      final cardW = cardH / cardAspectFor(cardPath);
-      return Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTapDown: (_) => setState(() => revealed = true),
-                onTapUp: (_) => setState(() => revealed = false),
-                onTapCancel: () => setState(() => revealed = false),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: revealed
-                      ? CardArt(
-                    key: const ValueKey('front'),
-                    path: cardPath,
-                    width: cardW,
-                    glow: glow,
-                  )
-                      : _cardBack(cardW, cardH),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 100,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: revealed
-                      ? Padding(
-                    key: const ValueKey('txt'),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GameIcon(
-                                isAntag ? 'bulirhitam' : 'helaidaun',
-                                size: 36),
-                            const SizedBox(width: 8),
-                            Text(isAntag ? 'Si Terbisik' : 'Warga Desa',
-                                style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.6,
-                                    color: glow)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isAntag
-                              ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
-                              : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                      : const Row(
-                    key: ValueKey('hint'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GameIcon('touch', size: 24),
-                      SizedBox(width: 6),
-                      Text('Tahan kartu untuk melihat perananmu'),
-                    ],
-                  ),
-                ),
-              ),
-              EmbunButton(
-                label: 'Aku sudah ingat',
-                icon: 'centang',
-                onPressed: role == null ? null : _openTable,
-              ),
-            ],
-          ),
-        ),
-      );
-    });
+  /// Muka kartu pemain: kartu gelap untuk Si Terbisik, kartu karakter untuk
+  /// warga. Null selama peran belum dimuat.
+  String? _roleCardPath() {
+    if (role == null) return null;
+    return role == 'antagonis' ? darkCardPath(darkSeed) : protagonistPath(myCard);
   }
 }
 
