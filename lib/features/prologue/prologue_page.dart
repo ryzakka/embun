@@ -325,6 +325,10 @@ class _PrologueFlowState extends State<PrologueFlow>
             RoleReveal(
               role: role,
               cardPath: _roleCardPath(),
+              // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
+              // sebelum kartu gelapnya terungkap.
+              disguisePath: protagonistPath(myCard),
+              disguiseName: characterTitle(myCard),
               onContinue: role == null ? () {} : _openTable,
             ),
         ],

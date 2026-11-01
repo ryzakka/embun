@@ -2179,9 +2179,27 @@ class _TablePageState extends State<TablePage> {
     final seed = (entry.first.value['dark_seed'] as int?) ?? 0;
     final who = players.where((p) => p['user_id'] == antagId);
     final name = who.isEmpty ? '?' : who.first['name'] as String;
+    // Kartu baik samaran yang selama ini dilihat pemain lain.
+    final disCard = who.isEmpty ? null : who.first['character_card'] as String?;
+    final disPath = disCard == null ? null : protagonistPath(disCard);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (disPath != null) ...[
+          Opacity(
+            opacity: 0.75,
+            child: CardArt(
+              path: disPath,
+              width: 70,
+              glow: const Color(0xFFFFD866),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Icon(Icons.arrow_forward_rounded,
+                size: 22, color: Color(0xFFB07CE8)),
+          ),
+        ],
         CardArt(
           path: darkCardPath(seed),
           width: 90,
@@ -2197,6 +2215,10 @@ class _TablePageState extends State<TablePage> {
               Text(name,
                   style: const TextStyle(
                       fontSize: 24, fontWeight: FontWeight.bold)),
+              if (disCard != null)
+                Text('menyamar sebagai ${characterTitle(disCard)}',
+                    style:
+                    const TextStyle(fontSize: 13, color: Colors.white60)),
               if (usernames[antagId] != null)
                 Text('yaitu ${usernames[antagId]}',
                     style:

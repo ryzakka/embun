@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -41,6 +42,10 @@ class _LobbyPageState extends State<LobbyPage>
   String? gameId;
   bool busy = false;
   bool _navigated = false;
+
+  /// Slot ('ruangan:pemain') yang sudah pernah dianimasikan masuk,
+  /// agar animasi hanya diputar untuk pemain yang benar-benar baru.
+  final Set<String> _seenSlots = {};
 
   late _Stage _stage;
   bool _joinMode = false;
@@ -317,7 +322,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.1.13',
+                                    'BALAI PERTEMUAN DESA V2.1.14',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -479,27 +484,47 @@ class _LobbyPageState extends State<LobbyPage>
                           () => setState(() => _stage = _Stage.title)),
                 ),
                 if (wide)
-                  Positioned(
-                    left: 56,
-                    bottom: 56,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        logo(min(380.0, c.maxWidth * 0.34)),
-                        const SizedBox(width: 56),
-                        menuCol,
-                      ],
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(56, 56, 24, 40),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        // Menyusut otomatis bila layar pendek, tak pernah meluap.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.bottomLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              logo(min(380.0, c.maxWidth * 0.34)),
+                              const SizedBox(width: 56),
+                              menuCol,
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   )
                 else
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 48, 24, 36),
-                    child: Column(
-                      children: [
-                        logo(min(320.0, c.maxWidth - 48)),
-                        const Spacer(),
-                        menuCol,
+                  Positioned.fill(
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Padding(
+                            padding:
+                            const EdgeInsets.fromLTRB(24, 48, 24, 36),
+                            child: Column(
+                              children: [
+                                logo(min(320.0, c.maxWidth - 48)),
+                                const Spacer(),
+                                const SizedBox(height: 16),
+                                menuCol,
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -716,102 +741,417 @@ class _LobbyPageState extends State<LobbyPage>
     }
   }
 
+  static const int _maxPlayers = 8;
+  static const int _minPlayers = 3;
+
+  /// Ruangan = kepala (logo + kode) → papan slot pemain → bilah aksi.
+  /// Di layar pendek (mis. ponsel landscape) bilah aksi ikut menggulir
+  /// supaya tidak menutupi slot.
   Widget _roomContent(String id, Map<String, dynamic> game,
       List<Map<String, dynamic>> players, Map<String, dynamic>? me) {
     final isHost = game['host_id'] == repo.myId;
     final hostId = game['host_id'] as String;
-    final myCard = (me?['character_card'] as String?) ?? 'default';
     final iReady = me?['ready'] == true;
     final readyN = players.where((p) => p['ready'] == true).length;
-    final canStart = players.length >= 3 && readyN == players.length;
+    final canStart =
+        players.length >= _minPlayers && readyN == players.length;
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              SizedBox(
-                height: 48,
-                child: GameImage(
-                    path: logoPath('logoteks-transparent'),
-                    fit: BoxFit.contain,
-                    cacheWidth: 600),
-              ),
-              const SizedBox(height: 10),
-              _codeHeader(game['code'] as String),
-              const SizedBox(height: 14),
-              _meCard(id, me, myCard, iReady),
-              const SizedBox(height: 12),
-              iReady
-                  ? EmbunButton(
-                label: 'Siap. Ketuk untuk batal',
-                icon: 'centang',
-                kind: EmbunButtonKind.secondary,
-                expand: true,
-                onPressed: me == null ? null : () => _setReady(id, false),
-              )
-                  : EmbunButton(
-                label: 'Siap',
-                icon: 'centang',
-                expand: true,
-                onPressed: me == null ? null : () => _setReady(id, true),
-              ),
-              const SizedBox(height: 20),
-              SectionHeader(
-                icon: 'persona',
-                title: 'Pemain ${players.length}/8 · siap $readyN',
-              ),
-              const SizedBox(height: 10),
-              for (final p in players) _playerTile(p, hostId),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        if (isHost)
-          EmbunButton(
-            label: canStart
-                ? 'Mulai'
-                : players.length < 3
-                ? 'Menunggu pemain (min. 3)'
-                : 'Menunggu semua siap ($readyN/${players.length})',
-            icon: 'start',
-            expand: true,
-            onPressed: canStart
-                ? () async {
-              try {
-                await repo.startGame(id);
-              } catch (e) {
-                _toast(errMsg(e));
-              }
-            }
-                : null,
-          ),
-        const SizedBox(height: 8),
-        EmbunButton(
-          label: isHost ? 'Bubarkan ruangan' : 'Keluar',
-          icon: isHost ? 'bubarkan' : 'keluar',
-          kind: EmbunButtonKind.secondary,
-          expand: true,
-          height: 44,
-          onPressed: () async {
-            // Keluar dulu agar penghapusan ruangan tidak memicu
-            // pesan "dibubarkan" untuk host sendiri.
-            setState(() {
-              gameId = null;
-              _stage = _Stage.menu;
-            });
-            try {
-              await repo.leave(id);
-            } catch (e) {
-              if (!mounted) return;
-              setState(() => gameId = id);
-              _toast(errMsg(e));
-            }
-          },
-        ),
-      ],
+    final head = <Widget>[
+      SizedBox(
+        height: 40,
+        child: GameImage(
+            path: logoPath('logoteks-transparent'),
+            fit: BoxFit.contain,
+            cacheWidth: 600),
+      ),
+      const SizedBox(height: 10),
+      _codeHeader(game['code'] as String),
+      const SizedBox(height: 18),
+      SectionHeader(
+        icon: 'persona',
+        title: 'Pemain ${players.length}/$_maxPlayers · siap $readyN',
+      ),
+      const SizedBox(height: 10),
+      _slotBoard(id, players, hostId),
+      const SizedBox(height: 8),
+      _slotHint(me, iReady),
+    ];
+
+    final actions = _roomActions(
+      id: id,
+      me: me,
+      isHost: isHost,
+      iReady: iReady,
+      canStart: canStart,
+      playerCount: players.length,
+      readyN: readyN,
     );
+
+    return LayoutBuilder(builder: (context, c) {
+      final compact = c.maxHeight < 560;
+      if (compact) {
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [...head, const SizedBox(height: 14), actions],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ListView(padding: EdgeInsets.zero, children: head),
+          ),
+          const SizedBox(height: 12),
+          actions,
+        ],
+      );
+    });
+  }
+
+  Widget _slotHint(Map<String, dynamic>? me, bool iReady) {
+    if (me == null) return const SizedBox.shrink();
+    return Text(
+      iReady
+          ? 'Kartumu terkunci selama berstatus siap.'
+          : 'Ketuk kartumu untuk mengganti karakter.',
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontSize: 11, color: Colors.white54),
+    );
+  }
+
+  /// Papan slot: kolom menyesuaikan lebar (2-4), tinggi mengikuti isi,
+  /// sehingga tidak pernah meluap. Slot kosong menjadi tempat pemain berikut.
+  Widget _slotBoard(
+      String id, List<Map<String, dynamic>> players, String hostId) {
+    return LayoutBuilder(builder: (context, c) {
+      const gap = 10.0;
+      final w = c.maxWidth;
+      final cols = (w / 118).floor().clamp(2, 4).toInt();
+      final slotW = (w - gap * (cols - 1)) / cols;
+      // Muat pertama: slot muncul beruntun. Pemain susulan: langsung dramatis.
+      final firstLoad = !_seenSlots.any((k) => k.startsWith('$id:'));
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (var i = 0; i < _maxPlayers; i++)
+            SizedBox(
+              key: ValueKey(i < players.length
+                  ? 'p-${players[i]['user_id']}'
+                  : 'e-$i'),
+              width: slotW,
+              child: i < players.length
+                  ? _revealSlot(id, players[i], hostId, i, firstLoad)
+                  : _emptySlot(i),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _revealSlot(String id, Map<String, dynamic> p, String hostId, int i,
+      bool firstLoad) {
+    final key = '$id:${p['user_id']}';
+    return _SlotReveal(
+      key: ValueKey('r-$key'),
+      play: !_seenSlots.contains(key),
+      delay: firstLoad ? Duration(milliseconds: 140 * i) : Duration.zero,
+      grand: !firstLoad,
+      onShown: () => _seenSlots.add(key),
+      child: _playerSlot(id, p, hostId),
+    );
+  }
+
+  Widget _slotFrame({
+    required Widget child,
+    required Color border,
+    required Color fill,
+    double borderWidth = 1,
+    double glow = 0,
+  }) =>
+      Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border, width: borderWidth),
+          boxShadow: glow > 0
+              ? [
+            BoxShadow(
+              color: EmbunColors.leaf.withValues(alpha: 0.12 + 0.3 * glow),
+              blurRadius: 8 + 12 * glow,
+              spreadRadius: 0.5 + 1.5 * glow,
+            ),
+          ]
+              : null,
+        ),
+        child: child,
+      );
+
+  Widget _chip(Widget child) => Container(
+    padding: const EdgeInsets.all(2),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.55),
+      shape: BoxShape.circle,
+    ),
+    child: child,
+  );
+
+  Widget _playerSlot(String id, Map<String, dynamic> p, String hostId) {
+    final ready = p['ready'] == true;
+    final isMe = p['user_id'] == repo.myId;
+    final isHostP = p['user_id'] == hostId;
+    final card = p['character_card'] as String;
+    final border = isMe
+        ? EmbunColors.gold
+        : ready
+        ? EmbunColors.leaf.withValues(alpha: 0.8)
+        : EmbunColors.goldDim.withValues(alpha: 0.3);
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, _) {
+        // Slot yang siap berdenyut hijau pelan.
+        final pulse = ready ? 0.5 + 0.5 * sin(_t.value * 120 * 2.2) : 0.0;
+        return Semantics(
+          label: '${p['name']}, ${characterTitle(card)}, '
+              '${ready ? 'siap' : 'belum siap'}',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: isMe && !ready ? () => _pickCard(id, p) : null,
+            child: _slotFrame(
+              border: border,
+              borderWidth: isMe ? 2 : 1,
+              glow: ready ? 0.25 + 0.75 * pulse : 0,
+              fill: Colors.black.withValues(alpha: isMe ? 0.34 : 0.22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1 / kProtagonistAspect,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: GameImage(
+                              path: protagonistPath(card),
+                              fit: BoxFit.cover,
+                              cacheWidth: 300),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child:
+                          _chip(GameIcon(ready ? 'centang' : 'wait', size: 24)),
+                        ),
+                        if (isHostP)
+                          Positioned(
+                            top: 4,
+                            left: 4,
+                            child: _chip(const GameIcon('host', size: 24)),
+                          ),
+                        if (isMe && !ready)
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: _chip(const Padding(
+                              padding: EdgeInsets.all(3),
+                              child: Icon(Icons.edit,
+                                  size: 14, color: EmbunColors.gold),
+                            )),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 38,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: SizedBox(
+                        width: 100,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isMe ? '${p['name']} (kamu)' : p['name'] as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isMe ? EmbunColors.gold : EmbunColors.cream,
+                              ),
+                            ),
+                            Text(
+                              characterTitle(card),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _emptySlot(int index) {
+    final needed = index < _minPlayers;
+    return _slotFrame(
+      border: EmbunColors.goldDim.withValues(alpha: needed ? 0.35 : 0.18),
+      fill: Colors.black.withValues(alpha: 0.12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 1 / kProtagonistAspect,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(9),
+                color: Colors.white.withValues(alpha: 0.03),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08), width: 1),
+              ),
+              child: Center(
+                // Berdenyut pelan, bergantian antarslot: "menanti pemain".
+                child: AnimatedBuilder(
+                  animation: _t,
+                  builder: (context, _) {
+                    final w =
+                        0.5 + 0.5 * sin(_t.value * 120 * 1.6 + index * 0.9);
+                    return Transform.scale(
+                      scale: 0.94 + 0.1 * w,
+                      child: Icon(Icons.person_add_alt_1_outlined,
+                          size: 30,
+                          color: Colors.white.withValues(
+                              alpha: (needed ? 0.16 : 0.08) +
+                                  (needed ? 0.26 : 0.1) * w)),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 38,
+            child: Center(
+              child: Text(
+                needed ? 'Menunggu pemain' : 'Slot kosong',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: needed ? 0.5 : 0.3),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roomActions({
+    required String id,
+    required Map<String, dynamic>? me,
+    required bool isHost,
+    required bool iReady,
+    required bool canStart,
+    required int playerCount,
+    required int readyN,
+  }) {
+    final readyBtn = iReady
+        ? EmbunButton(
+      label: 'Siap · ketuk untuk batal',
+      icon: 'centang',
+      kind: EmbunButtonKind.secondary,
+      expand: true,
+      onPressed: me == null ? null : () => _setReady(id, false),
+    )
+        : EmbunButton(
+      label: 'Siap',
+      icon: 'centang',
+      expand: true,
+      onPressed: me == null ? null : () => _setReady(id, true),
+    );
+
+    final startBtn = EmbunButton(
+      label: canStart
+          ? 'Mulai'
+          : playerCount < _minPlayers
+          ? 'Butuh min. $_minPlayers pemain'
+          : 'Menunggu semua siap ($readyN/$playerCount)',
+      icon: 'start',
+      expand: true,
+      onPressed: canStart
+          ? () async {
+        try {
+          await repo.startGame(id);
+        } catch (e) {
+          _toast(errMsg(e));
+        }
+      }
+          : null,
+    );
+
+    final leaveBtn = EmbunButton(
+      label: isHost ? 'Bubarkan ruangan' : 'Keluar',
+      icon: isHost ? 'bubarkan' : 'keluar',
+      kind: EmbunButtonKind.secondary,
+      expand: true,
+      height: 44,
+      onPressed: () async {
+        // Keluar dulu agar penghapusan ruangan tidak memicu
+        // pesan "dibubarkan" untuk host sendiri.
+        setState(() {
+          gameId = null;
+          _stage = _Stage.menu;
+        });
+        try {
+          await repo.leave(id);
+        } catch (e) {
+          if (!mounted) return;
+          setState(() => gameId = id);
+          _toast(errMsg(e));
+        }
+      },
+    );
+
+    return LayoutBuilder(builder: (context, c) {
+      final sideBySide = isHost && c.maxWidth >= 460;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isHost && sideBySide)
+            Row(
+              children: [
+                Expanded(child: readyBtn),
+                const SizedBox(width: 10),
+                Expanded(child: startBtn),
+              ],
+            )
+          else ...[
+            readyBtn,
+            if (isHost) ...[const SizedBox(height: 8), startBtn],
+          ],
+          const SizedBox(height: 8),
+          leaveBtn,
+        ],
+      );
+    });
   }
 
   Widget _codeHeader(String code) => Container(
@@ -858,102 +1198,135 @@ class _LobbyPageState extends State<LobbyPage>
       ],
     ),
   );
+}
 
-  Widget _meCard(
-      String id, Map<String, dynamic>? me, String myCard, bool iReady) =>
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
-        ),
-        child: Row(
+/// Animasi masuk dramatis untuk satu slot pemain: kartu berputar 3D dari
+/// samping dengan pantulan, disusul gelombang cahaya emas. [grand] (pemain
+/// susulan) memberi kilatan dan guncangan lebih besar. [play] false = tampil
+/// langsung tanpa animasi.
+class _SlotReveal extends StatefulWidget {
+  final Widget child;
+  final bool play;
+  final bool grand;
+  final Duration delay;
+  final VoidCallback onShown;
+  const _SlotReveal({
+    super.key,
+    required this.child,
+    required this.play,
+    required this.grand,
+    required this.delay,
+    required this.onShown,
+  });
+
+  @override
+  State<_SlotReveal> createState() => _SlotRevealState();
+}
+
+class _SlotRevealState extends State<_SlotReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1300));
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onShown();
+    if (!widget.play) {
+      _c.value = 1;
+    } else if (widget.delay == Duration.zero) {
+      _go();
+    } else {
+      _timer = Timer(widget.delay, _go);
+    }
+  }
+
+  void _go() {
+    if (!mounted) return;
+    if (widget.grand) HapticFeedback.mediumImpact();
+    _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _c.value;
+        if (t >= 1) return child!;
+        final flip = Curves.easeOutBack.transform(_seg(t, 0.0, 0.55));
+        final angle = (1 - flip) * 1.45;
+        final fade = _seg(t, 0.0, 0.18);
+        final ring = _seg(t, 0.38, 1.0);
+        final k = widget.grand ? 1.0 : 0.55;
+        // guncangan kecil saat kartu mendarat
+        final shake = widget.grand
+            ? sin(ring * pi * 6) * (1 - ring) * 3.0 * _seg(t, 0.4, 0.5)
+            : 0.0;
+        final pop = 0.6 + 0.4 * flip + 0.05 * k * sin(ring * pi);
+        return Stack(
+          clipBehavior: Clip.none,
           children: [
-            CardArt(path: protagonistPath(myCard), width: 78),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(me?['name'] as String? ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: EmbunColors.gold)),
-                  Text(characterTitle(myCard),
-                      style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 10),
-                  EmbunButton(
-                    label: iReady ? 'Kartu terkunci' : 'Ganti kartu',
-                    icon: iReady ? 'lock' : 'customization',
-                    kind: EmbunButtonKind.secondary,
-                    height: 46,
-                    onPressed:
-                    me == null || iReady ? null : () => _pickCard(id, me),
+            // gelombang cahaya yang meluas lalu memudar
+            if (ring > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14 + 10 * ring),
+                      boxShadow: [
+                        BoxShadow(
+                          color: EmbunColors.gold
+                              .withValues(alpha: (1 - ring) * 0.85 * k),
+                          blurRadius: 10 + 26 * ring * k,
+                          spreadRadius: 2 + 22 * ring * k,
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
+              ),
+            Opacity(
+              opacity: fade,
+              child: Transform.translate(
+                offset: Offset(shake, 0),
+                child: Transform.scale(
+                  scale: pop,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.0014)
+                      ..rotateY(angle),
+                    child: child,
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-      );
-
-  Widget _playerTile(Map<String, dynamic> p, String hostId) {
-    final ready = p['ready'] == true;
-    final isMe = p['user_id'] == repo.myId;
-    final isHostP = p['user_id'] == hostId;
-    final card = p['character_card'] as String;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: ready
-              ? EmbunColors.leaf.withValues(alpha: 0.7)
-              : EmbunColors.goldDim.withValues(alpha: 0.3),
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-        leading: PlayerAvatar(
-          path: protagonistPath(card),
-          size: 44,
-          ring: isMe ? EmbunColors.gold : EmbunColors.goldDim,
-        ),
-        title: Row(
-          children: [
-            Flexible(
-              child: Text(p['name'] as String,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            if (isHostP)
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.fromLTRB(2, 1, 8, 1),
-                decoration: BoxDecoration(
-                  color: EmbunColors.gold.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GameIcon('host', size: 20),
-                    SizedBox(width: 3),
-                    Text('Host',
-                        style:
-                        TextStyle(fontSize: 11, color: EmbunColors.gold)),
-                  ],
+            // kilat putih singkat di bidang kartu saat mendarat
+            if (widget.grand && t > 0.4 && t < 0.62)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.white.withValues(
+                          alpha: 0.35 * (1 - _seg(t, 0.4, 0.62))),
+                    ),
+                  ),
                 ),
               ),
           ],
-        ),
-        subtitle: Text(characterTitle(card)),
-        trailing: GameIcon(ready ? 'centang' : 'wait', size: 32),
-      ),
+        );
+      },
     );
   }
 }

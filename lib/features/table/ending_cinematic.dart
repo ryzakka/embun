@@ -231,10 +231,14 @@ class _EndingCinematicState extends State<EndingCinematic>
   final List<List<Offset>> _cracks = _makeCracks();
 
   bool _revealReady = false;
-  Map<String, dynamic>? _antag; // {name, seed, username}
+  Map<String, dynamic>? _antag; // {name, seed, card, username}
   bool _hapClimax = false;
   bool _hapTitle = false;
   bool _done = false;
+
+  /// Adegan pengungkapan Si Terbisik (jalan sendiri, lebih panjang dari
+  /// sisa timeline utama) sudah selesai.
+  bool _revealDone = false;
 
   bool get _win => widget.wargaMenang;
 
@@ -257,6 +261,8 @@ class _EndingCinematicState extends State<EndingCinematic>
 
   bool get _atEnd {
     final v = _ctl.value;
+    // Ada Si Terbisik untuk diungkap: tombol akhir menunggu adegannya.
+    if (_antag != null && v >= _revealAt) return _revealDone;
     if (v >= 0.97) return true;
     return v >= _revealAt && _revealReady && _antag == null;
   }
@@ -286,8 +292,12 @@ class _EndingCinematicState extends State<EndingCinematic>
       for (final e in s.entries) {
         if (e.value['role'] == 'antagonis') {
           String name = '?';
+          String? card; // kartu baik samaran
           for (final p in widget.players) {
-            if (p['user_id'] == e.key) name = p['name'] as String;
+            if (p['user_id'] == e.key) {
+              name = p['name'] as String;
+              card = p['character_card'] as String?;
+            }
           }
           String? uname;
           try {
@@ -296,6 +306,7 @@ class _EndingCinematicState extends State<EndingCinematic>
           found = {
             'name': name,
             'seed': (e.value['dark_seed'] as int?) ?? 0,
+            'card': card,
             'username': uname,
           };
           break;
@@ -739,21 +750,157 @@ class _EndingCinematicState extends State<EndingCinematic>
 
   Widget _reveal(double t, double w, double h) {
     final a = _antag;
-    if (a == null) return const SizedBox.shrink();
-    final scrim = _smooth(_seg(t, _revealAt, 0.78));
-    if (scrim <= 0) return const SizedBox.shrink();
+    if (a == null || t < _revealAt) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: _AntagReveal(
+        key: const ValueKey('antagReveal'),
+        name: a['name'] as String,
+        username: a['username'] as String?,
+        seed: a['seed'] as int,
+        card: a['card'] as String?,
+        onDone: () {
+          if (mounted && !_revealDone) setState(() => _revealDone = true);
+        },
+      ),
+    );
+  }
+}
 
-    final lab = _smooth(_seg(t, 0.76, 0.82));
-    final nameA = _smooth(_seg(t, 0.92, 0.97));
+// ---------------------------------------------------------------------------
+// Pengungkapan Si Terbisik: wajah samaran dulu, lalu wajah aslinya
+// ---------------------------------------------------------------------------
+
+double _rr(int i, int k) {
+  final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+  return v - v.floorToDouble();
+}
+
+/// Adegan penutup sebelum rekap. Berjalan dengan pengendali sendiri supaya
+/// tidak terikat sisa timeline utama.
+///
+///  0.00-0.06  layar menggelap
+///  0.05-0.10  "Selama ini, ia menyamar sebagai..."
+///  0.09-0.28  kartu baik samarannya masuk lalu berbalik (pendar emas)
+///  0.30-0.36  nama pemain + nama kartu samaran
+///  0.46-0.68  PUTAR BALIK: kartu baik menggelap dan bergetar, layar
+///             tersentak, kartu terbelah bayangan merah-ungu (glitch),
+///             kilatan ungu, lalu berganti jadi kartu gelap; asap, cincin
+///             kejut, bara ungu
+///  0.50-0.62  teks berganti: "Si Terbisik ternyata..." / nama berubah warna
+///             / "SI TERBISIK"
+///  0.68-0.74  username asli
+///  0.86       selesai (tombol "Lihat rekap" muncul)
+class _AntagReveal extends StatefulWidget {
+  final String name;
+  final String? username;
+  final int seed;
+  final String? card; // kartu karakter (samaran)
+  final VoidCallback onDone;
+
+  const _AntagReveal({
+    super.key,
+    required this.name,
+    required this.username,
+    required this.seed,
+    required this.card,
+    required this.onDone,
+  });
+
+  @override
+  State<_AntagReveal> createState() => _AntagRevealState();
+}
+
+class _AntagRevealState extends State<_AntagReveal>
+    with SingleTickerProviderStateMixin {
+  static const _ms = 7600;
+  static const _cream = Color(0xFFFFF2C0);
+  static const _lavender = Color(0xFFE6D8F5);
+
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: _ms));
+  final Set<int> _fired = {};
+  bool _done = false;
+
+  late final String? _darkPath = darkCardPath(widget.seed);
+  late final String? _disPath =
+  widget.card == null ? null : protagonistPath(widget.card!);
+  bool get _hasDis => _disPath != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addListener(_tick);
+    _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _finish() {
+    if (_done || !mounted) return;
+    _done = true;
+    widget.onDone();
+  }
+
+  void _tick() {
+    final u = _c.value;
+    if (u >= 0.20 && _fired.add(0)) HapticFeedback.lightImpact();
+    if (_hasDis) {
+      if (u >= 0.47 && _fired.add(1)) HapticFeedback.mediumImpact();
+      if (u >= 0.50 && _fired.add(2)) HapticFeedback.mediumImpact();
+      if (u >= 0.53 && _fired.add(3)) HapticFeedback.heavyImpact();
+    }
+    if (u >= 0.54 && _fired.add(4)) {
+      HapticFeedback.heavyImpact();
+      Future.delayed(
+          const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
+      Future.delayed(
+          const Duration(milliseconds: 420), HapticFeedback.mediumImpact);
+    }
+    if (u >= 0.86) _finish();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      return AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) => _body(box.maxWidth, box.maxHeight),
+      );
+    });
+  }
+
+  Widget _body(double w, double h) {
+    final u = _c.value;
+    final sec = u * _ms / 1000;
+    final hasDis = _hasDis;
+    final tw = hasDis ? _seg(u, 0.46, 0.68) : 1.0;
+    final swapped = !hasDis || tw >= 0.36;
+    final mixC = hasDis ? _smooth(_seg(tw, 0.30, 0.55)) : 1.0;
+    final accent = Color.lerp(EmbunColors.gold, EmbunColors.mist, mixC)!;
+
+    final scrim = _smooth(_seg(u, 0, 0.06));
     final ch = (h * 0.40).clamp(120.0, 300.0).toDouble();
-    final path = darkCardPath(a['seed'] as int);
-    final cw = ch / cardAspectFor(path);
-    final uname = a['username'] as String?;
+    final cw = ch / cardAspectFor(_darkPath ?? _disPath);
 
+    // Layar tersentak saat putar balik.
+    var shake = Offset.zero;
+    if (hasDis && tw > 0 && tw < 0.62) {
+      final q = (tw * 60).floor();
+      final ramp = tw < 0.30 ? 2.5 * _seg(tw, 0, 0.30) : 0.0;
+      final hit = tw >= 0.30 ? 12.0 * (1 - _seg(tw, 0.30, 0.62)) : 0.0;
+      final amp = ramp + hit;
+      shake = Offset((_rr(q, 13) - 0.5) * amp, (_rr(q, 14) - 0.5) * amp);
+    }
+
+    // Kartu.
     Widget card;
-    if (path == null) {
+    if (_darkPath == null && _disPath == null) {
       card = const SizedBox.shrink();
-    } else if (t < 0.80) {
+    } else if (u < 0.09) {
       card = SizedBox(width: cw, height: ch);
     } else {
       card = FlipCard(
@@ -762,51 +909,112 @@ class _EndingCinematicState extends State<EndingCinematic>
         width: cw,
         height: ch,
         revealed: true,
-        dark: true,
-        suspense: true,
-        glow: EmbunColors.mist,
-        front: Container(
-          width: cw,
-          height: ch,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: EmbunColors.mist, width: 2),
-            boxShadow: [
-              BoxShadow(
-                  color: EmbunColors.mist.withValues(alpha: 0.5),
-                  blurRadius: 18),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: GameImage(path: path, cacheWidth: 600),
-          ),
-        ),
+        dark: !hasDis,
+        suspense: !hasDis,
+        glow: Color.lerp(EmbunColors.gold, EmbunColors.mist, mixC)!,
+        front: _front(cw, ch, tw, swapped, accent, sec),
       );
     }
 
-    return Positioned.fill(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(color: Colors.black.withValues(alpha: 0.66 * scrim)),
-          Align(
+    // Label atas.
+    final lab1 = hasDis
+        ? _smooth(_seg(u, 0.05, 0.10)) * (1 - _smooth(_seg(u, 0.44, 0.49)))
+        : 0.0;
+    final lab2 = hasDis
+        ? _smooth(_seg(u, 0.50, 0.56))
+        : _smooth(_seg(u, 0.05, 0.10));
+
+    // Nama dan keterangan.
+    final nameA = _smooth(_seg(u, 0.30, 0.36));
+    final mixName = hasDis ? _smooth(_seg(u, 0.54, 0.62)) : 1.0;
+    final ph2 = hasDis ? _smooth(_seg(u, 0.56, 0.62)) : 1.0;
+    final nameColor = Color.lerp(_cream, _lavender, mixName)!;
+    final glow = Color.lerp(EmbunColors.gold, EmbunColors.mist, mixName)!;
+    final unameA = _smooth(_seg(u, 0.68, 0.74));
+    final disTitle = widget.card == null ? null : characterTitle(widget.card!);
+
+    // Kilatan ungu di titik tukar.
+    final flashA = hasDis
+        ? (_seg(tw, 0.30, 0.36) * (1 - _smooth(_seg(tw, 0.36, 0.56))) * 0.8)
+        .clamp(0.0, 1.0)
+        .toDouble()
+        : 0.0;
+
+    final tw2 = hasDis ? _seg(u, 0.46, 0.86) : _seg(u, 0.10, 0.50);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(
+          color: Colors.black.withValues(
+              alpha: 0.62 * scrim + 0.14 * _smooth(_seg(tw, 0.2, 0.5))),
+        ),
+        Transform.translate(
+          offset: shake,
+          child: Align(
             alignment: const Alignment(0, -0.15),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Opacity(
-                  opacity: lab,
-                  child: const Text(
-                    'Si Terbisik ternyata...',
-                    style: TextStyle(
-                        fontSize: 15,
-                        letterSpacing: 1.5,
-                        color: Colors.white70),
+                SizedBox(
+                  height: 22,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Opacity(
+                        opacity: lab1.clamp(0.0, 1.0).toDouble(),
+                        child: const Text(
+                          'Selama ini, ia menyamar sebagai...',
+                          style: TextStyle(
+                              fontSize: 15,
+                              letterSpacing: 1.5,
+                              color: Colors.white70),
+                        ),
+                      ),
+                      Opacity(
+                        opacity: lab2.clamp(0.0, 1.0).toDouble(),
+                        child: const Text(
+                          'Si Terbisik ternyata...',
+                          style: TextStyle(
+                              fontSize: 15,
+                              letterSpacing: 1.5,
+                              color: Colors.white70),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                card,
+                SizedBox(
+                  width: cw,
+                  height: ch,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        left: -cw * 0.8,
+                        top: -ch * 0.4,
+                        width: cw * 2.6,
+                        height: ch * 1.8,
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _RevealFxPainter(
+                              u: u,
+                              tw: tw,
+                              tw2: tw2,
+                              sec: sec,
+                              cw: cw,
+                              ch: ch,
+                              hasDis: hasDis,
+                            ),
+                          ),
+                        ),
+                      ),
+                      card,
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 14),
                 Opacity(
                   opacity: nameA,
@@ -816,24 +1024,74 @@ class _EndingCinematicState extends State<EndingCinematic>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          a['name'] as String,
+                          widget.name,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFFE6D8F5),
+                            color: nameColor,
                             shadows: [
                               Shadow(
-                                  color: EmbunColors.mist
-                                      .withValues(alpha: 0.9),
+                                  color: glow.withValues(alpha: 0.9),
                                   blurRadius: 18),
                             ],
                           ),
                         ),
-                        if (uname != null)
-                          Text('yaitu $uname',
-                              style: const TextStyle(
-                                  fontSize: 15, color: Colors.white70)),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          height: 26,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (hasDis && disTitle != null)
+                                Opacity(
+                                  opacity: (1 - ph2).clamp(0.0, 1.0).toDouble(),
+                                  child: Text(
+                                    'sang $disTitle',
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        letterSpacing: 0.6,
+                                        color: Colors.white70),
+                                  ),
+                                ),
+                              Opacity(
+                                opacity: ph2.clamp(0.0, 1.0).toDouble(),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const GameIcon('bulirhitam', size: 24),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'SI TERBISIK',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 3,
+                                        color: EmbunColors.mist,
+                                        shadows: [
+                                          Shadow(
+                                              color: EmbunColors.mist
+                                                  .withValues(alpha: 0.8),
+                                              blurRadius: 12),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (widget.username != null)
+                          Opacity(
+                            opacity: unameA,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text('yaitu ${widget.username}',
+                                  style: const TextStyle(
+                                      fontSize: 15, color: Colors.white70)),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -841,10 +1099,213 @@ class _EndingCinematicState extends State<EndingCinematic>
               ],
             ),
           ),
+        ),
+        if (flashA > 0.01)
+          IgnorePointer(
+            child: ColoredBox(
+              color: Color.lerp(Colors.white, const Color(0xFFE2C8FF), 0.55)!
+                  .withValues(alpha: flashA),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Muka kartu: kartu baik samaran, menggelap dan terbelah glitch, lalu
+  /// kartu gelap Si Terbisik. Dibangun ulang tiap detik animasi karena
+  /// [FlipCard] mengembalikan `front` apa adanya setelah selesai berbalik.
+  Widget _front(double cw, double ch, double tw, bool swapped, Color accent,
+      double sec) {
+    final hasDis = _hasDis;
+
+    Widget face(String? path) => Container(
+      width: cw,
+      height: ch,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent, width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: accent.withValues(alpha: 0.5), blurRadius: 18),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: GameImage(path: path, cacheWidth: 600),
+      ),
+    );
+
+    Widget core() {
+      Widget f = face(swapped ? _darkPath : _disPath);
+      if (hasDis && !swapped && tw > 0) {
+        f = ColorFiltered(
+          colorFilter: ColorFilter.mode(
+              const Color(0xFF0A0714)
+                  .withValues(alpha: 0.55 * _smooth(_seg(tw, 0, 0.34))),
+              BlendMode.srcATop),
+          child: f,
+        );
+      }
+      return f;
+    }
+
+    final layers = <Widget>[];
+    if (hasDis && tw > 0.26 && tw < 0.62) {
+      final q = (tw * 55).floor();
+      final g = _seg(tw, 0.26, 0.32) * (1 - _seg(tw, 0.42, 0.62));
+      for (var k = 0; k < 2; k++) {
+        layers.add(Transform.translate(
+          offset: Offset((_rr(q, k + 1) - 0.5) * 30 * g,
+              (_rr(q, k + 4) - 0.5) * 8 * g),
+          child: Opacity(
+            opacity: (0.5 * g).clamp(0.0, 1.0).toDouble(),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                  (k == 0 ? EmbunColors.blood : EmbunColors.mist)
+                      .withValues(alpha: 0.75),
+                  BlendMode.srcATop),
+              child: core(),
+            ),
+          ),
+        ));
+      }
+    }
+    final tremble = (hasDis && tw > 0)
+        ? math.sin(sec * 90) *
+        3 *
+        _seg(tw, 0, 0.34) *
+        (1 - _seg(tw, 0.34, 0.5))
+        : 0.0;
+    layers.add(Transform.translate(offset: Offset(tremble, 0), child: core()));
+    return SizedBox(
+      width: cw,
+      height: ch,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: layers,
       ),
     );
   }
+}
+
+/// Pendar emas (kartu baik), aura + asap + cincin kejut + bara ungu (kartu
+/// gelap). Digambar di kotak 2,6 x 1,8 kali kartu, berpusat di kartu.
+class _RevealFxPainter extends CustomPainter {
+  final double u, tw, tw2, sec, cw, ch;
+  final bool hasDis;
+  const _RevealFxPainter({
+    required this.u,
+    required this.tw,
+    required this.tw2,
+    required this.sec,
+    required this.cw,
+    required this.ch,
+    required this.hasDis,
+  });
+
+  static const _smoke = Color(0xFF7C7391);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+
+    // Pendar emas di balik kartu baik; padam ketika putar balik.
+    if (hasDis) {
+      final a = 0.40 *
+          _smooth(_seg(u, 0.12, 0.30)) *
+          (1 - _smooth(_seg(tw, 0.2, 0.5)));
+      if (a > 0.01) {
+        final r = ch * (0.75 + 0.08 * math.sin(sec * 2.2));
+        canvas.drawCircle(
+          c,
+          r,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              EmbunColors.gold.withValues(alpha: a),
+              EmbunColors.gold.withValues(alpha: 0),
+            ]).createShader(Rect.fromCircle(center: c, radius: r)),
+        );
+      }
+    }
+
+    // Aura ungu.
+    final aura = _smooth(_seg(tw, 0.2, 0.6));
+    if (aura > 0.01) {
+      final r = ch * (0.8 + 0.25 * math.sin(math.pi * _seg(tw, 0.3, 1.0)) +
+          0.05 * math.sin(sec * 2.6));
+      canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..shader = RadialGradient(colors: [
+            EmbunColors.mist.withValues(alpha: 0.55 * aura),
+            EmbunColors.mist.withValues(alpha: 0),
+          ]).createShader(Rect.fromCircle(center: c, radius: r)),
+      );
+    }
+
+    if (!hasDis && tw2 <= 0) return;
+
+    // Cincin kejut.
+    if (hasDis) {
+      final maxR = ch * 1.4;
+      for (final s in const [0.30, 0.40, 0.50]) {
+        final p = _seg(tw2, s, s + 0.30);
+        if (p <= 0 || p >= 1) continue;
+        final e = Curves.easeOutCubic.transform(p);
+        canvas.drawCircle(
+          c,
+          _lerp(ch * 0.3, maxR, e),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4 * (1 - p) + 1
+            ..color = EmbunColors.mist.withValues(alpha: 0.8 * (1 - p)),
+        );
+      }
+    }
+
+    // Asap yang mengepul dari kartu.
+    final paint = Paint();
+    final from = hasDis ? 0.0 : 0.0;
+    for (var i = 0; i < 22; i++) {
+      final st = from + 0.28 + 0.22 * _rr(i, 1);
+      final p = _seg(tw2, st, st + 0.5);
+      if (p <= 0 || p >= 1) continue;
+      final start = c +
+          Offset((_rr(i, 2) - 0.5) * cw, ch * (0.1 + 0.35 * _rr(i, 3)));
+      final pos = start +
+          Offset(math.sin(p * 3 + i) * cw * 0.25,
+              -p * ch * (0.7 + 0.8 * _rr(i, 4)));
+      final r = cw * (0.18 + 0.34 * p) * (0.7 + 0.7 * _rr(i, 5));
+      final a = math.sin(p * math.pi) * 0.6;
+      final col = i % 3 == 0
+          ? const Color(0xFF05020A)
+          : (i.isEven ? EmbunColors.mist : _smoke);
+      paint.shader = RadialGradient(
+        colors: [col.withValues(alpha: a), col.withValues(alpha: 0)],
+      ).createShader(Rect.fromCircle(center: pos, radius: r));
+      canvas.drawCircle(pos, r, paint);
+    }
+
+    // Bara ungu yang terus naik setelah kartu gelap terbuka.
+    final env = _smooth(_seg(tw, 0.5, 1.0));
+    if (env > 0.01) {
+      final m = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      for (var i = 0; i < 14; i++) {
+        final f = (sec * 0.14 + _rr(i, 1)) % 1.0;
+        final x = c.dx + (_rr(i, 2) - 0.5) * size.width * 0.9 +
+            math.sin(sec * 0.8 + i) * 8;
+        final y = c.dy + ch * 0.9 - f * ch * 1.9;
+        final a = (env * math.sin(math.pi * f) * 0.8).clamp(0.0, 1.0).toDouble();
+        m.color = EmbunColors.mist.withValues(alpha: a);
+        canvas.drawCircle(Offset(x, y), 1.5 + 2.2 * _rr(i, 3), m);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RevealFxPainter old) => true;
 }
 
 // ---------------------------------------------------------------------------

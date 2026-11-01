@@ -20,6 +20,12 @@ double _rnd(int i, int k) {
 class _Fx {
   final Color main, soft, deep;
   const _Fx(this.main, this.soft, this.deep);
+
+  static _Fx lerp(_Fx a, _Fx b, double t) => _Fx(
+    Color.lerp(a.main, b.main, t)!,
+    Color.lerp(a.soft, b.soft, t)!,
+    Color.lerp(a.deep, b.deep, t)!,
+  );
 }
 
 const _wargaFx = _Fx(Color(0xFF7FE0A0), Color(0xFFFFE9A0), Color(0xFF07130F));
@@ -39,17 +45,32 @@ const _neutralMist = Color(0xFF8E9A96);
 ///     kuat, percik cahaya berputar masuk, getar haptic menanjak. Dilepas
 ///     sebelum penuh = cincin surut.
 ///  3. TERUNGKAP (~2,8 dtk): kilatan, kartu terbalik 3D, cincin kejut.
-///     * Warga Desa: berkas cahaya emas-hijau, daun berhamburan, kunang-kunang.
-///     * Si Terbisik: layar tersentak, kartu terbelah bayangan merah-ungu
-///       (glitch), asap ungu kelam mengepul, vinyet berdenyut, getar ganda.
+///     Kedua peran sama persis di tahap ini: yang terbuka adalah kartu BAIK
+///     (kartu karakter), dengan berkas cahaya emas-hijau, daun berhamburan,
+///     dan kunang-kunang.
+///  3b. PUTAR BALIK (hanya Si Terbisik, ~2,6 dtk): sesaat kemudian, detak
+///     jantung, kartu baik itu menggelap dan bergetar, layar tersentak,
+///     kartu terbelah bayangan merah-ungu (glitch), lalu berganti menjadi
+///     kartu gelapnya dengan asap ungu kelam, cincin kejut, dan vinyet
+///     berdenyut. Teks ikut berganti dari "Warga Desa" menjadi "Si Terbisik",
+///     lengkap dengan keterangan wajah samarannya.
 ///  4. Setelah itu kartu tetap terbuka; ketuk kartu untuk menyembunyikan atau
 ///     melihatnya lagi (jaga-jaga ada yang mengintip). Tombol lanjut muncul.
 class RoleReveal extends StatefulWidget {
   /// 'antagonis' atau lainnya (warga). null = belum dimuat dari server.
   final String? role;
 
-  /// Gambar muka kartu pemain (sudah dipilih sesuai peran).
+  /// Gambar muka kartu pemain menurut peran: kartu karakter untuk warga,
+  /// kartu gelap untuk Si Terbisik.
   final String? cardPath;
+
+  /// Kartu baik samaran Si Terbisik (kartu karakter yang dilihat pemain
+  /// lain). Dipakai sebagai muka pertama sebelum kartu gelap terungkap;
+  /// diabaikan untuk warga.
+  final String? disguisePath;
+
+  /// Nama kartu samaran, mis. "Petani Padi".
+  final String? disguiseName;
   final VoidCallback onContinue;
 
   const RoleReveal({
@@ -57,6 +78,8 @@ class RoleReveal extends StatefulWidget {
     required this.role,
     required this.cardPath,
     required this.onContinue,
+    this.disguisePath,
+    this.disguiseName,
   });
 
   @override
@@ -72,6 +95,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       vsync: this, duration: const Duration(milliseconds: 2800));
   late final AnimationController _face = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 800));
+  late final AnimationController _twist = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2600));
   late final AnimationController _loop = AnimationController(
       vsync: this, duration: const Duration(seconds: 600))
     ..repeat();
@@ -81,10 +106,22 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   bool _revealedOnce = false;
   bool _pressActive = false;
   bool _ignoreNextUp = false;
+  bool _twistStarted = false;
 
   bool get _antag => widget.role == 'antagonis';
   bool get _ready => widget.role != null && _intro.value >= 0.72;
-  _Fx get _fx => _antag ? _antagFx : _wargaFx;
+
+  /// Kemajuan putar balik (0..1); selalu 0 untuk warga.
+  double get _tw => _twist.value;
+
+  /// Si Terbisik sudah lewat titik tukar: muka kartu jadi kartu gelap.
+  bool get _swapped => _antag && _tw >= 0.36;
+
+  /// Warna efek: warga sepanjang tahap 3; Si Terbisik beralih ke ungu
+  /// selama putar balik.
+  _Fx get _fx => _antag
+      ? _Fx.lerp(_wargaFx, _antagFx, _smooth(_seg(_tw, 0.30, 0.55)))
+      : _wargaFx;
   double get _time => _loop.value * 600;
 
   @override
@@ -95,6 +132,10 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     _charge.addStatusListener((s) {
       if (s == AnimationStatus.completed) _trigger();
     });
+    _burst.addStatusListener((s) {
+      if (s == AnimationStatus.completed && _antag) _startTwist();
+    });
+    _twist.addListener(_onTwistTick);
     _intro.forward();
   }
 
@@ -103,6 +144,7 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     _intro.dispose();
     _charge.dispose();
     _burst.dispose();
+    _twist.dispose();
     _face.dispose();
     _loop.dispose();
     super.dispose();
@@ -125,18 +167,39 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     if (c >= 0.92 && _fired.add(13)) HapticFeedback.mediumImpact();
   }
 
+  /// Jeda sejenak setelah kartu baik terbuka, lalu putar balik.
+  void _startTwist() {
+    if (_twistStarted) return;
+    _twistStarted = true;
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted) _twist.forward(from: 0);
+    });
+  }
+
+  void _onTwistTick() {
+    final t = _twist.value;
+    if (t >= 0.02 && _fired.add(20)) HapticFeedback.mediumImpact();
+    if (t >= 0.14 && _fired.add(21)) HapticFeedback.mediumImpact();
+    if (t >= 0.28 && _fired.add(22)) HapticFeedback.heavyImpact();
+    if (t >= 0.36 && _fired.add(23)) {
+      HapticFeedback.heavyImpact();
+      Future.delayed(
+          const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
+      Future.delayed(
+          const Duration(milliseconds: 420), HapticFeedback.mediumImpact);
+    }
+  }
+
   void _trigger() {
     if (_revealedOnce || !_holding) return;
     _revealedOnce = true;
     _holding = false;
     _ignoreNextUp = _pressActive;
+    // Sama untuk kedua peran: getar khusus Si Terbisik baru muncul saat
+    // putar balik, supaya tidak ada yang bocor lebih awal.
     HapticFeedback.heavyImpact();
-    if (_antag) {
-      Future.delayed(const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
-      Future.delayed(const Duration(milliseconds: 420), HapticFeedback.mediumImpact);
-    } else {
-      Future.delayed(const Duration(milliseconds: 220), HapticFeedback.mediumImpact);
-    }
+    Future.delayed(
+        const Duration(milliseconds: 220), HapticFeedback.mediumImpact);
     _burst.forward(from: 0);
     _face.duration = const Duration(milliseconds: 800);
     Future.delayed(const Duration(milliseconds: 160), () {
@@ -179,6 +242,7 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
 
   void _toggle() {
     if (_burst.value < 0.7) return;
+    if (_antag && _twist.value < 0.85) return;
     _face.duration = const Duration(milliseconds: 450);
     HapticFeedback.selectionClick();
     if (_face.value > 0.5) {
@@ -194,7 +258,7 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation:
-      Listenable.merge([_intro, _charge, _burst, _face, _loop]),
+      Listenable.merge([_intro, _charge, _burst, _twist, _face, _loop]),
       builder: (context, _) => _scene(context),
     );
   }
@@ -217,29 +281,46 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       final it = _intro.value;
       final bt = _burst.value;
       final ch = _charge.value;
+      final tw = _tw;
       final mix = _smooth(_seg(bt, 0, 0.25));
       final bEnv = _smooth(_seg(bt, 0.05, 0.3)) * (1 - 0.3 * _seg(bt, 0.7, 1));
-      final deep = Color.lerp(_wargaFx.deep, _fx.deep, mix)!;
+      final twEnv =
+          _smooth(_seg(tw, 0.05, 0.4)) * (1 - 0.3 * _seg(tw, 0.75, 1));
+      final twMix = _smooth(_seg(tw, 0.2, 0.5));
+      final fx = _fx;
+      final deep = Color.lerp(_wargaFx.deep, fx.deep, twMix)!;
 
+      // Terang saat kartu baik terbuka; Si Terbisik kembali menggelap
+      // ketika putar balik.
       final dim = (0.30 +
           0.35 * _smooth(_seg(it, 0, 0.6)) +
-          0.10 * ch +
-          (_antag ? 0.22 * bEnv : -0.18 * bEnv))
+          0.10 * ch -
+          0.18 * bEnv * (1 - twMix) +
+          0.22 * twEnv)
           .clamp(0.0, 0.95)
           .toDouble();
 
-      // Entakan layar saat terungkap (Si Terbisik lebih keras).
+      // Entakan layar: ringan saat kartu baik terbuka; Si Terbisik
+      // bergetar naik lalu tersentak keras saat putar balik.
       var shake = Offset.zero;
       if (bt > 0.04 && bt < 0.32) {
         final q = (bt * 60).floor();
         final fall = 1 - _seg(bt, 0.04, 0.32);
-        final amp = (_antag ? 14.0 : 6.0) * fall;
+        final amp = 6.0 * fall;
         shake = Offset((_rnd(q, 11) - 0.5) * amp, (_rnd(q, 12) - 0.5) * amp);
+      }
+      if (_antag && tw > 0 && tw < 0.62) {
+        final q = (tw * 60).floor();
+        final ramp = tw < 0.30 ? 3.0 * _seg(tw, 0, 0.30) : 0.0;
+        final hit = tw >= 0.30 ? 14.0 * (1 - _seg(tw, 0.30, 0.62)) : 0.0;
+        final amp = ramp + hit;
+        shake += Offset((_rnd(q, 13) - 0.5) * amp, (_rnd(q, 14) - 0.5) * amp);
       }
 
       final pr = _Pr(
-        fx: _fx,
+        fx: fx,
         antag: _antag,
+        twist: tw,
         center: center,
         cw: cardW,
         ch: cardH,
@@ -331,11 +412,20 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     final ang = t * math.pi;
     final peak = math.sin(t * math.pi);
 
-    final shakeX = charging ? math.sin(time * 70) * c * c * 4 : 0.0;
+    final tw = _tw;
+    final twTremble = _antag && tw > 0
+        ? math.sin(time * 90) *
+        3 *
+        _seg(tw, 0, 0.34) *
+        (1 - _seg(tw, 0.34, 0.5))
+        : 0.0;
+    final shakeX =
+        (charging ? math.sin(time * 70) * c * c * 4 : 0.0) + twTremble;
     final shakeY = charging ? math.cos(time * 83) * c * c * 3 : 0.0;
     final scale = _lerp(0.25, 1.0, entry) *
         (1 + 0.05 * (charging ? c : 0.0)) *
         (1 + 0.14 * math.sin(math.pi * _seg(bt, 0.04, 0.34))) *
+        (1 + 0.10 * math.sin(math.pi * _seg(tw, 0.28, 0.55))) *
         (1 + 0.06 * peak);
     final dy = (1 - entry) * -70 +
         (it >= 1 ? math.sin(time * 1.5) * 5 : 0.0) -
@@ -344,11 +434,27 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
 
     Widget core() {
       final showFront = ang > math.pi / 2;
+      // Si Terbisik: muka pertama adalah kartu baik samarannya; kartu gelap
+      // baru muncul di titik tukar putar balik.
+      final hasDis = _antag && widget.disguisePath != null;
+      final facePath =
+      (hasDis && !_swapped) ? widget.disguisePath : widget.cardPath;
+      Widget art = CardArt(path: facePath, width: cw, glow: _fx.main);
+      if (_antag && tw > 0 && !_swapped) {
+        // Kartu baik menggelap sebelum retak.
+        art = ColorFiltered(
+          colorFilter: ColorFilter.mode(
+              const Color(0xFF0A0714)
+                  .withValues(alpha: 0.55 * _smooth(_seg(tw, 0.0, 0.34))),
+              BlendMode.srcATop),
+          child: art,
+        );
+      }
       final faceW = showFront
           ? Transform(
         alignment: Alignment.center,
         transform: Matrix4.rotationY(math.pi),
-        child: CardArt(path: widget.cardPath, width: cw, glow: _fx.main),
+        child: art,
       )
           : _back(cw, chh);
       return Transform(
@@ -361,10 +467,11 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     }
 
     final layers = <Widget>[];
-    // Glitch: dua bayangan berwarna yang menyentak (hanya Si Terbisik).
-    if (_antag && bt > 0.05 && bt < 0.34) {
-      final q = (bt * 55).floor();
-      final g = 1 - _seg(bt, 0.2, 0.34);
+    // Glitch: dua bayangan berwarna yang menyentak, hanya saat Si Terbisik
+    // berganti dari kartu baik ke kartu gelap.
+    if (_antag && tw > 0.26 && tw < 0.62) {
+      final q = (tw * 55).floor();
+      final g = _seg(tw, 0.26, 0.32) * (1 - _seg(tw, 0.42, 0.62));
       for (var k = 0; k < 2; k++) {
         layers.add(Transform.translate(
           offset: Offset((_rnd(q, k + 1) - 0.5) * 30 * g,
@@ -424,24 +531,39 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
         ? _smooth(_seg(bt, 0.85, 1.0)) * (1 - _smooth(_seg(face, 0.0, 0.6)))
         : hintIn;
 
-    final q = (bt * 40).floor();
-    final flicker = (_antag && bt < 0.55)
-        ? (_rnd(q, 9) > 0.3 ? 1.0 : 0.25)
-        : 1.0;
-    final titleOpacity = (_smooth(_seg(bt, 0.30, 0.50)) *
-        _smooth(_seg(face, 0.5, 1.0)) *
-        flicker)
+    final tw = _tw;
+    final dark = _swapped;
+    final faceF = _smooth(_seg(face, 0.5, 1.0));
+    final q = (tw * 40).floor();
+    // Judul sempat padam tepat di titik tukar, lalu berkedip.
+    var flicker = 1.0;
+    if (_antag && tw > 0.30 && tw < 0.72) {
+      flicker = tw < 0.40 ? 0.12 : (_rnd(q, 9) > 0.3 ? 1.0 : 0.25);
+    }
+    final titleOpacity = (_smooth(_seg(bt, 0.30, 0.50)) * faceF * flicker)
         .clamp(0.0, 1.0)
         .toDouble();
-    final spacing = _lerp(10, 0.8, Curves.easeOut.transform(_seg(bt, 0.32, 0.75)));
-    final descOpacity = _smooth(_seg(bt, 0.46, 0.68)) * _smooth(_seg(face, 0.5, 1.0));
-    final btnOpacity = _smooth(_seg(bt, 0.72, 0.92));
+    final spacing = dark
+        ? _lerp(10, 0.8, Curves.easeOut.transform(_seg(tw, 0.38, 0.75)))
+        : _lerp(10, 0.8, Curves.easeOut.transform(_seg(bt, 0.32, 0.75)));
+    var descOpacity = _smooth(_seg(bt, 0.46, 0.68)) * faceF;
+    if (_antag && tw > 0) {
+      descOpacity = tw < 0.36
+          ? descOpacity * (1 - _smooth(_seg(tw, 0.20, 0.36)))
+          : _smooth(_seg(tw, 0.50, 0.72)) * faceF;
+    }
+    final badgeOpacity = (_antag && widget.disguisePath != null)
+        ? _smooth(_seg(tw, 0.68, 0.92)) * faceF
+        : 0.0;
+    final btnOpacity = _antag
+        ? _smooth(_seg(tw, 0.72, 0.95))
+        : _smooth(_seg(bt, 0.72, 0.92));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 108,
+          height: _antag ? 150 : 108,
           child: Stack(
             alignment: Alignment.topCenter,
             children: [
@@ -473,11 +595,11 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GameIcon(_antag ? 'bulirhitam' : 'helaidaun', size: 36),
+                        GameIcon(dark ? 'bulirhitam' : 'helaidaun', size: 36),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            _antag ? 'Si Terbisik' : 'Warga Desa',
+                            dark ? 'Si Terbisik' : 'Warga Desa',
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
@@ -497,13 +619,52 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                     Opacity(
                       opacity: descOpacity.clamp(0.0, 1.0).toDouble(),
                       child: Text(
-                        _antag
+                        dark
                             ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
                             : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(height: 1.35),
                       ),
                     ),
+                    if (badgeOpacity > 0.01)
+                      Opacity(
+                        opacity: badgeOpacity.clamp(0.0, 1.0).toDouble(),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(5, 4, 12, 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.38),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color:
+                                  EmbunColors.gold.withValues(alpha: 0.55)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PlayerAvatar(
+                                  path: widget.disguisePath,
+                                  size: 30,
+                                  ring: EmbunColors.gold,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    widget.disguiseName == null
+                                        ? 'Di mata desa, kamu warga biasa'
+                                        : 'Di mata desa, kamu ${widget.disguiseName}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 12.5, color: Colors.white70),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -537,10 +698,14 @@ class _Pr {
   final Offset center;
   final double cw, ch;
   final double intro, charge, burst, time, mix;
+
+  /// Putar balik Si Terbisik (0..1); 0 untuk warga.
+  final double twist;
   final Color deep;
   const _Pr({
     required this.fx,
     required this.antag,
+    required this.twist,
     required this.center,
     required this.cw,
     required this.ch,
@@ -556,6 +721,12 @@ class _Pr {
   double get halfDiag => math.sqrt(cw * cw + ch * ch) / 2;
   double get bEnv =>
       _smooth(_seg(burst, 0.05, 0.3)) * (1 - 0.3 * _seg(burst, 0.7, 1));
+  double get twEnv =>
+      _smooth(_seg(twist, 0.05, 0.4)) * (1 - 0.3 * _seg(twist, 0.75, 1));
+
+  /// Kehangatan tahap kartu baik; memudar begitu putar balik dimulai.
+  double get warm => antag ? 1 - _smooth(_seg(twist, 0.25, 0.5)) : 1.0;
+
   // Emas sebelum terungkap, lalu berubah ke warna peran.
   Color get col => Color.lerp(EmbunColors.gold, fx.main, mix)!;
 }
@@ -572,13 +743,8 @@ class _BackPainter extends CustomPainter {
     _orb(canvas);
     _aura(canvas);
     _charging(canvas);
-    if (p.burst > 0) {
-      if (p.antag) {
-        _smoke(canvas);
-      } else {
-        _rays(canvas, size);
-      }
-    }
+    if (p.burst > 0) _rays(canvas, size);
+    if (p.antag && p.twist > 0) _smoke(canvas);
   }
 
   void _mist(Canvas canvas, Size size) {
@@ -594,7 +760,7 @@ class _BackPainter extends CustomPainter {
       final r = size.shortestSide * (0.28 + 0.32 * _rnd(i, 3));
       final a = ((0.07 + 0.07 * _rnd(i, 4)) *
           mi *
-          (1 + (p.antag ? 1.4 : 0.3) * p.bEnv))
+          (1 + 0.3 * p.bEnv + 1.4 * p.twEnv))
           .clamp(0.0, 1.0)
           .toDouble();
       final base = i % 3 == 0 ? _neutralMist : p.col;
@@ -633,10 +799,16 @@ class _BackPainter extends CustomPainter {
     final ai = _smooth(_seg(p.intro, 0.45, 0.7));
     if (ai <= 0) return;
     final pulse = p.burst > 0 ? math.sin(math.pi * _seg(p.burst, 0, 0.5)) : 0.0;
-    final a = ((0.16 + 0.26 * p.charge + 0.55 * pulse + 0.25 * p.bEnv) * ai)
+    final tp = p.twist > 0 ? math.sin(math.pi * _seg(p.twist, 0, 0.6)) : 0.0;
+    final a = ((0.16 +
+        0.26 * p.charge +
+        0.55 * pulse +
+        0.25 * p.bEnv +
+        0.45 * tp) *
+        ai)
         .clamp(0.0, 1.0)
         .toDouble();
-    final ar = p.r * (0.85 + 0.35 * p.charge + 0.5 * pulse);
+    final ar = p.r * (0.85 + 0.35 * p.charge + 0.5 * pulse + 0.35 * tp);
     final paint = Paint()
       ..shader = RadialGradient(colors: [
         p.col.withValues(alpha: a),
@@ -686,7 +858,7 @@ class _BackPainter extends CustomPainter {
   }
 
   void _rays(Canvas canvas, Size size) {
-    final env = p.bEnv;
+    final env = p.bEnv * p.warm;
     if (env <= 0) return;
     final len = size.longestSide * 0.9;
     final paint = Paint();
@@ -712,8 +884,8 @@ class _BackPainter extends CustomPainter {
   void _smoke(Canvas canvas) {
     final paint = Paint();
     for (var i = 0; i < 22; i++) {
-      final st = 0.04 + 0.30 * _rnd(i, 1);
-      final u = _seg(p.burst, st, st + 0.62);
+      final st = 0.28 + 0.30 * _rnd(i, 1);
+      final u = _seg(p.twist, st, st + 0.50);
       if (u <= 0 || u >= 1) continue;
       final start = p.center +
           Offset((_rnd(i, 2) - 0.5) * p.cw, p.ch * (0.15 + 0.35 * _rnd(i, 3)));
@@ -745,8 +917,13 @@ class _FrontPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     _flash(canvas, size);
-    _rings(canvas, size);
-    _particles(canvas);
+    _twistFlash(canvas, size);
+    _rings(canvas, size, p.burst, const [0.08, 0.16, 0.26], _wargaFx.main);
+    if (p.antag) {
+      _rings(canvas, size, p.twist, const [0.32, 0.42, 0.54], _antagFx.main);
+    }
+    _particles(canvas, p.burst, false);
+    if (p.antag) _particles(canvas, _seg(p.twist, 0.30, 1.0), true);
     _motes(canvas, size);
     _vignette(canvas, size);
   }
@@ -754,22 +931,34 @@ class _FrontPainter extends CustomPainter {
   void _flash(Canvas canvas, Size size) {
     final bt = p.burst;
     if (bt <= 0) return;
-    final a = (_seg(bt, 0, 0.04) * (1 - _smooth(_seg(bt, 0.04, 0.22))) *
-        (p.antag ? 0.8 : 0.9))
+    final a = (_seg(bt, 0, 0.04) * (1 - _smooth(_seg(bt, 0.04, 0.22))) * 0.9)
         .clamp(0.0, 1.0)
         .toDouble();
     if (a <= 0) return;
-    final c = Color.lerp(Colors.white, p.fx.soft, 0.4)!;
+    final c = Color.lerp(Colors.white, _wargaFx.soft, 0.4)!;
     canvas.drawRect(Offset.zero & size,
         Paint()..color = c.withValues(alpha: a));
   }
 
-  void _rings(Canvas canvas, Size size) {
-    if (p.burst <= 0) return;
-    const starts = [0.08, 0.16, 0.26];
+  /// Kilatan ungu di titik tukar kartu baik -> kartu gelap.
+  void _twistFlash(Canvas canvas, Size size) {
+    final tw = p.twist;
+    if (!p.antag || tw <= 0) return;
+    final a = (_seg(tw, 0.30, 0.36) * (1 - _smooth(_seg(tw, 0.36, 0.56))) * 0.85)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    if (a <= 0) return;
+    final c = Color.lerp(Colors.white, _antagFx.soft, 0.55)!;
+    canvas.drawRect(Offset.zero & size,
+        Paint()..color = c.withValues(alpha: a));
+  }
+
+  void _rings(Canvas canvas, Size size, double prog, List<double> starts,
+      Color color) {
+    if (prog <= 0) return;
     final maxR = size.longestSide * 0.6;
     for (final s in starts) {
-      final u = _seg(p.burst, s, s + 0.36);
+      final u = _seg(prog, s, s + 0.36);
       if (u <= 0 || u >= 1) continue;
       final e = Curves.easeOutCubic.transform(u);
       canvas.drawCircle(
@@ -778,7 +967,7 @@ class _FrontPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 4 * (1 - u) + 1
-          ..color = p.fx.main.withValues(alpha: 0.8 * (1 - u)),
+          ..color = color.withValues(alpha: 0.8 * (1 - u)),
       );
     }
   }
@@ -796,8 +985,8 @@ class _FrontPainter extends CustomPainter {
     ..lineTo(-s * 0.6, 0)
     ..close();
 
-  void _particles(Canvas canvas) {
-    final bt = p.burst;
+  /// Daun berhamburan (kartu baik) atau serpihan bulir hitam ([shards]).
+  void _particles(Canvas canvas, double bt, bool shards) {
     if (bt <= 0) return;
     final fill = Paint();
     final edge = Paint()
@@ -820,8 +1009,8 @@ class _FrontPainter extends CustomPainter {
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(rot);
-      if (!p.antag) {
-        fill.color = Color.lerp(p.fx.main, EmbunColors.gold, _rnd(i, 7))!
+      if (!shards) {
+        fill.color = Color.lerp(_wargaFx.main, EmbunColors.gold, _rnd(i, 7))!
             .withValues(alpha: alpha);
         canvas.drawPath(_leaf(s), fill);
       } else {
@@ -840,7 +1029,9 @@ class _FrontPainter extends CustomPainter {
     final env = _smooth(_seg(p.burst, 0.55, 1.0));
     if (env <= 0) return;
     final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    final c = p.antag ? EmbunColors.mist : p.fx.soft;
+    // Emas dulu; Si Terbisik berubah jadi bara ungu saat putar balik.
+    final c = Color.lerp(_wargaFx.soft, EmbunColors.mist,
+        p.antag ? _smooth(_seg(p.twist, 0.30, 0.60)) : 0.0)!;
     for (var i = 0; i < 16; i++) {
       final u = (p.time * 0.12 + _rnd(i, 1)) % 1.0;
       final x = p.center.dx +
@@ -857,7 +1048,8 @@ class _FrontPainter extends CustomPainter {
     final env = p.bEnv;
     var v = 0.25 * _smooth(_seg(p.intro, 0, 0.6)) + 0.12 * env;
     if (p.antag) {
-      v += 0.35 * env + 0.10 * env * math.sin(p.time * 2.6);
+      final te = p.twEnv;
+      v += 0.35 * te + 0.10 * te * math.sin(p.time * 2.6);
     }
     v = v.clamp(0.0, 1.0).toDouble();
     if (v <= 0.01) return;
