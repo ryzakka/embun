@@ -265,7 +265,7 @@ class _DayViewState extends State<DayView> {
     final tradable =
     widget.hand
         .where((h) =>
-    h['card_id'] != 'embun_samaran' && h['card_id'] != 'kunci_segel')
+    h['card_id'] != 'embun_samaran')
         .toList();
     if (tradable.isEmpty) {
       _toast('Kamu tidak punya kartu untuk ditukar');

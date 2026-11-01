@@ -784,7 +784,7 @@ class _HowToTab extends StatelessWidget {
                     'Semua kartu, baik maupun jahat, dilempar **tanpa nama '
                     'pemilik**, dan kartu yang sudah dipersembahkan tidak '
                     'kembali. Tiap malam persembahan kamu menerima satu kartu '
-                    'dasar. Si Terbisik **wajib menyertakan Papan Penanda** '
+                    'dasar. Si Terbisik **wajib menyertakan Roti Surplus** '
                     '(+1 daun, menguras 2 bulir hitam) sebagai samaran.'),
             _step(
                 3,
@@ -1077,9 +1077,10 @@ const _kindHelp = {
   'penguat':
   'Menaikkan laju embun (atau bulir hitam) pemakainya untuk seterusnya.',
   'malam':
-  'Disiapkan di hari biasa dan dipakai saat malam tiba: mencuri embun, '
-      'menurunkan laju embun, atau menebalkan kabut. Semua pemain hanya '
-      'mendengar bahwa ada serangan, tanpa sasaran.',
+  'Disiapkan di hari biasa dan dipakai saat malam tiba: menyedot embun, '
+      'membakar atau mencuri kartu, menebalkan kabut, mengacaukan '
+      'pemeriksaan, atau menyamar. Semua pemain hanya mendengar bahwa '
+      'ada serangan, tanpa sasaran.',
 };
 
 class _ItemsTab extends StatefulWidget {

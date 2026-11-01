@@ -90,35 +90,86 @@ String? firstScenery(List<String> stems) {
   return null;
 }
 
-/// Latar meja menurut fase dan hari. Selama Hayu masih sehat (>= 12 daun)
-/// tiap fase punya adegan sendiri; di bawah itu latar kembali ke
-/// [landscapePath] supaya kemerosotan Hayu tetap terlihat.
+/// Perbesaran latar `bentang`. Bingkai emas ikut tertanam di gambarnya;
+/// sedikit diperbesar (dari tengah) supaya bingkai itu keluar dari layar.
+/// Ubah sesuai hasil uji. Gambar `pohon` tidak berbingkai: jangan diperbesar.
+const kBentangZoom = 1.08;
+
+/// Hari ke-[day] memilih satu dari [stems] secara bergilir (hanya yang ada).
+String? _rotate(List<String> stems, int day) {
+  final have = [
+    for (final s in stems)
+      if (AssetCatalog.I.file(bentangDir, s) != null) s
+  ];
+  if (have.isEmpty) return null;
+  return AssetCatalog.I.file(bentangDir, have[day.abs() % have.length]);
+}
+
+/// Latar meja menurut fase, hari, dan kesehatan Hayu.
+///
+/// Hari biasa menurun bersama daun:
+///   >= 20 daun : desa hijau yang bergilir tiap hari
+///   12-19 daun : desa gersang
+///   < 12 daun  : kembali ke [landscapePath] (lembah makin gelap, dan
+///                `desajembatan-keringgulita` saat daun habis)
+/// Fase lain (musyawarah, vote, persembahan) memakai adegannya sendiri selama
+/// Hayu masih >= 12 daun.
 String? phaseScenery(String phase, int day, int leaves) {
   final fallback = landscapePath(leaves);
   if (leaves < 12) return fallback;
-  final List<String> stems;
+  String? pick;
   switch (phase) {
     case 'day':
-      const rot = [
+      pick = leaves >= 20
+          ? _rotate(const [
         'pasar-sianghari',
         'balaidesa-luarsiang',
         'peternakan-sianghari',
         'sumur-sianghari',
         'menaralonceng-sianghari',
         'gerobakdankeranjang',
-      ];
-      stems = [rot[day.abs() % rot.length]];
+        'tepisungai-tanggaterjalsianghari',
+      ], day)
+          : _rotate(const [
+        'ladang-gersang',
+        'rumahdesa2-gersang',
+        'rumahdesa-gersang',
+      ], day);
     case 'discussion':
-      stems = const ['balaidesa-dalamsiang', 'perpustakaantua'];
+      pick = _rotate(const [
+        'balaidesa-dalamsiang',
+        'sinarmataharikedalamrumah',
+        'kamarkayudesa',
+        'perpustakaantua',
+      ], day);
     case 'voting':
-      stems = const ['alunalun-tiangberpita'];
+      pick = firstScenery(const ['alunalun-tiangberpita']);
     case 'offering':
-      stems = const ['pohon-keranjangbuah', 'pohon-zoom'];
-    default:
-      stems = const [];
+      pick = firstScenery(
+          const ['pohon-toplesnyaladankunang', 'pohon-keranjangbuah']);
   }
-  return firstScenery(stems) ?? fallback;
+  return pick ?? fallback;
 }
+
+// ---- malam ----
+
+/// Langit malam: tenang, atau langit serangan (sama untuk SEMUA pemain).
+String? nightSkyPath({required bool attack}) => firstScenery(attack
+    ? const ['langit-malammerahunggelap', 'langit-malamberawan']
+    : const ['langit-malamberawan']);
+
+/// Lembah malam tempat langit itu turun: tenang atau kering akibat serangan.
+String? nightValleyPath({required bool attack}) => firstScenery(attack
+    ? const ['lembah-malamkering', 'lembah-malamindah']
+    : const ['lembah-malamindah']);
+
+/// Latar pribadi korban: `sumur` (Racun Sumur) atau `rumah` (Maling Embun).
+/// Null untuk selain itu; adegan ini tidak pernah dipakai untuk pemain lain.
+String? nightVictimPath(String? scene) => switch (scene) {
+  'sumur' => firstScenery(const ['sumur-gelapmalam']),
+  'rumah' => firstScenery(const ['rumah-malamdepanpintu']),
+  _ => null,
+};
 
 String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
 

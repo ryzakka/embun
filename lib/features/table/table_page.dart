@@ -1417,11 +1417,9 @@ class _TablePageState extends State<TablePage> {
         gameId: widget.gameId,
         leaves: leaves,
         isAntag: isAntag,
-        // Kunci Segel terpakai otomatis saat dituduh; tak bisa dipersembahkan.
+        // Kartu serangan malam disiapkan di hari biasa; tak bisa dipersembahkan.
         hand: hand
-            .where((h) =>
-        h['card_id'] != 'kunci_segel' &&
-            defs[h['card_id']]?['kind'] != 'malam')
+            .where((h) => defs[h['card_id']]?['kind'] != 'malam')
             .toList(),
         defs: defs,
         players: alive,

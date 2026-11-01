@@ -419,7 +419,7 @@ class _OfferingViewState extends State<OfferingView> {
         const SizedBox(height: 4),
         Text(
           widget.isAntag
-              ? 'Wajib menyumbang: Papan Penanda sudah terpilih. Tambah 1 kartu lagi jika mau.'
+              ? 'Wajib menyumbang: Roti Surplus sudah terpilih. Tambah 1 kartu lagi jika mau.'
               : 'Pilih 1-2 kartu untuk dipersembahkan kepada Hayu',
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white70, fontSize: 12),
