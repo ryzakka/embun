@@ -757,6 +757,10 @@ class _TablePageState extends State<TablePage> {
     setState(() {
       cur['jailPending'] = false;
       cur['jail'] = rows.isEmpty ? null : rows.first;
+      // Vonis vote dan Kawat Berduri bisa mengurung dua pemain di hari yang
+      // sama: adegannya diputar bergantian.
+      cur['jailQueue'] =
+      rows.length > 1 ? rows.sublist(1) : <Map<String, dynamic>>[];
     });
   }
 
@@ -772,12 +776,22 @@ class _TablePageState extends State<TablePage> {
     final j = intro['jail'] as Map<String, dynamic>?;
     if (j == null) return const ColoredBox(color: Color(0xFF05080F));
     return JailVerdictScene(
-      key: ValueKey('jail${intro['day']}'),
+      key: ValueKey('jail${intro['day']}-${j['user_id']}'),
       name: j['name'] as String,
       card: j['character_card'] as String?,
       isMe: j['user_id'] == repo.myId,
       onDone: () {
-        if (mounted) setState(() => intro['jail'] = null);
+        if (!mounted) return;
+        setState(() {
+          final q =
+              (intro['jailQueue'] as List<dynamic>?) ?? const <dynamic>[];
+          if (q.isEmpty) {
+            intro['jail'] = null;
+          } else {
+            intro['jail'] = q.first;
+            intro['jailQueue'] = q.sublist(1);
+          }
+        });
       },
     );
   }

@@ -125,7 +125,8 @@ class _PlayerSheetState extends State<_PlayerSheet> {
     final tradable =
     widget.hand
         .where((h) =>
-    h['card_id'] != 'embun_samaran')
+    h['card_id'] != 'embun_samaran' &&
+        widget.defs[h['card_id']]?['kind'] != 'malam')
         .toList();
     final medal = short ? 46.0 : 56.0;
 

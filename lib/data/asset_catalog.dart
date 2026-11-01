@@ -7,6 +7,7 @@ const pohonDir = 'assets/pohon';
 const bentangDir = 'assets/bentang';
 const kartuWargaDir = 'assets/kartu/powerpro';
 const kartuAntagDir = 'assets/kartu/poweranta';
+const kartuMalamDir = 'assets/kartu/powernight'; // kartu serangan malam (ungu)
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
 const kemampuanDir = 'assets/kartu/kemampuan';
@@ -207,11 +208,17 @@ String? abilityBackPath() =>
     AssetCatalog.I.file(punggungDir, 'punggungkemampuan') ?? cardBackPath();
 
 /// Gambar kartu beli/item. Nama berkas = kolom `art` di card_definitions
-/// (jatuh ke `id` bila kosong). Warga di powerpro, antagonis di poweranta.
+/// (jatuh ke `id` bila kosong). Warga di powerpro, antagonis di poweranta,
+/// kartu serangan malam (kind 'malam') di powernight.
 String? cardArtPath(Map<String, dynamic>? def) {
   if (def == null) return null;
   final stem = (def['art'] as String?) ?? (def['id'] as String?);
   if (stem == null) return null;
+  if (def['kind'] == 'malam') {
+    // Folder sendiri; bila belum ada di sana, jatuh ke folder antagonis.
+    return AssetCatalog.I.file(kartuMalamDir, stem) ??
+        AssetCatalog.I.file(kartuAntagDir, stem);
+  }
   final dir = def['side'] == 'antagonis' ? kartuAntagDir : kartuWargaDir;
   return AssetCatalog.I.file(dir, stem);
 }
@@ -231,13 +238,14 @@ const kItemAspect = 9 / 7; // item protagonis/warga (ukuran lama)
 const kProtagonistAspect = kTallAspect; // dipakai _FaceCrop dan layar lain
 const kAntagonisAspect = kTallAspect;
 
-/// 2:3: karakter, item antagonis (merah), kartu malam (ungu, ada di
-/// poweranta), kemampuan (biru), dan punggungnya. Item protagonis tetap lama.
+/// 2:3: karakter, item antagonis (merah), kartu malam (ungu, di
+/// powernight), kemampuan (biru), dan punggungnya. Item protagonis tetap lama.
 double cardAspectFor(String? path) {
   if (path == null) return kTallAspect;
   if (path.startsWith(protagonisDir) ||
       path.startsWith(antagonisDir) ||
       path.startsWith(kartuAntagDir) ||
+      path.startsWith(kartuMalamDir) ||
       path.startsWith(kemampuanDir)) {
     return kTallAspect;
   }

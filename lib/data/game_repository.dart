@@ -257,6 +257,7 @@ class GameRepository {
           .eq('game_id', gameId)
           .eq('jailed_day', day)
           .isFilter('out_day', null)
+          .order('user_id')
           .timeout(const Duration(seconds: 2));
       return List<Map<String, dynamic>>.from(rows);
     } catch (_) {
