@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -67,10 +69,12 @@ class GuidePage extends StatelessWidget {
                     labelStyle: const TextStyle(
                         fontSize: 13.5, fontWeight: FontWeight.w800),
                     unselectedLabelStyle: const TextStyle(fontSize: 13.5),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    // Label menyusut di layar sempit, tidak pernah terpotong.
                     tabs: const [
-                      Tab(text: 'Cara Bermain'),
-                      Tab(text: 'Karakter'),
-                      Tab(text: 'Kartu Item'),
+                      Tab(child: _TabLabel('Cara Bermain')),
+                      Tab(child: _TabLabel('Karakter')),
+                      Tab(child: _TabLabel('Kartu Item')),
                     ],
                   ),
                   const Expanded(
@@ -97,24 +101,182 @@ class GuidePage extends StatelessWidget {
 // ====================================================================
 
 const _panelBg = Color(0xFF112820);
-const _maxPageWidth = 780.0;
+const _twoColBreakpoint = 900.0;
+const _twoColMaxWidth = 1120.0;
 
-/// Isi dipusatkan dan dibatasi lebarnya di layar lebar.
-class _Page extends StatelessWidget {
-  final List<Widget> children;
-  const _Page({required this.children});
+class _TabLabel extends StatelessWidget {
+  final String text;
+  const _TabLabel(this.text);
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1),
+  );
+}
+
+/// Kemunculan berjenjang: memudar, bergeser, dan membesar dari sedikit lebih
+/// kecil. Dipakai untuk bagian halaman, langkah, dan sel grid kartu.
+class _Reveal extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+  final Duration duration;
+  final double dx;
+  final double dy;
+  final double scaleFrom;
+  final Curve curve;
+  const _Reveal({
+    required this.child,
+    this.delay = Duration.zero,
+    this.duration = const Duration(milliseconds: 850),
+    this.dx = 0,
+    this.dy = 28,
+    this.scaleFrom = 0.95,
+    this.curve = Curves.easeOutCubic,
+  });
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: _maxPageWidth),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
-        children: children,
-      ),
-    ),
+  State<_Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+  AnimationController(vsync: this, duration: widget.duration);
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.delay == Duration.zero) {
+      _c.forward();
+    } else {
+      _timer = Timer(widget.delay, () {
+        if (mounted) _c.forward();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    child: widget.child,
+    builder: (context, child) {
+      if (_c.isCompleted) return child!;
+      final v = widget.curve.transform(_c.value);
+      final o = Curves.easeOut
+          .transform((_c.value / 0.55).clamp(0.0, 1.0).toDouble());
+      return Opacity(
+        opacity: o,
+        child: Transform.translate(
+          offset: Offset((1 - v) * widget.dx, (1 - v) * widget.dy),
+          child: Transform.scale(
+            scale: widget.scaleFrom + (1 - widget.scaleFrom) * v,
+            child: child,
+          ),
+        ),
+      );
+    },
   );
+}
+
+/// Angka yang berhitung naik dari 0; teks non-angka tampil apa adanya.
+class _CountUp extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  const _CountUp(this.text, {required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final n = int.tryParse(text);
+    if (n == null) return Text(text, style: style);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: n.toDouble()),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, __) => Text('${v.round()}', style: style),
+    );
+  }
+}
+
+/// Halaman bergulir yang dipusatkan. Di layar lebar (>= 900 px) dan bila
+/// [column] diberikan, bagian dibagi dua kolom (0 = kiri, 1 = kanan);
+/// di layar sempit semuanya satu kolom dengan urutan aslinya. Tiap bagian
+/// muncul berjenjang.
+class _Page extends StatelessWidget {
+  final List<Widget> children;
+  final Widget? header;
+  final int Function(int index)? column;
+  final double maxWidth;
+  const _Page({
+    required this.children,
+    this.header,
+    this.column,
+    this.maxWidth = 1000,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+    final twoCol = column != null && c.maxWidth >= _twoColBreakpoint;
+    final w = twoCol ? _twoColMaxWidth : maxWidth;
+    final pad = c.maxWidth < 420 ? 10.0 : 14.0;
+
+    Widget stagger(int i, Widget child) => _Reveal(
+      delay: Duration(milliseconds: 110 * min(i + 1, 7)),
+      child: child,
+    );
+
+    final Widget body;
+    if (twoCol) {
+      final cols = <List<Widget>>[[], []];
+      for (var i = 0; i < children.length; i++) {
+        cols[column!(i).clamp(0, 1).toInt()].add(stagger(i, children[i]));
+      }
+      body = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: cols[0])),
+          const SizedBox(width: 16),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: cols[1])),
+        ],
+      );
+    } else {
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) stagger(i, children[i]),
+        ],
+      );
+    }
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: w),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(pad, 14, pad, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (header != null) _Reveal(dy: 18, child: header!),
+              body,
+            ],
+          ),
+        ),
+      ),
+    );
+  });
 }
 
 class _Section extends StatelessWidget {
@@ -186,58 +348,64 @@ Widget _bullet(String s, {Color dot = EmbunColors.gold, Color? bold}) =>
 
 /// Satu langkah pada garis waktu: lingkaran bernomor dan garis penyambung.
 Widget _step(int n, String title, String body, {bool last = false}) =>
-    IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 30,
-            child: Column(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.45),
-                    border: Border.all(color: EmbunColors.gold, width: 1.5),
-                  ),
-                  child: Text('$n',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: EmbunColors.gold)),
-                ),
-                if (!last)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: EmbunColors.goldDim.withValues(alpha: 0.5),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: last ? 0 : 16, top: 3),
+    _Reveal(
+      dx: -20,
+      dy: 0,
+      scaleFrom: 0.98,
+      delay: Duration(milliseconds: 320 + 120 * (n - 1)),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 30,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: EmbunColors.cream)),
-                  const SizedBox(height: 3),
-                  _rich(body, size: 13, color: Colors.white70),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.45),
+                      border: Border.all(color: EmbunColors.gold, width: 1.5),
+                    ),
+                    child: Text('$n',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: EmbunColors.gold)),
+                  ),
+                  if (!last)
+                    Expanded(
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        color: EmbunColors.goldDim.withValues(alpha: 0.5),
+                      ),
+                    ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: last ? 0 : 16, top: 3),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: EmbunColors.cream)),
+                    const SizedBox(height: 3),
+                    _rich(body, size: 13, color: Colors.white70),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -284,6 +452,7 @@ class _Grid extends StatelessWidget {
   final int maxCols;
 
   const _Grid({
+    super.key,
     required this.count,
     required this.item,
     this.minCell = 112,
@@ -310,7 +479,19 @@ class _Grid extends StatelessWidget {
               if (j > 0) SizedBox(width: gap),
               SizedBox(
                 width: w,
-                child: start + j < count ? item(start + j, w) : null,
+                // Kartu muncul membal, bergelombang per baris dan kolom.
+                child: start + j < count
+                    ? _Reveal(
+                  dy: 24,
+                  scaleFrom: 0.82,
+                  curve: Curves.easeOutBack,
+                  duration: const Duration(milliseconds: 700),
+                  delay: Duration(
+                      milliseconds:
+                      min(60 * (start ~/ cols) + 55 * j, 700)),
+                  child: item(start + j, w),
+                )
+                    : null,
               ),
             ],
           ],
@@ -458,7 +639,9 @@ class _BookmarkPanel extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: _tabH - _edge),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
             decoration: BoxDecoration(
@@ -475,7 +658,32 @@ class _BookmarkPanel extends StatelessWidget {
                     color: acc.withValues(alpha: 0.12), blurRadius: 18),
               ],
             ),
-            child: child,
+            // Pindah fraksi: isi lama memudar, isi baru meluncur masuk, tinggi
+            // panel menyesuaikan mulus, dan warna garis ikut berganti.
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 380),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeIn,
+                layoutBuilder: (cur, prev) => Stack(
+                  alignment: Alignment.topCenter,
+                  children: [...prev, ?cur],
+                ),
+                transitionBuilder: (w, a) => FadeTransition(
+                  opacity: a,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                        begin: const Offset(0.04, 0), end: Offset.zero)
+                        .animate(a),
+                    child: w,
+                  ),
+                ),
+                child: KeyedSubtree(key: ValueKey(selected), child: child),
+              ),
+            ),
           ),
         ),
         Positioned(
@@ -650,12 +858,15 @@ class _HowToTab extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(items[i].$1,
-                      style: const TextStyle(
-                          fontSize: 24,
-                          height: 1.1,
-                          fontWeight: FontWeight.w800,
-                          color: EmbunColors.gold)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: _CountUp(items[i].$1,
+                        style: const TextStyle(
+                            fontSize: 24,
+                            height: 1.1,
+                            fontWeight: FontWeight.w800,
+                            color: EmbunColors.gold)),
+                  ),
                   const SizedBox(height: 2),
                   Text(items[i].$2,
                       style: const TextStyle(
@@ -731,8 +942,11 @@ class _HowToTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Page(
+      maxWidth: 780,
+      header: _stats(),
+      // Layar lebar: kiri = Tujuan + Siklus, kanan = sisanya.
+      column: (i) => const [0, 1, 0, 1, 1, 1][i],
       children: [
-        _stats(),
         _Section(
           icon: 'helaidaun',
           title: 'Tujuan',
@@ -934,7 +1148,7 @@ void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
               children: [
                 CardArt(
                   path: c.path,
-                  width: 210,
+                  width: min(210.0, MediaQuery.sizeOf(ctx).height * 0.42),
                   glow: dark ? EmbunColors.mist : EmbunColors.leaf,
                 ),
                 const SizedBox(height: 14),
@@ -1262,6 +1476,7 @@ class _ItemsTabState extends State<_ItemsTab>
                         if (d['kind'] == k) d,
                     ];
                     return _Grid(
+                      key: ValueKey('$faction-$k-$idx'),
                       count: list.length,
                       minCell: 120,
                       item: (i, w) => _tile(list[i], w, dark),
