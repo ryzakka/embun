@@ -101,7 +101,8 @@ class _VillageStripState extends State<VillageStrip> {
     return '?';
   }
 
-  Widget _cell(Map<String, dynamic> p, DateTime now) {
+  Widget _cell(Map<String, dynamic> p, DateTime now, double cellW,
+      double avatar) {
     final id = p['user_id'] as String;
     final me = id == widget.myId;
     final ready = p['ready'] == true;
@@ -119,9 +120,8 @@ class _VillageStripState extends State<VillageStrip> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: (me || out) ? null : () => widget.onTapPlayer(p),
-      child: Container(
-        width: 62,
-        margin: const EdgeInsets.only(right: 6),
+      child: SizedBox(
+        width: cellW,
         child: Column(
           children: [
             SizedBox(
@@ -129,19 +129,28 @@ class _VillageStripState extends State<VillageStrip> {
               child: showB
                   ? Center(
                 child: FittedBox(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Text(
-                      b.target == null
-                          ? b.emoji
-                          : '${b.emoji}→${_short(b.target)}',
-                      style: const TextStyle(fontSize: 13),
+                  // Gelembung muncul membal setiap isyarat baru.
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey(b.at),
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 520),
+                    curve: Curves.elasticOut,
+                    builder: (_, v, child) => Transform.scale(
+                        scale: v.clamp(0.0, 1.4).toDouble(), child: child),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        b.target == null
+                            ? b.emoji
+                            : '${b.emoji}→${_short(b.target)}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                   ),
                 ),
@@ -156,7 +165,7 @@ class _VillageStripState extends State<VillageStrip> {
                   child: PlayerAvatar(
                     key: widget.avatarKeyFor?.call(id),
                     path: protagonistPath(p['character_card'] as String),
-                    size: 38,
+                    size: avatar,
                     ring: out
                         ? Colors.white30
                         : jailed
@@ -260,16 +269,48 @@ class _VillageStripState extends State<VillageStrip> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    return LayoutBuilder(builder: (context, box) {
+      // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
+      // bila tidak, deretan bisa digulir dengan lebar sel tetap.
+      const gap = 6.0, minW = 56.0, maxW = 84.0, scrollW = 62.0;
+      final avail = box.maxWidth - 56; // ruang tombol isyarat
+      final n = widget.players.length;
+      final fits = n > 0 && n * minW + (n - 1) * gap <= avail;
+      final cellW = fits
+          ? ((avail - (n - 1) * gap) / n).clamp(minW, maxW).toDouble()
+          : scrollW;
+      final avatar = (cellW * 0.62).clamp(36.0, 52.0).toDouble();
+      final Widget list = fits
+          ? Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < n; i++) ...[
+            if (i > 0) const SizedBox(width: gap),
+            _cell(widget.players[i], now, cellW, avatar),
+          ],
+        ],
+      )
+          : ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final p in widget.players)
+            Padding(
+              padding: const EdgeInsets.only(right: gap),
+              child: _cell(p, now, cellW, avatar),
+            ),
+        ],
+      );
+      return _strip(list, avatar + 54);
+    });
+  }
+
+  Widget _strip(Widget list, double height) {
     return SizedBox(
-      height: 92,
+      height: height,
       child: Row(
         children: [
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [for (final p in widget.players) _cell(p, now)],
-            ),
-          ),
+          Expanded(child: list),
           Tooltip(
             message: 'Isyarat',
             child: GestureDetector(

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show sin, pi;
+import 'dart:math' show sin, pi, min;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -27,10 +27,13 @@ const _tabBalai = 2;
 ///               Balai, dan "Akhiri hari" bertumpuk di rel kanan.
 enum _Mode { phone, landscape, wide }
 
+/// Mode "wide" butuh >= 1000 px lebar: Toko (3 kartu + panel keterangan) dan
+/// rel kanan baru muat tanpa meluap. Di bawah itu (tablet, jendela sempit)
+/// dipakai susunan ponsel yang bisa digeser. Layar pendek memakai rel samping.
 _Mode _modeFor(BoxConstraints c) {
   final w = c.maxWidth, h = c.maxHeight;
-  if (h < 430) return w >= 520 ? _Mode.landscape : _Mode.phone;
-  if (w >= 760) return _Mode.wide;
+  if (w >= 1000 && h >= 480) return _Mode.wide;
+  if (h < 460 && w >= 520) return _Mode.landscape;
   return _Mode.phone;
 }
 
@@ -111,8 +114,15 @@ class DayView extends StatefulWidget {
   State<DayView> createState() => _DayViewState();
 }
 
-class _DayViewState extends State<DayView> {
+class _DayViewState extends State<DayView>
+    with SingleTickerProviderStateMixin {
   final PageController _pager = PageController();
+
+  // Jam berdenyut: tombol akhiri hari, tawaran tukar, dan lencana Balai.
+  late final AnimationController _t = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2600))
+    ..repeat();
+  double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
   int tab = _tabToko;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
@@ -151,14 +161,38 @@ class _DayViewState extends State<DayView> {
     _loadOffers();
     widget.marketTick?.addListener(_loadOffers);
     // Banner Kabar Pagi di layar Toko menyingkir sendiri supaya kartu lega;
-    // isinya tetap bisa dibaca di Balai.
+    // isinya tetap bisa dibaca di Balai, atau dibuka lagi lewat lencana.
+    _hideKabarLater();
+  }
+
+  void _hideKabarLater() {
+    _kabarTimer?.cancel();
     _kabarTimer = Timer(const Duration(seconds: 9), () {
       if (mounted) setState(() => _kabarHidden = true);
     });
   }
 
+  void _showKabar() {
+    setState(() => _kabarHidden = false);
+    _hideKabarLater();
+  }
+
+  bool get _hasKabar => widget.events
+      .any((e) => e['kind'] == 'kabar' && e['day'] == widget.day);
+
+  /// Slot banner Kabar Pagi yang melipat mulus saat menyingkir.
+  Widget _kabarSlot({required bool compact}) => AnimatedSize(
+    duration: const Duration(milliseconds: 280),
+    curve: Curves.easeOutCubic,
+    alignment: Alignment.topCenter,
+    child: (!_kabarHidden && _hasKabar)
+        ? _kabar(compact: compact)
+        : const SizedBox(width: double.infinity),
+  );
+
   @override
   void dispose() {
+    _t.dispose();
     widget.marketTick?.removeListener(_loadOffers);
     _openTimer?.cancel();
     _kabarTimer?.cancel();
@@ -495,19 +529,18 @@ class _DayViewState extends State<DayView> {
   Widget _statusChips() {
     final mod = widget.priceMod;
     final remain = _remaining;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
       children: [
         if (widget.jailed)
           _chip('lock', 'Dikurung', color: EmbunColors.blood)
         else
           _chip('item', 'Jatah $remain',
               color: remain > 0 ? Colors.white70 : Colors.white38),
-        if (mod != 0) ...[
-          const SizedBox(width: 6),
+        if (mod != 0)
           _chip(mod > 0 ? 'plus' : 'minus', 'Harga ${mod > 0 ? '+' : ''}$mod',
               color: mod < 0 ? Colors.greenAccent : Colors.orangeAccent),
-        ],
       ],
     );
   }
@@ -711,19 +744,31 @@ class _DayViewState extends State<DayView> {
       }
       final byH = (c.maxHeight - chrome) / maxA;
       if (byH < w) w = byH;
-      w = w.clamp(60.0, 190.0).toDouble().floorToDouble();
+      w = w.clamp(72.0, 190.0).toDouble().floorToDouble();
+      final row = Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < n; i++) ...[
+            if (i > 0) const SizedBox(width: gap),
+            _shopCol(i, n, o[i], w, gap),
+          ],
+        ],
+      );
+      // Ruang terlalu sempit untuk n kolom minimum: gulir ke samping,
+      // jangan meluap.
+      final rowW = n * w + (n - 1) * gap;
       return Center(
         child: SingleChildScrollView(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < n; i++) ...[
-                if (i > 0) const SizedBox(width: gap),
-                _shopCol(i, n, o[i], w, gap),
-              ],
-            ],
-          ),
+          child: rowW > c.maxWidth
+              ? SizedBox(
+            width: c.maxWidth,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: row,
+            ),
+          )
+              : row,
         ),
       );
     });
@@ -733,6 +778,7 @@ class _DayViewState extends State<DayView> {
   /// kartu yang disentuh, dan tombol lewati (akhiri hari).
   Widget _shopInfo() {
     final o = offers;
+    var descKey = 'none';
     Widget desc = const SizedBox.shrink();
     if (o != null && o.isNotEmpty) {
       final i = sel.clamp(0, o.length - 1).toInt();
@@ -740,6 +786,7 @@ class _DayViewState extends State<DayView> {
       final def = widget.defs[id];
       final bad = def?['side'] == 'antagonis';
       final reason = _blockReason(o[i], _price(id));
+      descKey = '$i-$id-${reason ?? 'ok'}';
       desc = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -792,12 +839,31 @@ class _DayViewState extends State<DayView> {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: EmbunColors.gold)),
-              const Spacer(),
-              _statusChips(),
             ],
           ),
           const Divider(height: 16),
-          Expanded(child: SingleChildScrollView(child: desc)),
+          // Keterangan berganti dengan memudar dan meluncur saat kartu lain dipilih.
+          Expanded(
+            child: SingleChildScrollView(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                layoutBuilder: (cur, prev) => Stack(
+                  alignment: Alignment.topLeft,
+                  children: [...prev, ?cur],
+                ),
+                transitionBuilder: (w, a) => FadeTransition(
+                  opacity: a,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                        begin: const Offset(0, 0.06), end: Offset.zero)
+                        .animate(a),
+                    child: w,
+                  ),
+                ),
+                child: KeyedSubtree(key: ValueKey(descKey), child: desc),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _endButton(height: 46),
           if (widget.iAmReady) ...[
@@ -809,60 +875,154 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  /// Panel toko: judul + hitungan saldo, tiga kolom kartu, panel info.
-  Widget _shopPanel({required bool wide}) => OrnatePanel(
-    padding: EdgeInsets.fromLTRB(
-        wide ? 20 : 12, wide ? 14 : 10, wide ? 20 : 12, wide ? 16 : 10),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+  /// Keterangan ringkas kartu terpilih untuk ponsel, tempat panel samping
+  /// tidak muat: nama, jenis, efek (dua baris), dan alasan belum bisa dibeli.
+  Widget _shopInfoCompact() {
+    final o = offers;
+    if (o == null || o.isEmpty) return const SizedBox.shrink();
+    final i = sel.clamp(0, o.length - 1).toInt();
+    final id = o[i]['card_id'] as String;
+    final def = widget.defs[id];
+    final bad = def?['side'] == 'antagonis';
+    final reason = _blockReason(o[i], _price(id));
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 240),
+      transitionBuilder: (w, a) => FadeTransition(
+        opacity: a,
+        child: SlideTransition(
+          position: Tween<Offset>(
+              begin: const Offset(0, 0.12), end: Offset.zero)
+              .animate(a),
+          child: w,
+        ),
+      ),
+      child: Container(
+        key: ValueKey('c$i-$id-${reason ?? 'ok'}'),
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.32),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: (bad ? EmbunColors.mist : EmbunColors.gold)
+                  .withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GameIcon('store', size: wide ? 38 : 30),
+            GameIcon(kindIcon[def?['kind']] ?? 'item', size: 28),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('Pasar Pagi',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: wide ? 22 : 17,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                      color: EmbunColors.gold)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${_cardName(id)} · ${kindLabel[def?['kind']] ?? ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: bad ? EmbunColors.mist : EmbunColors.gold)),
+                  const SizedBox(height: 2),
+                  Text('${def?['description'] ?? ''}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11.5, height: 1.3, color: Colors.white70)),
+                  if (reason != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(reason,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: EmbunColors.blood)),
+                    ),
+                ],
+              ),
             ),
-            _balancePill(size: wide ? 32 : 26),
           ],
         ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: wide
-              ? Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _shopColumns()),
-              const SizedBox(width: 16),
-              SizedBox(width: 240, child: _shopInfo()),
-            ],
-          )
-              : _shopColumns(),
-        ),
-      ],
-    ),
-  );
-
-  /// Layar Toko di ponsel / layar pendek.
-  Widget _tokoPage({required bool side}) {
-    final hasKabar = !_kabarHidden &&
-        widget.events
-            .any((e) => e['kind'] == 'kabar' && e['day'] == widget.day);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (hasKabar) _kabar(compact: true),
-        Expanded(child: _shopPanel(wide: false)),
-      ],
+      ),
     );
   }
+
+  /// Panel toko. Hierarki: (1) judul + saldo, (2) status jatah / harga,
+  /// (3) kartu dan tombol Beli, (4) keterangan kartu terpilih. Bagian (2)
+  /// dan (4) menyesuaikan tinggi yang tersedia.
+  Widget _shopPanel({required bool wide}) =>
+      LayoutBuilder(builder: (context, box) {
+        final short = box.maxHeight < 400;
+        final showCompact = !wide && box.maxHeight >= 470;
+        final infoW = (box.maxWidth * 0.34).clamp(210.0, 270.0).toDouble();
+        return OrnatePanel(
+          padding: EdgeInsets.fromLTRB(
+              wide ? 20 : 12, wide ? 14 : 10, wide ? 20 : 12, wide ? 16 : 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  GameIcon('store', size: wide ? 38 : 30),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Pasar Pagi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: wide ? 22 : 17,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1,
+                            color: EmbunColors.gold)),
+                  ),
+                  // Kabar Pagi yang sudah menyingkir bisa dibuka lagi.
+                  if (_kabarHidden && _hasKabar) ...[
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _showKabar,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: _chip('announcement', 'Kabar',
+                            color: EmbunColors.gold),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _balancePill(size: wide ? 32 : 26),
+                ],
+              ),
+              if (!short) ...[
+                const SizedBox(height: 6),
+                _statusChips(),
+              ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: wide
+                    ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _shopColumns()),
+                    const SizedBox(width: 16),
+                    SizedBox(width: infoW, child: _shopInfo()),
+                  ],
+                )
+                    : _shopColumns(),
+              ),
+              if (showCompact) _shopInfoCompact(),
+            ],
+          ),
+        );
+      });
+
+  /// Layar Toko di ponsel / layar pendek.
+  Widget _tokoPage({required bool side}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _kabarSlot(compact: true),
+      Expanded(child: _shopPanel(wide: false)),
+    ],
+  );
 
 
   // ====================== Meja ======================
@@ -887,13 +1047,19 @@ class _DayViewState extends State<DayView> {
               spacing: g.gap,
               runSpacing: g.gap,
               children: [
-                for (final h in hand)
-                  _preview(
-                    widget.defs[h['card_id']],
-                    CardTile(
-                      def: widget.defs[h['card_id']],
-                      fallbackName: h['card_id'] as String,
-                      width: g.w,
+                // Kartu baru muncul membal; kartu lama tidak diulang
+                // (kunci per baris tangan).
+                for (var i = 0; i < hand.length; i++)
+                  _Pop(
+                    key: ValueKey('hand-${hand[i]['id'] ?? i}'),
+                    index: i,
+                    child: _preview(
+                      widget.defs[hand[i]['card_id']],
+                      CardTile(
+                        def: widget.defs[hand[i]['card_id']],
+                        fallbackName: hand[i]['card_id'] as String,
+                        width: g.w,
+                      ),
                     ),
                   ),
               ],
@@ -916,8 +1082,44 @@ class _DayViewState extends State<DayView> {
 
   // ====================== Balai ======================
 
-  Widget _tradeCard(Map<String, dynamic> t) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
+  /// Tawaran masuk: meluncur dari kanan dengan pantulan, lalu berpendar
+  /// emas berdenyut sampai dijawab.
+  Widget _tradeCard(Map<String, dynamic> t) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: TweenAnimationBuilder<double>(
+      key: ValueKey('trade-${t['id']}'),
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutBack,
+      builder: (context, v, child) => Opacity(
+        opacity: _c(v * 2),
+        child: Transform.translate(
+            offset: Offset((1 - v) * 70, 0), child: child),
+      ),
+      child: AnimatedBuilder(
+        animation: _t,
+        child: _tradeCardBase(t),
+        builder: (context, child) {
+          final p = _pulse;
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: EmbunColors.gold.withValues(alpha: 0.08 + 0.22 * p),
+                  blurRadius: 8 + 10 * p,
+                  spreadRadius: 0.5 * p,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+      ),
+    ),
+  );
+
+  Widget _tradeCardBase(Map<String, dynamic> t) => Container(
     padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
     decoration: BoxDecoration(
       color: Colors.black38,
@@ -1106,12 +1308,22 @@ class _DayViewState extends State<DayView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Badge(
-              isLabelVisible: badge > 0,
-              label: Text('$badge'),
-              child: Opacity(
-                  opacity: on ? 1 : 0.65,
-                  child: GameIcon(_tabIcons[i], size: 25)),
+            // Lencana tawaran tukar berdenyut agar tidak terlewat.
+            AnimatedBuilder(
+              animation: _t,
+              builder: (context, child) => Transform.scale(
+                scale: badge > 0
+                    ? 1 + 0.14 * sin(_t.value * 2 * pi * 2).abs()
+                    : 1.0,
+                child: child,
+              ),
+              child: Badge(
+                isLabelVisible: badge > 0,
+                label: Text('$badge'),
+                child: Opacity(
+                    opacity: on ? 1 : 0.65,
+                    child: GameIcon(_tabIcons[i], size: 25)),
+              ),
             ),
             Text(labels[i],
                 maxLines: 1,
@@ -1132,7 +1344,7 @@ class _DayViewState extends State<DayView> {
   Widget _endButton({double height = 48, bool short = false}) {
     final ready = widget.iAmReady;
     final nothingLeft = _remaining == 0 || widget.jailed;
-    return EmbunButton(
+    final btn = EmbunButton(
       label: ready
           ? (short ? '${widget.readyCount}/${widget.total}' : 'Menunggu ${widget.readyCount}/${widget.total}')
           : (short ? 'Akhiri' : 'Akhiri hari ${widget.day}'),
@@ -1143,6 +1355,28 @@ class _DayViewState extends State<DayView> {
           ? EmbunButtonKind.secondary
           : EmbunButtonKind.primary,
       onPressed: ready || busy ? null : _endDay,
+    );
+    if (ready || !nothingLeft || busy) return btn;
+    // Tidak ada lagi yang bisa dibeli: tombol berpendar emas mengajak lanjut.
+    return AnimatedBuilder(
+      animation: _t,
+      child: btn,
+      builder: (context, child) {
+        final p = _pulse;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: EmbunColors.gold.withValues(alpha: 0.16 + 0.3 * p),
+                blurRadius: 10 + 14 * p,
+                spreadRadius: 0.5 + 1.5 * p,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
     );
   }
 
@@ -1326,7 +1560,7 @@ class _DayViewState extends State<DayView> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _kabar(),
+              _kabarSlot(compact: false),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1342,4 +1576,24 @@ class _DayViewState extends State<DayView> {
       }
     });
   }
+}
+/// Muncul membal (memudar + membesar dari 70%). Kartu yang sudah ada tidak
+/// mengulang karena widget ini dikunci per kartu; yang baru masuk bergelombang
+/// menurut urutannya.
+class _Pop extends StatelessWidget {
+  final int index;
+  final Widget child;
+  const _Pop({super.key, required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween<double>(begin: 0, end: 1),
+    duration: Duration(milliseconds: 420 + 55 * min(index, 8)),
+    curve: Curves.easeOutBack,
+    builder: (context, v, c) => Opacity(
+      opacity: _c(v * 1.6),
+      child: Transform.scale(scale: 0.7 + 0.3 * v, child: c),
+    ),
+    child: child,
+  );
 }
