@@ -1,19 +1,39 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../../data/errors.dart';
 import '../common/ornate.dart';
 import 'player_status.dart';
 
+double _seg(double v, double a, double b) =>
+    ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
+
+double _smooth(double x) => x * x * (3 - 2 * x);
+
+/// Debar jantung: dua denyut pendek per putaran (u = 0..1).
+double _thump(double u) {
+  double f(double x) => x < 0 ? 0.0 : math.exp(-x * 16);
+  return math.min(1.0, f(u) + 0.7 * f(u - 0.28));
+}
+
 class VotingView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
+
   /// Hanya pemain yang masih di desa.
   final List<Map<String, dynamic>> players;
   final int day;
+
+  /// Suaraku sudah terkunci (pemain ditandai siap): tampilkan layar menunggu
+  /// yang tegang, bukan daftar tersangka.
+  final bool locked;
+  final int readyCount;
+  final int total;
 
   const VotingView({
     super.key,
@@ -21,6 +41,9 @@ class VotingView extends StatefulWidget {
     required this.gameId,
     required this.players,
     required this.day,
+    this.locked = false,
+    this.readyCount = 0,
+    this.total = 0,
   });
 
   @override
@@ -28,13 +51,18 @@ class VotingView extends StatefulWidget {
 }
 
 class _VotingViewState extends State<VotingView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String? target;
   bool busy = false;
 
   // Segel suara: tampil sebentar sebelum suara benar-benar dikirim.
   bool stamping = false;
   String? stampId; // null = tidak memilih
+
+  // Suara yang baru saja berhasil terkirim (menjembatani jeda sebelum
+  // stream menandai pemain siap).
+  bool _sent = false;
+  String? _sentTarget;
 
   // Denyut cahaya merah pada kartu yang dipilih. Hanya berjalan saat ada
   // pilihan supaya tidak memboroskan frame.
@@ -43,10 +71,44 @@ class _VotingViewState extends State<VotingView>
     duration: const Duration(milliseconds: 1300),
   );
 
+  // Pembukaan sidang: judul menghantam, lalu kartu tersangka masuk satu per
+  // satu. 0.00-0.50 judul, 0.50-0.78 tirai terangkat, kartu masuk 0.50-0.96.
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  );
+  final Set<int> _fired = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.locked) {
+      // Masuk kembali setelah memilih: langsung ke layar menunggu.
+      _intro.value = 1;
+    } else {
+      _intro.addListener(_onIntroTick);
+      _intro.forward();
+    }
+  }
+
   @override
   void dispose() {
     _pulse.dispose();
+    _intro.dispose();
     super.dispose();
+  }
+
+  void _onIntroTick() {
+    final t = _intro.value;
+    if (t >= 0.10 && _fired.add(0)) HapticFeedback.heavyImpact();
+    if (t >= 0.14 && _fired.add(1)) HapticFeedback.mediumImpact();
+    if (t >= 0.52 && _fired.add(2)) HapticFeedback.selectionClick();
+  }
+
+  void _skipIntro() {
+    if (_intro.value >= 0.5) return;
+    _intro.animateTo(1.0,
+        duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
   }
 
   Map<String, dynamic>? _player(String? id) {
@@ -59,8 +121,13 @@ class _VotingViewState extends State<VotingView>
 
   /// Ketuk kartu: memilih, atau ketuk lagi untuk membatalkan.
   void _select(String id) {
-    HapticFeedback.selectionClick();
-    setState(() => target = target == id ? null : id);
+    final cancel = target == id;
+    if (cancel) {
+      HapticFeedback.selectionClick();
+    } else {
+      HapticFeedback.mediumImpact();
+    }
+    setState(() => target = cancel ? null : id);
     if (target == null) {
       _pulse.stop();
     } else if (!_pulse.isAnimating) {
@@ -91,10 +158,13 @@ class _VotingViewState extends State<VotingView>
       }
     } finally {
       if (mounted) {
-        // Setelah sukses, tombol tetap terkunci sampai stream menandai
-        // pemain siap; hanya galat yang membukanya lagi.
         setState(() {
-          if (!ok) busy = false;
+          if (ok) {
+            _sent = true;
+            _sentTarget = t;
+          } else {
+            busy = false;
+          }
           stamping = false;
         });
         if (!ok && target != null && !_pulse.isAnimating) {
@@ -111,24 +181,49 @@ class _VotingViewState extends State<VotingView>
     final need = widget.players.length ~/ 2 + 1;
     final size = MediaQuery.sizeOf(context);
     final short = size.height < 480; // ponsel miring
+    final showLocked = widget.locked || _sent;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SectionHeader(icon: 'vote', title: 'Siapa Si Terbisik?'),
-            SizedBox(height: short ? 4 : 8),
-            _RulesPanel(need: need, compact: short),
-            SizedBox(height: short ? 6 : 10),
-            Expanded(child: _suspects(others, short)),
-            SizedBox(height: short ? 6 : 10),
-            _actionBar(short),
-          ],
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 450),
+          layoutBuilder: (current, previous) => Stack(
+            fit: StackFit.expand,
+            children: [...previous, ?current],
+          ),
+          child: showLocked
+              ? _LockedView(
+            key: const ValueKey('locked'),
+            known: _sent,
+            target: _player(_sentTarget),
+            ready: widget.readyCount,
+            total: widget.total,
+          )
+              : KeyedSubtree(
+            key: const ValueKey('open'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                    icon: 'vote', title: 'Siapa Si Terbisik?'),
+                SizedBox(height: short ? 4 : 8),
+                _RulesPanel(need: need, compact: short),
+                SizedBox(height: short ? 6 : 10),
+                Expanded(child: _suspects(others, short)),
+                SizedBox(height: short ? 6 : 10),
+                _actionBar(short),
+              ],
+            ),
+          ),
         ),
         if (stamping)
           Positioned.fill(child: _VoteStamp(player: _player(stampId))),
+        if (!showLocked)
+          Positioned.fill(
+            child: _SessionIntro(
+                t: _intro, day: widget.day, onSkip: _skipIntro),
+          ),
       ],
     );
   }
@@ -157,14 +252,35 @@ class _VotingViewState extends State<VotingView>
           final p = others[i];
           final id = p['user_id'] as String;
           final sel = target == id;
-          return _SuspectCard(
-            player: p,
-            selected: sel,
-            dimmed: busy && !sel,
-            enabled: !busy,
-            jailed: isJailed(p, widget.day),
-            pulse: _pulse,
-            onTap: () => _select(id),
+          final slot = math.min(i, 7);
+          final opacity = busy && !sel
+              ? 0.45
+              : (target != null && !sel ? 0.7 : 1.0);
+          return AnimatedBuilder(
+            animation: _intro,
+            builder: (context, child) {
+              final t = Curves.easeOutBack
+                  .transform(_seg(_intro.value, 0.50 + 0.03 * slot, 0.78 + 0.03 * slot));
+              return Opacity(
+                opacity: t.clamp(0.0, 1.0).toDouble(),
+                child: Transform.translate(
+                  offset: Offset(0, 46 * (1 - t)),
+                  child: Transform.rotate(
+                    angle: (i.isEven ? -0.07 : 0.07) * (1 - t),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: _SuspectCard(
+              player: p,
+              selected: sel,
+              opacity: opacity,
+              enabled: !busy,
+              jailed: isJailed(p, widget.day),
+              pulse: _pulse,
+              onTap: () => _select(id),
+            ),
           );
         },
       );
@@ -314,11 +430,11 @@ class _RulesPanel extends StatelessWidget {
 }
 
 /// Kartu tersangka: potret besar di tengah, cincin dan cahaya merah
-/// berdenyut saat dipilih, pemain lain meredup saat suara dikunci.
+/// berdenyut saat dipilih, pemain lain meredup selagi ada yang dipilih.
 class _SuspectCard extends StatelessWidget {
   final Map<String, dynamic> player;
   final bool selected;
-  final bool dimmed;
+  final double opacity;
   final bool enabled;
   final bool jailed;
   final Animation<double> pulse;
@@ -327,7 +443,7 @@ class _SuspectCard extends StatelessWidget {
   const _SuspectCard({
     required this.player,
     required this.selected,
-    required this.dimmed,
+    required this.opacity,
     required this.enabled,
     required this.jailed,
     required this.pulse,
@@ -347,9 +463,9 @@ class _SuspectCard extends StatelessWidget {
       label: 'Tuduh $name',
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 250),
-        opacity: dimmed ? 0.45 : 1,
+        opacity: opacity,
         child: AnimatedScale(
-          scale: selected ? 1.04 : 1,
+          scale: selected ? 1.07 : 1,
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutBack,
           child: AnimatedBuilder(
@@ -379,8 +495,8 @@ class _SuspectCard extends StatelessWidget {
                     if (selected)
                       BoxShadow(
                         color: EmbunColors.blood.withValues(alpha: glow),
-                        blurRadius: 14 + 12 * pulse.value,
-                        spreadRadius: 1,
+                        blurRadius: 18 + 16 * pulse.value,
+                        spreadRadius: 2,
                       ),
                   ],
                 ),
@@ -453,6 +569,333 @@ class _SuspectCard extends StatelessWidget {
                   );
                 }),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pembukaan sidang: layar menggelap, judul "SIDANG DESA" menghantam dengan
+/// getar, garis merah memanjang, lalu tirai terangkat dan kartu tersangka
+/// masuk. Ketuk untuk melewati. Tidak menghalangi lagi setelah tirai naik.
+class _SessionIntro extends StatelessWidget {
+  final Animation<double> t;
+  final int day;
+  final VoidCallback onSkip;
+
+  const _SessionIntro({
+    required this.t,
+    required this.day,
+    required this.onSkip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: t,
+      builder: (context, _) {
+        final v = t.value;
+        if (v >= 0.78) return const SizedBox.shrink();
+
+        final scrim = 0.95 * (1 - _smooth(_seg(v, 0.50, 0.78)));
+        final titleIn = Curves.easeOutCubic.transform(_seg(v, 0.04, 0.24));
+        final titleOut = 1 - _smooth(_seg(v, 0.46, 0.60));
+        final subIn = _smooth(_seg(v, 0.22, 0.36));
+        final line = Curves.easeOutCubic.transform(_seg(v, 0.12, 0.36));
+        final k = _seg(v, 0.10, 0.20);
+        final shake = (k > 0 && k < 1) ? math.sin(k * 40) * 7 * (1 - k) : 0.0;
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onSkip,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                  color: const Color(0xFF080306).withValues(alpha: scrim)),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    radius: 0.9,
+                    colors: [
+                      EmbunColors.blood.withValues(alpha: 0.30 * scrim),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              Opacity(
+                opacity: (titleIn * titleOut).clamp(0.0, 1.0).toDouble(),
+                child: Transform.translate(
+                  offset: Offset(shake, 0),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Transform.scale(
+                              scale: 1.5 - 0.5 * titleIn,
+                              child: const GameIcon('vote', size: 72),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'SIDANG DESA',
+                              style: TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 16 - 11 * titleIn,
+                                color: EmbunColors.blood,
+                                shadows: [
+                                  Shadow(
+                                    color: EmbunColors.blood
+                                        .withValues(alpha: 0.7),
+                                    blurRadius: 24,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: 220 * line,
+                              height: 2,
+                              child: ColoredBox(
+                                color:
+                                EmbunColors.blood.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Opacity(
+                              opacity: subIn,
+                              child: Text(
+                                'Hari $day  ·  satu suara bisa mengubah segalanya',
+                                style: const TextStyle(
+                                    fontSize: 13.5, color: Colors.white70),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Opacity(
+                              opacity: subIn * 0.7,
+                              child: const Text(
+                                'Ketuk untuk melewati',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.white38),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Layar setelah suara dikunci: segel merah berdenyut, siapa yang kamu tuduh,
+/// dan deretan segel yang menyala satu per satu saat pemain lain mengunci
+/// suaranya.
+class _LockedView extends StatefulWidget {
+  /// true bila kita tahu pilihan sesi ini (bukan masuk kembali).
+  final bool known;
+  final Map<String, dynamic>? target; // null = tidak memilih
+  final int ready;
+  final int total;
+
+  const _LockedView({
+    super.key,
+    required this.known,
+    required this.target,
+    required this.ready,
+    required this.total,
+  });
+
+  @override
+  State<_LockedView> createState() => _LockedViewState();
+}
+
+class _LockedViewState extends State<_LockedView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _choice() {
+    final t = widget.target;
+    if (!widget.known) {
+      return const Text('Suaramu sudah dijatuhkan.',
+          style: TextStyle(fontSize: 14, color: Colors.white70));
+    }
+    if (t == null) {
+      return const Text('Kamu memilih untuk tidak memilih.',
+          style: TextStyle(fontSize: 14, color: Colors.white70));
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PlayerAvatar(
+          path: protagonistPath(t['character_card'] as String),
+          size: 44,
+          ring: EmbunColors.blood,
+        ),
+        const SizedBox(width: 12),
+        Text.rich(
+          TextSpan(
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+            children: [
+              const TextSpan(text: 'Kamu menuduh  '),
+              TextSpan(
+                text: t['name'] as String,
+                style: const TextStyle(
+                  color: EmbunColors.blood,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seals(int total, int ready, double beat) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (var i = 0; i < total; i++)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutBack,
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < ready ? EmbunColors.blood : Colors.transparent,
+              border: Border.all(
+                color: i < ready
+                    ? EmbunColors.blood
+                    : Colors.white.withValues(alpha: 0.2 + 0.25 * beat),
+                width: 2,
+              ),
+              boxShadow: i < ready
+                  ? [
+                BoxShadow(
+                  color: EmbunColors.blood.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                ),
+              ]
+                  : null,
+            ),
+            child: i < ready
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                : null,
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = math.max(widget.total, 1);
+    final ready = widget.ready.clamp(0, total).toInt();
+    final left = total - ready;
+
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (context, _) {
+                final beat = _thump(_c.value);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.scale(
+                      scale: 1 + 0.07 * beat,
+                      child: Container(
+                        width: 96,
+                        height: 96,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              EmbunColors.blood.withValues(alpha: 0.55),
+                              const Color(0xFF2A0C0C),
+                            ],
+                          ),
+                          border:
+                          Border.all(color: EmbunColors.blood, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: EmbunColors.blood
+                                  .withValues(alpha: 0.35 + 0.35 * beat),
+                              blurRadius: 18 + 20 * beat,
+                              spreadRadius: 2 * beat,
+                            ),
+                          ],
+                        ),
+                        child: const GameIcon('lock', size: 52),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'SUARAMU TERKUNCI',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                        color: EmbunColors.blood,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _choice(),
+                    const SizedBox(height: 22),
+                    _seals(total, ready, beat),
+                    const SizedBox(height: 10),
+                    Text(
+                      left > 0
+                          ? 'Menunggu $left suara lagi...'
+                          : 'Semua suara terkunci. Pintu balai ditutup...',
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Tak ada yang bisa ditarik kembali.',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white38),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -591,6 +1034,149 @@ class _VoteStamp extends StatelessWidget {
               if (flash > 0.01)
                 ColoredBox(
                     color: Colors.white.withValues(alpha: 0.35 * flash)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Ketegangan sepanjang sesi voting, dipasang di atas SELURUH layar meja
+/// (bukan di panel saja). Tenang sampai 20 detik terakhir; sesudah itu tepi
+/// layar berdenyut merah seperti detak jantung yang makin cepat, ada getar
+/// haptic mulai 10 detik terakhir, dan 5 detik terakhir ditandai angka besar
+/// yang samar di tengah layar. Tidak menangkap sentuhan.
+class VotingTension extends StatefulWidget {
+  final DateTime? deadline;
+  const VotingTension({super.key, required this.deadline});
+
+  @override
+  State<VotingTension> createState() => _VotingTensionState();
+}
+
+class _VotingTensionState extends State<VotingTension>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  Timer? _timer;
+  int _band = 0; // 0 tenang, 1 <=20s, 2 <=10s, 3 <=5s
+  int _left = 999; // detik tersisa (dibulatkan ke atas)
+  double _lastV = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addListener(_onBeat);
+    _measure(notify: false);
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (mounted) _measure(notify: true);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant VotingTension old) {
+    super.didUpdateWidget(old);
+    if (old.deadline != widget.deadline) _measure(notify: true);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _measure({required bool notify}) {
+    final d = widget.deadline;
+    int band = 0;
+    int secs = 999;
+    if (d != null) {
+      final left = d.difference(ServerClock.now()).inMilliseconds / 1000.0;
+      secs = left <= 0 ? 0 : left.ceil();
+      band = left <= 5 ? 3 : (left <= 10 ? 2 : (left <= 20 ? 1 : 0));
+    }
+    final bandChanged = band != _band;
+    if (!bandChanged && secs == _left) return;
+
+    void apply() {
+      _band = band;
+      _left = secs;
+    }
+
+    if (notify) {
+      setState(apply);
+    } else {
+      apply();
+    }
+    if (bandChanged) {
+      if (band == 0) {
+        _c.stop();
+        _c.value = 0;
+      } else {
+        final ms = band == 1 ? 1100 : (band == 2 ? 800 : 540);
+        _c.repeat(period: Duration(milliseconds: ms));
+      }
+    }
+  }
+
+  /// Satu debar di awal tiap putaran.
+  void _onBeat() {
+    final v = _c.value;
+    if (v < _lastV) {
+      if (_band == 3) {
+        HapticFeedback.mediumImpact();
+      } else if (_band == 2) {
+        HapticFeedback.lightImpact();
+      }
+    }
+    _lastV = v;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_band == 0) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final urgency = _band == 1 ? 0.35 : (_band == 2 ? 0.65 : 1.0);
+          final beat = _thump(_c.value);
+          final a = (0.10 + 0.45 * urgency) * (0.35 + 0.65 * beat);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    radius: 1.0,
+                    colors: [
+                      Colors.transparent,
+                      EmbunColors.blood.withValues(alpha: a),
+                    ],
+                    stops: const [0.5, 1.0],
+                  ),
+                ),
+              ),
+              if (_band == 3 && _left > 0)
+                Center(
+                  child: Opacity(
+                    opacity: 0.10 + 0.16 * beat,
+                    child: Transform.scale(
+                      scale: 1 + 0.12 * beat,
+                      child: Text(
+                        '$_left',
+                        style: const TextStyle(
+                          fontSize: 180,
+                          fontWeight: FontWeight.w900,
+                          color: EmbunColors.blood,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },

@@ -5,10 +5,36 @@ import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 
-/// Adegan pembukaan suara setelah voting selesai: kartu-kartu yang memilih
-/// muncul satu per satu ("Nelayan memilih Warga Desa"), hitungan di papan
-/// bawah naik, ada jeda "MAYORITAS" saat suara penentu masuk, lalu yang tidak
-/// memilih, lalu hasil. Berjalan SEBELUM adegan kurungan / fajar / akhir.
+double _seg(double v, double a, double b) =>
+    ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
+
+/// Angka semu-acak yang stabil (0..1) untuk percikan bara.
+double _rnd(int i, int k) {
+  final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+  return v - v.floorToDouble();
+}
+
+/// Debar jantung: dua denyut pendek per putaran (u = 0..1).
+double _thump(double u) {
+  double f(double x) => x < 0 ? 0.0 : math.exp(-x * 16);
+  return math.min(1.0, f(u) + 0.7 * f(u - 0.28));
+}
+
+/// Adegan pembukaan suara setelah voting selesai. Alurnya dibuat seperti
+/// pembacaan vonis:
+///
+///  * pembukaan: layar gelap berdenyut, debar haptic makin rapat;
+///  * satu per satu kartu yang memilih muncul, hitungan di papan naik, dan
+///    papan memerah pada pemain yang mendekati mayoritas;
+///  * saat sebuah kartu tinggal SATU suara dari mayoritas, irama melambat,
+///    tepi layar berdenyut dan muncul "butuh 1 suara lagi...";
+///  * suara penentu menghantam: layar bergetar, berkilat putih, spanduk
+///    MAYORITAS muncul bersama wajah yang dituduh;
+///  * hasil: yang dituduh jatuh ke tengah, gelombang kejut, cap DITUDUH
+///    menimpa, hitungan suara naik, bara melayang. Bila tak ada mayoritas,
+///    suasana mereda jadi dingin dan tenang.
+///
+/// Berjalan SEBELUM adegan kurungan / pengusiran / fajar / akhir.
 ///
 /// [rows] berasal dari tabel `vote_reveal` (urutan server, sama untuk semua
 /// perangkat; yang tidak memilih di akhir).
@@ -37,8 +63,10 @@ class _Person {
   const _Person(this.id, this.name, this.card);
 }
 
-class _VoteRevealSceneState extends State<VoteRevealScene> {
+class _VoteRevealSceneState extends State<VoteRevealScene>
+    with TickerProviderStateMixin {
   static const _bg = Color(0xFF05080F);
+  static const _teal = Color(0xFF5FB8A5);
 
   late final List<Map<String, dynamic>> _votes;
   late final List<Map<String, dynamic>> _abstain;
@@ -47,13 +75,28 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
   String? _myTarget;
 
   final Map<String, int> _counts = {};
-  int _phase = 0; // 0 judul, 1 pemilihan, 2 tidak memilih, 3 hasil
+  int _phase = 0; // 0 pembukaan, 1 pemilihan, 2 tidak memilih, 3 hasil
   int _i = 0; // suara yang sedang tampil
   int _stage = 0; // 0 kosong, 1 pemilih muncul, 2 + sasaran, 3 terhitung
   String? _majorityId;
   bool _banner = false;
+  bool _near = false; // satu suara lagi menuju mayoritas
+  bool _decisive = false; // suara penentu sudah jatuh
   bool _stopped = false;
   bool _done = false;
+
+  // Denyut tepi layar (kecepatan berubah menurut ketegangan).
+  late final AnimationController _beat = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100));
+  // Getar layar dan kilat putih saat hantaman.
+  late final AnimationController _shake = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 560));
+  late final AnimationController _flash = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 420));
+  // Garis waktu adegan hasil.
+  late final AnimationController _vc = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 3400));
+  final Set<int> _fired = {};
 
   @override
   void initState() {
@@ -79,12 +122,18 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
       if (r['voter_id'] == widget.myId) _myTarget = r['target_id'] as String?;
     }
 
+    _beat.repeat();
+    _vc.addListener(_onVerdictTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _play());
   }
 
   @override
   void dispose() {
     _stopped = true;
+    _beat.dispose();
+    _shake.dispose();
+    _flash.dispose();
+    _vc.dispose();
     super.dispose();
   }
 
@@ -102,8 +151,32 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
     widget.onDone();
   }
 
+  /// Hantaman layar: getar + kilat + haptic berat.
+  void _slam({bool flash = true}) {
+    _shake.forward(from: 0);
+    if (flash) _flash.forward(from: 0);
+    HapticFeedback.heavyImpact();
+  }
+
+  void _onVerdictTick() {
+    if (_winnerId == null) return;
+    final t = _vc.value;
+    // Wajah yang dituduh mendarat, lalu cap menimpa.
+    if (t >= 0.34 && _fired.add(0)) _slam(flash: false);
+    if (t >= 0.50 && _fired.add(1)) _slam();
+  }
+
   Future<void> _play() async {
-    if (!await _w(800)) return;
+    // Pembukaan: debar yang makin rapat sebelum suara pertama dibuka.
+    HapticFeedback.lightImpact();
+    if (!await _w(520)) return;
+    HapticFeedback.lightImpact();
+    if (!await _w(360)) return;
+    HapticFeedback.mediumImpact();
+    if (!await _w(260)) return;
+    HapticFeedback.mediumImpact();
+    if (!await _w(220)) return;
+    HapticFeedback.heavyImpact();
     setState(() => _phase = 1);
 
     final n = _votes.length;
@@ -112,14 +185,18 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
       final tid = v['target_id'] as String;
 
       // Irama: normal di awal, melambat di sepertiga akhir selama belum ada
-      // mayoritas (menahan napas), dan mengebut setelah mayoritas jatuh.
+      // mayoritas, merayap saat tinggal satu suara lagi, dan mengebut
+      // setelah mayoritas jatuh.
       final tense = _majorityId == null && i >= (n * 2 / 3).floor();
-      final m = _majorityId != null ? 0.62 : (tense ? 1.3 : 1.0);
+      final m = _majorityId != null
+          ? 0.62
+          : (_near ? 1.7 : (tense ? 1.3 : 1.0));
 
       setState(() {
         _i = i;
         _stage = 1; // pemilih muncul
       });
+      if (_near) HapticFeedback.lightImpact();
       if (!await _w((470 * m).round())) return;
 
       setState(() => _stage = 2); // panah + sasaran
@@ -131,17 +208,37 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
       });
       HapticFeedback.selectionClick();
 
-      if (_majorityId == null && (_counts[tid]! * 2 > _total)) {
+      if (_majorityId == null && _counts[tid]! * 2 > _total) {
+        // Suara penentu: hantaman, lalu spanduk MAYORITAS.
         _majorityId = tid;
-        setState(() => _banner = true);
+        setState(() {
+          _near = false;
+          _decisive = true;
+          _banner = true;
+        });
+        _beat.repeat(period: const Duration(milliseconds: 900));
+        _slam();
+        if (!await _w(170)) return;
         HapticFeedback.heavyImpact();
-        if (!await _w(1250)) return;
+        if (!await _w(1500)) return;
         setState(() => _banner = false);
+      } else if (_majorityId == null) {
+        final nearNow = _lead >= 2 && _lead == _need - 1 && (n - 1 - i) >= 1;
+        if (nearNow != _near) {
+          setState(() => _near = nearNow);
+          if (nearNow) {
+            _beat.repeat(period: const Duration(milliseconds: 620));
+            HapticFeedback.mediumImpact();
+          }
+        }
       }
       if (!await _w((560 * m).round())) return;
     }
 
-    setState(() => _stage = 0);
+    setState(() {
+      _stage = 0;
+      _near = false;
+    });
 
     if (_abstain.isNotEmpty) {
       setState(() => _phase = 2);
@@ -149,8 +246,15 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
     }
 
     setState(() => _phase = 3);
-    HapticFeedback.mediumImpact();
-    if (!await _w(2300)) return;
+    final won = _winnerId != null;
+    if (won) {
+      _beat.repeat(period: const Duration(milliseconds: 1500));
+    } else {
+      _beat.repeat(period: const Duration(milliseconds: 2400));
+      HapticFeedback.lightImpact();
+    }
+    _vc.forward(from: 0);
+    if (!await _w(won ? 3600 : 2600)) return;
     _finish();
   }
 
@@ -171,6 +275,30 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
     return null;
   }
 
+  /// Suara yang dibutuhkan untuk mayoritas.
+  int get _need => _total ~/ 2 + 1;
+
+  /// Suara terbanyak sejauh ini.
+  int get _lead {
+    var m = 0;
+    for (final c in _counts.values) {
+      if (c > m) m = c;
+    }
+    return m;
+  }
+
+  String? get _leaderId {
+    String? id;
+    var m = 0;
+    for (final e in _counts.entries) {
+      if (e.value > m) {
+        m = e.value;
+        id = e.key;
+      }
+    }
+    return id;
+  }
+
   String _targetName(Map<String, dynamic> v) => '${v['target_name']}';
   String _voterName(Map<String, dynamic> v) => '${v['voter_name']}';
 
@@ -178,6 +306,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
 
   @override
   Widget build(BuildContext context) {
+    final won = _phase == 3 && _winnerId != null;
     return Material(
       color: _bg,
       child: Stack(
@@ -192,18 +321,118 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
               ),
             ),
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                _top(),
-                Expanded(child: _stageArea()),
-                _board(),
-                const SizedBox(height: 10),
-              ],
+          if (won) _spotlight(),
+          _vignette(),
+          AnimatedBuilder(
+            animation: _shake,
+            builder: (context, child) {
+              final k = _shake.value;
+              final amp = _shake.isAnimating ? (1 - k) : 0.0;
+              return Transform.translate(
+                offset: Offset(
+                    math.sin(k * 52) * 10 * amp, math.sin(k * 41 + 1.3) * 7 * amp),
+                child: child,
+              );
+            },
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _top(),
+                  Expanded(child: _stageArea()),
+                  _board(),
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
           ),
+          if (won) _embers(),
           if (_banner) _majorityBanner(),
+          IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _flash,
+              builder: (_, _) {
+                final a = _flash.isAnimating ? 0.5 * (1 - _flash.value) : 0.0;
+                if (a <= 0.005) return const SizedBox.shrink();
+                return ColoredBox(color: Colors.white.withValues(alpha: a));
+              },
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  /// Tepi layar berdenyut: makin merah dan cepat bila ada yang mendekati
+  /// mayoritas. Saat hasil tanpa mayoritas berubah menjadi hijau-dingin.
+  Widget _vignette() {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _beat,
+        builder: (context, _) {
+          final won = _winnerId != null;
+          final heat = (_lead / _need).clamp(0.0, 1.0).toDouble();
+          final double base = switch (_phase) {
+            0 => 0.14,
+            1 => 0.06 +
+                0.34 * heat * heat +
+                (_near ? 0.20 : 0.0) +
+                (_decisive ? 0.20 : 0.0),
+            2 => 0.08,
+            _ => won ? 0.30 : 0.18,
+          };
+          final col = (_phase == 3 && !won) ? _teal : EmbunColors.blood;
+          final a = (base * (0.45 + 0.55 * _thump(_beat.value)))
+              .clamp(0.0, 1.0)
+              .toDouble();
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                radius: 1.0,
+                colors: [Colors.transparent, col.withValues(alpha: a)],
+                stops: const [0.45, 1.0],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Cahaya dari atas jatuh ke yang dituduh.
+  Widget _spotlight() {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _vc,
+        builder: (context, _) {
+          final s = Curves.easeOut.transform(_seg(_vc.value, 0.05, 0.40));
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.1),
+                radius: 0.75,
+                colors: [
+                  Colors.white.withValues(alpha: 0.12 * s),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Bara merah melayang naik setelah vonis jatuh.
+  Widget _embers() {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_vc, _beat]),
+        builder: (context, _) => CustomPaint(
+          painter: _EmberPainter(
+            env: _seg(_vc.value, 0.45, 0.80),
+            loop: _beat.value,
+          ),
+        ),
       ),
     );
   }
@@ -225,9 +454,24 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
                   color: EmbunColors.gold,
                 ),
               ),
-              Text(
-                'Hari ${widget.day} · siapa memilih siapa',
-                style: const TextStyle(fontSize: 12.5, color: Colors.white54),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: (_near && _leaderId != null)
+                    ? Text(
+                  '${_person(_leaderId)?.name ?? ''} butuh 1 suara lagi...',
+                  key: const ValueKey('near'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: EmbunColors.blood,
+                  ),
+                )
+                    : Text(
+                  'Hari ${widget.day} · siapa memilih siapa',
+                  key: const ValueKey('sub'),
+                  style: const TextStyle(
+                      fontSize: 12.5, color: Colors.white54),
+                ),
               ),
             ],
           ),
@@ -248,10 +492,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
         .clamp(52.0, 128.0)
         .toDouble();
     final Widget body = switch (_phase) {
-      0 => const Text(
-        'Semua suara dibuka...',
-        style: TextStyle(fontSize: 16, color: Colors.white60),
-      ),
+      0 => _openingStage(),
       1 => _voteStage(cardW),
       2 => _abstainStage(),
       _ => _resultStage(cardW),
@@ -267,6 +508,38 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
       ),
     );
   });
+
+  // ---------- pembukaan ----------
+
+  Widget _openingStage() => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 1500),
+    curve: Curves.easeOutCubic,
+    builder: (_, t, _) => Opacity(
+      opacity: t.clamp(0.0, 1.0).toDouble(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const GameIcon('vote', size: 56),
+          const SizedBox(height: 14),
+          Text(
+            'SEMUA SUARA DIBUKA',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 12 - 8 * t,
+              color: EmbunColors.cream,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tak ada yang bisa ditarik kembali...',
+            style: TextStyle(fontSize: 13, color: Colors.white54),
+          ),
+        ],
+      ),
+    ),
+  );
 
   // ---------- satu suara ----------
 
@@ -330,9 +603,29 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
                 tween: Tween(begin: 0, end: 1),
                 duration: const Duration(milliseconds: 380),
                 curve: Curves.easeOutBack,
-                builder: (_, t, child) => Opacity(
-                    opacity: t.clamp(0.0, 1.0).toDouble(),
-                    child: Transform.scale(scale: 0.55 + 0.45 * t, child: child)),
+                builder: (_, t, child) {
+                  final tc = t.clamp(0.0, 1.0).toDouble();
+                  return Stack(
+                    alignment: Alignment.topCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Cincin kejut saat sasaran menerima suara.
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(painter: _HitRingPainter(t: tc)),
+                        ),
+                      ),
+                      Opacity(
+                        opacity: tc,
+                        child: Transform.translate(
+                          offset: Offset(math.sin(tc * 36) * 5 * (1 - tc), 0),
+                          child: Transform.scale(
+                              scale: 0.55 + 0.45 * t, child: child),
+                        ),
+                      ),
+                    ],
+                  );
+                },
                 child: _VoteCard(
                   name: _targetName(v),
                   card: v['target_card'] as String?,
@@ -451,50 +744,143 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
   Widget _resultStage(double cardW) {
     final wid = _winnerId;
     final w = _person(wid);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 520),
-      curve: Curves.easeOutBack,
-      builder: (_, t, child) => Opacity(
-          opacity: t.clamp(0.0, 1.0).toDouble(),
-          child: Transform.scale(scale: 0.8 + 0.2 * t, child: child)),
-      child: w == null
-          ? Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.balance_rounded, size: 56, color: Colors.white54),
-          SizedBox(height: 10),
-          Text('Tidak ada yang mencapai mayoritas',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white70)),
-          SizedBox(height: 4),
-          Text('Butuh lebih dari separuh suara.',
-              style: TextStyle(fontSize: 12.5, color: Colors.white54)),
-        ],
-      )
-          : Column(
+    return AnimatedBuilder(
+      animation: _vc,
+      builder: (context, _) {
+        final t = _vc.value;
+        if (w == null) return _noMajority(t);
+
+        final head = Curves.easeOutCubic.transform(_seg(t, 0.0, 0.22));
+        final appear = _seg(t, 0.10, 0.20);
+        final drop = Curves.easeIn.transform(_seg(t, 0.12, 0.36));
+        final stamp = Curves.easeOutBack.transform(_seg(t, 0.48, 0.64));
+        final countT = Curves.easeOut.transform(_seg(t, 0.58, 0.88));
+        final votes = _counts[wid] ?? 0;
+        final shown = (votes * countT).round();
+        final cw = cardW * 1.1;
+        final breathe =
+            1 + 0.012 * math.sin(_seg(t, 0.36, 1.0) * 4 * math.pi);
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(
+              opacity: head,
+              child: Text(
+                'DITUDUH MAYORITAS',
+                style: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 14 - 11 * head,
+                  fontWeight: FontWeight.w900,
+                  color: EmbunColors.blood,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _ShockPainter(t: _seg(t, 0.36, 0.70)),
+                    ),
+                  ),
+                ),
+                Opacity(
+                  opacity: appear,
+                  child: Transform.translate(
+                    offset: Offset(0, -170 * (1 - drop)),
+                    child: Transform.scale(
+                      scale: (1.6 - 0.6 * drop) * breathe,
+                      child: _VoteCard(
+                        name: w.name,
+                        card: w.card,
+                        width: cw,
+                        tag: w.id == widget.myId ? 'Kamu' : null,
+                        glow: EmbunColors.blood,
+                        ring: w.id == widget.myId,
+                      ),
+                    ),
+                  ),
+                ),
+                if (stamp > 0.01)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Align(
+                        alignment: const Alignment(0, 0.25),
+                        child: Opacity(
+                          opacity: stamp.clamp(0.0, 1.0).toDouble(),
+                          child: Transform.rotate(
+                            angle: -0.22,
+                            child: Transform.scale(
+                              scale: 2.4 - 1.4 * stamp,
+                              child: GameIcon(
+                                'tertuduh',
+                                width: cw * 1.3,
+                                height: cw * 1.3 * 90 / 220,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Opacity(
+              opacity: _seg(t, 0.55, 0.65),
+              child: Text(
+                '$shown dari $_total suara',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Tak ada yang mencapai mayoritas: suasana mereda, dingin dan tenang.
+  Widget _noMajority(double t) {
+    final inT = Curves.easeOut.transform(_seg(t, 0.0, 0.35));
+    final sway =
+        math.sin(t * 2 * math.pi * 1.5) * 0.14 * (1 - _seg(t, 0.55, 1.0));
+    return Opacity(
+      opacity: inT,
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('DITUDUH MAYORITAS',
-              style: TextStyle(
-                  fontSize: 13,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w800,
-                  color: EmbunColors.blood)),
-          const SizedBox(height: 8),
-          _VoteCard(
-            name: w.name,
-            card: w.card,
-            width: cardW * 1.1,
-            tag: w.id == widget.myId ? 'Kamu' : null,
-            glow: EmbunColors.blood,
-            ring: w.id == widget.myId,
+          Transform.rotate(
+            angle: sway,
+            child: const Icon(Icons.balance_rounded, size: 64, color: _teal),
           ),
-          const SizedBox(height: 2),
-          Text('${_counts[wid] ?? 0} dari $_total suara',
-              style: const TextStyle(fontSize: 13, color: Colors.white60)),
+          const SizedBox(height: 12),
+          const Text(
+            'Tidak ada yang mencapai mayoritas',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Desa menahan napas. Kali ini tak seorang pun dituduh.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.white54),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Butuh lebih dari separuh suara.',
+            style: TextStyle(fontSize: 12, color: Colors.white38),
+          ),
         ],
       ),
     );
@@ -521,6 +907,10 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
               child: _Tile(
                 person: p,
                 count: _counts[p.id] ?? 0,
+                // Memerah saat mendekati mayoritas.
+                heat: _phase == 1
+                    ? ((_counts[p.id] ?? 0) / _need).clamp(0.0, 1.0).toDouble()
+                    : 0.0,
                 focused: focus == p.id,
                 winner: wid == p.id,
                 me: p.id == widget.myId,
@@ -548,51 +938,145 @@ class _VoteRevealSceneState extends State<VoteRevealScene> {
     final p = _person(_majorityId);
     return Positioned.fill(
       child: IgnorePointer(
-        child: Align(
-          alignment: const Alignment(0, -0.5),
-          child: TweenAnimationBuilder<double>(
-            key: const ValueKey('banner'),
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.elasticOut,
-            builder: (_, t, child) => Opacity(
-              opacity: t.clamp(0.0, 1.0).toDouble(),
-              child: Transform.scale(scale: 0.5 + 0.5 * t, child: child),
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-              decoration: BoxDecoration(
-                color: EmbunColors.blood.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                      color: EmbunColors.blood.withValues(alpha: 0.6),
-                      blurRadius: 36),
-                ],
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: Colors.black.withValues(alpha: 0.38)),
+            Align(
+              alignment: const Alignment(0, -0.3),
+              child: TweenAnimationBuilder<double>(
+                key: const ValueKey('banner'),
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 520),
+                curve: Curves.elasticOut,
+                builder: (_, t, child) => Opacity(
+                  opacity: t.clamp(0.0, 1.0).toDouble(),
+                  child: Transform.scale(scale: 0.4 + 0.6 * t, child: child),
+                ),
+                child: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 30, vertical: 18),
+                  decoration: BoxDecoration(
+                    color: EmbunColors.blood.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                          color: EmbunColors.blood.withValues(alpha: 0.7),
+                          blurRadius: 44,
+                          spreadRadius: 4),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (p != null) ...[
+                        PlayerAvatar(
+                          path: protagonistPath(p.card ?? 'default'),
+                          size: 64,
+                          ring: Colors.white,
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      const Text('MAYORITAS',
+                          style: TextStyle(
+                              fontSize: 30,
+                              letterSpacing: 6,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white)),
+                      if (p != null)
+                        Text(p.id == widget.myId ? 'Kamu' : p.name,
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white70)),
+                    ],
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('MAYORITAS',
-                      style: TextStyle(
-                          fontSize: 28,
-                          letterSpacing: 5,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white)),
-                  if (p != null)
-                    Text(p.id == widget.myId ? 'Kamu' : p.name,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white70)),
-                ],
-              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Cincin kejut yang melebar dari kartu sasaran saat menerima suara.
+class _HitRingPainter extends CustomPainter {
+  final double t; // 0..1
+  const _HitRingPainter({required this.t});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (t <= 0 || t >= 1) return;
+    final e = Curves.easeOutCubic.transform(t);
+    canvas.drawCircle(
+      size.center(Offset.zero),
+      size.shortestSide * (0.30 + 0.55 * e),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.2 * (1 - t) + 0.6
+        ..color = EmbunColors.blood.withValues(alpha: 0.75 * (1 - t)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _HitRingPainter old) => old.t != t;
+}
+
+/// Gelombang kejut dua lapis saat yang dituduh mendarat.
+class _ShockPainter extends CustomPainter {
+  final double t; // 0..1
+  const _ShockPainter({required this.t});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (t <= 0 || t >= 1) return;
+    final c = size.center(Offset.zero);
+    for (var k = 0; k < 2; k++) {
+      final u = ((t - k * 0.14) / (1 - k * 0.14)).clamp(0.0, 1.0).toDouble();
+      if (u <= 0 || u >= 1) continue;
+      final e = Curves.easeOutCubic.transform(u);
+      canvas.drawCircle(
+        c,
+        size.shortestSide * (0.45 + 1.0 * e),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4.0 * (1 - u) + 0.8
+          ..color = EmbunColors.blood.withValues(alpha: 0.65 * (1 - u)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShockPainter old) => old.t != t;
+}
+
+/// Bara merah dan jingga yang melayang naik, berulang selama hasil tampil.
+class _EmberPainter extends CustomPainter {
+  final double env; // 0..1 kemunculan
+  final double loop; // 0..1 berulang
+  const _EmberPainter({required this.env, required this.loop});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (env <= 0) return;
+    final p = Paint();
+    for (var i = 0; i < 30; i++) {
+      final u = (loop * (0.6 + 0.8 * _rnd(i, 1)) + _rnd(i, 2)) % 1.0;
+      final x = size.width * _rnd(i, 3) + math.sin(u * 6 + i) * 14;
+      final y = size.height * (1.02 - 0.95 * u);
+      final r = 1.2 + 2.6 * _rnd(i, 4);
+      final a = math.sin(u * math.pi) * 0.75 * env;
+      p.color = (i.isEven ? EmbunColors.blood : const Color(0xFFFFB347))
+          .withValues(alpha: a.clamp(0.0, 1.0).toDouble());
+      canvas.drawCircle(Offset(x, y), r, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmberPainter old) =>
+      old.env != env || old.loop != loop;
 }
 
 /// Kartu karakter dengan nama. Slot atas (22 px) selalu ada supaya kartu
@@ -666,10 +1150,12 @@ class _VoteCard extends StatelessWidget {
   );
 }
 
-/// Satu pemain di papan hitungan: avatar, nama, dan jumlah suara.
+/// Satu pemain di papan hitungan: avatar, nama, dan jumlah suara. Makin dekat
+/// ke mayoritas ([heat] 0..1), bingkai dan cahayanya makin merah.
 class _Tile extends StatelessWidget {
   final _Person person;
   final int count;
+  final double heat;
   final bool focused;
   final bool winner;
   final bool me;
@@ -678,6 +1164,7 @@ class _Tile extends StatelessWidget {
   const _Tile({
     required this.person,
     required this.count,
+    required this.heat,
     required this.focused,
     required this.winner,
     required this.me,
@@ -686,21 +1173,27 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hot = heat >= 0.5 ? (heat - 0.5) / 0.5 : 0.0;
     final border = winner
         ? EmbunColors.blood
         : focused
         ? EmbunColors.gold
+        : hot > 0
+        ? Color.lerp(Colors.white24, EmbunColors.blood, hot)!
         : me
         ? EmbunColors.gold.withValues(alpha: 0.55)
         : Colors.white24;
+    final scale = winner ? 1.08 : (focused ? 1.05 : 1.0 + 0.05 * hot);
+    final glowOn = winner || focused || hot > 0;
+    final glowColor = (winner || (hot > 0 && !focused))
+        ? EmbunColors.blood
+        : EmbunColors.gold;
+    final glowAlpha = winner ? 0.4 : (focused ? 0.4 : 0.15 + 0.3 * hot);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       width: 68,
       padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
-      transform: Matrix4.diagonal3Values(
-          winner ? 1.08 : (focused ? 1.05 : 1.0),
-          winner ? 1.08 : (focused ? 1.05 : 1.0),
-          1),
+      transform: Matrix4.diagonal3Values(scale, scale, 1),
       transformAlignment: Alignment.center,
       decoration: BoxDecoration(
         color: winner
@@ -708,12 +1201,11 @@ class _Tile extends StatelessWidget {
             : Colors.white.withValues(alpha: focused ? 0.12 : 0.06),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: border, width: (winner || focused) ? 2 : 1.2),
-        boxShadow: (winner || focused)
+            color: border, width: (winner || focused || hot > 0) ? 2 : 1.2),
+        boxShadow: glowOn
             ? [
           BoxShadow(
-              color: (winner ? EmbunColors.blood : EmbunColors.gold)
-                  .withValues(alpha: 0.4),
+              color: glowColor.withValues(alpha: glowAlpha),
               blurRadius: 14),
         ]
             : null,
@@ -773,7 +1265,7 @@ class _Tile extends StatelessWidget {
                 fontWeight: FontWeight.w900,
                 color: count == 0
                     ? Colors.white30
-                    : (winner ? EmbunColors.blood : EmbunColors.gold),
+                    : ((winner || hot > 0) ? EmbunColors.blood : EmbunColors.gold),
               ),
             ),
           ),
