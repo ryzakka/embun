@@ -318,6 +318,11 @@ class GameRepository {
     return r == null ? null : Map<String, dynamic>.from(r);
   }
 
+  /// Si Terbisik selesai menentukan malam (pakai kartu atau tidak): malam
+  /// dijalankan sekarang, tanpa menunggu tenggat.
+  Future<void> nightContinue(String gameId) =>
+      _db.rpc('night_continue', params: {'p_game': gameId});
+
   /// Siapkan kartu serangan malam. Tanpa [handId] = batalkan rencana.
   Future<void> armNightCard(String gameId, {String? handId, String? target}) =>
       _db.rpc('arm_night_card',

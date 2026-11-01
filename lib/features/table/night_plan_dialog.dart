@@ -236,10 +236,9 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Siapkan satu kartu di sini; ia dipakai saat malam tiba, '
-                              'setelah hari ini berakhir. Semua pemain hanya mendengar '
-                              '"Si Terbisik melancarkan serangan", tanpa sasaran dan '
-                              'tanpa jenis serangan.',
+                          'Malam telah tiba. Pilih satu kartu untuk dilancarkan malam ini. '
+                              'Semua pemain hanya mendengar "Si Terbisik melancarkan '
+                              'serangan", tanpa sasaran dan tanpa jenis serangan.',
                           style: TextStyle(
                               fontSize: 12.5, height: 1.4, color: Colors.white60),
                         ),

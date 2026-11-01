@@ -4,10 +4,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/table_page.dart';
+import 'disguise_choice.dart';
 import 'role_reveal.dart';
 import '../../data/game_repository.dart';
 
@@ -144,13 +146,22 @@ List<double> _sat(double s) {
 class PrologueFlow extends StatefulWidget {
   final String gameId;
   final LobbyRepository repo;
-  const PrologueFlow({super.key, required this.gameId, required this.repo});
+
+  /// true = masuk kembali saat gerbang prolog masih tertutup (mis. aplikasi
+  /// dibuka ulang): lewati cerita, langsung ke pengungkapan peran.
+  final bool resume;
+  const PrologueFlow({
+    super.key,
+    required this.gameId,
+    required this.repo,
+    this.resume = false,
+  });
 
   @override
   State<PrologueFlow> createState() => _PrologueFlowState();
 }
 
-enum _Step { story, shuffling, role }
+enum _Step { story, shuffling, role, disguise, waiting }
 
 class _PrologueFlowState extends State<PrologueFlow>
     with TickerProviderStateMixin {
@@ -160,6 +171,14 @@ class _PrologueFlowState extends State<PrologueFlow>
   String? role;
   int darkSeed = 0;
   String myCard = 'default';
+
+  // Pilih wajah samaran (hanya Si Terbisik) dan gerbang prolog.
+  bool _canChoose = false;
+  List<Map<String, dynamic>> _rows = [];
+  List<String> _options = [];
+  StreamSubscription<Map<String, dynamic>?>? _gameSub;
+  Timer? _waitTimer;
+  bool _opened = false;
   final _gr = GameRepository();
   Timer? _beat;
 
@@ -184,6 +203,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   void initState() {
     super.initState();
+    if (widget.resume) step = _Step.role;
     randomStems = AssetCatalog.I.stems(protagonisDir);
     _shuffleCtrl = AnimationController(
       vsync: this,
@@ -195,10 +215,13 @@ class _PrologueFlowState extends State<PrologueFlow>
         setState(() {
           role = s['role'] as String?;
           darkSeed = (s['dark_seed'] as int?) ?? 0;
+          // false persis = belum memakai pilihan; null = migrasi belum jalan.
+          _canChoose = role == 'antagonis' && s['disguise_used'] == false;
         });
       }
     });
     widget.repo.players(widget.gameId).first.then((rows) {
+      _rows = rows;
       final me = rows.where((p) => p['user_id'] == widget.repo.myId);
       if (mounted && me.isNotEmpty) {
         setState(() {
@@ -211,7 +234,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     _sc.addStatusListener((s) {
       if (s == AnimationStatus.completed) _advance();
     });
-    _startScene();
+    if (!widget.resume) _startScene();
 
     _gr.tick(widget.gameId).catchError((_) {});
     _beat = Timer.periodic(const Duration(seconds: 8), (_) {
@@ -287,7 +310,85 @@ class _PrologueFlowState extends State<PrologueFlow>
     });
   }
 
+  /// Tombol lanjut di akhir pengungkapan peran. Si Terbisik yang belum memilih
+  /// diberi tiga kartu; semua pemain lalu menunggu di gerbang yang sama, jadi
+  /// tak ada yang melihat kartu berubah dan tak ada yang bisa menebak siapa
+  /// yang sedang memilih.
+  void _afterReveal() {
+    if (role == null || step != _Step.role) return;
+    if (_canChoose) {
+      _options = _pickOptions();
+      if (_options.isNotEmpty) {
+        setState(() => step = _Step.disguise);
+        return;
+      }
+    }
+    _enterWaiting();
+  }
+
+  /// Tiga kartu berjudul berbeda, tak sama dengan judul kartu pemain lain
+  /// maupun kartumu sekarang.
+  List<String> _pickOptions() {
+    final me = widget.repo.myId;
+    final seen = <String>{
+      characterTitle(myCard),
+      for (final p in _rows)
+        if (p['user_id'] != me)
+          characterTitle((p['character_card'] as String?) ?? 'default'),
+    };
+    final pool = AssetCatalog.I
+        .stems(protagonisDir)
+        .where((s) => s != 'default')
+        .toList()
+      ..shuffle(Random());
+    final out = <String>[];
+    for (final s in pool) {
+      if (seen.add(characterTitle(s))) {
+        out.add(s);
+        if (out.length == 3) break;
+      }
+    }
+    return out;
+  }
+
+  /// null = berhasil; selain itu pesan galat untuk ditampilkan.
+  Future<String?> _pickDisguise(String stem) async {
+    try {
+      await widget.repo.chooseDisguise(widget.gameId, stem);
+      if (!mounted) return null;
+      setState(() {
+        myCard = stem;
+        _canChoose = false;
+      });
+      _enterWaiting();
+      return null;
+    } catch (e) {
+      return errMsg(e);
+    }
+  }
+
+  void _skipDisguise() {
+    _canChoose = false;
+    _enterWaiting();
+  }
+
+  /// Menunggu semua pemain selesai prolog; meja dibuka bersamaan.
+  void _enterWaiting() {
+    if (!mounted) return;
+    setState(() => step = _Step.waiting);
+    void report() => widget.repo.finishPrologue(widget.gameId).catchError((_) {});
+    report();
+    _waitTimer?.cancel();
+    _waitTimer = Timer.periodic(const Duration(seconds: 5), (_) => report());
+    _gameSub?.cancel();
+    _gameSub = widget.repo.game(widget.gameId).listen((g) {
+      if (g != null && g['prologue_until'] == null) _openTable();
+    });
+  }
+
   void _openTable() {
+    if (_opened || !mounted || role == null) return;
+    _opened = true;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => TablePage(gameId: widget.gameId, role: role!),
@@ -298,6 +399,8 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   void dispose() {
     _beat?.cancel();
+    _waitTimer?.cancel();
+    _gameSub?.cancel();
     _sc.dispose();
     _xf.dispose();
     _loop.dispose();
@@ -321,16 +424,26 @@ class _PrologueFlowState extends State<PrologueFlow>
           Backdrop(path: sceneryPath('desajembatan-keringgulita'), dim: 0.5),
           if (step == _Step.shuffling)
             SafeArea(child: _shufflingStep())
-          else
-            RoleReveal(
-              role: role,
-              cardPath: _roleCardPath(),
-              // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
-              // sebelum kartu gelapnya terungkap.
-              disguisePath: protagonistPath(myCard),
-              disguiseName: characterTitle(myCard),
-              onContinue: role == null ? () {} : _openTable,
-            ),
+          else if (step == _Step.disguise)
+            SafeArea(
+              child: DisguiseChoice(
+                options: _options,
+                onPick: _pickDisguise,
+                onSkip: _skipDisguise,
+              ),
+            )
+          else if (step == _Step.waiting)
+              const EmbunLoading(text: 'Menunggu pemain lain...')
+            else
+              RoleReveal(
+                role: role,
+                cardPath: _roleCardPath(),
+                // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
+                // sebelum kartu gelapnya terungkap.
+                disguisePath: protagonistPath(myCard),
+                disguiseName: characterTitle(myCard),
+                onContinue: role == null ? () {} : _afterReveal,
+              ),
         ],
       ),
     );

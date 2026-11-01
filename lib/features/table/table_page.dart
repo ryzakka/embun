@@ -31,7 +31,7 @@ import 'ability_panel.dart';
 import 'vote_reveal_scene.dart';
 import 'night_scene.dart';
 import 'night_plan_dialog.dart';
-import 'night_arm_fx.dart';
+import 'night_choice.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -512,7 +512,12 @@ class _TablePageState extends State<TablePage> {
       _loadNightPlan();
     }
     if (prev == null) return;
-    if (prev['status'] != 'playing' || prev['phase'] != 'day') return;
+    // Sebelum migrasi v10 hari biasa langsung berganti hari ('day'); sesudahnya
+    // lewat fase 'night' dulu.
+    if (prev['status'] != 'playing' ||
+        (prev['phase'] != 'day' && prev['phase'] != 'night')) {
+      return;
+    }
     if (g['status'] != 'playing') return;
     final prevDay = prev['day'] as int;
     if (((g['day'] as int?) ?? prevDay) != prevDay + 1) return;
@@ -580,24 +585,30 @@ class _TablePageState extends State<TablePage> {
       others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
       onChanged: _loadNightPlan,
     );
-    _loadNightPlan();
+    await _loadNightPlan();
+    // Kartu sudah dilancarkan: malam langsung dijalankan.
+    if (mounted && _nightOn && _nightArmed) await _continueNight();
   }
 
-  /// Ikon bulan di bar atas, hanya untuk Si Terbisik di hari biasa. Titik
-  /// kecil muncul bila serangan malam ini sudah disiapkan.
-  Widget _nightButton() {
-    final phase = (game?['phase'] as String?) ?? '';
-    if (!isAntag || phase != 'day') return const SizedBox.shrink();
-    return Badge(
-      isLabelVisible: _nightArmed,
-      smallSize: 10,
-      backgroundColor: EmbunColors.mist,
-      child: IconButton(
-        tooltip: 'Serangan malam',
-        visualDensity: VisualDensity.compact,
-        onPressed: _openNightPlan,
-        icon: PulsingMoon(armed: _nightArmed, size: 26),
-      ),
+  /// Fase malam: hari biasa sudah berakhir, malam belum dijalankan.
+  bool get _nightOn =>
+      game?['status'] == 'playing' && game?['phase'] == 'night';
+
+  /// Si Terbisik selesai menentukan malam; server menjalankannya sekarang.
+  Future<void> _continueNight() =>
+      _guard(() => repo.nightContinue(widget.gameId));
+
+  Widget _nightChoiceLayer() {
+    final g = game!;
+    final hasCards = hand.any((h) => defs[h['card_id']]?['kind'] == 'malam');
+    return NightChoice(
+      key: ValueKey('nc${g['day']}'),
+      isAntag: isAntag,
+      hasCards: hasCards,
+      deadline: _deadline(g),
+      busy: busy,
+      onUseCard: _openNightPlan,
+      onContinue: _continueNight,
     );
   }
 
@@ -1174,6 +1185,8 @@ class _TablePageState extends State<TablePage> {
             Positioned.fill(child: _evictLayer()),
           // Paling atas: menahan adegan lain sampai semua suara dibuka.
           if (_voteReveal != null) Positioned.fill(child: _voteRevealLayer()),
+          if (_nightOn && _nightScene == null)
+            Positioned.fill(child: _nightChoiceLayer()),
           if (_nightScene != null) Positioned.fill(child: _nightLayer()),
         ],
       ),
@@ -1828,7 +1841,6 @@ class _TablePageState extends State<TablePage> {
                   ),
                 ),
               _abilityButton(),
-              _nightButton(),
               PopupMenuButton<String>(
                 tooltip: 'Menu',
                 icon: const GameIcon('menu', size: 30),
@@ -2023,7 +2035,6 @@ class _TablePageState extends State<TablePage> {
             icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
         _abilityButton(),
-        _nightButton(),
         IconButton(
           tooltip: 'Panduan',
           visualDensity: VisualDensity.compact,

@@ -85,9 +85,13 @@ class _LobbyPageState extends State<LobbyPage>
         final role = await repo.myRole(id);
         if (!mounted) return;
         if (role != null) {
+          // Gerbang prolog masih tertutup: kembali ke prolog, bukan ke meja.
+          final inPrologue = g['prologue_until'] != null;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => TablePage(gameId: id, role: role),
+              builder: (_) => inPrologue
+                  ? PrologueFlow(gameId: id, repo: repo, resume: true)
+                  : TablePage(gameId: id, role: role),
             ),
           );
           return;
@@ -322,7 +326,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.2.1b',
+                                    'BALAI PERTEMUAN DESA V2.2.2',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,

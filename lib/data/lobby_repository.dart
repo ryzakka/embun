@@ -41,6 +41,16 @@ class LobbyRepository {
       _db.rpc('update_character',
           params: {'p_game': gameId, 'p_name': name, 'p_card': card});
 
+  /// Si Terbisik memilih wajah samaran (sekali, selama gerbang prolog masih
+  /// tertutup). Mengembalikan nama baru pemain.
+  Future<String> chooseDisguise(String gameId, String card) async =>
+      await _db.rpc('choose_disguise',
+          params: {'p_game': gameId, 'p_card': card}) as String;
+
+  /// Tandai prolog selesai; juga membuka gerbang bila semua siap / waktu habis.
+  Future<void> finishPrologue(String gameId) =>
+      _db.rpc('finish_prologue', params: {'p_game': gameId});
+
   Stream<List<Map<String, dynamic>>> players(String gameId) => _db
       .from('game_players')
       .stream(primaryKey: ['game_id', 'user_id'])
@@ -85,6 +95,11 @@ class LobbyRepository {
       return row == null ? null : Map<String, dynamic>.from(row);
     }
 
+    try {
+      return await q('role, dark_seed, ability, ability_used, disguise_used');
+    } catch (_) {
+      // Kolom samaran belum ada (migrasi v9 belum dijalankan).
+    }
     try {
       return await q('role, dark_seed, ability, ability_used');
     } catch (_) {
