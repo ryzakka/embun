@@ -1410,19 +1410,20 @@ class _TablePageState extends State<TablePage> {
         readOnly: iAmOut,
       );
     } else if (phase == 'voting') {
-      body = iAmReady
-          ? _waiting(
-          readyCount,
-          alive.length,
-          iAmOut
-              ? 'Kamu hanya menonton pemungutan suara...'
-              : 'Menunggu suara lain...')
+      // VotingView dipertahankan (kuncinya tetap) setelah suara dikunci,
+      // supaya layar "Suaramu terkunci" dan pilihanmu tidak hilang.
+      body = iAmOut
+          ? _waiting(readyCount, alive.length,
+          'Kamu hanya menonton pemungutan suara...')
           : VotingView(
         key: ValueKey('vote$day'),
         repo: repo,
         gameId: widget.gameId,
         players: alive,
         day: day,
+        locked: iAmReady,
+        readyCount: readyCount,
+        total: alive.length,
       );
     } else if (phase == 'offering') {
       body = OfferingView(
@@ -1469,8 +1470,9 @@ class _TablePageState extends State<TablePage> {
       );
     }
 
-    final showStrip =
-        phase == 'day' || phase == 'discussion' || phase == 'voting';
+    // Saat voting, daftar tersangka sudah memuat semua pemain: deretan desa
+    // disembunyikan supaya ruang vertikal tidak habis.
+    final showStrip = phase == 'day' || phase == 'discussion';
 
     final gap = _short ? 6.0 : (narrow ? 8.0 : 12.0);
     final showVerdict = verdict != null &&
@@ -1498,6 +1500,7 @@ class _TablePageState extends State<TablePage> {
               deadline: deadline,
               isHost: isHost,
               showChat: phase != 'discussion',
+              showDue: phase != 'voting',
             )
           else
             _currencyBar(balance, rate, myCardId, day, readyCount,
@@ -1736,6 +1739,7 @@ class _TablePageState extends State<TablePage> {
     required DateTime? deadline,
     required bool isHost,
     required bool showChat,
+    bool showDue = true,
   }) {
     final seed = darkSeed;
     final avatar = showAsAntag
@@ -1915,13 +1919,14 @@ class _TablePageState extends State<TablePage> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(due,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: Colors.white54)),
-          ),
+          if (showDue)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(due,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, color: Colors.white54)),
+            ),
         ],
       ),
     );
