@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/scene_flow.dart';
 
 double _seg(double t, double a, double b) =>
     ((t - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -55,8 +56,16 @@ class _OfferingTransitionState extends State<OfferingTransition>
   static const beats = [0.52, 0.64, 0.76];
   static const finale = 0.86;
 
+  /// Bagian bergerak (t = 0..1 pada linimasa di komentar kelas).
+  static const _playMs = 5600;
+
+  /// Jeda setelah detak besar: kalimat pembuka dan jumlah daun perlu waktu
+  /// terbaca sebelum layar melebur ke layar persembahan.
+  static const _holdMs = 1500;
+  static const _totalMs = _playMs + _holdMs + kSceneFadeOutMs;
+
   late final AnimationController c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 5600));
+      vsync: this, duration: const Duration(milliseconds: _totalMs));
   final Set<int> _fired = {};
   bool _done = false;
 
@@ -72,7 +81,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
   void initState() {
     super.initState();
     c.addListener(() {
-      final t = c.value;
+      final t = c.value * _totalMs / _playMs;
       for (var i = 0; i < beats.length; i++) {
         if (t >= beats[i] && _fired.add(i)) {
           HapticFeedback.mediumImpact();
@@ -129,11 +138,16 @@ class _OfferingTransitionState extends State<OfferingTransition>
         return AnimatedBuilder(
           animation: c,
           builder: (context, _) {
-            final t = c.value;
+            final ms = c.value * _totalMs;
+            final t = ms / _playMs; // > 1 selama jeda baca
             final pulse = pulseAt(t);
             final fin = _bump(t, finale, 0.04);
 
-            final master = min(_seg(t, 0, 0.07), 1 - _seg(t, 0.93, 1.0));
+            // Masuk dari kSceneInk lewat tirai (tanpa kilasan layar di
+            // bawah); keluar dengan melebur ke layar persembahan.
+            final master = 1 -
+                fadeMs(ms, _totalMs - kSceneFadeOutMs.toDouble(), _totalMs.toDouble());
+            final veilIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
             final barH = h * 0.09 * Curves.easeOut.transform(_seg(t, 0, 0.15));
             final landT = Curves.easeIn.transform(_seg(t, 0.2, 0.6));
             final flash = max(
@@ -317,7 +331,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
                   Opacity(
                     opacity: landT * 0.5,
                     child: Transform.scale(
-                      scale: 1.1 - 0.1 * t,
+                      scale: 1.1 - 0.1 * t.clamp(0.0, 1.0),
                       child: Backdrop(
                         path: landscapePath(widget.leaves),
                         dark: dark,
@@ -372,6 +386,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
                           TextStyle(fontSize: 11, color: Colors.white54)),
                     ),
                   ),
+                  sceneVeil(veilIn),
                 ],
               ),
             );
@@ -533,7 +548,7 @@ class _NightPainter extends CustomPainter {
     }
 
     // kabut
-    final fog = 0.09 * _seg(t, 0, 0.15) * (1 - _seg(t, 0.85, 1.0));
+    final fog = 0.09 * _seg(t, 0, 0.15);
     final fp = Paint()
       ..color = Colors.white.withValues(alpha: fog)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);

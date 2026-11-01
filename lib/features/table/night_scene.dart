@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -50,16 +51,16 @@ class NightScene extends StatefulWidget {
 
 class _NightSceneState extends State<NightScene>
     with TickerProviderStateMixin {
-  static const _intro = 1500; // ms sebelum baris pertama
-  static const _perLine = 1300; // jeda antar baris umum
-  static const _hold = 2000; // jeda setelah baris terakhir
+  static const _intro = 1700; // ms sebelum baris pertama
+  static const _hold = 1600; // jeda tambahan setelah baris terakhir terbaca
   static const _tiltMs = 2200; // lama satu gerak kamera turun
   // Serangan -> baris pribadi: jeda 800 ms, kamera turun ke lembah kering
   // (_tiltMs), lalu napas 200 ms sebelum turun lagi ke sumur / rumah.
   static const _privAfter = 800 + _tiltMs + 200;
-  static const _privHold = 2200; // jeda setelah baris pribadi
+  static const _privHold = 1800; // jeda tambahan setelah baris pribadi terbaca
 
   late final List<Map<String, dynamic>> _lines;
+  late final List<double> _starts; // kapan tiap baris mulai muncul (ms)
   late final int _total;
   late final int _attackIdx;
   late final int _privateIdx;
@@ -95,10 +96,28 @@ class _NightSceneState extends State<NightScene>
         : (_lines[_privateIdx]['scene'] as String?);
     _victimImg = nightVictimPath(_victimScene);
 
-    final lastStart = _lineStart(_lines.length - 1);
-    _total = _privateIdx >= 0
-        ? (lastStart + _perLine + _privHold).round()
-        : (_intro + _lines.length * _perLine + _hold);
+    // Tiap baris diberi waktu baca sesuai panjang teksnya (dan baris lama
+    // tetap terlihat, jadi yang paling akhir yang paling butuh waktu).
+    final starts = <double>[];
+    var cursor = _intro.toDouble();
+    for (var i = 0; i < _lines.length; i++) {
+      var at = cursor;
+      if (i == _privateIdx && _attackIdx >= 0) {
+        // Baris pribadi menunggu kamera selesai turun ke lembah kering.
+        at = math.max(at, starts[_attackIdx] + _privAfter);
+      }
+      starts.add(at);
+      cursor = at + _slot(_lines[i]);
+    }
+    _starts = starts;
+
+    final last = _lines.length - 1;
+    final lastRead = _slot(_lines[last]);
+    _total = (_starts[last] +
+        lastRead +
+        (_privateIdx >= 0 ? _privHold : _hold) +
+        kSceneFadeOutMs)
+        .round();
 
     _tl = AnimationController(
         vsync: this, duration: Duration(milliseconds: _total))
@@ -143,14 +162,17 @@ class _NightSceneState extends State<NightScene>
     widget.onDone();
   }
 
-  /// Baris pribadi muncul setelah kamera selesai turun ke lembah serangan;
-  /// baris lain bergiliran seperti biasa.
-  double _lineStart(int i) {
-    if (i == _privateIdx && _attackIdx >= 0) {
-      return (_intro + _privAfter).toDouble();
-    }
-    return (_intro + i * _perLine).toDouble();
+  /// Waktu (ms) yang disediakan untuk satu baris sebelum baris berikutnya
+  /// muncul: sesuai panjang teksnya. Serangan diberi tambahan agar hentakannya
+  /// sempat dirasakan sebelum teks lain menimpa.
+  double _slot(Map<String, dynamic> l) {
+    final base = readMs('${l['text']}', min: 1700, max: 5200).toDouble();
+    return l['kind'] == 'attack' ? base + 500 : base;
   }
+
+  /// Baris pribadi muncul setelah kamera selesai turun ke lembah serangan
+  /// (dan serangannya sempat terbaca); baris lain bergiliran sesuai waktu baca.
+  double _lineStart(int i) => _starts[i];
 
   // ------------------------------------------------------------------
   // Lapisan gambar
@@ -217,7 +239,7 @@ class _NightSceneState extends State<NightScene>
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF040813),
+      color: kSceneInk,
       child: LayoutBuilder(builder: (context, box) {
         final h = box.maxHeight;
         return AnimatedBuilder(
@@ -245,9 +267,9 @@ class _NightSceneState extends State<NightScene>
             final shake = Offset(math.sin(t * 95) * shakeAmp,
                 math.cos(t * 81) * shakeAmp * 0.7);
 
-            final fadeIn = 1 - _smooth(_seg(ms, 0, 500));
+            final fadeIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
             final fadeOut =
-            _smooth(_seg(ms, _total - 600.0, _total.toDouble()));
+            fadeMs(ms, _total - kSceneFadeOutMs.toDouble(), _total.toDouble());
 
             // Kamera: perbesaran tetap (membuang bingkai emas gambar) ditambah
             // desir pelan; bergeser sedikit mengikuti waktu.
@@ -334,17 +356,7 @@ class _NightSceneState extends State<NightScene>
                   ),
                 ),
 
-                if (fadeIn > 0.01)
-                  IgnorePointer(
-                    child: ColoredBox(
-                        color: Colors.black.withValues(alpha: fadeIn)),
-                  ),
-                if (fadeOut > 0.01)
-                  IgnorePointer(
-                    child: ColoredBox(
-                        color: const Color(0xFF040813)
-                            .withValues(alpha: fadeOut)),
-                  ),
+                sceneVeil(math.max(fadeIn, fadeOut)),
               ],
             );
           },

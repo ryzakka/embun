@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -65,7 +66,7 @@ class _Person {
 
 class _VoteRevealSceneState extends State<VoteRevealScene>
     with TickerProviderStateMixin {
-  static const _bg = Color(0xFF05080F);
+  static const _bg = kSceneInk;
   static const _teal = Color(0xFF5FB8A5);
 
   late final List<Map<String, dynamic>> _votes;
@@ -97,10 +98,18 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   late final AnimationController _vc = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 3400));
   final Set<int> _fired = {};
+  // Tirai gelap: 1 = layar tertutup kSceneInk. Terbuka saat adegan mulai,
+  // menutup lagi sebelum adegan berikutnya (kurungan / pengusiran / fajar).
+  late final AnimationController _veil = AnimationController(
+      vsync: this,
+      value: 1.0,
+      duration: const Duration(milliseconds: kSceneFadeOutMs),
+      reverseDuration: const Duration(milliseconds: kSceneFadeInMs));
 
   @override
   void initState() {
     super.initState();
+    _veil.reverse();
     final rows = widget.rows;
     _votes = [for (final r in rows) if (r['target_id'] != null) r];
     _abstain = [for (final r in rows) if (r['target_id'] == null) r];
@@ -134,6 +143,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _shake.dispose();
     _flash.dispose();
     _vc.dispose();
+    _veil.dispose();
     super.dispose();
   }
 
@@ -144,11 +154,14 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     return mounted && !_stopped;
   }
 
-  void _finish() {
+  Future<void> _finish() async {
     if (_done) return;
     _done = true;
     _stopped = true;
-    widget.onDone();
+    // Memudar ke gelap dulu, baru adegan berikutnya mulai (yang juga
+    // mulai dari gelap), tanpa pemotongan mendadak.
+    await _veil.forward();
+    if (mounted) widget.onDone();
   }
 
   /// Hantaman layar: getar + kilat + haptic berat.
@@ -242,7 +255,8 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
 
     if (_abstain.isNotEmpty) {
       setState(() => _phase = 2);
-      if (!await _w(1700)) return;
+      // Makin banyak yang tidak memilih, makin lama wajah-wajahnya tampil.
+      if (!await _w((1900 + 200 * _abstain.length).clamp(1900, 3000).toInt())) return;
     }
 
     setState(() => _phase = 3);
@@ -254,7 +268,9 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
       HapticFeedback.lightImpact();
     }
     _vc.forward(from: 0);
-    if (!await _w(won ? 3600 : 2600)) return;
+    // Linimasa hasil 3,4 detik, lalu jeda baca: nama yang dituduh, hitungan
+    // suara, dan keterangan harus sempat terbaca sebelum layar memudar.
+    if (!await _w(won ? 3400 + 2300 : 3400 + 1500)) return;
     _finish();
   }
 
@@ -347,6 +363,10 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
           ),
           if (won) _embers(),
           if (_banner) _majorityBanner(),
+          AnimatedBuilder(
+            animation: _veil,
+            builder: (_, _) => sceneVeil(_veil.value),
+          ),
           IgnorePointer(
             child: AnimatedBuilder(
               animation: _flash,

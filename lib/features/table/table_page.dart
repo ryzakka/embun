@@ -7,6 +7,7 @@ import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
@@ -545,7 +546,9 @@ class _TablePageState extends State<TablePage> {
   Widget _nightLayer() {
     final v = _nightScene!;
     final rows = v['rows'] as List<Map<String, dynamic>>?;
-    if (rows == null) return const ColoredBox(color: Color(0xFF040813));
+    // Warna yang sama dengan dasar semua adegan (kSceneInk), supaya layar
+    // penantian data tidak berbeda nuansa dari adegan yang menyusul.
+    if (rows == null) return const ColoredBox(color: kSceneInk);
     return NightScene(
       key: ValueKey('night${v['day']}'),
       day: v['day'] as int,
@@ -649,7 +652,7 @@ class _TablePageState extends State<TablePage> {
   Widget _evictLayer() {
     final e = _evict!;
     final row = e['row'] as Map<String, dynamic>?;
-    if (row == null) return const ColoredBox(color: Color(0xFF05080F));
+    if (row == null) return const ColoredBox(color: kSceneInk);
     return EvictionVerdictScene(
       key: ValueKey('evict${e['day']}'),
       name: row['name'] as String,
@@ -686,7 +689,7 @@ class _TablePageState extends State<TablePage> {
   Widget _voteRevealLayer() {
     final v = _voteReveal!;
     final rows = v['rows'] as List<Map<String, dynamic>>?;
-    if (rows == null) return const ColoredBox(color: Color(0xFF05080F));
+    if (rows == null) return const ColoredBox(color: kSceneInk);
     return VoteRevealScene(
       key: ValueKey('votes${v['day']}'),
       day: v['day'] as int,
@@ -774,7 +777,7 @@ class _TablePageState extends State<TablePage> {
   Widget _jailLayer() {
     final intro = _dayIntro!;
     final j = intro['jail'] as Map<String, dynamic>?;
-    if (j == null) return const ColoredBox(color: Color(0xFF05080F));
+    if (j == null) return const ColoredBox(color: kSceneInk);
     return JailVerdictScene(
       key: ValueKey('jail${intro['day']}-${j['user_id']}'),
       name: j['name'] as String,

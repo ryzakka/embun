@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/scene_flow.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
 
@@ -191,6 +192,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       onTap: _finish,
       child: Material(
         color: const Color(0xFF050A08),
+        // Selagi data dimuat, layar menggelap pelan (bukan memotong ke hitam
+        // saat adegan mulai, yang dulu tampak seperti kedipan).
         child: !_loaded
             ? Stack(
           fit: StackFit.expand,
@@ -199,6 +202,12 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                 path: landscapePath(_leaves),
                 dark: widget.dark,
                 dim: 0.78),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 650),
+              builder: (context, a, child) => ColoredBox(
+                  color: const Color(0xFF050A08).withValues(alpha: a)),
+            ),
             const EmbunLoading(text: 'Menuju Hayu...'),
           ],
         )
@@ -398,7 +407,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
         // ---- penutup / pembuka layar ----
         final fadeIn = 1 - _smooth(_seg(ms, 0, 800));
-        final fadeOut = _smooth(_seg(ms, totalMs - 450, totalMs));
+        final fadeOut =
+        _smooth(_seg(ms, totalMs - kSceneFadeOutMs, totalMs));
         final blackA = math.max(fadeIn, fadeOut);
 
         final capT = _smooth(_seg(tail, 0.12, 0.38)) *

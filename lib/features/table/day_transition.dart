@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/scene_flow.dart';
 
 double _seg(double t, double a, double b) =>
     ((t - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -19,7 +20,7 @@ double _hillY(double x, double w, double h) =>
 double _hill2Y(double x, double w, double h) =>
     h * 0.89 + sin(x / w * pi * 3 + 2.0) * h * 0.016;
 
-/// Adegan sinematik peralihan hari (4,4 detik). Menyambung dari NightScene:
+/// Adegan sinematik peralihan hari (4,4 detik gerak + jeda baca). Menyambung dari NightScene:
 /// dunia yang sama (bulan, bukit, rumah desa, pohon Hayu) tetapi sekarang
 /// fajar menyingsing. Linimasa (t = 0..1):
 ///
@@ -38,7 +39,12 @@ double _hill2Y(double x, double w, double h) =>
 ///  0.62-0.74  info persembahan naik
 ///  0.68-0.84  jumlah daun dihitung naik, bilah kesehatan Hayu terisi
 ///  0.78-0.90  vonis hari sebelumnya (bila ada)
-///  0.90-1.00  seluruh adegan memudar
+///  setelah 1.00  jeda baca (lama menyesuaikan panjang teks vonis), lalu
+///             adegan melebur ke layar hari
+///
+/// Adegan ini MASUK dari warna dasar [kSceneInk] (sama dengan akhir adegan
+/// malam / kurungan / pengusiran sebelumnya) dan baru keluar dengan melebur
+/// ke layar meja.
 ///
 /// Pohon Hayu pada siluet mengikuti kesehatan: rimbun saat daun banyak,
 /// jarang dan berwarna kelabu saat daun sedikit. Malam persembahan (hari
@@ -68,11 +74,21 @@ class DayTransition extends StatefulWidget {
 
 class _DayTransitionState extends State<DayTransition>
     with SingleTickerProviderStateMixin {
-  static const _night = Color(0xFF05080F);
+  static const _night = kSceneInk;
   static const _land = 0.52;
 
+  /// Bagian bergerak (t = 0..1 pada linimasa di atas).
+  static const _playMs = 4400;
+
+  /// Jeda baca setelah semua teks tampil. Vonis hari sebelumnya baru muncul
+  /// di t = 0.78-0.90, jadi ia butuh waktu baca penuh sesudahnya.
+  late final int _holdMs = widget.verdict == null
+      ? 1800
+      : max(2200, readMs(widget.verdict, min: 2600) - 600);
+  late final int _totalMs = _playMs + _holdMs + kSceneFadeOutMs;
+
   late final AnimationController c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 4400));
+      vsync: this, duration: Duration(milliseconds: _totalMs));
   final Set<int> _fired = {};
   bool _done = false;
 
@@ -94,7 +110,7 @@ class _DayTransitionState extends State<DayTransition>
   void initState() {
     super.initState();
     c.addListener(() {
-      final t = c.value;
+      final t = c.value * _totalMs / _playMs;
       if (t >= 0.04 && _fired.add(0)) HapticFeedback.lightImpact();
       if (t >= 0.32 && _fired.add(3)) HapticFeedback.selectionClick();
       if (t >= _land && _fired.add(1)) {
@@ -138,9 +154,16 @@ class _DayTransitionState extends State<DayTransition>
         return AnimatedBuilder(
           animation: c,
           builder: (context, _) {
-            final t = c.value;
+            final ms = c.value * _totalMs;
+            // t > 1 selama jeda baca: gerak lembut (bintang, kabut, butiran)
+            // tetap hidup, sementara semua tahap bersyarat sudah tuntas.
+            final t = ms / _playMs;
 
-            final master = min(_seg(t, 0, 0.06), 1 - _seg(t, 0.9, 1.0));
+            // Hanya keluarnya yang melebur ke layar meja; masuknya lewat
+            // tirai gelap di paling atas, supaya tak ada kilasan layar meja.
+            final master =
+                1 - fadeMs(ms, _totalMs - kSceneFadeOutMs.toDouble(), _totalMs.toDouble());
+            final veilIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
             final sky = Curves.easeOut.transform(_seg(t, 0.15, 0.65));
             final reveal = Curves.easeIn.transform(_seg(t, 0.3, 0.7));
             final kb = Curves.easeOutCubic.transform(_seg(t, 0.2, 1.0));
@@ -491,6 +514,7 @@ class _DayTransitionState extends State<DayTransition>
                           TextStyle(fontSize: 11, color: Colors.white54)),
                     ),
                   ),
+                  sceneVeil(veilIn),
                 ],
               ),
             );

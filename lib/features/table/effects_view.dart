@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
+import '../common/scene_flow.dart';
 import '../common/ornate.dart';
 
 double _seg(double v, double a, double b) =>
@@ -170,7 +171,9 @@ class _EffectsViewState extends State<EffectsView>
         return;
       }
       setState(() => revealed = 1);
-      timer = Timer.periodic(const Duration(milliseconds: 1500), (t) {
+      // Selang antar gelembung: cukup lama agar tulisannya terbaca sebelum
+      // gelembung berikutnya muncul.
+      timer = Timer.periodic(const Duration(milliseconds: 2100), (t) {
         if (!mounted || revealed >= rows.length) {
           t.cancel();
           return;
@@ -276,7 +279,25 @@ class _EffectsViewState extends State<EffectsView>
         ],
       );
     }
-    return LayoutBuilder(builder: (context, box) => _stage(box));
+    // Datang dari adegan pelemparan kartu yang berakhir gelap: terang
+    // perlahan, bukan muncul tiba-tiba.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        LayoutBuilder(builder: (context, box) => _stage(box)),
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 1, end: 0),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOut,
+          builder: (context, a, child) => a < 0.004
+              ? const SizedBox.shrink()
+              : IgnorePointer(
+              child: ColoredBox(
+                  color: const Color(0xFF050A08).withValues(alpha: a),
+                  child: const SizedBox.expand())),
+        ),
+      ],
+    );
   }
 
   Widget _stage(BoxConstraints box) {
@@ -894,7 +915,7 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     c = AnimationController(
-        vsync: this, duration: Duration(milliseconds: bad ? 3000 : 2200));
+        vsync: this, duration: Duration(milliseconds: bad ? 3600 : 2800));
     c.addListener(() {
       if (!arrived && c.value >= arriveAt) {
         arrived = true;

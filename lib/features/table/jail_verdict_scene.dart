@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -51,8 +52,12 @@ class JailVerdictScene extends StatefulWidget {
 
 class _JailVerdictSceneState extends State<JailVerdictScene>
     with SingleTickerProviderStateMixin {
-  static const _totalMs = 6600;
-  static const _night = Color(0xFF05080F);
+  /// Bagian bergerak (lihat linimasa di komentar kelas) lalu jeda baca:
+  /// "dikurung sampai musyawarah berikutnya" perlu waktu sebelum memudar.
+  static const _playMs = 6600;
+  static const _holdMs = 1900;
+  static const _totalMs = _playMs + _holdMs;
+  static const _night = kSceneInk;
 
   late final AnimationController _c = AnimationController(
       vsync: this, duration: const Duration(milliseconds: _totalMs));
@@ -79,7 +84,7 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
   }
 
   void _onTick() {
-    final t = _c.value;
+    final t = (_c.value * _totalMs / _playMs).clamp(0.0, 1.0).toDouble();
     if (t >= 0.10 && _fired.add(0)) HapticFeedback.lightImpact();
     if (t >= 0.26 && _fired.add(1)) {
       HapticFeedback.heavyImpact();
@@ -114,8 +119,9 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
   }
 
   Widget _scene(BuildContext context, double w, double h) {
-    final t = _c.value;
-    final sec = t * _totalMs / 1000;
+    final ms = _c.value * _totalMs;
+    final t = (ms / _playMs).clamp(0.0, 1.0).toDouble();
+    final sec = ms / 1000;
     final topPad = MediaQuery.of(context).padding.top;
     final botPad = MediaQuery.of(context).padding.bottom;
 
@@ -170,8 +176,9 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
     final redFlash = 0.40 * pulse(0.58, 0.05);
     final whiteFlash = 0.16 * pulse(0.26, 0.04);
 
-    final fadeIn = 1 - _smooth(_seg(t, 0.0, 0.04));
-    final fadeOut = _smooth(_seg(t, 0.93, 1.0));
+    final fadeIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
+    final fadeOut =
+    fadeMs(ms, _totalMs - kSceneFadeOutMs.toDouble(), _totalMs.toDouble());
 
     final who = widget.isMe ? 'Kamu' : widget.name;
     final cardPath =
@@ -426,7 +433,7 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
         // Fade masuk / keluar.
         if (fadeIn > 0)
           IgnorePointer(
-              child: ColoredBox(color: Colors.black.withValues(alpha: fadeIn))),
+              child: ColoredBox(color: _night.withValues(alpha: fadeIn))),
         if (fadeOut > 0)
           IgnorePointer(
               child: ColoredBox(color: _night.withValues(alpha: fadeOut))),

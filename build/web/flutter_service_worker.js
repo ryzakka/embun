@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "26149ff580e6701db3d7a2e2f2c1c699",
-"assets/AssetManifest.bin.json": "5dec5f29463065ae51323af5fbe9aa97",
+const RESOURCES = {"assets/AssetManifest.bin": "0f0eeb782138ab32f7b2eb4bcf5870ba",
+"assets/AssetManifest.bin.json": "ecce8b925e63e33fe7742fd0ad3e6ccd",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/balaidesa-dalamsiang.webp": "d50b9aad29b97e0f14dd847e777fade9",
 "assets/assets/bentang/balaidesa-luarsiang.webp": "50e73983aec67143f0b9ac609b7a45ee",
@@ -121,6 +121,9 @@ const RESOURCES = {"assets/AssetManifest.bin": "26149ff580e6701db3d7a2e2f2c1c699
 "assets/assets/kartu/antagonis/kegelapan24.webp": "72906a85946af40c87740f133c2dbdea",
 "assets/assets/kartu/antagonis/kegelapan25.webp": "329f0d91e5436e127838bcb4099ef80d",
 "assets/assets/kartu/antagonis/kegelapan26.webp": "8e716037c189a1bea24aaf6517ab8167",
+"assets/assets/kartu/antagonis/kegelapan27.png": "d9e0b3047e1e9011a12772bf68eb73ce",
+"assets/assets/kartu/antagonis/kegelapan28.png": "9ab1c7b924a14b1298a0afcb9ee5fb91",
+"assets/assets/kartu/antagonis/kegelapan29.png": "c3140c4bae6d718e0d210fe7724f8f03",
 "assets/assets/kartu/antagonis/kegelapan3.webp": "5255e0d56187bd9baa84f4e9481f93d8",
 "assets/assets/kartu/antagonis/kegelapan4.webp": "0b0c49790dadbe938970bac8b333d8d1",
 "assets/assets/kartu/antagonis/kegelapan5.webp": "a013059a4890105cff3f287368e3e532",
@@ -309,14 +312,14 @@ const RESOURCES = {"assets/AssetManifest.bin": "26149ff580e6701db3d7a2e2f2c1c699
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "85a696e66c59a976b6c373f913363b60",
+"flutter_bootstrap.js": "bca1ff6a4d3f37bde66bb1743fe9bf63",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "de5cd924341a6010f14615fdbbbc0952",
 "/": "de5cd924341a6010f14615fdbbbc0952",
-"main.dart.js": "8f76f1e3220e881774412cb37b185144",
+"main.dart.js": "6e9a687b7760e2751a4e4ff8d2480c8a",
 "manifest.json": "df5ecdba13a1656c0809325677030ab9",
 "version.json": "5f7aaaa3c3b9afbeb1df6ee4593452d9"};
 // The application shell files that are downloaded before a service worker can
