@@ -598,7 +598,7 @@ class _DayViewState extends State<DayView> {
     final can = reason == null && !busy;
     final afford = price <= widget.balance;
     final accent = bad ? EmbunColors.mist : EmbunColors.gold;
-    final h = w * 9 / 7;
+    final h = w * cardAspectForDef(def);
 
     final tile = CardTile(
       def: def,
@@ -703,7 +703,12 @@ class _DayViewState extends State<DayView> {
       const chrome = 22 + 6 + 8 + 38 + 4 + 24 + 12.0;
       final n = o.length;
       var w = (c.maxWidth - 8 - (n - 1) * gap) / n;
-      final byH = (c.maxHeight - chrome) * 7 / 9;
+      var maxA = kItemAspect;
+      for (final e in o) {
+        final a = cardAspectForDef(widget.defs[e['card_id']]);
+        if (a > maxA) maxA = a;
+      }
+      final byH = (c.maxHeight - chrome) / maxA;
       if (byH < w) w = byH;
       w = w.clamp(60.0, 190.0).toDouble().floorToDouble();
       return Center(

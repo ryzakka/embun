@@ -170,7 +170,14 @@ class _OfferingViewState extends State<OfferingView> {
       final n = hand.length;
       // Lebar kartu: dibatasi tinggi area (ruang untuk kartu terangkat) dan
       // lebar (sedikit bertumpuk bila banyak kartu).
-      var w = ((c.maxHeight - 30) * 7 / 9).clamp(64.0, 150.0).toDouble();
+      // Tinggi kartu berbeda per jenis (2:3 antagonis, 9/7 item warga):
+      // lebar dihitung dari yang tertinggi agar semuanya muat.
+      var maxA = kItemAspect;
+      for (final x in hand) {
+        final a = cardAspectForDef(widget.defs[x['card_id']]);
+        if (a > maxA) maxA = a;
+      }
+      var w = ((c.maxHeight - 30) / maxA).clamp(64.0, 150.0).toDouble();
       var step = w * 0.78;
       final maxSpan = c.maxWidth - w - 8;
       if (n > 1 && step * (n - 1) > maxSpan) {
@@ -182,7 +189,6 @@ class _OfferingViewState extends State<OfferingView> {
         w = math.max(56.0, c.maxWidth / (1 + (n - 1) * 0.42) - 4);
         step = (c.maxWidth - w - 8) / (n - 1);
       }
-      final h = w * 9 / 7;
       final total = step * (n - 1) + w;
       final left0 = (c.maxWidth - total) / 2;
       final mid = (n - 1) / 2;
@@ -203,11 +209,12 @@ class _OfferingViewState extends State<OfferingView> {
               final hh = hand[i];
               final id = hh['id'] as String;
               final cardId = hh['card_id'] as String;
+              final ch = w * cardAspectForDef(widget.defs[cardId]);
               final picked = sel.contains(id);
               final off = (i - mid);
               final rot = n == 1 ? 0.0 : off * math.min(0.07, 0.34 / mid.clamp(1.0, 9.0));
               final drop = off * off * (n > 5 ? 2.0 : 3.5);
-              final top = (c.maxHeight - h) / 2 + 8 + drop - (picked ? 26 : 0);
+              final top = (c.maxHeight - ch) / 2 + 8 + drop - (picked ? 26 : 0);
               return AnimatedPositioned(
                 key: ValueKey('fan$id'),
                 duration: const Duration(milliseconds: 200),
@@ -215,7 +222,7 @@ class _OfferingViewState extends State<OfferingView> {
                 left: left0 + step * i,
                 top: top,
                 width: w,
-                height: h,
+                height: ch,
                 child: AnimatedRotation(
                   duration: const Duration(milliseconds: 200),
                   turns: (picked ? 0 : rot) / (2 * math.pi),

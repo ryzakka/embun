@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/asset_catalog.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
 
@@ -439,7 +440,7 @@ class _CardGiftView extends StatelessWidget {
   final bool dark;
 
   static const _cardW = 84.0;
-  static const _cardH = _cardW * 9 / 7;
+  double get _cardH => _cardW * cardAspectForDef(def);
 
   const _CardGiftView({
     required this.t,

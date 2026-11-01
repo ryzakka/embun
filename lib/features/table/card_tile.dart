@@ -96,9 +96,13 @@ class CardTile extends StatelessWidget {
   final String? badge; // mis. 'Terbeli', menggantikan harga
   final VoidCallback? onTap;
 
-  /// Lebar tile; tinggi selalu lebar * 9 / 7 (140 -> 180, ukuran lama).
-  /// Dihitung dari ruang yang tersedia supaya pas di ponsel maupun desktop.
+  /// Lebar tile; tinggi = lebar * [aspect]. Dihitung dari ruang yang tersedia
+  /// supaya pas di ponsel maupun desktop.
   final double width;
+
+  /// Tinggi/lebar; null = ikut jenis kartu ([cardAspectForDef]): antagonis
+  /// dan malam 2:3, item protagonis 9/7.
+  final double? aspect;
 
   const CardTile({
     super.key,
@@ -111,6 +115,7 @@ class CardTile extends StatelessWidget {
     this.badge,
     this.onTap,
     this.width = 140,
+    this.aspect,
   });
 
   @override
@@ -119,6 +124,7 @@ class CardTile extends StatelessWidget {
     final cost = costOverride ?? (def?['cost'] as int?) ?? 0;
     final path = cardArtPath(def);
     final d = def;
+    final h = width * (aspect ?? cardAspectForDef(def));
 
     return GestureDetector(
       onTap: onTap,
@@ -128,7 +134,7 @@ class CardTile extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: width,
-          height: width * 9 / 7,
+          height: h,
           transform: Matrix4.translationValues(0, selected ? -10 : 0, 0),
           padding: path == null ? const EdgeInsets.all(10) : EdgeInsets.zero,
           decoration: BoxDecoration(
@@ -248,7 +254,7 @@ class CardBack extends StatelessWidget {
     borderRadius: BorderRadius.circular(10),
     child: SizedBox(
       width: 70,
-      height: 100,
+      height: dark ? 105 : 100, // dark = 2:3
       child: GameImage(path: itemBackPath(dark: dark), cacheWidth: 200),
     ),
   );

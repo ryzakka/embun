@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/asset_catalog.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
 
@@ -100,7 +101,7 @@ class _NightArmOverlayState extends State<NightArmOverlay>
         1.2, _pulses.map(pulse).reduce((a, b) => a + b).toDouble());
 
     final dis = _smooth(_seg(t, 0.12, 0.60));
-    final cardH = _cardW * 9 / 7;
+    final cardH = _cardW * cardAspectForDef(widget.def);
     final moonIn = _seg(t, 0.45, 0.65);
     final moonScale = _lerp(0.4, 1.0, Curves.easeOutBack.transform(moonIn)) *
         (1 + 0.18 * beat);

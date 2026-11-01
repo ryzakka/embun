@@ -687,21 +687,33 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     ),
   );
 
-  Widget _front(String id, double w, double h, Color glow) => Container(
-    width: w,
-    height: h,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(color: glow.withValues(alpha: 0.7), blurRadius: 26),
-      ],
-    ),
-    child: CardTile(
-      def: widget.defs[id],
-      fallbackName: id,
-      width: w,
-    ),
-  );
+  /// Bingkai terbang ([h]) seragam supaya bentuk kartu tidak membocorkan
+  /// sisinya sebelum berbalik. Muka kartu baru memakai tingginya sendiri
+  /// (2:3 untuk antagonis) dan meluber simetris dari bingkai.
+  Widget _front(String id, double w, double h, Color glow) {
+    final fh = w * cardAspectForDef(widget.defs[id]);
+    return OverflowBox(
+      minWidth: w,
+      maxWidth: w,
+      minHeight: fh,
+      maxHeight: fh,
+      child: Container(
+        width: w,
+        height: fh,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: glow.withValues(alpha: 0.7), blurRadius: 26),
+          ],
+        ),
+        child: CardTile(
+          def: widget.defs[id],
+          fallbackName: id,
+          width: w,
+        ),
+      ),
+    );
+  }
 }
 
 class _Impact {

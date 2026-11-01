@@ -8,7 +8,7 @@ import '../common/art.dart';
 /// Punggung kartu yang berbalik. Bawaannya punggung kartu karakter (warga
 /// hijau, Si Terbisik merah); isi [backPath] untuk punggung lain, mis.
 /// [itemBackFor] (item/serangan malam) atau [abilityBackPath] (kemampuan).
-/// Tinggi bawaan sama dengan CardTile (lebar : tinggi = 7 : 9).
+/// Tinggi bawaan mengikuti rasio berkas punggung ([cardAspectFor]).
 class CardBackFace extends StatelessWidget {
   final double width;
 
@@ -28,22 +28,24 @@ class CardBackFace extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: width,
-    height: height ?? width * 9 / 7,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5), blurRadius: 8),
-      ],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: GameImage(
-          path: backPath ?? cardBackPath(dark: dark), cacheWidth: 320),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final p = backPath ?? cardBackPath(dark: dark);
+    return Container(
+      width: width,
+      height: height ?? width * cardAspectFor(p),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5), blurRadius: 8),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: GameImage(path: p, cacheWidth: 320),
+      ),
+    );
+  }
 }
 
 /// Kartu yang masuk sebagai punggung, lalu berbalik menampilkan [front]

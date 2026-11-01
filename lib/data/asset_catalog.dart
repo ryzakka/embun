@@ -225,15 +225,35 @@ String? abilityArtPath(Map<String, dynamic>? def) {
   return AssetCatalog.I.file(kemampuanDir, stem);
 }
 
-/// Rasio tinggi : lebar kartu karakter. Kartu protagonis dan kartu gelap
-/// (antagonis, kegelapan1..20) sama-sama berukuran 1024 x 1536 (2:3).
-const kProtagonistAspect = 1.5;
-const kAntagonisAspect = 1.5;
+/// Rasio tinggi : lebar.
+const kTallAspect = 1.5; // 2:3
+const kItemAspect = 9 / 7; // item protagonis/warga (ukuran lama)
+const kProtagonistAspect = kTallAspect; // dipakai _FaceCrop dan layar lain
+const kAntagonisAspect = kTallAspect;
 
+/// 2:3: karakter, item antagonis (merah), kartu malam (ungu, ada di
+/// poweranta), kemampuan (biru), dan punggungnya. Item protagonis tetap lama.
 double cardAspectFor(String? path) {
-  if (path == null || path.startsWith(protagonisDir)) return kProtagonistAspect;
-  if (path.startsWith(antagonisDir)) return kAntagonisAspect;
-  return 4 / 3; // kartu lain (mis. pratinjau item) seperti semula
+  if (path == null) return kTallAspect;
+  if (path.startsWith(protagonisDir) ||
+      path.startsWith(antagonisDir) ||
+      path.startsWith(kartuAntagDir) ||
+      path.startsWith(kemampuanDir)) {
+    return kTallAspect;
+  }
+  if (path.startsWith(punggungDir)) {
+    // Satu-satunya punggung yang belum 2:3.
+    return path.contains('punggungitemprotagonis') ? kItemAspect : kTallAspect;
+  }
+  return kItemAspect; // powerpro (item warga) dan lainnya
+}
+
+/// Untuk kartu item/malam menurut definisinya (dipakai CardTile).
+double cardAspectForDef(Map<String, dynamic>? def) {
+  if (def == null) return kItemAspect;
+  return (def['side'] == 'antagonis' || def['kind'] == 'malam')
+      ? kTallAspect
+      : kItemAspect;
 }
 
 /// Nama karakter dari nama berkas. Nama berkas = <pekerjaan><jenis>, mis.

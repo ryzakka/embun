@@ -47,7 +47,7 @@ class AbilityCardView extends StatelessWidget {
     final id = '${def['id']}';
     final accent = abilityAccent(id);
     final art = abilityArtPath(def);
-    final h = width * 4 / 3;
+    final h = width * kTallAspect;
     return Container(
       width: width,
       height: h,
@@ -382,7 +382,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
                       ? FlipCard(
                     index: 0,
                     width: 170,
-                    height: 170 * 4 / 3,
+                    height: 170 * kTallAspect,
                     revealed: true,
                     glow: accent,
                     backPath: abilityBackPath(),
