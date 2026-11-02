@@ -31,6 +31,35 @@ class GameImage extends StatelessWidget {
   }
 }
 
+/// Gambar yang mengisi bidang tempatnya dipasang, diputar seperempat putaran
+/// bila BIDANG ITU berbentuk potret (tinggi > lebar), supaya sisi panjang
+/// gambar mengikuti sisi panjang bidang. Yang diukur adalah bidang gambarnya
+/// sendiri (batas dari induk), bukan layar atau perangkat. Bidang landscape
+/// atau persegi: gambar apa adanya. [rotateWhenTall] false = tak pernah diputar.
+class OrientedImage extends StatelessWidget {
+  final String? path;
+  final int? cacheWidth;
+  final bool rotateWhenTall;
+  const OrientedImage({
+    super.key,
+    required this.path,
+    this.cacheWidth,
+    this.rotateWhenTall = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final img = GameImage(path: path, cacheWidth: cacheWidth);
+    if (!rotateWhenTall) return img;
+    return LayoutBuilder(builder: (context, c) {
+      final tall = c.hasBoundedWidth &&
+          c.hasBoundedHeight &&
+          c.maxHeight > c.maxWidth;
+      return tall ? RotatedBox(quarterTurns: 1, child: img) : img;
+    });
+  }
+}
+
 Widget _fadeLayout(Widget? current, List<Widget> previous) => Stack(
   fit: StackFit.expand,
   children: [...previous, ?current],

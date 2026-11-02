@@ -1097,7 +1097,10 @@ class _DayViewState extends State<DayView>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          GameImage(path: p, cacheWidth: 900),
+          // Anyaman (peran gelap) diputar bila bidangnya potret; meja kayu
+          // (`mejaku`) adalah pemandangan, jadi tidak pernah diputar.
+          OrientedImage(
+              path: p, cacheWidth: 900, rotateWhenTall: widget.dark),
           ColoredBox(
               color: Colors.black.withValues(alpha: widget.dark ? 0.3 : 0.45)),
           Padding(
@@ -1123,7 +1126,7 @@ class _DayViewState extends State<DayView>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          GameImage(path: p, cacheWidth: 900),
+          OrientedImage(path: p, cacheWidth: 900),
           ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
           child,
         ],
