@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Satu berkas suara di assets/sound/ beserta volume dasarnya (0..1).
@@ -111,8 +112,16 @@ class Sfx with WidgetsBindingObserver {
         AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
             .build(),
       )
-          .catchError((_) {});
-    } catch (_) {}
+          .catchError((Object e) => _log('audioContext', e));
+    } catch (e) {
+      _log('audioContext', e);
+    }
+    _log('init', 'siap (kDebugMode=$kDebugMode)');
+  }
+
+  /// Cetak galat audio di konsol (mode debug) supaya tidak tertelan diam.
+  static void _log(String where, Object e) {
+    if (kDebugMode) debugPrint('[Sfx] $where: $e');
   }
 
   // ===================================================================
@@ -131,7 +140,9 @@ class Sfx with WidgetsBindingObserver {
       try {
         final p = await _pools.putIfAbsent(s.file, () => _makePool(s));
         await p?.start(volume: s.volume);
-      } catch (_) {}
+      } catch (e) {
+        _log('click ${s.file}', e);
+      }
     }());
   }
 
@@ -139,7 +150,8 @@ class Sfx with WidgetsBindingObserver {
     try {
       return await AudioPool.createFromAsset(
           path: 'sound/${s.file}', maxPlayers: 3);
-    } catch (_) {
+    } catch (e) {
+      _log('pool ${s.file}', e);
       return null;
     }
   }
@@ -178,7 +190,8 @@ class Sfx with WidgetsBindingObserver {
       await p.play(AssetSource('sound/${s.file}'), volume: v.volume);
       // Dilepas selagi masih memuat: buang begitu siap.
       if (v.dead) _drop(v);
-    } catch (_) {
+    } catch (e) {
+      _log('play ${s.file}', e);
       _drop(v);
     }
   }
@@ -318,7 +331,8 @@ class Sfx with WidgetsBindingObserver {
       if (epoch != _epoch) return; // yang lebih baru mengurus sisanya
       _syncing = false;
       _kick();
-    } catch (_) {
+    } catch (e) {
+      _log('musik ${want?.file}', e);
       if (epoch == _epoch) {
         _syncing = false;
         _bgmTrack = null;
