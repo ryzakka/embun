@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
@@ -13,8 +14,14 @@ class _Bubble {
 }
 
 /// Deretan avatar pemain: titik status (siap / online / luring), gembok
-/// kurungan, dan gelembung emote yang muncul sebentar di atas pengirimnya.
-/// Ketuk avatar untuk aksi sosial; tombol 😀 untuk panel isyarat.
+/// kurungan, dan isyarat (emote).
+///
+/// Isyarat baru tampil besar MENINDIH potret pengirimnya (muncul membal,
+/// bergoyang pelan, lalu naik dan memudar), disertai cincin kejut. Di atas
+/// potret ada label sasaran ("-> Nama", "Untukmu", atau "Semua"), dan potret
+/// sasarannya berpendar dengan lencana emoji kecil di pojok. Seluruhnya
+/// berumur [_lifeMs]. Ketuk avatar untuk aksi sosial; tombol 😀 untuk panel
+/// isyarat.
 class VillageStrip extends StatefulWidget {
   final String myId;
   final List<Map<String, dynamic>> players;
@@ -91,15 +98,18 @@ class _VillageStripState extends State<VillageStrip> {
     _primed = true;
   }
 
-  String _short(String? id) {
+  /// Umur satu isyarat di layar (ms).
+  static const _lifeMs = 4500;
+
+  String _nameOf(String? id) {
     for (final p in widget.players) {
-      if (p['user_id'] == id) {
-        final n = p['name'] as String;
-        return n.length <= 4 ? n : n.substring(0, 4);
-      }
+      if (p['user_id'] == id) return p['name'] as String;
     }
     return '?';
   }
+
+  bool _alive(_Bubble b, DateTime now) =>
+      now.difference(b.at).inMilliseconds < _lifeMs + 150;
 
   Widget _cell(Map<String, dynamic> p, DateTime now, double cellW,
       double avatar) {
@@ -110,7 +120,16 @@ class _VillageStripState extends State<VillageStrip> {
     final out = isOut(p);
     final jailed = isJailed(p, widget.day);
     final b = _bubbles[id];
-    final showB = b != null && now.difference(b.at).inSeconds < 6;
+    final live = (b != null && _alive(b, now)) ? b : null;
+    // Isyarat terbaru yang ditujukan ke pemain ini.
+    _Bubble? incoming;
+    for (final o in _bubbles.values) {
+      if (o.target == id &&
+          _alive(o, now) &&
+          (incoming == null || o.at.isAfter(incoming.at))) {
+        incoming = o;
+      }
+    }
     final dot = ready
         ? Colors.greenAccent
         : online
@@ -126,36 +145,7 @@ class _VillageStripState extends State<VillageStrip> {
           children: [
             SizedBox(
               height: 20,
-              child: showB
-                  ? Center(
-                child: FittedBox(
-                  // Gelembung muncul membal setiap isyarat baru.
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(b.at),
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 520),
-                    curve: Curves.elasticOut,
-                    builder: (_, v, child) => Transform.scale(
-                        scale: v.clamp(0.0, 1.4).toDouble(), child: child),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        b.target == null
-                            ? b.emoji
-                            : '${b.emoji}→${_short(b.target)}',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-                  : null,
+              child: live != null ? Center(child: _targetChip(live, now)) : null,
             ),
             Stack(
               clipBehavior: Clip.none,
@@ -175,6 +165,8 @@ class _VillageStripState extends State<VillageStrip> {
                         : EmbunColors.goldDim.withValues(alpha: 0.8),
                   ),
                 ),
+                if (incoming != null && !out)
+                  Positioned.fill(child: _receiverOverlay(incoming)),
                 if (out)
                   const Positioned.fill(
                     child: Center(
@@ -237,6 +229,9 @@ class _VillageStripState extends State<VillageStrip> {
                       ),
                     ),
                   ),
+                // Isyarat menindih potret pengirim (paling atas).
+                if (live != null && !out)
+                  Positioned.fill(child: _senderOverlay(live, avatar)),
               ],
             ),
             const SizedBox(height: 3),
@@ -262,6 +257,169 @@ class _VillageStripState extends State<VillageStrip> {
                   text: 'Dikurung', color: EmbunColors.blood, fontSize: 9),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Label sasaran di atas potret pengirim.
+  Widget _targetChip(_Bubble b, DateTime now) {
+    final toMe = b.target == widget.myId;
+    final text = b.target == null
+        ? 'Semua'
+        : toMe
+        ? 'Untukmu'
+        : '→ ${_nameOf(b.target)}';
+    final color = toMe ? EmbunColors.gold : Colors.white;
+    return _Timed(
+      key: ValueKey('t${b.at.microsecondsSinceEpoch}'),
+      ms: _lifeMs,
+      builder: (t) {
+        final inK = Curves.easeOutBack.transform(_seg(t, 0, 0.1));
+        final out = _seg(t, 0.86, 1);
+        return Opacity(
+          opacity: ((1 - out) * _seg(t, 0, 0.06)).clamp(0.0, 1.0).toDouble(),
+          child: Transform.scale(
+            scale: 0.7 + 0.3 * inK,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withValues(alpha: 0.8)),
+                ),
+                child: Text(text,
+                    maxLines: 1,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: color)),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Emoji besar menindih potret pengirim: membal masuk, bergoyang pelan,
+  /// lalu naik dan memudar. Cincin kejut keluar saat tiba.
+  Widget _senderOverlay(_Bubble b, double size) {
+    return IgnorePointer(
+      child: _Timed(
+        key: ValueKey('s${b.at.microsecondsSinceEpoch}'),
+        ms: _lifeMs,
+        builder: (t) {
+          final pop =
+          Curves.elasticOut.transform(_seg(t, 0, 0.16)).clamp(0.0, 1.4);
+          final out = Curves.easeIn.transform(_seg(t, 0.84, 1));
+          final ring = Curves.easeOut.transform(_seg(t, 0, 0.22));
+          final wob = math.sin(t * math.pi * 6) * 0.07 * (1 - out);
+          final beat = 1 + math.sin(t * math.pi * 9) * 0.035 * (1 - out);
+          return Opacity(
+            opacity: (1 - out).clamp(0.0, 1.0).toDouble(),
+            child: Transform.translate(
+              offset: Offset(0, -size * 0.45 * out),
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  if (ring < 1)
+                    Transform.scale(
+                      scale: 0.9 + 0.9 * ring,
+                      child: Container(
+                        width: size,
+                        height: size,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: EmbunColors.gold
+                                  .withValues(alpha: 0.9 * (1 - ring)),
+                              width: 3),
+                        ),
+                      ),
+                    ),
+                  Transform.scale(
+                    scale: (pop * beat).toDouble(),
+                    child: Transform.rotate(
+                      angle: wob,
+                      child: Container(
+                        width: size,
+                        height: size,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.45),
+                        ),
+                        child: Text(b.emoji,
+                            style: TextStyle(fontSize: size * 0.68, height: 1)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Potret sasaran: cincin emas berdenyut + lencana emoji kecil di pojok.
+  Widget _receiverOverlay(_Bubble b) {
+    return IgnorePointer(
+      child: _Timed(
+        key: ValueKey('r${b.at.microsecondsSinceEpoch}'),
+        ms: _lifeMs,
+        builder: (t) {
+          final out = _seg(t, 0.86, 1);
+          final pulse = (math.sin(t * math.pi * 6) + 1) / 2;
+          final badge = Curves.elasticOut.transform(_seg(t, 0.04, 0.2));
+          return Opacity(
+            opacity: (1 - out).clamp(0.0, 1.0).toDouble(),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: EmbunColors.gold
+                              .withValues(alpha: 0.55 + 0.45 * pulse),
+                          width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                            color: EmbunColors.gold
+                                .withValues(alpha: 0.35 * pulse),
+                            blurRadius: 10),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -7,
+                  top: -7,
+                  child: Transform.scale(
+                    scale: badge.clamp(0.0, 1.4).toDouble(),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.9),
+                        border: Border.all(color: EmbunColors.gold, width: 1.2),
+                      ),
+                      child: Text(b.emoji,
+                          style: const TextStyle(fontSize: 13, height: 1)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -335,4 +493,36 @@ class _VillageStripState extends State<VillageStrip> {
       ),
     );
   }
+}
+double _seg(double v, double a, double b) =>
+    ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
+
+/// Animasi sekali jalan selama [ms], lalu menghilang (tak menggambar apa pun).
+/// Beri key unik per isyarat supaya isyarat baru memulai dari awal.
+class _Timed extends StatefulWidget {
+  final int ms;
+  final Widget Function(double t) builder;
+  const _Timed({super.key, required this.ms, required this.builder});
+
+  @override
+  State<_Timed> createState() => _TimedState();
+}
+
+class _TimedState extends State<_Timed> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: Duration(milliseconds: widget.ms))
+    ..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    builder: (_, _) =>
+    _c.isCompleted ? const SizedBox.shrink() : widget.builder(_c.value),
+  );
 }
