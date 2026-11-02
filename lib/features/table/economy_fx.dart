@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'card_tile.dart';
 
 double _seg(double v, double a, double b) =>
@@ -516,6 +517,7 @@ class _CardFlightState extends State<_CardFlight>
   void initState() {
     super.initState();
     HapticFeedback.lightImpact();
+    Sfx.I.play(Snd.buy);
     _c.addListener(() {
       if (!_arrived && _c.value >= _arrive) {
         _arrived = true;

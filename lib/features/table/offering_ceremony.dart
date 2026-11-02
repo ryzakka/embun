@@ -6,6 +6,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/scene_flow.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'card_tile.dart';
 
 double _seg(double u, double a, double b) =>
@@ -157,6 +158,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       final u = _local(i) / _per;
       if (u >= 0.40 && _hapFlip.add(i)) HapticFeedback.selectionClick();
       if (u >= 0.86 && _hapHit.add(i)) {
+        Sfx.I.play(_isBad(i) ? Snd.slashPedang : Snd.slashCahaya,
+            owner: this, tag: 'hit', replace: true);
         if (_isBad(i)) {
           HapticFeedback.heavyImpact();
         } else {
@@ -182,6 +185,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   @override
   void dispose() {
     _ctl?.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 

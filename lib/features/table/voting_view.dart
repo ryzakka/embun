@@ -8,6 +8,7 @@ import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../../data/errors.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'player_status.dart';
 
 double _seg(double v, double a, double b) =>
@@ -85,6 +86,7 @@ class _VotingViewState extends State<VotingView>
   @override
   void initState() {
     super.initState();
+    Sfx.I.music(Snd.bgmVoting, owner: this);
     if (widget.locked) {
       // Masuk kembali setelah memilih: langsung ke layar menunggu.
       _intro.value = 1;
@@ -98,6 +100,7 @@ class _VotingViewState extends State<VotingView>
   void dispose() {
     _pulse.dispose();
     _intro.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 

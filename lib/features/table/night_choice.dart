@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 import 'countdown.dart';
 
@@ -46,6 +47,7 @@ class _NightChoiceState extends State<NightChoice> {
   @override
   void initState() {
     super.initState();
+    Sfx.I.playAny(Snd.winds, owner: this, tag: 'wind');
     if (widget.isAntag) {
       // Tangan kartu baru dimuat ulang saat fase berganti; nilainya dibaca
       // saat timer berbunyi, bukan sekarang.
@@ -58,6 +60,7 @@ class _NightChoiceState extends State<NightChoice> {
   @override
   void dispose() {
     _auto?.cancel();
+    Sfx.I.release(this);
     super.dispose();
   }
 

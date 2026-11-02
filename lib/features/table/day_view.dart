@@ -7,6 +7,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'card_tile.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
@@ -647,6 +648,7 @@ class _DayViewState extends State<DayView>
         );
       } else {
         HapticFeedback.mediumImpact();
+        Sfx.I.play(Snd.buy);
       }
       await _loadOffers();
     }, ok: '${_cardName(id)} masuk ke mejamu');

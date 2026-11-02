@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
@@ -99,6 +100,7 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
   @override
   void dispose() {
     _c.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 
@@ -117,6 +119,7 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
       }
     }
     if (t >= 0.30 && _fired.add(10)) {
+      Sfx.I.playAny(Snd.fires, owner: this);
       HapticFeedback.heavyImpact();
       Future.delayed(
           const Duration(milliseconds: 100), HapticFeedback.heavyImpact);

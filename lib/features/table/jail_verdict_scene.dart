@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
@@ -74,6 +75,7 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
   @override
   void dispose() {
     _c.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 
@@ -87,6 +89,7 @@ class _JailVerdictSceneState extends State<JailVerdictScene>
     final t = (_c.value * _totalMs / _playMs).clamp(0.0, 1.0).toDouble();
     if (t >= 0.10 && _fired.add(0)) HapticFeedback.lightImpact();
     if (t >= 0.26 && _fired.add(1)) {
+      Sfx.I.play(Snd.pagarPenjara, owner: this);
       HapticFeedback.heavyImpact();
       Future.delayed(
           const Duration(milliseconds: 110), HapticFeedback.heavyImpact);

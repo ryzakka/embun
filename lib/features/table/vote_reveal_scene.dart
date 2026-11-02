@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
@@ -144,6 +145,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _flash.dispose();
     _vc.dispose();
     _veil.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 
@@ -167,7 +169,10 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   /// Hantaman layar: getar + kilat + haptic berat.
   void _slam({bool flash = true}) {
     _shake.forward(from: 0);
-    if (flash) _flash.forward(from: 0);
+    if (flash) {
+      _flash.forward(from: 0);
+      Sfx.I.play(Snd.slashPedang, owner: this, tag: 'slam', replace: true);
+    }
     HapticFeedback.heavyImpact();
   }
 

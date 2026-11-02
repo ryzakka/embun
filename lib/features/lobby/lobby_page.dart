@@ -9,6 +9,7 @@ import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
@@ -326,7 +327,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.2.6',
+                                    'BALAI PERTEMUAN DESA V2.2.7',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -397,7 +398,7 @@ class _LobbyPageState extends State<LobbyPage>
   Widget _menu() {
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 720;
-      final items = <_MenuTile>[
+      final items = <Widget>[
         _MenuTile(
             index: 0,
             icon: 'roomcreate',
@@ -422,6 +423,15 @@ class _LobbyPageState extends State<LobbyPage>
             label: 'Permainan Lainnya',
             center: !wide,
             onTap: () => showMoreGames(context)),
+        ValueListenableBuilder<bool>(
+          valueListenable: Sfx.I.muted,
+          builder: (_, m, _) => _MenuTile(
+              index: 4,
+              icon: 'announcement',
+              label: m ? 'Suara: Mati' : 'Suara: Nyala',
+              center: !wide,
+              onTap: () => Sfx.I.muted.value = !m),
+        ),
       ];
       final menuCol = Column(
         mainAxisSize: MainAxisSize.min,

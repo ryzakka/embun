@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'flip_card.dart';
 
 double _seg(double v, double a, double b) =>
@@ -274,12 +275,14 @@ class _EndingCinematicState extends State<EndingCinematic>
     _buildFrames();
     _ctl.addListener(_onTick);
     _ctl.forward();
+    Sfx.I.setDuck(this, true);
     _load();
   }
 
   @override
   void dispose() {
     _ctl.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 

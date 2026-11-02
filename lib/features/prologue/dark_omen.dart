@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -56,19 +57,29 @@ class _DarkOmenState extends State<DarkOmen> with TickerProviderStateMixin {
     super.initState();
     _c.addListener(_tick);
     _c.forward();
+    // Musik prolog diredam selama peringatan; angin bergulung bersama awan.
+    Sfx.I.setDuck(this, true);
+    Sfx.I.playAny(Snd.winds, owner: this, tag: 'wind');
   }
 
   @override
   void dispose() {
     _c.dispose();
     _loop.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 
   void _tick() {
     final t = _c.value;
     for (var i = 0; i < _bolts.length; i++) {
-      if (t >= _bolts[i] && _fired.add(i)) HapticFeedback.heavyImpact();
+      if (t >= _bolts[i] && _fired.add(i)) {
+        HapticFeedback.heavyImpact();
+        // Petir pertama dan terakhir; yang terakhir memulai ulang gemuruhnya.
+        if (i == 0 || i == _bolts.length - 1) {
+          Sfx.I.play(Snd.thunder, owner: this, tag: 'thunder', replace: true);
+        }
+      }
     }
     if (t >= 0.46 && _fired.add(10)) {
       HapticFeedback.heavyImpact();

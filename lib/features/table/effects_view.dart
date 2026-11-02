@@ -7,6 +7,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/scene_flow.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -133,6 +134,10 @@ class _EffectsViewState extends State<EffectsView>
       if (!_settled && _final.value >= 0.30) {
         _settled = true;
         if (mounted) setState(() => imgLeaves = widget.finalLeaves);
+        final b = _before;
+        if (b != null && widget.finalLeaves > b) {
+          Sfx.I.play(Snd.fairyGrow, owner: this, tag: 'grow');
+        }
         HapticFeedback.heavyImpact();
         Future.delayed(
             const Duration(milliseconds: 140), HapticFeedback.heavyImpact);
@@ -198,6 +203,7 @@ class _EffectsViewState extends State<EffectsView>
   @override
   void dispose() {
     timer?.cancel();
+    Sfx.I.release(this);
     _pulse.dispose();
     _hud.dispose();
     _final.dispose();
@@ -230,6 +236,8 @@ class _EffectsViewState extends State<EffectsView>
     _streakBad = isBad;
     _pulse.forward(from: 0);
     _hud.forward(from: 0);
+    Sfx.I.play(isBad ? Snd.slashPedang : Snd.slashCahaya,
+        owner: this, tag: 'fx', replace: true);
     if (isBad) {
       HapticFeedback.heavyImpact();
     } else {

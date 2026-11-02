@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'art.dart';
+import 'sfx.dart';
 
 /// Palet diambil dari ikon: hijau hutan gelap, emas, dan krem.
 class EmbunColors {
@@ -301,7 +302,12 @@ class _MedallionButtonState extends State<MedallionButton> {
     }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: w.onTap,
+      onTap: on
+          ? () {
+        Sfx.I.click(Snd.clickTung);
+        w.onTap!();
+      }
+          : null,
       onTapDown: on ? (_) => _set(true) : null,
       onTapUp: (_) => _set(false),
       onTapCancel: () => _set(false),
@@ -444,7 +450,13 @@ class EmbunButton extends StatelessWidget {
               : null,
         ),
         child: InkWell(
-          onTap: onPressed,
+          onTap: on
+              ? () {
+            Sfx.I.click(
+                kind == EmbunButtonKind.secondary ? Snd.click2 : Snd.click);
+            onPressed!();
+          }
+              : null,
           borderRadius: radius,
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: height),

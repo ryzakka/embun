@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 
 double _seg(double v, double a, double b) =>
@@ -127,6 +128,8 @@ class _NightSceneState extends State<NightScene>
       ..repeat();
 
     HapticFeedback.lightImpact();
+    // Angin malam (sama untuk semua pemain).
+    Sfx.I.playAny(Snd.winds, owner: this, tag: 'wind');
 
     // Getar tiap baris muncul: berat untuk serangan, ringan untuk yang lain.
     for (var i = 0; i < _lines.length; i++) {
@@ -134,6 +137,8 @@ class _NightSceneState extends State<NightScene>
         if (!mounted) return;
         final k = _lines[i]['kind'];
         if (k == 'attack') {
+          // Pengumuman serangan: sama untuk semua pemain (tanpa sasaran/jenis).
+          Sfx.I.play(Snd.slashPedang, owner: this, tag: 'slash');
           HapticFeedback.heavyImpact();
           Future.delayed(
               const Duration(milliseconds: 140), HapticFeedback.heavyImpact);
@@ -153,6 +158,7 @@ class _NightSceneState extends State<NightScene>
     }
     _tl.dispose();
     _loop.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 

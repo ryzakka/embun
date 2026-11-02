@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import 'card_tile.dart';
 import 'player_status.dart';
 
@@ -171,6 +172,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     super.initState();
     _pa.addListener(_onTick);
     _pa.forward();
+    Sfx.I.music(Snd.bgmAkhir, owner: this);
     HapticFeedback.heavyImpact();
     _load();
   }
@@ -179,6 +181,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   void dispose() {
     _pa.dispose();
     _loop.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 

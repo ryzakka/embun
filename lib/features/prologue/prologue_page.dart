@@ -8,6 +8,7 @@ import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../table/table_page.dart';
 import 'character_pick.dart';
 import 'dark_omen.dart';
@@ -220,6 +221,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   void initState() {
     super.initState();
+    Sfx.I.music(Snd.bgmProlog, owner: this);
     if (widget.resume) step = _Step.role;
     randomStems = AssetCatalog.I.stems(protagonisDir);
     _shuffleCtrl = AnimationController(
@@ -494,6 +496,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     _beat?.cancel();
     _waitTimer?.cancel();
     _gameSub?.cancel();
+    Sfx.I.release(this);
     _sc.dispose();
     _xf.dispose();
     _loop.dispose();

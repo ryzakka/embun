@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 
 class Countdown extends StatefulWidget {
   final DateTime? deadline;
@@ -15,18 +16,56 @@ class Countdown extends StatefulWidget {
 
 class _CountdownState extends State<Countdown> {
   Timer? _t;
+  bool _warned = false;
+
+  int _leftNow() {
+    final d = widget.deadline;
+    if (d == null) return -1;
+    final l = d.difference(ServerClock.now()).inSeconds;
+    return l < 0 ? 0 : l;
+  }
+
+  /// Peringatan waktu hampir habis: diputar sekali saat sisa <= 10 detik, dan
+  /// dihentikan begitu waktu habis / tenggat berganti / widget ditutup.
+  void _warnCheck() {
+    if (widget.deadline == null) return;
+    final left = _leftNow();
+    if (left > 10 || left == 0) {
+      if (_warned) {
+        _warned = false;
+        Sfx.I.release(this);
+      }
+      return;
+    }
+    if (!_warned) {
+      _warned = true;
+      Sfx.I.playAny(Snd.timers, owner: this, tag: 'timer');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _t = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      _warnCheck();
+      setState(() {});
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant Countdown old) {
+    super.didUpdateWidget(old);
+    if (old.deadline != widget.deadline && _warned) {
+      _warned = false;
+      Sfx.I.release(this);
+    }
   }
 
   @override
   void dispose() {
     _t?.cancel();
+    Sfx.I.release(this);
     super.dispose();
   }
 

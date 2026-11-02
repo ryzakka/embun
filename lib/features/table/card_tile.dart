@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 
 const kindLabel = {
   'persembahan': 'Persembahan',
@@ -154,7 +155,12 @@ class CardTile extends StatelessWidget {
     final h = width * (aspect ?? cardAspectForDef(def));
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: onTap == null
+          ? null
+          : () {
+        Sfx.I.click(Snd.clickTung);
+        onTap!();
+      },
       onLongPress: d == null ? null : () => showCardPreview(context, d),
       child: Opacity(
         opacity: dim ? 0.45 : 1,

@@ -7,6 +7,7 @@ import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
 import 'chat_sheet.dart';
@@ -172,6 +173,7 @@ class _TablePageState extends State<TablePage> {
   @override
   void initState() {
     super.initState();
+    Sfx.I.music(Snd.bgmMeja, owner: this);
     repo.cardDefs().then((d) {
       if (mounted) setState(() => defs = d);
     });
@@ -230,6 +232,7 @@ class _TablePageState extends State<TablePage> {
   @override
   void dispose() {
     _marketTick.dispose();
+    Sfx.I.release(this);
     _beat?.cancel();
     for (final s in _subs) {
       s.cancel();
@@ -1124,11 +1127,24 @@ class _TablePageState extends State<TablePage> {
         (phase == 'day' || phase == 'discussion');
   }
 
+  /// Ada adegan layar penuh yang berjalan: musik meja diredam (adegan punya
+  /// suaranya sendiri). Saat game selesai, peredaman diurus EndingCinematic.
+  bool _sceneDuck(Map<String, dynamic>? g) {
+    if (g == null || g['status'] == 'finished') return false;
+    return (_dayIntro != null && !_holdIntro) ||
+        _evict != null ||
+        _voteReveal != null ||
+        _nightOn ||
+        _nightScene != null ||
+        g['phase'] == 'effects';
+  }
+
   // ---------- build ----------
 
   @override
   Widget build(BuildContext context) {
     final g = game;
+    Sfx.I.setDuck(this, _sceneDuck(g));
     return Scaffold(
       backgroundColor: const Color(0xFF0B1512),
       body: Stack(
@@ -1856,6 +1872,8 @@ class _TablePageState extends State<TablePage> {
                       _showPlayersSheet(day);
                     case 'fx':
                       setState(() => chatFx = !chatFx);
+                    case 'sound':
+                      Sfx.I.muted.value = !Sfx.I.muted.value;
                     case 'mask':
                       setState(() => disguiseMode = !disguiseMode);
                     case 'exit':
@@ -1870,6 +1888,9 @@ class _TablePageState extends State<TablePage> {
                       'showaddgraphic',
                       chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
                       c: chatFx ? Colors.amberAccent : null),
+                  item('sound', 'announcement',
+                      Sfx.I.muted.value ? 'Nyalakan suara' : 'Matikan suara',
+                      c: Sfx.I.muted.value ? null : Colors.amberAccent),
                   if (isAntag)
                     item(
                         'mask',
@@ -2012,6 +2033,7 @@ class _TablePageState extends State<TablePage> {
             ),
           ),
         ),
+        const SfxMuteButton(size: 24),
         IconButton(
           tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
           visualDensity: VisualDensity.compact,

@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.18.3
+  audioplayers: ^6.1.0
   flame: ^1.35.1
   flutter_riverpod: ^3.3.2
   go_router: ^17.5.0
@@ -70,6 +71,7 @@ flutter:
     - assets/kartu/kemampuan/
     - assets/logo/
     - assets/ikon/
+    - assets/sound/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -96,3 +98,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+

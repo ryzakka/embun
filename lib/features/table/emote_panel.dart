@@ -5,6 +5,7 @@ import '../../data/game_repository.dart';
 import '../../data/errors.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/sfx.dart';
 
 // Harus sama persis dengan daftar putih di fungsi send_emote (SQL).
 const kEmotes = ['🙂', '😠', '🤔', '😰', '🙏', '👀', '🔥', '💧'];
@@ -117,6 +118,7 @@ class _EmotePanelState extends State<EmotePanel> {
 
   Future<void> _send(String emoji) async {
     HapticFeedback.selectionClick();
+    Sfx.I.click(Snd.clickTung);
     setState(() => busy = true);
     try {
       await widget.repo.sendEmote(widget.gameId, emoji, target: target);
@@ -258,6 +260,7 @@ class _EmotePanelState extends State<EmotePanel> {
           ),
           onSelected: (_) {
             HapticFeedback.selectionClick();
+            Sfx.I.click(Snd.clickTung);
             onTap();
           },
         );
