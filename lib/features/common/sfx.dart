@@ -59,20 +59,6 @@ class _Lease {
 }
 
 /// Pemutar suara satu pintu untuk seluruh aplikasi.
-///
-/// ATURAN ANTI-BOCOR (suara tak boleh bertahan setelah adegannya selesai):
-///  * Setiap suara adegan WAJIB membawa `owner: this` (State adegannya) dan
-///    adegan itu WAJIB memanggil [release] di `dispose()`. Semua suara milik
-///    owner itu dipudarkan dan dibuang, musik yang disewanya dilepas, dan
-///    peredam (duck)-nya dicabut.
-///  * [play] diam saja bila owner sudah tidak `mounted` (mis. timer yang
-///    telat berbunyi setelah adegan ditutup).
-///  * Suara yang baru mulai dimuat saat owner dilepas dibuang begitu siap.
-///  * Aplikasi ke latar belakang: semua efek langsung dihentikan, musik dijeda.
-///  * Dibisukan: semua efek dihentikan dan musik dipudarkan.
-///
-/// Musik memakai "sewa" bertumpuk: yang terakhir menyewa yang terdengar. Saat
-/// sewa itu dilepas, musik sebelumnya (mis. musik meja) otomatis kembali.
 class Sfx with WidgetsBindingObserver {
   Sfx._();
   static final Sfx I = Sfx._();
@@ -105,23 +91,36 @@ class Sfx with WidgetsBindingObserver {
     _inited = true;
     WidgetsBinding.instance.addObserver(this);
     muted.addListener(_onMuteChanged);
-    // Efek berdampingan dengan musik; jangan merebut fokus audio.
-    try {
-      AudioPlayer.global
-          .setAudioContext(
-        AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
-            .build(),
-      )
-          .catchError((Object e) => _log('audioContext', e));
-    } catch (e) {
-      _log('audioContext', e);
+
+    // PENTING: Jangan panggil AudioPlayer.global di Web karena kanal
+    // xyz.luan/audioplayers.global/events tidak diimplementasikan di Web
+    // dan akan melempar MissingPluginException.
+    if (!kIsWeb) {
+      try {
+        AudioPlayer.global
+            .setAudioContext(
+          AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
+              .build(),
+        )
+            .catchError((Object e) => _log('audioContext', e));
+      } catch (e) {
+        _log('audioContext', e);
+      }
     }
-    _log('init', 'siap (kDebugMode=$kDebugMode)');
+    _log('init', 'siap (kIsWeb=$kIsWeb, kDebugMode=$kDebugMode)');
   }
 
   /// Cetak galat audio di konsol (mode debug) supaya tidak tertelan diam.
   static void _log(String where, Object e) {
     if (kDebugMode) debugPrint('[Sfx] $where: $e');
+  }
+
+  /// Di Web, kebijakan autoplay memblokir musik sebelum ada interaksi pengguna.
+  /// Panggil ini setiap ada aksi suara agar BGM yang tertahan langsung menyala.
+  void _retryMusicIfNeeded() {
+    if (_leases.isNotEmpty && _bgmTrack == null && !_syncing && !muted.value && !_paused) {
+      unawaited(_syncMusic());
+    }
   }
 
   // ===================================================================
@@ -131,11 +130,15 @@ class Sfx with WidgetsBindingObserver {
   /// Klik singkat tanpa pemilik (sangat pendek, tidak perlu dilepas).
   void click(Snd s) {
     if (muted.value || _paused) return;
-    // Di web, musik baru boleh jalan setelah ada sentuhan pengguna: coba lagi
-    // bila sebelumnya gagal mulai.
-    if (_leases.isNotEmpty && _bgmTrack == null && !_syncing) {
-      unawaited(_syncMusic());
+    _retryMusicIfNeeded();
+
+    // Di Web, gunakan AudioPlayer langsung karena AudioPool kerap gagal pada
+    // interaksi pertama di browser.
+    if (kIsWeb) {
+      unawaited(play(s));
+      return;
     }
+
     unawaited(() async {
       try {
         final p = await _pools.putIfAbsent(s.file, () => _makePool(s));
@@ -156,9 +159,7 @@ class Sfx with WidgetsBindingObserver {
     }
   }
 
-  /// Putar [s]. [owner] = State adegan (wajib untuk suara adegan). [tag]
-  /// mencegah dua suara bertag sama berbunyi bersamaan (yang baru diabaikan,
-  /// kecuali [replace] true: yang lama dipudarkan dan diganti).
+  /// Putar [s]. [owner] = State adegan (wajib untuk suara adegan).
   Future<void> play(
       Snd s, {
         Object? owner,
@@ -167,6 +168,8 @@ class Sfx with WidgetsBindingObserver {
         double volume = 1.0,
       }) async {
     if (muted.value || _paused || _ownerGone(owner)) return;
+    _retryMusicIfNeeded();
+
     if (tag != null) {
       final same = _voices.where((v) => v.tag == tag && !v.dead).toList();
       if (same.isNotEmpty) {
@@ -188,7 +191,6 @@ class Sfx with WidgetsBindingObserver {
       await p.setReleaseMode(ReleaseMode.release);
       v.sub = p.onPlayerComplete.listen((_) => _drop(v));
       await p.play(AssetSource('sound/${s.file}'), volume: v.volume);
-      // Dilepas selagi masih memuat: buang begitu siap.
       if (v.dead) _drop(v);
     } catch (e) {
       _log('play ${s.file}', e);
@@ -214,8 +216,8 @@ class Sfx with WidgetsBindingObserver {
     final first = !v.dead;
     v.dead = true;
     final p = v.player;
-    if (p == null) return; // belum dibuat: play() akan membuangnya
-    if (!first && fadeMs > 0) return; // sudah dalam proses memudar
+    if (p == null) return;
+    if (!first && fadeMs > 0) return;
     if (fadeMs <= 0) {
       _drop(v);
       return;
@@ -301,7 +303,6 @@ class Sfx with WidgetsBindingObserver {
     _syncing = true;
     final p = _bgm ??= AudioPlayer();
     try {
-      // Pudar keluar lagu lama.
       if (_bgmTrack != null) {
         const steps = 7;
         final from = _bgmVol;
@@ -328,11 +329,17 @@ class Sfx with WidgetsBindingObserver {
       await p.play(AssetSource('sound/${want.file}'), volume: 0);
       _bgmTrack = want;
       _bgmVol = 0;
-      if (epoch != _epoch) return; // yang lebih baru mengurus sisanya
+      if (epoch != _epoch) return;
       _syncing = false;
       _kick();
     } catch (e) {
       _log('musik ${want?.file}', e);
+      // Jika gagal (mis. terblokir autoplay browser), buang instance lama
+      // agar percobaan berikutnya setelah klik pengguna memakai player bersih.
+      try {
+        await _bgm?.dispose();
+      } catch (_) {}
+      _bgm = null;
       if (epoch == _epoch) {
         _syncing = false;
         _bgmTrack = null;
