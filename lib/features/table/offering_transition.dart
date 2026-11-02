@@ -11,25 +11,24 @@ double _seg(double t, double a, double b) =>
 double _bump(double t, double c, double w) =>
     max(0.0, 1 - (t - c).abs() / w);
 
-/// Adegan menuju Hayu saat fase persembahan dimulai (5,6 detik).
-/// Judul (gambar titlepersembahan) hanya tampil di sini: ia menghantam
-/// layar pada t = 0.48-0.60 dengan kilatan, guncangan, sinar, dan gelombang
-/// kejut.
-/// Linimasa (t = 0..1):
+/// Adegan menuju Hayu saat fase persembahan dimulai (5,6 detik + jeda baca).
+/// Empat babak berurutan (t = 0..1), tiap babak hanya satu fokus:
 ///
-///  0.00-0.07  layar menggelap, bilah sinema menutup
-///  0.03-0.30  bulan purnama membesar di langit malam; kabut bergeser
-///  0.05-0.66  butiran embun/kunang-kunang berpusar dari tepi layar menuju
-///             Hayu (makin dekat makin cepat)
-///  0.20-0.62  potret Hayu muncul sambil kamera mendekat (zoom 1,35 -> 1)
-///             dalam aura yang warnanya mengikuti kesehatan Hayu
-///  0.52/0.64/0.76  tiga detak jantung Hayu: pohon berdenyut, riak
-///             cahaya, getar haptic "lub-dub"
-///  0.50-0.62  judul "MALAM PERSEMBAHAN"
-///  0.62-0.74  kalimat pembuka (berbeda untuk Si Terbisik)
-///  0.68-0.82  jumlah daun dihitung naik, bilah kesehatan terisi
-///  0.86       detak besar: kilatan, gelombang kejut, getar haptic berat
-///  0.93-1.00  seluruh adegan memudar, tampil layar persembahan
+///  1. 0.00-0.28  MALAM. Bintang berkelip, bulan purnama membesar, kabut
+///                bergeser. Butiran embun mulai melayang dari tepi layar.
+///  2. 0.18-0.52  HAYU MUNCUL. Embun berpusar menuju pohon; potret Hayu muncul
+///                sambil kamera mendekat (zoom 1,2 -> 1) dalam aura yang
+///                warnanya mengikuti kesehatan Hayu. Dua detak jantung
+///                (0.40 dan 0.50): pohon berdenyut, satu riak tiap detak,
+///                getar haptic "lub-dub".
+///  3. 0.54-0.66  JUDUL. "MALAM PERSEMBAHAN" muncul (zoom lembut + cahaya +
+///                satu cincin). Tanpa kilat dan guncangan, karena detak
+///                jantung sudah selesai.
+///  4. 0.68-0.90  INFO BERURUTAN: kalimat pembuka (0.68-0.76), lalu jumlah
+///                daun dihitung naik + bilah kesehatan (0.78-0.88).
+///  0.92          satu detak besar sebagai tanda masuk: kilat lembut, satu
+///                gelombang kejut, getar haptic berat.
+///  setelah 1.00  jeda baca, lalu seluruh adegan memudar ke layar persembahan.
 ///
 /// [dark] = Si Terbisik yang tidak menyamar: palet ungu dan kalimat kabut.
 /// Ketuk untuk melewati.
@@ -53,8 +52,8 @@ class OfferingTransition extends StatefulWidget {
 
 class _OfferingTransitionState extends State<OfferingTransition>
     with SingleTickerProviderStateMixin {
-  static const beats = [0.52, 0.64, 0.76];
-  static const finale = 0.86;
+  static const beats = [0.40, 0.50];
+  static const finale = 0.92;
 
   /// Bagian bergerak (t = 0..1 pada linimasa di komentar kelas).
   static const _playMs = 5600;
@@ -91,8 +90,6 @@ class _OfferingTransitionState extends State<OfferingTransition>
       }
       if (t >= finale && _fired.add(99)) {
         HapticFeedback.heavyImpact();
-        Future.delayed(
-            const Duration(milliseconds: 130), HapticFeedback.heavyImpact);
       }
     });
     c.forward().whenComplete(_finish);
@@ -148,41 +145,38 @@ class _OfferingTransitionState extends State<OfferingTransition>
             final master = 1 -
                 fadeMs(ms, _totalMs - kSceneFadeOutMs.toDouble(), _totalMs.toDouble());
             final veilIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
-            final barH = h * 0.09 * Curves.easeOut.transform(_seg(t, 0, 0.15));
             final landT = Curves.easeIn.transform(_seg(t, 0.2, 0.6));
-            final flash = max(
-                _bump(t, finale, 0.025) * 0.45, _bump(t, 0.52, 0.02) * 0.5);
+            final flash = _bump(t, finale, 0.03) * 0.28;
 
             // --- Hayu: kamera mendekat + denyut ---
-            final treeE = Curves.easeOutCubic.transform(_seg(t, 0.2, 0.62));
+            final treeE = Curves.easeOutCubic.transform(_seg(t, 0.18, 0.5));
             final treeScale =
-                (1.35 - 0.35 * treeE) * (1 + 0.035 * pulse + 0.05 * fin);
-            final treeOpacity = _seg(t, 0.2, 0.4);
+                (1.2 - 0.2 * treeE) * (1 + 0.03 * pulse + 0.03 * fin);
+            final treeOpacity = _seg(t, 0.18, 0.36);
 
             final shadows = [
               const Shadow(color: Colors.black, blurRadius: 10),
               const Shadow(color: Colors.black, blurRadius: 3),
             ];
 
-            // Judul menghantam layar: membesar dari 2,4x lalu memantul ke
-            // ukuran asli, diiringi ledakan sinar dan guncangan.
-            final tt = _seg(t, 0.48, 0.60);
-            final slam = Curves.easeOutBack.transform(tt);
-            final burstP = _seg(t, 0.52, 0.80);
-            final shake = _bump(t, 0.54, 0.035);
+            // Judul muncul dengan zoom lembut dari 1,3x ke ukuran asli,
+            // diiringi cahaya dan satu cincin.
+            final tt = _seg(t, 0.54, 0.66);
+            final slam = Curves.easeOutCubic.transform(tt);
+            final burstP = _seg(t, 0.56, 0.80);
             final tw = min(w * 0.82, 420.0).toDouble();
             final th = tw / 2.16; // rasio titlepersembahan.png (~1600x740)
             final title = Opacity(
-              opacity: _seg(t, 0.48, 0.53),
+              opacity: _seg(t, 0.54, 0.60),
               child: Transform.scale(
-                scale: 2.4 - 1.4 * slam,
+                scale: 1.3 - 0.3 * slam,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('HARI ${widget.day}',
                         style: TextStyle(
                           fontSize: 12,
-                          letterSpacing: 6 + 14 * (1 - tt),
+                          letterSpacing: 6 + 8 * (1 - tt),
                           color: Colors.white70,
                           shadows: shadows,
                         )),
@@ -209,7 +203,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
               ),
             );
 
-            final st = _seg(t, 0.62, 0.74);
+            final st = _seg(t, 0.68, 0.76);
             final sub = Opacity(
               opacity: st,
               child: Transform.translate(
@@ -225,7 +219,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
               ),
             );
 
-            final lvT = _seg(t, 0.68, 0.82);
+            final lvT = _seg(t, 0.78, 0.88);
             final lvE = Curves.easeOut.transform(lvT);
             final shownLeaves = (widget.leaves * lvE).round();
             final barColor = dark
@@ -351,33 +345,15 @@ class _OfferingTransitionState extends State<OfferingTransition>
                       seed: widget.day,
                     ),
                   ),
-                  Transform.translate(
-                    offset: Offset(
-                        sin(t * 420) * 9 * shake, cos(t * 380) * 5 * shake),
-                    child: content,
-                  ),
+                  content,
                   if (flash > 0.01)
                     ColoredBox(
                         color: Color.lerp(Colors.white, aura, 0.3)!.withValues(
                             alpha: flash.clamp(0.0, 1.0).toDouble())),
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: SizedBox(
-                        height: barH,
-                        width: w,
-                        child: const ColoredBox(color: Colors.black)),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: SizedBox(
-                        height: barH,
-                        width: w,
-                        child: const ColoredBox(color: Colors.black)),
-                  ),
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: barH + 8,
+                    bottom: 14,
                     child: Opacity(
                       opacity: _seg(t, 0.3, 0.45) * 0.7,
                       child: const Text('Ketuk untuk lewati',
@@ -397,8 +373,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
   }
 }
 
-/// Ledakan di belakang judul: cahaya tetap, sinar berputar, cincin kejut,
-/// dan percikan yang menyebar saat judul menghantam layar.
+/// Cahaya di belakang judul dan satu cincin lembut yang melebar saat judul muncul.
 class _TitleBurst extends CustomPainter {
   final double p; // 0..1
   final Color aura;
@@ -410,10 +385,8 @@ class _TitleBurst extends CustomPainter {
     if (p <= 0) return;
     final c = size.center(Offset.zero);
     final w = size.width;
-    final fade = (1 - p).clamp(0.0, 1.0).toDouble();
     final e = Curves.easeOutCubic.transform(p);
     final main = dark ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A);
-    final rnd = Random(5);
 
     // cahaya tetap di belakang judul
     final base = (min(1.0, p * 6) * 0.34).toDouble();
@@ -428,56 +401,15 @@ class _TitleBurst extends CustomPainter {
         ]).createShader(Rect.fromCircle(center: c, radius: gr)),
     );
 
-    // sinar berputar
-    final rayLen = w * (0.45 + 0.9 * e);
-    for (var j = 0; j < 18; j++) {
-      final ang = j * 2 * pi / 18 + p * 1.4;
-      const half = 0.045;
-      final path = Path()
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(c.dx + cos(ang - half) * rayLen,
-            c.dy + sin(ang - half) * rayLen)
-        ..lineTo(c.dx + cos(ang + half) * rayLen,
-            c.dy + sin(ang + half) * rayLen)
-        ..close();
-      canvas.drawPath(
-        path,
-        Paint()
-          ..blendMode = BlendMode.plus
-          ..color = main.withValues(alpha: 0.26 * fade),
-      );
-    }
-
-    // cincin kejut
-    for (var r = 0; r < 3; r++) {
-      final pr = (e - r * 0.13).clamp(0.0, 1.0).toDouble();
-      if (pr <= 0) continue;
-      canvas.drawCircle(
-        c,
-        w * (0.1 + 0.9 * pr),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 5 * (1 - pr) + 1
-          ..color = (r.isEven ? main : aura).withValues(alpha: 0.8 * (1 - pr)),
-      );
-    }
-
-    // percikan
-    for (var j = 0; j < 40; j++) {
-      final ang = rnd.nextDouble() * 2 * pi;
-      final spd = 0.35 + rnd.nextDouble() * 0.9;
-      final d0 = w * 0.7 * e * spd;
-      final len = 5 + 16 * fade;
-      final dir = Offset(cos(ang), sin(ang));
-      canvas.drawLine(
-        c + dir * d0,
-        c + dir * (d0 + len),
-        Paint()
-          ..strokeWidth = 2.2 * fade + 0.5
-          ..strokeCap = StrokeCap.round
-          ..color = (j.isEven ? main : Colors.white).withValues(alpha: fade),
-      );
-    }
+    // satu cincin lembut
+    canvas.drawCircle(
+      c,
+      w * (0.1 + 0.9 * e),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4 * (1 - e) + 1
+        ..color = main.withValues(alpha: 0.7 * (1 - e)),
+    );
   }
 
   @override
@@ -587,7 +519,7 @@ class _SpiritPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // aura
-    final auraT = Curves.easeOut.transform(_seg(t, 0.2, 0.55));
+    final auraT = Curves.easeOut.transform(_seg(t, 0.18, 0.5));
     final ar = treeW * (0.75 + 0.08 * pulse);
     canvas.drawCircle(
       center,
@@ -603,11 +535,11 @@ class _SpiritPainter extends CustomPainter {
     // embun berpusar menuju Hayu
     final rnd = Random(seed * 13 + 1);
     final maxR = max(size.width, size.height) * 0.55;
-    for (var i = 0; i < 28; i++) {
+    for (var i = 0; i < 18; i++) {
       final a0 = rnd.nextDouble() * 2 * pi;
       final r0 = maxR * (0.5 + rnd.nextDouble() * 0.5);
-      final s0 = 0.05 + rnd.nextDouble() * 0.22;
-      final e0 = s0 + 0.30 + rnd.nextDouble() * 0.08;
+      final s0 = 0.04 + rnd.nextDouble() * 0.2;
+      final e0 = s0 + 0.28 + rnd.nextDouble() * 0.06;
       final sz = 2.2 + rnd.nextDouble() * 3.2;
       final f = _seg(t, s0, e0);
       if (f <= 0 || f >= 1) continue;
