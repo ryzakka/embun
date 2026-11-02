@@ -1448,10 +1448,12 @@ class _TablePageState extends State<TablePage> {
         gameId: widget.gameId,
         leaves: leaves,
         isAntag: isAntag,
-        // Kartu serangan malam disiapkan di hari biasa; tak bisa dipersembahkan.
-        hand: hand
-            .where((h) => defs[h['card_id']]?['kind'] != 'malam')
-            .toList(),
+        // Kartu serangan malam (ungu) dan kartu siang (kuning) tidak bisa
+        // dipersembahkan.
+        hand: hand.where((h) {
+          final k = defs[h['card_id']]?['kind'];
+          return k != 'malam' && k != 'siang';
+        }).toList(),
         defs: defs,
         players: alive,
         submitted: iAmReady,
@@ -1483,6 +1485,7 @@ class _TablePageState extends State<TablePage> {
         events: events,
         trades: trades,
         dark: showAsAntag,
+        onHandChanged: _refreshHand,
       );
     }
 

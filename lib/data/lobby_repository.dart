@@ -41,11 +41,16 @@ class LobbyRepository {
       _db.rpc('update_character',
           params: {'p_game': gameId, 'p_name': name, 'p_card': card});
 
-  /// Si Terbisik memilih wajah samaran (sekali, selama gerbang prolog masih
-  /// tertutup). Mengembalikan nama baru pemain.
-  Future<String> chooseDisguise(String gameId, String card) async =>
-      await _db.rpc('choose_disguise',
+  /// Prolog: semua pemain memilih satu dari tiga kartu karakter terbalik
+  /// (sekali, selama gerbang prolog masih tertutup). Mengembalikan nama baru
+  /// pemain. Galat bila kartu baru saja diambil pemain lain.
+  Future<String> chooseCharacter(String gameId, String card) async =>
+      await _db.rpc('choose_character',
           params: {'p_game': gameId, 'p_card': card}) as String;
+
+  /// Prolog: Si Terbisik memilih wajah gelapnya (indeks gambar antagonis).
+  Future<void> chooseDark(String gameId, int seed) =>
+      _db.rpc('choose_dark', params: {'p_game': gameId, 'p_seed': seed});
 
   /// Tandai prolog selesai; juga membuka gerbang bila semua siap / waktu habis.
   Future<void> finishPrologue(String gameId) =>
@@ -82,7 +87,8 @@ class LobbyRepository {
   Future<String?> myRole(String gameId) async =>
       (await mySecret(gameId))?['role'] as String?;
 
-  /// Peran, benih kartu gelap, dan kemampuan milik sendiri.
+  /// Peran, benih kartu gelap, kemampuan, dan status pilihan prolog milik
+  /// sendiri.
   Future<Map<String, dynamic>?> mySecret(String gameId) async {
     final uid = _db.auth.currentUser!.id;
     Future<Map<String, dynamic>?> q(String cols) async {
@@ -95,6 +101,12 @@ class LobbyRepository {
       return row == null ? null : Map<String, dynamic>.from(row);
     }
 
+    try {
+      return await q('role, dark_seed, ability, ability_used, disguise_used, '
+          'char_chosen, dark_chosen');
+    } catch (_) {
+      // Kolom pilihan prolog belum ada (migrasi pilih karakter belum jalan).
+    }
     try {
       return await q('role, dark_seed, ability, ability_used, disguise_used');
     } catch (_) {

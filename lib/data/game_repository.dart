@@ -318,6 +318,27 @@ class GameRepository {
     return r == null ? null : Map<String, dynamic>.from(r);
   }
 
+  /// Memakai kartu kuning (hari biasa). Hasil: {mode, message}.
+  Future<Map<String, dynamic>> useDayCard(String gameId, String handId) async {
+    final r = await _db.rpc('use_day_card',
+        params: {'p_game': gameId, 'p_hand_id': handId});
+    return Map<String, dynamic>.from(r as Map);
+  }
+
+  /// Perlindungan / cermin yang sedang aktif milikku. Kosong bila gagal.
+  Future<List<Map<String, dynamic>>> myGuards(String gameId) async {
+    try {
+      final rows = await _db
+          .from('player_guards')
+          .select()
+          .eq('game_id', gameId)
+          .eq('user_id', myId);
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Si Terbisik selesai menentukan malam (pakai kartu atau tidak): malam
   /// dijalankan sekarang, tanpa menunggu tenggat.
   Future<void> nightContinue(String gameId) =>

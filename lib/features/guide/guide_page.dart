@@ -1279,7 +1279,7 @@ class _CharactersTabState extends State<_CharactersTab>
 /// Disimpan selama aplikasi hidup supaya tab tidak memuat ulang.
 Map<String, Map<String, dynamic>>? _defsCache;
 
-const _kinds = ['persembahan', 'sekali_pakai', 'penguat', 'malam'];
+const _kinds = ['persembahan', 'sekali_pakai', 'penguat', 'malam', 'siang'];
 
 const _kindHelp = {
   'persembahan':
@@ -1291,10 +1291,15 @@ const _kindHelp = {
   'penguat':
   'Menaikkan laju embun (atau bulir hitam) pemakainya untuk seterusnya.',
   'malam':
-  'Disiapkan di hari biasa dan dipakai saat malam tiba: menyedot embun, '
-      'membakar atau mencuri kartu, menebalkan kabut, mengacaukan '
-      'pemeriksaan, atau menyamar. Semua pemain hanya mendengar bahwa '
-      'ada serangan, tanpa sasaran.',
+  'Dilancarkan Si Terbisik saat malam tiba: menyedot embun, membakar '
+      'atau mencuri kartu, menebalkan kabut, mengacaukan pemeriksaan, atau '
+      'menyamar. Semua pemain hanya mendengar bahwa ada serangan, tanpa '
+      'sasaran.',
+  'siang':
+  'Kartu kuning, hanya untuk warga. Ketuk di Meja pada hari biasa untuk '
+      'memakainya saat itu juga: mengacak ulang pasar, atau menjaga dirimu '
+      'dari serangan malam sampai akhir sesi. Pemakaiannya tidak '
+      'diumumkan ke siapa pun.',
 };
 
 class _ItemsTab extends StatefulWidget {

@@ -9,7 +9,8 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/table_page.dart';
-import 'disguise_choice.dart';
+import 'character_pick.dart';
+import 'dark_omen.dart';
 import 'role_reveal.dart';
 import '../../data/game_repository.dart';
 
@@ -148,7 +149,8 @@ class PrologueFlow extends StatefulWidget {
   final LobbyRepository repo;
 
   /// true = masuk kembali saat gerbang prolog masih tertutup (mis. aplikasi
-  /// dibuka ulang): lewati cerita, langsung ke pengungkapan peran.
+  /// dibuka ulang): lewati cerita, langsung ke pilihan kartu (bila belum
+  /// memilih) atau pengungkapan peran.
   final bool resume;
   const PrologueFlow({
     super.key,
@@ -161,7 +163,13 @@ class PrologueFlow extends StatefulWidget {
   State<PrologueFlow> createState() => _PrologueFlowState();
 }
 
-enum _Step { story, shuffling, role, disguise, waiting }
+/// story    : cerita sinematik
+/// shuffling: animasi kocok singkat
+/// pick     : pilih 1 dari 3 kartu karakter terbalik (semua pemain)
+/// role     : pengungkapan peran (tahan kartu); Si Terbisik: peringatan awan
+///            gelap + pilih wajah gelap disisipkan lewat [RoleReveal.twistGate]
+/// waiting  : menunggu semua pemain selesai
+enum _Step { story, shuffling, pick, role, waiting }
 
 class _PrologueFlowState extends State<PrologueFlow>
     with TickerProviderStateMixin {
@@ -172,10 +180,19 @@ class _PrologueFlowState extends State<PrologueFlow>
   int darkSeed = 0;
   String myCard = 'default';
 
-  // Pilih wajah samaran (hanya Si Terbisik) dan gerbang prolog.
-  bool _canChoose = false;
-  List<Map<String, dynamic>> _rows = [];
-  List<String> _options = [];
+  // Pilih kartu karakter (semua) dan wajah gelap (Si Terbisik).
+  // true = tidak perlu memilih (sudah memilih, atau migrasi belum jalan).
+  bool _charChosen = true;
+  bool _darkChosen = true;
+  List<String> _goodOptions = [];
+  List<int> _darkOptions = [];
+  int _pickEpoch = 0; // naik tiap pilihan dikocok ulang (kunci widget)
+  String? _pickNote; // pesan galat dari percobaan sebelumnya
+  bool _omen = false; // peringatan awan gelap sedang tampil
+  bool _darkPick = false; // pilihan wajah gelap sedang tampil
+  Completer<void>? _darkGate;
+
+  // Gerbang prolog.
   StreamSubscription<Map<String, dynamic>?>? _gameSub;
   Timer? _waitTimer;
   bool _opened = false;
@@ -211,17 +228,17 @@ class _PrologueFlowState extends State<PrologueFlow>
     );
 
     widget.repo.mySecret(widget.gameId).then((s) {
-      if (mounted && s != null) {
-        setState(() {
-          role = s['role'] as String?;
-          darkSeed = (s['dark_seed'] as int?) ?? 0;
-          // false persis = belum memakai pilihan; null = migrasi belum jalan.
-          _canChoose = role == 'antagonis' && s['disguise_used'] == false;
-        });
-      }
+      if (!mounted || s == null) return;
+      setState(() {
+        role = s['role'] as String?;
+        darkSeed = (s['dark_seed'] as int?) ?? 0;
+        // false persis = belum memilih; null = migrasi belum jalan (lewati).
+        _charChosen = s['char_chosen'] != false;
+        _darkChosen = s['dark_chosen'] != false || role != 'antagonis';
+      });
+      if (widget.resume && !_charChosen && step == _Step.role) _enterPick();
     });
     widget.repo.players(widget.gameId).first.then((rows) {
-      _rows = rows;
       final me = rows.where((p) => p['user_id'] == widget.repo.myId);
       if (mounted && me.isNotEmpty) {
         setState(() {
@@ -295,7 +312,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     setState(() => step = _Step.shuffling);
     HapticFeedback.heavyImpact();
 
-    // Efek kocok kartu berputar cepat sebelum masuk ke kartu akhir
+    // Efek kocok kartu berputar cepat sebelum masuk ke pilihan kartu
     _shuffleTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (mounted && randomStems.isNotEmpty) {
         setState(() {
@@ -306,41 +323,29 @@ class _PrologueFlowState extends State<PrologueFlow>
 
     _shuffleCtrl.forward().whenComplete(() {
       _shuffleTimer?.cancel();
-      if (mounted) setState(() => step = _Step.role);
+      _afterShuffle();
     });
   }
 
-  /// Tombol lanjut di akhir pengungkapan peran. Si Terbisik yang belum memilih
-  /// diberi tiga kartu; semua pemain lalu menunggu di gerbang yang sama, jadi
-  /// tak ada yang melihat kartu berubah dan tak ada yang bisa menebak siapa
-  /// yang sedang memilih.
-  void _afterReveal() {
-    if (role == null || step != _Step.role) return;
-    if (_canChoose) {
-      _options = _pickOptions();
-      if (_options.isNotEmpty) {
-        setState(() => step = _Step.disguise);
-        return;
-      }
+  // ====================== pilih kartu karakter ======================
+
+  void _afterShuffle() {
+    if (!mounted) return;
+    if (!_charChosen) {
+      _enterPick();
+    } else {
+      setState(() => step = _Step.role);
     }
-    _enterWaiting();
   }
 
-  /// Tiga kartu berjudul berbeda, tak sama dengan judul kartu pemain lain
-  /// maupun kartumu sekarang.
-  List<String> _pickOptions() {
-    final me = widget.repo.myId;
-    final seen = <String>{
-      characterTitle(myCard),
-      for (final p in _rows)
-        if (p['user_id'] != me)
-          characterTitle((p['character_card'] as String?) ?? 'default'),
-    };
+  /// Tiga kartu baik acak dengan judul berbeda satu sama lain.
+  List<String> _rollGood() {
     final pool = AssetCatalog.I
         .stems(protagonisDir)
         .where((s) => s != 'default')
         .toList()
       ..shuffle(Random());
+    final seen = <String>{};
     final out = <String>[];
     for (final s in pool) {
       if (seen.add(characterTitle(s))) {
@@ -351,24 +356,112 @@ class _PrologueFlowState extends State<PrologueFlow>
     return out;
   }
 
-  /// null = berhasil; selain itu pesan galat untuk ditampilkan.
-  Future<String?> _pickDisguise(String stem) async {
+  void _enterPick() {
+    if (!mounted) return;
+    _goodOptions = _rollGood();
+    if (_goodOptions.length < 2) {
+      // Tak cukup gambar untuk dipilih: pakai kartu yang sudah ada.
+      _charChosen = true;
+      setState(() => step = _Step.role);
+      return;
+    }
+    setState(() => step = _Step.pick);
+  }
+
+  /// null = berhasil; selain itu pesan galat. Bila gagal, pilihan dikocok
+  /// ulang (mis. kartunya baru saja diambil pemain lain).
+  Future<String?> _pickGood(int i) async {
+    final stem = _goodOptions[i];
     try {
-      await widget.repo.chooseDisguise(widget.gameId, stem);
-      if (!mounted) return null;
-      setState(() {
-        myCard = stem;
-        _canChoose = false;
-      });
-      _enterWaiting();
+      await widget.repo.chooseCharacter(widget.gameId, stem);
+      myCard = stem;
+      _charChosen = true;
+      return null;
+    } catch (e) {
+      final msg = errMsg(e);
+      if (mounted) {
+        setState(() {
+          _goodOptions = _rollGood();
+          _pickEpoch++;
+          _pickNote = msg;
+        });
+      }
+      return msg;
+    }
+  }
+
+  void _goodDone() {
+    if (mounted) setState(() => step = _Step.role);
+  }
+
+  /// "Lanjut tanpa memilih": pakai kartu yang dibagikan server.
+  void _skipPick() {
+    _charChosen = true;
+    _goodDone();
+  }
+
+  // ====================== pilih wajah gelap ======================
+
+  /// Tiga indeks gambar antagonis acak.
+  List<int> _rollDark() {
+    final n = AssetCatalog.I.stems(antagonisDir).length;
+    final idx = List<int>.generate(n, (i) => i)..shuffle(Random());
+    return idx.take(3).toList();
+  }
+
+  /// Dipanggil [RoleReveal] setelah kartu baik Si Terbisik terbuka: putar
+  /// peringatan awan gelap, lalu pilihan wajah gelap. Selesai bila sudah
+  /// memilih (atau tak ada yang perlu dipilih).
+  Future<void> _antagGate() async {
+    if (_darkChosen || !mounted) return;
+    _darkOptions = _rollDark();
+    if (_darkOptions.length < 2) {
+      _darkChosen = true;
+      return;
+    }
+    final c = Completer<void>();
+    _darkGate = c;
+    setState(() => _omen = true);
+    await c.future;
+  }
+
+  void _omenContinue() {
+    if (!mounted) return;
+    setState(() {
+      _omen = false;
+      _darkPick = true;
+    });
+  }
+
+  Future<String?> _pickDark(int i) async {
+    try {
+      await widget.repo.chooseDark(widget.gameId, _darkOptions[i]);
+      darkSeed = _darkOptions[i];
+      _darkChosen = true;
       return null;
     } catch (e) {
       return errMsg(e);
     }
   }
 
-  void _skipDisguise() {
-    _canChoose = false;
+  void _darkPicked() {
+    if (mounted) setState(() => _darkPick = false);
+    _darkGate?.complete();
+    _darkGate = null;
+  }
+
+  void _skipDark() {
+    _darkChosen = true;
+    _darkPicked();
+  }
+
+  // ====================== gerbang prolog ======================
+
+  /// Tombol lanjut di akhir pengungkapan peran: semua pemain menunggu di
+  /// gerbang yang sama, jadi tak ada yang bisa menebak siapa yang sedang
+  /// memilih.
+  void _afterReveal() {
+    if (role == null || step != _Step.role) return;
     _enterWaiting();
   }
 
@@ -424,12 +517,21 @@ class _PrologueFlowState extends State<PrologueFlow>
           Backdrop(path: sceneryPath('desajembatan-keringgulita'), dim: 0.5),
           if (step == _Step.shuffling)
             SafeArea(child: _shufflingStep())
-          else if (step == _Step.disguise)
+          else if (step == _Step.pick)
             SafeArea(
-              child: DisguiseChoice(
-                options: _options,
-                onPick: _pickDisguise,
-                onSkip: _skipDisguise,
+              child: CardPick(
+                key: ValueKey('pick$_pickEpoch'),
+                title: 'Pilih Kartu Karaktermu',
+                hint: 'Tiga kartu terbalik. Ketuk satu; wajahnya baru '
+                    'terlihat setelah kamu memilih.',
+                options: [
+                  for (final s in _goodOptions)
+                    PickOption(protagonistPath(s), characterTitle(s)),
+                ],
+                note: _pickNote,
+                onPick: _pickGood,
+                onDone: _goodDone,
+                onSkip: _skipPick,
               ),
             )
           else if (step == _Step.waiting)
@@ -442,10 +544,42 @@ class _PrologueFlowState extends State<PrologueFlow>
                 // sebelum kartu gelapnya terungkap.
                 disguisePath: protagonistPath(myCard),
                 disguiseName: characterTitle(myCard),
+                twistGate: _antagGate,
                 onContinue: role == null ? () {} : _afterReveal,
               ),
+          // Hanya Si Terbisik: peringatan lalu pilihan wajah gelap.
+          if (_omen)
+            Positioned.fill(child: DarkOmen(onContinue: _omenContinue)),
+          if (_darkPick) Positioned.fill(child: _darkPickLayer()),
         ],
       ),
+    );
+  }
+
+  Widget _darkPickLayer() {
+    final stems = AssetCatalog.I.stems(antagonisDir);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Backdrop(path: nightSkyPath(attack: true), dark: true, dim: 0.55),
+        SafeArea(
+          child: CardPick(
+            key: const ValueKey('darkpick'),
+            dark: true,
+            title: 'Pilih Wajah Gelapmu',
+            hint: 'Tiga wajah terbalik. Ketuk satu; ini wajah aslimu yang '
+                'hanya kamu yang melihat.',
+            options: [
+              for (final i in _darkOptions)
+                PickOption(AssetCatalog.I.file(antagonisDir, stems[i]),
+                    'Wajah gelap'),
+            ],
+            onPick: _pickDark,
+            onDone: _darkPicked,
+            onSkip: _skipDark,
+          ),
+        ),
+      ],
     );
   }
 
@@ -773,7 +907,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     );
   }
 
-  // ====================== kocok kartu & peran (tetap) ======================
+  // ====================== kocok kartu & peran ======================
 
   Widget _shufflingStep() {
     final displayCard = randomStems.isNotEmpty

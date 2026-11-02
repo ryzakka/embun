@@ -8,6 +8,7 @@ const bentangDir = 'assets/bentang';
 const kartuWargaDir = 'assets/kartu/powerpro';
 const kartuAntagDir = 'assets/kartu/poweranta';
 const kartuMalamDir = 'assets/kartu/powernight'; // kartu serangan malam (ungu)
+const kartuSiangDir = 'assets/kartu/powersun'; // kartu siang warga (kuning)
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
 const kemampuanDir = 'assets/kartu/kemampuan';
@@ -187,11 +188,14 @@ String? cardBackPath({bool dark = false}) => AssetCatalog.I.file(
 /// Kartu yang terlihat pemain lain WAJIB memakai bentuk tanpa argumen
 /// (punggung warga): merah/ungu membocorkan peran dan kartu samaran. Bila
 /// berkasnya belum ada, jatuh ke punggung kartu karakter.
-String? itemBackPath({bool dark = false, bool night = false}) =>
+String? itemBackPath(
+    {bool dark = false, bool night = false, bool day = false}) =>
     AssetCatalog.I.file(
         punggungDir,
         night
             ? 'punggungitemmalam'
+            : day
+            ? 'punggungitemsiang'
             : dark
             ? 'punggungitemantagonis'
             : 'punggungitemprotagonis') ??
@@ -201,7 +205,9 @@ String? itemBackPath({bool dark = false, bool night = false}) =>
 /// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
 /// ungu, item antagonis merah, item warga hijau.
 String? itemBackFor(Map<String, dynamic>? def) => itemBackPath(
-    dark: def?['side'] == 'antagonis', night: def?['kind'] == 'malam');
+    dark: def?['side'] == 'antagonis',
+    night: def?['kind'] == 'malam',
+    day: def?['kind'] == 'siang');
 
 /// Punggung kartu kemampuan warga.
 String? abilityBackPath() =>
@@ -218,6 +224,11 @@ String? cardArtPath(Map<String, dynamic>? def) {
     // Folder sendiri; bila belum ada di sana, jatuh ke folder antagonis.
     return AssetCatalog.I.file(kartuMalamDir, stem) ??
         AssetCatalog.I.file(kartuAntagDir, stem);
+  }
+  if (def['kind'] == 'siang') {
+    // Kartu kuning: folder sendiri; bila belum ada, jatuh ke folder warga.
+    return AssetCatalog.I.file(kartuSiangDir, stem) ??
+        AssetCatalog.I.file(kartuWargaDir, stem);
   }
   final dir = def['side'] == 'antagonis' ? kartuAntagDir : kartuWargaDir;
   return AssetCatalog.I.file(dir, stem);
@@ -246,6 +257,7 @@ double cardAspectFor(String? path) {
       path.startsWith(antagonisDir) ||
       path.startsWith(kartuAntagDir) ||
       path.startsWith(kartuMalamDir) ||
+      path.startsWith(kartuSiangDir) ||
       path.startsWith(kemampuanDir)) {
     return kTallAspect;
   }
@@ -259,7 +271,9 @@ double cardAspectFor(String? path) {
 /// Untuk kartu item/malam menurut definisinya (dipakai CardTile).
 double cardAspectForDef(Map<String, dynamic>? def) {
   if (def == null) return kItemAspect;
-  return (def['side'] == 'antagonis' || def['kind'] == 'malam')
+  return (def['side'] == 'antagonis' ||
+      def['kind'] == 'malam' ||
+      def['kind'] == 'siang')
       ? kTallAspect
       : kItemAspect;
 }

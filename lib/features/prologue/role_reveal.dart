@@ -48,6 +48,9 @@ const _neutralMist = Color(0xFF8E9A96);
 ///     Kedua peran sama persis di tahap ini: yang terbuka adalah kartu BAIK
 ///     (kartu karakter), dengan berkas cahaya emas-hijau, daun berhamburan,
 ///     dan kunang-kunang.
+///  3a. GERBANG (hanya Si Terbisik): setelah kartu baik terbuka, [twistGate]
+///     dijalankan. Induk memakainya untuk memutar peringatan awan gelap dan
+///     pilihan wajah gelap. Putar balik baru mulai setelah gerbang selesai.
 ///  3b. PUTAR BALIK (hanya Si Terbisik, ~2,6 dtk): sesaat kemudian, detak
 ///     jantung, kartu baik itu menggelap dan bergetar, layar tersentak,
 ///     kartu terbelah bayangan merah-ungu (glitch), lalu berganti menjadi
@@ -73,6 +76,10 @@ class RoleReveal extends StatefulWidget {
   final String? disguiseName;
   final VoidCallback onContinue;
 
+  /// Dijalankan (dan ditunggu) setelah kartu baik Si Terbisik terbuka dan
+  /// sebelum putar balik dimulai. null = langsung putar balik.
+  final Future<void> Function()? twistGate;
+
   const RoleReveal({
     super.key,
     required this.role,
@@ -80,6 +87,7 @@ class RoleReveal extends StatefulWidget {
     required this.onContinue,
     this.disguisePath,
     this.disguiseName,
+    this.twistGate,
   });
 
   @override
@@ -167,13 +175,18 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     if (c >= 0.92 && _fired.add(13)) HapticFeedback.mediumImpact();
   }
 
-  /// Jeda sejenak setelah kartu baik terbuka, lalu putar balik.
+  /// Setelah kartu baik terbuka: jalankan gerbang induk (peringatan awan
+  /// gelap + pilih wajah gelap) bila ada, jeda sejenak, lalu putar balik.
   void _startTwist() {
     if (_twistStarted) return;
     _twistStarted = true;
-    Future.delayed(const Duration(milliseconds: 450), () {
+    () async {
+      final gate = widget.twistGate;
+      if (gate != null) await gate();
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 450));
       if (mounted) _twist.forward(from: 0);
-    });
+    }();
   }
 
   void _onTwistTick() {

@@ -10,6 +10,7 @@ import '../common/ornate.dart';
 import 'card_tile.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
+import 'player_status.dart';
 import 'package:flutter/foundation.dart';
 
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
@@ -88,6 +89,9 @@ class DayView extends StatefulWidget {
   /// kartu masuk / keluar dari pemain lain). Opsional.
   final GlobalKey? mejaKey;
 
+  /// Dipanggil setelah tangan kartu berubah (mis. kartu kuning dipakai).
+  final VoidCallback? onHandChanged;
+
   const DayView({
     super.key,
     required this.repo,
@@ -108,6 +112,7 @@ class DayView extends StatefulWidget {
     required this.trades,
     this.dark = false,
     this.mejaKey,
+    this.onHandChanged,
   });
 
   @override
@@ -126,6 +131,7 @@ class _DayViewState extends State<DayView>
   int tab = _tabToko;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
+  List<Map<String, dynamic>> _guards = []; // perlindungan / cermin aktif
   bool busy = false;
 
   // Pembukaan toko: kartu dibagikan sebagai punggung, lalu berbalik. Hanya
@@ -159,6 +165,7 @@ class _DayViewState extends State<DayView>
   void initState() {
     super.initState();
     _loadOffers();
+    _loadGuards();
     widget.marketTick?.addListener(_loadOffers);
     // Banner Kabar Pagi di layar Toko menyingkir sendiri supaya kartu lega;
     // isinya tetap bisa dibaca di Balai, atau dibuka lagi lewat lencana.
@@ -214,6 +221,60 @@ class _DayViewState extends State<DayView>
     } catch (_) {
       if (mounted) setState(() => offers = []);
     }
+  }
+
+  Future<void> _loadGuards() async {
+    final r = await widget.repo.myGuards(widget.gameId);
+    if (mounted) setState(() => _guards = r);
+  }
+
+  /// Kartu kuning di Meja: ketuk -> pratinjau dengan tombol "Pakai sekarang".
+  Future<void> _useDayCard(Map<String, dynamic> h) async {
+    final def = widget.defs[h['card_id']];
+    if (def == null) return;
+    await showCardPreview(
+      context,
+      def,
+      actionLabel: 'Pakai sekarang',
+      onAction: () => _run(() async {
+        final r =
+        await widget.repo.useDayCard(widget.gameId, h['id'] as String);
+        if (!mounted) return;
+        _toast('${r['message'] ?? 'Kartu dipakai'}');
+        if (r['mode'] == 'reroll_market') await _loadOffers();
+        await _loadGuards();
+        widget.onHandChanged?.call();
+      }),
+    );
+  }
+
+  /// Lencana perlindungan / cermin yang masih berlaku sampai akhir sesi.
+  Widget? _guardStrip() {
+    final active = _guards
+        .where((q) => ((q['until_day'] as int?) ?? 0) >= widget.day)
+        .toList();
+    if (active.isEmpty) return null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (final q in active)
+            StatusTag(
+              text: q['kind'] == 'mirror'
+                  ? 'Cermin Kecil aktif'
+                  : 'Perlindungan Malam aktif',
+              color: EmbunColors.gold,
+              icon: q['kind'] == 'mirror'
+                  ? Icons.flip_rounded
+                  : Icons.shield_rounded,
+              fontSize: 11,
+            ),
+        ],
+      ),
+    );
   }
 
   void _toast(String m) =>
@@ -1029,18 +1090,28 @@ class _DayViewState extends State<DayView>
 
   Widget _mejaBody({double minW = 96}) {
     final hand = widget.hand;
+    final strip = _guardStrip();
     if (hand.isEmpty) {
-      return _empty('mydeck2', 'Mejamu masih kosong',
+      final empty = _empty('mydeck2', 'Mejamu masih kosong',
           'Beli kartu di Toko untuk dipersembahkan.');
+      return strip == null
+          ? empty
+          : Column(children: [strip, Expanded(child: empty)]);
     }
+    final hasDay = hand.any((h) => widget.defs[h['card_id']]?['kind'] == 'siang');
     return LayoutBuilder(builder: (context, box) {
       final g = _mejaGrid(box.maxWidth, minW);
       return SingleChildScrollView(
         padding: const EdgeInsets.only(top: 4, bottom: 8),
         child: Column(
           children: [
-            const Text('Tekan lama kartu untuk membaca efeknya.',
-                style: TextStyle(fontSize: 11, color: Colors.white38)),
+            if (strip != null) strip,
+            Text(
+                hasDay
+                    ? 'Tekan lama kartu untuk membaca efeknya. Ketuk kartu kuning untuk memakainya.'
+                    : 'Tekan lama kartu untuk membaca efeknya.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, color: Colors.white38)),
             const SizedBox(height: 10),
             Wrap(
               alignment: WrapAlignment.center,
@@ -1059,6 +1130,9 @@ class _DayViewState extends State<DayView>
                         def: widget.defs[hand[i]['card_id']],
                         fallbackName: hand[i]['card_id'] as String,
                         width: g.w,
+                        onTap: widget.defs[hand[i]['card_id']]?['kind'] == 'siang'
+                            ? () => _useDayCard(hand[i])
+                            : null,
                       ),
                     ),
                   ),

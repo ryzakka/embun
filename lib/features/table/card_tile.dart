@@ -8,6 +8,7 @@ const kindLabel = {
   'sekali_pakai': 'Sekali pakai',
   'penguat': 'Penguat',
   'malam': 'Serangan malam',
+  'siang': 'Pakai di siang',
 };
 
 const kindIcon = {
@@ -15,14 +16,28 @@ const kindIcon = {
   'sekali_pakai': 'item',
   'penguat': 'plus',
   'malam': 'danger',
+  'siang': 'item',
 };
 
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
 /// jenis, harga, dan deskripsi efek. Deskripsi tidak tercetak di gambar, jadi
 /// pemain membacanya di sini.
-Future<void> showCardPreview(BuildContext context, Map<String, dynamic> def) {
+///
+/// Bila [actionLabel] dan [onAction] diisi (mis. kartu kuning di Meja), muncul
+/// tombol utama di atas "Tutup"; dialog menutup dulu, baru [onAction] jalan.
+Future<void> showCardPreview(
+    BuildContext context,
+    Map<String, dynamic> def, {
+      String? actionLabel,
+      Future<void> Function()? onAction,
+    }) {
   final bad = def['side'] == 'antagonis';
-  final glow = bad ? EmbunColors.mist : EmbunColors.leaf;
+  final glow = bad
+      ? EmbunColors.mist
+      : def['kind'] == 'siang'
+      ? EmbunColors.gold
+      : EmbunColors.leaf;
+  final act = onAction;
   final path = cardArtPath(def);
   final cost = def['cost'] as int?;
   return showDialog<void>(
@@ -71,6 +86,18 @@ Future<void> showCardPreview(BuildContext context, Map<String, dynamic> def) {
               const Divider(height: 22),
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
               const SizedBox(height: 14),
+              if (actionLabel != null && act != null) ...[
+                EmbunButton(
+                  label: actionLabel,
+                  icon: 'centang',
+                  expand: true,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    act();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
               EmbunButton(
                 label: 'Tutup',
                 icon: 'silang',
