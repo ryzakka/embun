@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -16,16 +17,16 @@ double _bump(double t, double c, double w) =>
 ///
 ///  1. 0.00-0.28  MALAM. Bintang berkelip, bulan purnama membesar, kabut
 ///                bergeser. Butiran embun mulai melayang dari tepi layar.
-///  2. 0.18-0.52  HAYU MUNCUL. Embun berpusar menuju pohon; potret Hayu muncul
-///                sambil kamera mendekat (zoom 1,2 -> 1) dalam aura yang
-///                warnanya mengikuti kesehatan Hayu. Dua detak jantung
-///                (0.40 dan 0.50): pohon berdenyut, satu riak tiap detak,
-///                getar haptic "lub-dub".
-///  3. 0.54-0.66  JUDUL. "MALAM PERSEMBAHAN" muncul (zoom lembut + cahaya +
-///                satu cincin). Tanpa kilat dan guncangan, karena detak
-///                jantung sudah selesai.
-///  4. 0.68-0.90  INFO BERURUTAN: kalimat pembuka (0.68-0.76), lalu jumlah
-///                daun dihitung naik + bilah kesehatan (0.78-0.88).
+///  2. 0.14-0.52  HAYU MUNCUL. Embun berpusar menuju pohon; potret Hayu muncul
+///                BESAR dan TANPA BINGKAI (tepinya memudar ke langit), kamera
+///                mendekat (zoom 1,18 -> 1) dalam aura yang warnanya mengikuti
+///                kesehatan Hayu. Dua detak jantung (0.40 dan 0.50): pohon
+///                berdenyut, satu riak tiap detak, getar haptic "lub-dub".
+///  3. 0.52-0.68  JUDUL. Pohon surut jadi latar redup, lalu "MALAM
+///                PERSEMBAHAN" tampil sendirian di tengah (zoom lembut +
+///                cahaya + satu cincin). Pohon dan judul tidak bersaing.
+///  4. 0.70-0.89  INFO BERURUTAN: kalimat pembuka (0.70-0.78), lalu jumlah
+///                daun dihitung naik + bilah kesehatan (0.80-0.89).
 ///  0.92          satu detak besar sebagai tanda masuk: kilat lembut, satu
 ///                gelombang kejut, getar haptic berat.
 ///  setelah 1.00  jeda baca, lalu seluruh adegan memudar ke layar persembahan.
@@ -128,9 +129,9 @@ class _OfferingTransitionState extends State<OfferingTransition>
       onTap: _finish,
       child: LayoutBuilder(builder: (context, box) {
         final w = box.maxWidth, h = box.maxHeight;
-        final treeW = min(min(w * 0.6, 460.0), h * 0.42 * 16 / 9).toDouble();
+        final treeW = min(min(w * 0.96, 760.0), h * 0.7 * 16 / 9).toDouble();
         final treeH = treeW * 9 / 16;
-        final center = Offset(w / 2, h / 2 - 65);
+        final center = Offset(w / 2, h * 0.46);
 
         return AnimatedBuilder(
           animation: c,
@@ -149,10 +150,13 @@ class _OfferingTransitionState extends State<OfferingTransition>
             final flash = _bump(t, finale, 0.03) * 0.28;
 
             // --- Hayu: kamera mendekat + denyut ---
-            final treeE = Curves.easeOutCubic.transform(_seg(t, 0.18, 0.5));
-            final treeScale =
-                (1.2 - 0.2 * treeE) * (1 + 0.03 * pulse + 0.03 * fin);
-            final treeOpacity = _seg(t, 0.18, 0.36);
+            final treeE = Curves.easeOutCubic.transform(_seg(t, 0.14, 0.5));
+            // Setelah detak jantung, pohon surut jadi latar redup supaya
+            // judul tampil sendirian.
+            final treeDim = Curves.easeInOut.transform(_seg(t, 0.52, 0.64));
+            final treeScale = (1.18 - 0.18 * treeE + 0.05 * treeDim) *
+                (1 + 0.03 * pulse + 0.03 * fin);
+            final treeOpacity = _seg(t, 0.14, 0.34) * (1 - 0.78 * treeDim);
 
             final shadows = [
               const Shadow(color: Colors.black, blurRadius: 10),
@@ -161,13 +165,13 @@ class _OfferingTransitionState extends State<OfferingTransition>
 
             // Judul muncul dengan zoom lembut dari 1,3x ke ukuran asli,
             // diiringi cahaya dan satu cincin.
-            final tt = _seg(t, 0.54, 0.66);
+            final tt = _seg(t, 0.58, 0.68);
             final slam = Curves.easeOutCubic.transform(tt);
-            final burstP = _seg(t, 0.56, 0.80);
+            final burstP = _seg(t, 0.60, 0.82);
             final tw = min(w * 0.82, 420.0).toDouble();
             final th = tw / 2.16; // rasio titlepersembahan.png (~1600x740)
             final title = Opacity(
-              opacity: _seg(t, 0.54, 0.60),
+              opacity: _seg(t, 0.58, 0.64),
               child: Transform.scale(
                 scale: 1.3 - 0.3 * slam,
                 child: Column(
@@ -203,7 +207,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
               ),
             );
 
-            final st = _seg(t, 0.68, 0.76);
+            final st = _seg(t, 0.70, 0.78);
             final sub = Opacity(
               opacity: st,
               child: Transform.translate(
@@ -219,7 +223,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
               ),
             );
 
-            final lvT = _seg(t, 0.78, 0.88);
+            final lvT = _seg(t, 0.80, 0.89);
             final lvE = Curves.easeOut.transform(lvT);
             final shownLeaves = (widget.leaves * lvE).round();
             final barColor = dark
@@ -270,14 +274,40 @@ class _OfferingTransitionState extends State<OfferingTransition>
               ),
             );
 
-            final tree = Opacity(
-              opacity: treeOpacity,
-              child: Transform.scale(
-                scale: treeScale,
-                child: SizedBox(
-                  width: treeW,
-                  height: treeH,
-                  child: TreePortrait(leaves: widget.leaves),
+            // Potret pohon: besar, tanpa bingkai; tepinya memudar elips ke
+            // langit malam. Diletakkan sebagai lapisan sendiri (bukan di kolom
+            // teks) supaya tidak bersaing dengan judul.
+            final tree = Positioned(
+              left: center.dx - treeW / 2,
+              top: center.dy - treeH / 2,
+              width: treeW,
+              height: treeH,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: treeOpacity.clamp(0.0, 1.0).toDouble(),
+                  child: Transform.scale(
+                    scale: treeScale,
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (r) {
+                        final c = r.center;
+                        final sx = r.width / r.height;
+                        // Skala sumbu-x terhadap pusat: lingkaran jadi elips.
+                        final m = Matrix4(sx, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+                            c.dx * (1 - sx), 0, 0, 1);
+                        return ui.Gradient.radial(
+                          c,
+                          r.height / 2,
+                          const [Colors.white, Colors.white, Colors.transparent],
+                          const [0.0, 0.7, 1.0],
+                          TileMode.clamp,
+                          m.storage,
+                        );
+                      },
+                      child: GameImage(
+                          path: treePath(widget.leaves), cacheWidth: 1280),
+                    ),
+                  ),
                 ),
               ),
             );
@@ -286,12 +316,10 @@ class _OfferingTransitionState extends State<OfferingTransition>
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: max(treeW, 380.0)),
+                  constraints: const BoxConstraints(maxWidth: 440),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      tree,
-                      const SizedBox(height: 14),
                       title,
                       const SizedBox(height: 8),
                       sub,
@@ -345,6 +373,7 @@ class _OfferingTransitionState extends State<OfferingTransition>
                       seed: widget.day,
                     ),
                   ),
+                  tree,
                   content,
                   if (flash > 0.01)
                     ColoredBox(
