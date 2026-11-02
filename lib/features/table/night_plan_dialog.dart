@@ -212,6 +212,19 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
           accent: EmbunColors.mist,
           child: Stack(
             children: [
+              // Bengkel alkimia samar di belakang: tempat serangan diramu.
+              if (sceneryPath('kuali-racikan') case final bg?)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Opacity(
+                        opacity: 0.16,
+                        child: GameImage(path: bg, cacheWidth: 900),
+                      ),
+                    ),
+                  ),
+                ),
               AnimatedOpacity(
                 opacity: _armingOn ? 0 : 1,
                 duration: const Duration(milliseconds: 250),

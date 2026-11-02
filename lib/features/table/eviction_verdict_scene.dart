@@ -186,7 +186,9 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
         0.12 * _smooth(_seg(t, 0.0, 0.30)) -
         0.05 * _smooth(_seg(t, 0.50, 1.0));
     final scrimA = 0.80 - 0.10 * _smooth(_seg(t, 0.50, 0.90));
-    final bg = sceneryPath('desajembatan-keringgulita') ??
+    // Diusir = berjalan menjauh dari desa.
+    final bg = sceneryPath('jalanjauhdesa') ??
+        sceneryPath('desajembatan-keringgulita') ??
         sceneryPath('keterasingan');
 
     // Potret.

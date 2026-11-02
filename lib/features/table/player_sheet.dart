@@ -242,6 +242,13 @@ class _PlayerSheetState extends State<_PlayerSheet> {
             path: protagonistPath(card),
             size: avatar,
             ring: EmbunColors.gold,
+            // Subur bila nyawa penuh dan bebas; layu bila nyawa berkurang,
+            // dikurung, atau sudah keluar.
+            wreath: (!isOut(widget.player) &&
+                !_targetJailed &&
+                livesLeft(widget.player) >= kMaxStrikes)
+                ? 'subur'
+                : 'layu',
           ),
         ),
         const SizedBox(width: 14),

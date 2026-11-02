@@ -1063,12 +1063,12 @@ class _DayViewState extends State<DayView>
                     ? Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: _shopColumns()),
+                    Expanded(child: _shopMat(_shopColumns())),
                     const SizedBox(width: 16),
                     SizedBox(width: infoW, child: _shopInfo()),
                   ],
                 )
-                    : _shopColumns(),
+                    : _shopMat(_shopColumns()),
               ),
               if (showCompact) _shopInfoCompact(),
             ],
@@ -1088,7 +1088,50 @@ class _DayViewState extends State<DayView>
 
   // ====================== Meja ======================
 
+  /// Alas Meja: meja kayu bertinta; anyaman gelap bila peran gelap tampil.
   Widget _mejaBody({double minW = 96}) {
+    final p = sceneryPath(widget.dark ? 'anyaman-gelap' : 'mejaku');
+    if (p == null) return _mejaBodyInner(minW: minW);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GameImage(path: p, cacheWidth: 900),
+          ColoredBox(
+              color: Colors.black.withValues(alpha: widget.dark ? 0.3 : 0.45)),
+          Padding(
+            padding: const EdgeInsets.all(4),
+            child: _mejaBodyInner(minW: minW),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Alas Toko: tikar anyaman. Gelap untuk peran gelap, rusak bila dikurung
+  /// (tak bisa berbelanja), temaram selain itu.
+  Widget _shopMat(Widget child) {
+    final p = sceneryPath(widget.jailed
+        ? 'anyaman-rusak'
+        : widget.dark
+        ? 'anyaman-gelap'
+        : 'anyaman-temaram');
+    if (p == null) return child;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GameImage(path: p, cacheWidth: 900),
+          ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _mejaBodyInner({double minW = 96}) {
     final hand = widget.hand;
     final strip = _guardStrip();
     if (hand.isEmpty) {

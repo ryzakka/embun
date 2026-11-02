@@ -114,16 +114,22 @@ class PlayerAvatar extends StatelessWidget {
   final String? path;
   final double size;
   final Color ring;
+
+  /// 'subur' atau 'layu': karangan daun melingkari avatar (bingkai-subur /
+  /// bingkai-layu di assets/bentang). Widget jadi ~1,45x lebih besar. Null =
+  /// tanpa karangan.
+  final String? wreath;
   const PlayerAvatar({
     super.key,
     required this.path,
     this.size = 40,
     this.ring = Colors.white38,
+    this.wreath,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final core = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -141,6 +147,29 @@ class PlayerAvatar extends StatelessWidget {
           alignment: const Alignment(0, -0.6),
           cacheWidth: (size * 3).round(),
         ),
+      ),
+    );
+    final w = wreath;
+    final wp = w == null ? null : sceneryPath('bingkai-$w');
+    if (wp == null) return core;
+    final outer = size * 1.45;
+    return SizedBox(
+      width: outer,
+      height: outer,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          core,
+          IgnorePointer(
+            child: SizedBox(
+              width: outer,
+              height: outer,
+              child: GameImage(
+                  path: wp, fit: BoxFit.contain, cacheWidth: (outer * 2).round()),
+            ),
+          ),
+        ],
       ),
     );
   }

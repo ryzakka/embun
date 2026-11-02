@@ -19,6 +19,7 @@ double _rnd(int i, int k) {
 /// awan gelap di urutan pertama (nama berkas tanpa ekstensi); bila belum ada,
 /// jatuh ke langit malam yang sudah tersedia.
 const _omenScenery = [
+  'langit-matamerahgelap',
   'awan-gelap',
   'awangelap',
   'awan-gelapdramatis',

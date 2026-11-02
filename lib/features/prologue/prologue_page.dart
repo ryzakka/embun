@@ -107,7 +107,7 @@ const _prologue = [
   // 5. Harapan: kamera naik menyusuri batang Hayu, cahaya hangat.
   _Scene(
     text: 'Maka mereka datang,\nmembawa air, doa, dan pita harapan.',
-    frames: ['pohon-zoom'],
+    frames: ['pohon-zoom', 'pohon-zoomberkascahayanaik'],
     ms: 7000,
     mood: _Mood.hope,
     decayFrom: 0.25,

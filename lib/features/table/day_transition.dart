@@ -345,6 +345,8 @@ class _DayTransitionState extends State<DayTransition>
             );
 
             final vt = _seg(t, 0.78, 0.9);
+            final paper = sceneryPath('kertaslusuh');
+            const ink = Color(0xFF3A2A12);
             final verdictBox = widget.verdict == null
                 ? const SizedBox.shrink()
                 : Opacity(
@@ -353,13 +355,25 @@ class _DayTransitionState extends State<DayTransition>
                 offset: Offset(0, (1 - vt) * 14),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 420),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 14, vertical: paper == null ? 8 : 12),
+                  decoration: paper == null
+                      ? BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),
                     border:
                     Border.all(color: warm.withValues(alpha: 0.6)),
+                  )
+                      : BoxDecoration(
+                    image: DecorationImage(
+                        image: ResizeImage(AssetImage(paper), width: 900),
+                        fit: BoxFit.cover),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: const Color(0xFF6B4E1E).withValues(alpha: 0.8)),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black54, blurRadius: 10),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -370,7 +384,11 @@ class _DayTransitionState extends State<DayTransition>
                         child: Text(widget.verdict!,
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13)),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: paper == null ? null : ink,
+                                fontWeight:
+                                paper == null ? null : FontWeight.w600)),
                       ),
                     ],
                   ),

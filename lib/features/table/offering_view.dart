@@ -241,6 +241,24 @@ class _OfferingViewState extends State<OfferingView> {
     });
   }
 
+  /// Kipas kartu terserah di atas ayakan rotan (kartu "diletakkan" di nampan
+  /// persembahan). Tanpa gambar ayakan: kipasnya saja.
+  Widget _trayFan() {
+    final p = sceneryPath('ayakanrotan-temaram');
+    if (p == null) return _sentFan();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GameImage(path: p, cacheWidth: 1000),
+          ColoredBox(color: Colors.black.withValues(alpha: 0.18)),
+          _sentFan(),
+        ],
+      ),
+    );
+  }
+
   /// Punggung kartu yang sudah diserahkan, tersusun kipas kecil.
   Widget _sentFan() {
     final n = _sentCount.clamp(1, 2).toInt();
@@ -388,7 +406,7 @@ class _OfferingViewState extends State<OfferingView> {
           const SizedBox(height: 6),
           Expanded(
             child: _sentCount > 0
-                ? _sentFan()
+                ? _trayFan()
                 : Center(child: Opacity(opacity: 0.8, child: TreePortrait(leaves: widget.leaves))),
           ),
           const SizedBox(height: 8),
