@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/fx_shaders.dart';
 import '../common/ornate.dart';
 
 double _seg(double v, double a, double b) =>
@@ -15,6 +17,14 @@ double _lerp(double a, double b, double t) => a + (b - a) * t;
 double _rnd(int i, int k) {
   final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
   return v - v.floorToDouble();
+}
+
+/// Mengisi tiga float berurutan (r, g, b) pada shader mulai dari indeks [i].
+void _rgb(ui.FragmentShader s, int i, Color c) {
+  s
+    ..setFloat(i, c.r)
+    ..setFloat(i + 1, c.g)
+    ..setFloat(i + 2, c.b);
 }
 
 class _Fx {
@@ -53,12 +63,15 @@ const _neutralMist = Color(0xFF8E9A96);
 ///     pilihan wajah gelap. Putar balik baru mulai setelah gerbang selesai.
 ///  3b. PUTAR BALIK (hanya Si Terbisik, ~2,6 dtk): sesaat kemudian, detak
 ///     jantung, kartu baik itu menggelap dan bergetar, layar tersentak,
-///     kartu terbelah bayangan merah-ungu (glitch), lalu berganti menjadi
-///     kartu gelapnya dengan asap ungu kelam, cincin kejut, dan vinyet
-///     berdenyut. Teks ikut berganti dari "Warga Desa" menjadi "Si Terbisik",
-///     lengkap dengan keterangan wajah samarannya.
+///     kartu retak bercahaya lalu larut terbakar menjadi kartu gelapnya
+///     dengan asap ungu kelam, cincin kejut, dan vinyet berdenyut. Teks ikut
+///     berganti dari "Warga Desa" menjadi "Si Terbisik", lengkap dengan
+///     keterangan wajah samarannya.
 ///  4. Setelah itu kartu tetap terbuka; ketuk kartu untuk menyembunyikan atau
 ///     melihatnya lagi (jaga-jaga ada yang mengintip). Tombol lanjut muncul.
+///
+/// Efek shader (kabut, asap, berkas cahaya, kilau foil, larut kartu) memakai
+/// painter lama sebagai cadangan bila shader dimatikan / gagal dimuat.
 class RoleReveal extends StatefulWidget {
   /// 'antagonis' atau lainnya (warga). null = belum dimuat dari server.
   final String? role;
@@ -116,8 +129,26 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   bool _ignoreNextUp = false;
   bool _twistStarted = false;
 
+  // ---- shader (null bila dimatikan / gagal dimuat -> painter lama) ----
+  ui.FragmentShader? _atmo; // kabut + asap
+  ui.FragmentShader? _raysFx; // berkas cahaya
+  ui.FragmentShader? _foil; // kilau foil di muka kartu
+  ui.FragmentShader? _morph; // larut kartu baik -> kartu gelap (Si Terbisik)
+  ui.Image? _imgA; // kartu baik samaran
+  ui.Image? _imgB; // kartu gelap
+  bool _loadingMorph = false;
+  final double _seed = math.Random().nextDouble();
+
   bool get _antag => widget.role == 'antagonis';
   bool get _ready => widget.role != null && _intro.value >= 0.72;
+
+  /// Larut kartu aktif: shader + kedua gambar siap + ada kartu samaran.
+  bool get _morphOn =>
+      _antag &&
+          _morph != null &&
+          _imgA != null &&
+          _imgB != null &&
+          widget.disguisePath != null;
 
   /// Kemajuan putar balik (0..1); selalu 0 untuk warga.
   double get _tw => _twist.value;
@@ -144,7 +175,19 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       if (s == AnimationStatus.completed && _antag) _startTwist();
     });
     _twist.addListener(_onTwistTick);
+    // Shader yang sama untuk kedua peran (tidak membocorkan apa pun).
+    _atmo = FxShaders.make(FxShaders.atmosphere);
+    _raysFx = FxShaders.make(FxShaders.divine);
+    _foil = FxShaders.make(FxShaders.divine);
+    _loadMorph();
     _intro.forward();
+  }
+
+  @override
+  void didUpdateWidget(RoleReveal old) {
+    super.didUpdateWidget(old);
+    // Peran / gambar kartu baru tiba dari server.
+    _loadMorph();
   }
 
   @override
@@ -155,7 +198,31 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     _twist.dispose();
     _face.dispose();
     _loop.dispose();
+    _atmo?.dispose();
+    _raysFx?.dispose();
+    _foil?.dispose();
+    _morph?.dispose();
     super.dispose();
+  }
+
+  /// Hanya Si Terbisik: muat kedua kartu sebagai gambar sampler untuk shader
+  /// larut. Selama belum siap, adegan memakai efek glitch lama.
+  Future<void> _loadMorph() async {
+    if (!_antag || _loadingMorph) return;
+    final a = widget.disguisePath;
+    final b = widget.cardPath;
+    if (a == null || b == null) return;
+    if (_imgA != null && _imgB != null) return;
+    _morph ??= FxShaders.make(FxShaders.cardMorph);
+    if (_morph == null) return;
+    _loadingMorph = true;
+    final imgs = await Future.wait([FxShaders.image(a), FxShaders.image(b)]);
+    _loadingMorph = false;
+    if (!mounted) return;
+    setState(() {
+      _imgA = imgs[0];
+      _imgB = imgs[1];
+    });
   }
 
   void _onIntroTick() {
@@ -343,6 +410,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
         time: _time,
         mix: mix,
         deep: deep,
+        atmo: _atmo,
+        rays: _raysFx,
       );
 
       return Stack(
@@ -412,6 +481,53 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     ),
   );
 
+  /// Lapisan shader larut kartu di atas bidang kartu (hanya Si Terbisik,
+  /// selama putar balik). Di ujungnya ia menjadi kartu gelap murni, jadi
+  /// saat dilepas tidak ada lompatan.
+  Widget _morphLayer(double cw, double chh, double tw) {
+    return IgnorePointer(
+      child: SizedBox(
+        width: cw,
+        height: chh,
+        child: CustomPaint(
+          painter: _MorphPainter(
+            shader: _morph!,
+            a: _imgA!,
+            b: _imgB!,
+            prog: _seg(tw, 0.0, 0.62),
+            time: _time,
+            seed: _seed,
+            edge: _antagFx.main,
+            hot: _antagFx.soft,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Kilau foil yang menyapu muka kartu setelah terbuka. Emas untuk kartu
+  /// baik (kedua peran sama), beralih ungu bersama [_fx] saat putar balik.
+  Widget? _foilLayer(double cw, double chh) {
+    final sh = _foil;
+    if (sh == null) return null;
+    final tw = _tw;
+    var env = _smooth(_seg(_burst.value, 0.55, 0.9)) *
+        _smooth(_seg(_face.value, 0.6, 1.0));
+    env *= 1 - 0.5 * _smooth(_seg(tw, 0.05, 0.4)) * (1 - _seg(tw, 0.75, 1.0));
+    if (env <= 0.01) return null;
+    final f = _fx;
+    return IgnorePointer(
+      child: SizedBox(
+        width: cw,
+        height: chh,
+        child: CustomPaint(
+          painter: _FoilPainter(
+              shader: sh, time: _time, env: env, soft: f.soft, hue: f.main),
+        ),
+      ),
+    );
+  }
+
   Widget _card(double cw, double chh) {
     final it = _intro.value;
     final bt = _burst.value;
@@ -453,8 +569,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       final facePath =
       (hasDis && !_swapped) ? widget.disguisePath : widget.cardPath;
       Widget art = CardArt(path: facePath, width: cw, glow: _fx.main);
-      if (_antag && tw > 0 && !_swapped) {
-        // Kartu baik menggelap sebelum retak.
+      if (_antag && tw > 0 && !_swapped && !_morphOn) {
+        // Kartu baik menggelap sebelum retak (cadangan bila shader mati).
         art = ColorFiltered(
           colorFilter: ColorFilter.mode(
               const Color(0xFF0A0714)
@@ -480,9 +596,9 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     }
 
     final layers = <Widget>[];
-    // Glitch: dua bayangan berwarna yang menyentak, hanya saat Si Terbisik
-    // berganti dari kartu baik ke kartu gelap.
-    if (_antag && tw > 0.26 && tw < 0.62) {
+    // Glitch lama: dua bayangan berwarna yang menyentak. Hanya dipakai bila
+    // shader larut tidak tersedia.
+    if (!_morphOn && _antag && tw > 0.26 && tw < 0.62) {
       final q = (tw * 55).floor();
       final g = _seg(tw, 0.26, 0.32) * (1 - _seg(tw, 0.42, 0.62));
       for (var k = 0; k < 2; k++) {
@@ -503,6 +619,11 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       }
     }
     layers.add(core());
+    if (_morphOn && tw > 0 && tw < 0.66) {
+      layers.add(_morphLayer(cw, chh, tw));
+    }
+    final foil = _foilLayer(cw, chh);
+    if (foil != null) layers.add(foil);
 
     return Transform.translate(
       offset: Offset(shakeX, dy),
@@ -715,6 +836,13 @@ class _Pr {
   /// Putar balik Si Terbisik (0..1); 0 untuk warga.
   final double twist;
   final Color deep;
+
+  /// Shader kabut + asap; null = pakai gradasi lama.
+  final ui.FragmentShader? atmo;
+
+  /// Shader berkas cahaya; null = pakai segitiga lama.
+  final ui.FragmentShader? rays;
+
   const _Pr({
     required this.fx,
     required this.antag,
@@ -728,6 +856,8 @@ class _Pr {
     required this.time,
     required this.mix,
     required this.deep,
+    this.atmo,
+    this.rays,
   });
 
   double get r => math.max(cw, ch);
@@ -752,12 +882,51 @@ class _BackPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _mist(canvas, size);
+    if (p.atmo != null) {
+      _atmoPass(canvas, size);
+    } else {
+      _mist(canvas, size);
+    }
     _orb(canvas);
     _aura(canvas);
     _charging(canvas);
-    if (p.burst > 0) _rays(canvas, size);
-    if (p.antag && p.twist > 0) _smoke(canvas);
+    if (p.burst > 0) {
+      if (p.rays != null) {
+        _raysShader(canvas, size);
+      } else {
+        _rays(canvas, size);
+      }
+    }
+    if (p.atmo == null && p.antag && p.twist > 0) _smoke(canvas);
+  }
+
+  /// Kabut volumetrik + asap kelam dalam satu lintasan shader.
+  void _atmoPass(Canvas canvas, Size size) {
+    final sh = p.atmo!;
+    final mi = _smooth(_seg(p.intro, 0, 0.45));
+    final pull = math.max(_smooth(_seg(p.intro, 0.3, 0.7)), p.charge);
+    final mist = mi * (1 + 0.3 * p.bEnv + 1.4 * p.twEnv);
+    // Kabut tersibak dari sekitar kartu saat terungkap (sama untuk kedua
+    // peran); kembali pekat bersama putar balik.
+    final clear = _smooth(_seg(p.burst, 0.05, 0.4)) * p.warm;
+    final smoke = p.antag ? p.twist : 0.0;
+    sh
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, p.time)
+      ..setFloat(3, p.center.dx)
+      ..setFloat(4, p.center.dy)
+      ..setFloat(5, mist)
+      ..setFloat(6, pull)
+      ..setFloat(7, clear)
+      ..setFloat(8, smoke)
+      ..setFloat(9, p.cw)
+      ..setFloat(10, p.ch);
+    _rgb(sh, 11, p.col);
+    _rgb(sh, 14, _neutralMist);
+    _rgb(sh, 17, EmbunColors.mist);
+    _rgb(sh, 20, _smokeGrey);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = sh);
   }
 
   void _mist(Canvas canvas, Size size) {
@@ -868,6 +1037,30 @@ class _BackPainter extends CustomPainter {
       sp.color = Colors.white.withValues(alpha: a);
       canvas.drawCircle(pos, 1.6 + 2.0 * _rnd(i, 3), sp);
     }
+  }
+
+  /// Berkas cahaya volumetrik (shader), dilukis aditif.
+  void _raysShader(Canvas canvas, Size size) {
+    final env = p.bEnv * p.warm;
+    if (env <= 0) return;
+    final sh = p.rays!;
+    sh
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, p.time)
+      ..setFloat(3, 0) // mode 0 = berkas cahaya
+      ..setFloat(4, env)
+      ..setFloat(5, p.center.dx)
+      ..setFloat(6, p.center.dy)
+      ..setFloat(7, 0);
+    _rgb(sh, 8, p.fx.soft);
+    _rgb(sh, 11, p.fx.main);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = sh
+        ..blendMode = BlendMode.plus,
+    );
   }
 
   void _rays(Canvas canvas, Size size) {
@@ -1079,4 +1272,86 @@ class _FrontPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FrontPainter old) => true;
+}
+
+/// Larut kartu baik -> kartu gelap lewat shader card_morph.frag. Dilukis
+/// persis di atas bidang kartu (ukuran widget = ukuran kartu).
+class _MorphPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final ui.Image a;
+  final ui.Image b;
+  final double prog;
+  final double time;
+  final double seed;
+  final Color edge;
+  final Color hot;
+  const _MorphPainter({
+    required this.shader,
+    required this.a,
+    required this.b,
+    required this.prog,
+    required this.time,
+    required this.seed,
+    required this.edge,
+    required this.hot,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, prog)
+      ..setFloat(3, time)
+      ..setFloat(4, 10) // radius sudut kartu, sama dengan CardArt
+      ..setFloat(5, seed)
+      ..setImageSampler(0, a)
+      ..setImageSampler(1, b);
+    _rgb(shader, 6, edge);
+    _rgb(shader, 9, hot);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MorphPainter old) => true;
+}
+
+/// Kilau foil yang menyapu muka kartu (mode 1 pada divine.frag), aditif.
+class _FoilPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final double time;
+  final double env;
+  final Color soft;
+  final Color hue;
+  const _FoilPainter({
+    required this.shader,
+    required this.time,
+    required this.env,
+    required this.soft,
+    required this.hue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, 1) // mode 1 = kilau foil
+      ..setFloat(4, env)
+      ..setFloat(5, 0)
+      ..setFloat(6, 0)
+      ..setFloat(7, 10);
+    _rgb(shader, 8, soft);
+    _rgb(shader, 11, hue);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FoilPainter old) => true;
 }

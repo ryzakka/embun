@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/fx_shaders.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 
@@ -29,7 +31,8 @@ const _omenScenery = [
 ];
 
 /// Peringatan dramatis untuk pemain yang terpilih menjadi Si Terbisik.
-/// Awan gelap bergulung, tiga sambaran petir (getar haptic berat), lalu
+/// Awan gelap bergulung (shader: menyala dari dalam tiap kali petir
+/// menyambar), tiga sambaran petir (getar haptic berat), lalu
 /// "SI TERBISIK" menghantam layar. Tombol muncul di akhir; [onContinue]
 /// dipanggil saat ditekan. Tampil HANYA di layar Si Terbisik.
 class DarkOmen extends StatefulWidget {
@@ -52,9 +55,13 @@ class _DarkOmenState extends State<DarkOmen> with TickerProviderStateMixin {
   final Set<int> _fired = {};
   late final String? _bg = firstScenery(_omenScenery);
 
+  /// Shader awan bercahaya petir; null = awan gradasi lama.
+  ui.FragmentShader? _sky;
+
   @override
   void initState() {
     super.initState();
+    _sky = FxShaders.make(FxShaders.omenSky);
     _c.addListener(_tick);
     _c.forward();
     // Musik prolog diredam selama peringatan; angin bergulung bersama awan.
@@ -66,6 +73,7 @@ class _DarkOmenState extends State<DarkOmen> with TickerProviderStateMixin {
   void dispose() {
     _c.dispose();
     _loop.dispose();
+    _sky?.dispose();
     Sfx.I.release(this);
     super.dispose();
   }
@@ -228,7 +236,7 @@ class _DarkOmenState extends State<DarkOmen> with TickerProviderStateMixin {
                     ),
                     IgnorePointer(
                       child: CustomPaint(
-                        painter: _OmenPainter(t: t, time: sec),
+                        painter: _OmenPainter(t: t, time: sec, shader: _sky),
                         size: Size.infinite,
                       ),
                     ),
@@ -286,33 +294,45 @@ class _DarkOmenState extends State<DarkOmen> with TickerProviderStateMixin {
 }
 
 /// Awan gelap yang bergulung makin pekat, ditambah tiga sambaran petir.
+/// Dengan [shader], awan digambar volumetrik dan menyala dari dalam di
+/// sekitar titik sambaran; tanpa shader dipakai gradasi lingkaran lama.
 class _OmenPainter extends CustomPainter {
   final double t;
   final double time;
-  const _OmenPainter({required this.t, required this.time});
+  final ui.FragmentShader? shader;
+  const _OmenPainter({required this.t, required this.time, this.shader});
+
+  /// Posisi mendatar awal sambaran [k]; harus sama dengan yang dipakai
+  /// [_bolt] (Random berbenih sama, panggilan pertama).
+  double _boltX(Size size, int k) =>
+      size.width * (0.18 + 0.64 * math.Random(k * 97 + 5).nextDouble());
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final dens = _smooth(_seg(t, 0.0, 0.5));
 
-    // awan
-    final paint = Paint();
-    for (var i = 0; i < 14; i++) {
-      final dir = i.isEven ? 1.0 : -1.0;
-      final x = ((_rnd(i, 1) + time * 0.012 * dir) % 1.4 - 0.2) * w;
-      final y = h * (0.04 + 0.5 * _rnd(i, 2)) + math.sin(time * 0.3 + i) * 10;
-      final r = math.max(w, h) * (0.18 + 0.2 * _rnd(i, 3));
-      final col = switch (i % 3) {
-        0 => const Color(0xFF05020A),
-        1 => const Color(0xFF2A1745),
-        _ => const Color(0xFF3A2358),
-      };
-      final a = ((0.30 + 0.4 * _rnd(i, 4)) * dens).clamp(0.0, 1.0).toDouble();
-      paint.shader = RadialGradient(
-        colors: [col.withValues(alpha: a), col.withValues(alpha: 0)],
-      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: r));
-      canvas.drawCircle(Offset(x, y), r, paint);
+    if (shader != null) {
+      _sky(canvas, size, dens);
+    } else {
+      // awan (gradasi lama)
+      final paint = Paint();
+      for (var i = 0; i < 14; i++) {
+        final dir = i.isEven ? 1.0 : -1.0;
+        final x = ((_rnd(i, 1) + time * 0.012 * dir) % 1.4 - 0.2) * w;
+        final y = h * (0.04 + 0.5 * _rnd(i, 2)) + math.sin(time * 0.3 + i) * 10;
+        final r = math.max(w, h) * (0.18 + 0.2 * _rnd(i, 3));
+        final col = switch (i % 3) {
+          0 => const Color(0xFF05020A),
+          1 => const Color(0xFF2A1745),
+          _ => const Color(0xFF3A2358),
+        };
+        final a = ((0.30 + 0.4 * _rnd(i, 4)) * dens).clamp(0.0, 1.0).toDouble();
+        paint.shader = RadialGradient(
+          colors: [col.withValues(alpha: a), col.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: Offset(x, y), radius: r));
+        canvas.drawCircle(Offset(x, y), r, paint);
+      }
     }
 
     // petir
@@ -323,6 +343,26 @@ class _OmenPainter extends CustomPainter {
       final a = (1 - u).clamp(0.0, 1.0).toDouble();
       _bolt(canvas, size, k, a);
     }
+  }
+
+  /// Awan shader; cahaya tiap sambaran ikut menerangi awan di sekitarnya.
+  void _sky(Canvas canvas, Size size, double dens) {
+    final sh = shader!;
+    sh
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, dens);
+    const times = _DarkOmenState._bolts;
+    for (var k = 0; k < times.length; k++) {
+      final u = (t - times[k]) / 0.08;
+      final a = (u <= 0 || u >= 1) ? 0.0 : (1 - u) * 1.2;
+      sh
+        ..setFloat(4 + 3 * k, _boltX(size, k))
+        ..setFloat(5 + 3 * k, size.height * 0.22)
+        ..setFloat(6 + 3 * k, a);
+    }
+    canvas.drawRect(Offset.zero & size, Paint()..shader = sh);
   }
 
   void _bolt(Canvas canvas, Size size, int k, double a) {

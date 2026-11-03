@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/asset_catalog.dart';
 import 'features/common/cloth_transition.dart';
+import 'features/common/fx_shaders.dart';
 import 'features/common/ornate.dart';
 import 'features/common/scene_flow.dart';
 import 'features/common/sfx.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await AssetCatalog.load();
   await ClothTransition.preload();
+  await FxShaders.preload();
   runApp(const ProviderScope(child: EmbunApp()));
 }
 
