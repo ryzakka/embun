@@ -30,6 +30,9 @@ class Snd {
   static const timer1 = Snd('timermendekatihabis.mp3', 0.8);
   static const timer2 = Snd('timermendekatihabis2.mp3', 0.8);
 
+  // ---- narasi ----
+  static const narasiProlog = Snd('prolog-narasibicara.mp3', 1.0);
+
   static const winds = [swingWind1, swingWind2, swingWind3];
   static const fires = [swingFire1, swingFire2];
   static const timers = [timer1, timer2];
@@ -81,6 +84,11 @@ class Sfx with WidgetsBindingObserver {
   int _epoch = 0;
   bool _syncing = false;
   Timer? _stepTimer;
+
+  // Narasi (satu saja pada satu waktu); musik latar diredam selama ada.
+  AudioPlayer? _nar;
+  Object? _narOwner;
+  StreamSubscription<void>? _narSub;
 
   bool _inited = false;
   bool _paused = false;
@@ -255,6 +263,56 @@ class Sfx with WidgetsBindingObserver {
   }
 
   // ===================================================================
+  // Narasi
+  // ===================================================================
+
+  /// Putar narasi [s] untuk [owner]. Hanya satu narasi pada satu waktu;
+  /// musik latar diredam selama narasi bicara.
+  Future<void> narrate(Snd s, {required Object owner}) async {
+    await stopNarration();
+    if (muted.value || _paused) return;
+    _retryMusicIfNeeded();
+    final p = AudioPlayer();
+    _nar = p;
+    _narOwner = owner;
+    _kick(); // musik meredup
+    try {
+      await p.setReleaseMode(ReleaseMode.stop);
+      _narSub = p.onPlayerComplete.listen((_) => stopNarration());
+      await p.play(AssetSource('sound/${s.file}'), volume: s.volume);
+    } catch (e) {
+      _log('narasi ${s.file}', e);
+      if (identical(_nar, p)) await stopNarration();
+    }
+  }
+
+  /// Lompat ke posisi tertentu pada narasi (mis. saat pemain mengetuk lanjut).
+  void seekNarration(Duration to) {
+    try {
+      _nar?.seek(to);
+    } catch (e) {
+      _log('seek narasi', e);
+    }
+  }
+
+  /// Hentikan narasi; musik latar naik lagi.
+  Future<void> stopNarration() async {
+    final p = _nar;
+    _nar = null;
+    _narOwner = null;
+    _narSub?.cancel();
+    _narSub = null;
+    _kick();
+    if (p == null) return;
+    try {
+      await p.stop();
+    } catch (_) {}
+    try {
+      await p.dispose();
+    } catch (_) {}
+  }
+
+  // ===================================================================
   // Musik
   // ===================================================================
 
@@ -271,9 +329,10 @@ class Sfx with WidgetsBindingObserver {
     if (changed) _kick();
   }
 
-  /// Lepas SEMUA yang dipegang [owner]: efek (dipudarkan), sewa musik, dan
-  /// peredam. Panggil di dispose() setiap adegan yang memakai Sfx.
+  /// Lepas SEMUA yang dipegang [owner]: efek (dipudarkan), narasi, sewa
+  /// musik, dan peredam. Panggil di dispose() setiap adegan yang memakai Sfx.
   void release(Object owner) {
+    if (identical(_narOwner, owner)) unawaited(stopNarration());
     for (final v in List<_Voice>.of(_voices)) {
       if (identical(v.owner, owner)) _stop(v);
     }
@@ -288,7 +347,8 @@ class Sfx with WidgetsBindingObserver {
   }
 
   double _targetVol() =>
-      (_bgmTrack?.volume ?? 0) * (_duckers.isEmpty ? 1.0 : _duckLevel);
+      (_bgmTrack?.volume ?? 0) *
+          ((_duckers.isEmpty && _nar == null) ? 1.0 : _duckLevel);
 
   Future<void> _syncMusic() async {
     final epoch = ++_epoch;
@@ -296,10 +356,16 @@ class Sfx with WidgetsBindingObserver {
         ? null
         : _leases.last.track;
     if (want != null && want.file == _bgmTrack?.file) {
+      // Sinkronisasi lama yang disela bisa meninggalkan _syncing = true;
+      // tanpa direset, _kick() tak pernah menaikkan volume.
+      _syncing = false;
       _kick();
       return;
     }
-    if (want == null && _bgmTrack == null) return;
+    if (want == null && _bgmTrack == null) {
+      _syncing = false;
+      return;
+    }
     _syncing = true;
     final p = _bgm ??= AudioPlayer();
     try {
@@ -318,7 +384,10 @@ class Sfx with WidgetsBindingObserver {
       try {
         await p.stop();
       } catch (_) {}
-      if (epoch != _epoch) return;
+      if (epoch != _epoch) {
+        _syncing = false;
+        return;
+      }
       _bgmTrack = null;
       _bgmVol = 0;
       if (want == null) {
@@ -329,7 +398,10 @@ class Sfx with WidgetsBindingObserver {
       await p.play(AssetSource('sound/${want.file}'), volume: 0);
       _bgmTrack = want;
       _bgmVol = 0;
-      if (epoch != _epoch) return;
+      if (epoch != _epoch) {
+        _syncing = false;
+        return;
+      }
       _syncing = false;
       _kick();
     } catch (e) {
@@ -380,7 +452,16 @@ class Sfx with WidgetsBindingObserver {
   // ===================================================================
 
   void _onMuteChanged() {
-    if (muted.value) _stopAllVoices();
+    if (muted.value) {
+      _stopAllVoices();
+      try {
+        _nar?.pause();
+      } catch (_) {}
+    } else {
+      try {
+        _nar?.resume();
+      } catch (_) {}
+    }
     unawaited(_syncMusic());
   }
 
@@ -401,8 +482,16 @@ class Sfx with WidgetsBindingObserver {
       try {
         _bgm?.pause();
       } catch (_) {}
+      try {
+        _nar?.pause();
+      } catch (_) {}
     } else if (state == AppLifecycleState.resumed && _paused) {
       _paused = false;
+      if (!muted.value) {
+        try {
+          _nar?.resume();
+        } catch (_) {}
+      }
       if (_bgmTrack != null && !muted.value) {
         try {
           _bgm?.resume();

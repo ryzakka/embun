@@ -134,6 +134,16 @@ const _prologue = [
   ),
 ];
 
+/// Waktu mulai adegan [i] (ms) pada berkas narasi: jumlah durasi adegan
+/// sebelumnya. Total durasi adegan (47 dtk) sama dengan panjang narasi.
+int _sceneStartMs(int i) {
+  var t = 0;
+  for (var k = 0; k < i; k++) {
+    t += _prologue[k].ms;
+  }
+  return t;
+}
+
 List<double> _sat(double s) {
   final inv = 1 - s;
   final r = 0.2126 * inv, g = 0.7152 * inv, b = 0.0722 * inv;
@@ -253,7 +263,11 @@ class _PrologueFlowState extends State<PrologueFlow>
     _sc.addStatusListener((s) {
       if (s == AnimationStatus.completed) _advance();
     });
-    if (!widget.resume) _startScene();
+    if (!widget.resume) {
+      _startScene();
+      // Narasi diputar dari awal cerita; musik latar otomatis meredup.
+      Sfx.I.narrate(Snd.narasiProlog, owner: this);
+    }
 
     _gr.tick(widget.gameId).catchError((_) {});
     _beat = Timer.periodic(const Duration(seconds: 8), (_) {
@@ -294,13 +308,19 @@ class _PrologueFlowState extends State<PrologueFlow>
     }
   }
 
-  void _advance() {
+  /// Lanjut ke adegan berikutnya. [seek] true = pemain mengetuk layar: narasi
+  /// ikut dilompatkan ke awal adegan yang dituju. Saat adegan berganti
+  /// sendiri, narasi sudah sejajar sehingga tidak perlu digeser.
+  void _advance({bool seek = false}) {
     if (!mounted || step != _Step.story) return;
     if (line < _prologue.length - 1) {
       setState(() {
         _prev = line;
         line++;
       });
+      if (seek) {
+        Sfx.I.seekNarration(Duration(milliseconds: _sceneStartMs(line)));
+      }
       _startScene();
     } else {
       _toShuffling();
@@ -310,6 +330,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   void _toShuffling() {
     if (step != _Step.story) return;
     _sc.stop();
+    Sfx.I.stopNarration();
     if (!mounted) return;
     setState(() => step = _Step.shuffling);
     HapticFeedback.heavyImpact();
@@ -496,7 +517,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     _beat?.cancel();
     _waitTimer?.cancel();
     _gameSub?.cancel();
-    Sfx.I.release(this);
+    Sfx.I.release(this); // juga menghentikan narasi milik halaman ini
     _sc.dispose();
     _xf.dispose();
     _loop.dispose();
@@ -762,7 +783,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   Widget _story() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _advance,
+      onTap: () => _advance(seek: true),
       child: LayoutBuilder(builder: (context, box) {
         final h = box.maxHeight;
         return AnimatedBuilder(
