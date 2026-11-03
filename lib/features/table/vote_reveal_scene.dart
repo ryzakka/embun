@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/fx_shaders.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/scene_flow.dart';
@@ -99,6 +101,11 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   late final AnimationController _vc = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 3400));
   final Set<int> _fired = {};
+  // Jam pelan untuk gerak kabut shader (tidak ikut berubah periode seperti _beat).
+  late final AnimationController _loop = AnimationController(
+      vsync: this, duration: const Duration(seconds: 120));
+  // Shader latar (kabut tegang, hantaman, vonis); null = tampilan lama.
+  ui.FragmentShader? _fx;
   // Tirai gelap: 1 = layar tertutup kSceneInk. Terbuka saat adegan mulai,
   // menutup lagi sebelum adegan berikutnya (kurungan / pengusiran / fajar).
   late final AnimationController _veil = AnimationController(
@@ -133,6 +140,8 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     }
 
     _beat.repeat();
+    _fx = FxShaders.make(FxShaders.voteReveal);
+    if (_fx != null) _loop.repeat();
     _vc.addListener(_onVerdictTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _play());
   }
@@ -144,6 +153,8 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _shake.dispose();
     _flash.dispose();
     _vc.dispose();
+    _loop.dispose();
+    _fx?.dispose();
     _veil.dispose();
     Sfx.I.release(this);
     super.dispose();
@@ -342,6 +353,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
               ),
             ),
           ),
+          if (_fx != null) _fxLayer(),
           if (won) _spotlight(),
           _vignette(),
           AnimatedBuilder(
@@ -383,6 +395,54 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Latar shader: kabut merah yang makin pekat menurut ketegangan, gelombang
+  /// kejut tiap hantaman (suara penentu, wajah mendarat, cap), berkas cahaya
+  /// vonis, dan kabut dingin saat tak ada mayoritas.
+  Widget _fxLayer() {
+    return IgnorePointer(
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_loop, _beat, _shake, _vc]),
+          builder: (context, _) {
+            final won = _winnerId != null;
+            final heat = (_lead / _need).clamp(0.0, 1.0).toDouble();
+            final double tension = switch (_phase) {
+              0 => 0.25,
+              1 => 0.12 +
+                  0.55 * heat * heat +
+                  (_near ? 0.18 : 0.0) +
+                  (_decisive ? 0.20 : 0.0),
+              2 => 0.15,
+              _ => won ? 0.75 : 0.0,
+            };
+            final verdict = (_phase == 3 && won)
+                ? Curves.easeOut.transform(_seg(_vc.value, 0.05, 0.40))
+                : (_decisive && _phase == 1 ? 0.30 : 0.0);
+            final calm = (_phase == 3 && !won)
+                ? Curves.easeOut.transform(_seg(_vc.value, 0.0, 0.5))
+                : 0.0;
+            return CustomPaint(
+              size: Size.infinite,
+              painter: _VoteFxPainter(
+                shader: _fx!,
+                time: _loop.value * 120.0,
+                heat: tension.clamp(0.0, 1.0).toDouble(),
+                beat: _thump(_beat.value),
+                slam: _shake.isAnimating ? _shake.value : 0.0,
+                verdict: verdict.toDouble(),
+                calm: calm.toDouble(),
+                // Pusat: sedikit di atas tengah, tempat kartu yang dituduh jatuh.
+                centerFrac: const Offset(0.5, 0.42),
+                hot: EmbunColors.blood,
+                cool: _teal,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1024,6 +1084,65 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
       ),
     );
   }
+}
+
+/// Menggambar shader latar `vote_reveal.frag` layar penuh (BlendMode.plus).
+/// Urutan setFloat harus sama dengan deklarasi uniform di shader.
+class _VoteFxPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final double time;
+  final double heat;
+  final double beat;
+  final double slam;
+  final double verdict;
+  final double calm;
+  final Offset centerFrac;
+  final Color hot;
+  final Color cool;
+
+  const _VoteFxPainter({
+    required this.shader,
+    required this.time,
+    required this.heat,
+    required this.beat,
+    required this.slam,
+    required this.verdict,
+    required this.calm,
+    required this.centerFrac,
+    required this.hot,
+    required this.cool,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, heat)
+      ..setFloat(4, beat)
+      ..setFloat(5, slam)
+      ..setFloat(6, size.width * centerFrac.dx)
+      ..setFloat(7, size.height * centerFrac.dy)
+      ..setFloat(8, verdict)
+      ..setFloat(9, calm)
+      ..setFloat(10, hot.r)
+      ..setFloat(11, hot.g)
+      ..setFloat(12, hot.b)
+      ..setFloat(13, cool.r)
+      ..setFloat(14, cool.g)
+      ..setFloat(15, cool.b);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
+  }
+
+  // Selalu digambar ulang: waktu, denyut, dan hantaman berubah tiap bingkai.
+  @override
+  bool shouldRepaint(covariant _VoteFxPainter old) => true;
 }
 
 /// Cincin kejut yang melebar dari kartu sasaran saat menerima suara.
