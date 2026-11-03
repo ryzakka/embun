@@ -11,6 +11,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/cloth_transition.dart';
+import '../common/shader_fx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
@@ -328,7 +329,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.2.13',
+                                    'BALAI PERTEMUAN DESA V2.2.15',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -432,6 +433,15 @@ class _LobbyPageState extends State<LobbyPage>
               label: m ? 'Suara: Mati' : 'Suara: Nyala',
               center: !wide,
               onTap: () => Sfx.I.muted.value = !m),
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: ShaderFx.enabled,
+          builder: (_, on, _) => _MenuTile(
+              index: 5,
+              icon: 'show',
+              label: on ? 'Efek Visual: Nyala' : 'Efek Visual: Mati',
+              center: !wide,
+              onTap: () => ShaderFx.enabled.value = !on),
         ),
       ];
       final menuCol = Column(

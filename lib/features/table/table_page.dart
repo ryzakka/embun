@@ -125,6 +125,11 @@ class _TablePageState extends State<TablePage> {
   // satunya dengan false bila tidak diinginkan.
   static const _clothAfterCeremony = true; // pelemparan kartu -> hasil efek
   static const _clothToDiscussion = true; // hasil efek -> diskusi
+
+  // Gaya kain tiap momen. Ganti dengan ClothStyle.pick(dark: showAsAntag)
+  // bila ingin gaya acak. Sisi Si Terbisik otomatis berpalet ungu.
+  static const _styleToEffects = ClothStyle.daunHayu;
+  static const _styleToDiscussion = ClothStyle.bungaKrem;
   final _cloth = GlobalKey<ClothSweepLayerState>();
 
   /// Fase lama yang ditahan di layar sampai kain menutup penuh. Server
@@ -524,9 +529,12 @@ class _TablePageState extends State<TablePage> {
     if (prev['phase'] != 'effects' || g['phase'] != 'discussion') return false;
     // Hanya bila hasil efek memang sedang tampil (adegan lempar sudah usai).
     if (prev['day'] != g['day'] || _ceremonyDay != prev['day']) return false;
-    return _cloth.currentState?.play(onCovered: () {
-      if (mounted) setState(() => _heldGame = null);
-    }) ??
+    return _cloth.currentState?.play(
+      style: _styleToDiscussion.tinted(dark: showAsAntag),
+      onCovered: () {
+        if (mounted) setState(() => _heldGame = null);
+      },
+    ) ??
         false;
   }
 
@@ -1276,7 +1284,11 @@ class _TablePageState extends State<TablePage> {
           }
 
           final played = _clothAfterCeremony &&
-              (_cloth.currentState?.play(onCovered: toEffects) ?? false);
+              (_cloth.currentState?.play(
+                style: _styleToEffects.tinted(dark: showAsAntag),
+                onCovered: toEffects,
+              ) ??
+                  false);
           if (!played) toEffects();
         },
       );
