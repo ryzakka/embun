@@ -39,7 +39,7 @@ class Snd {
 
   // ---- musik latar (di-loop) ----
   static const bgmMeja = Snd('backsound01.mp3', 0.32);
-  static const bgmProlog = Snd('latarprologawal.mp3', 0.45);
+  static const bgmProlog = Snd('latarprologawal.mp3', 0.6);
   static const bgmVoting = Snd('dentumanmelodivoting.mp3', 0.45);
   static const bgmAkhir = Snd('latarakhirendingstatistik.mp3', 0.5);
 }
@@ -71,6 +71,7 @@ class Sfx with WidgetsBindingObserver {
 
   static const _maxVoices = 8;
   static const _duckLevel = 0.22;
+  static const _narDuckLevel = 0.65; // musik di bawah narasi
 
   final _rng = math.Random();
   final List<_Voice> _voices = [];
@@ -346,9 +347,14 @@ class Sfx with WidgetsBindingObserver {
     }
   }
 
-  double _targetVol() =>
-      (_bgmTrack?.volume ?? 0) *
-          ((_duckers.isEmpty && _nar == null) ? 1.0 : _duckLevel);
+  double _targetVol() {
+    // Adegan layar penuh meredam musik dalam (0.22); narasi cukup meredam
+    // sedikit supaya musik latar tetap terdengar di bawah suara narator.
+    var k = 1.0;
+    if (_nar != null) k = _narDuckLevel;
+    if (_duckers.isNotEmpty) k = math.min(k, _duckLevel);
+    return (_bgmTrack?.volume ?? 0) * k;
+  }
 
   Future<void> _syncMusic() async {
     final epoch = ++_epoch;

@@ -50446,7 +50446,7 @@ g=A.eh(B.a1,!0,e,A.aTY(A.j4(!1,q,!0,new A.cn(new A.a2(0,1/0,f.w,1/0),new A.ad(B.
 return k?new A.a5(1/0,e,g,e):g}}
 A.acq.prototype={
 $0(){var s=$.c2(),r=this.a
-s.xU(r.f===B.bC?B.a4S:B.a4V)
+s.xU(r.f===B.bC?B.a4R:B.a4V)
 r.e.$0()},
 $S:0}
 A.tH.prototype={
@@ -50833,25 +50833,26 @@ A.arN.prototype={
 $1(a){return a.a===this.a},
 $S:144}
 A.arE.prototype={
-$1(a){var s,r,q,p,o,n=this.a,m=n.r
-if(m==null||n.w==null){s=n.Q
+$1(a){var s,r,q,p,o,n,m=this.a,l=m.r
+if(l==null||m.w==null){s=m.Q
 if(s!=null)s.ad()
-n.Q=null
-return}if(n.z)return
-s=n.w
+m.Q=null
+return}if(m.z)return
+r=m.as!=null?0.65:1
+if(m.e.a!==0)r=Math.min(r,0.22)
+s=m.w
 s=s==null?null:s.b
-if(s==null)s=0
-r=s*(n.e.a===0&&n.as==null?1:0.22)
-s=n.x
-q=r-s
-p=Math.abs(q)
-if(p<0.005){n.x=r
-try{m.ng(r)}catch(o){}s=n.Q
+q=(s==null?0:s)*r
+s=m.x
+p=q-s
+o=Math.abs(p)
+if(o<0.005){m.x=q
+try{l.ng(q)}catch(n){}s=m.Q
 if(s!=null)s.ad()
-n.Q=null
-return}s+=J.f0(q)*Math.min(p,0.035)
-n.x=s
-try{m.ng(s)}catch(o){}},
+m.Q=null
+return}s+=J.f0(p)*Math.min(o,0.035)
+m.x=s
+try{l.ng(s)}catch(n){}},
 $S:30}
 A.V3.prototype={
 J(a){return new A.l7($.c2().a,new A.arC(this),null,null,t.D0)}}
@@ -51602,7 +51603,7 @@ o=p*1.2
 n=t.p
 q=A.af(A.bw(A.bm(B.i,new A.a5(p*1.3,p,A.at(B.i,A.a([A.aB(k,k,B.m,k,k,new A.Y(k,k,k,k,k,new A.bE(B.i,0.5,B.y,k,0,A.a([B.l.m(0.18+0.12*r),B.l.m(0)],t.O),k,k),B.aR),k,o,k,k,k,k,k,o),new A.cv(A.b1().b5("assets/logo","ikon-transparent"),B.cJ,B.i,1000,k)],n),B.t,B.M),k),0.88+0.12*q),new A.f(0,i*5)),q)
 i=l.d
-i=A.af(A.bw(A.B("BALAI PERTEMUAN DESA V2.2.19",k,k,k,k,k,A.aM(k,k,B.l.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.nJ,k,k),k,k),new A.f(0,(1-i)*10)),i)
+i=A.af(A.bw(A.B("BALAI PERTEMUAN DESA V2.2.20",k,k,k,k,k,A.aM(k,k,B.l.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.nJ,k,k),k,k),new A.f(0,(1-i)*10)),i)
 o=l.e
 p=j.at
 m=p?"Mulai":"Memuat..."
@@ -52419,7 +52420,7 @@ q=s}return q},
 af(){var s,r,q,p=this
 p.au()
 s=$.c2()
-s.Gp(B.a4Q,p)
+s.Gp(B.a4T,p)
 if(p.a.e)p.d=B.hi
 p.k2=A.b1().mf("assets/kartu/protagonis")
 r=A.aO(null,B.dS,null,null,p)
@@ -52438,7 +52439,7 @@ q=q.cs$
 q.b=!0
 q.a.push(new A.aIw(p))
 if(!p.a.e){p.a_U()
-s.qE(B.a4T,p)}p.dx.Qw(p.a.c).f5(new A.aIx())
+s.qE(B.a4S,p)}p.dx.Qw(p.a.c).f5(new A.aIx())
 p.dy=A.l4(B.OB,new A.aIy(p))},
 bJ(){var s,r,q,p,o,n,m,l,k=this,j=null
 k.dB()
@@ -58753,7 +58754,7 @@ s=r.gkt()
 s.aY()
 s.bz$.B(0,r.gak9())
 s.bg()
-$.c2().Gp(B.a4R,r)
+$.c2().Gp(B.a4Q,r)
 A.dA()
 r.wj()},
 k(){var s=this
@@ -122835,14 +122836,14 @@ B.a4H=new A.q7(B.ack,null,null,null,null,null,null,null,null,null,null,null,null
 B.Fq=new A.GW(0,"permissive")
 B.a4I=new A.GW(1,"normal")
 B.a4J=new A.GW(2,"forced")
-B.a4Q=new A.ey("latarprologawal.mp3",0.45)
-B.a4R=new A.ey("latarakhirendingstatistik.mp3",0.5)
+B.a4Q=new A.ey("latarakhirendingstatistik.mp3",0.5)
 B.Fr=new A.ey("slashgemerciklight.mp3",0.8)
 B.l2=new A.ey("slashpedang.mp3",0.85)
-B.a4S=new A.ey("clickbutton2.mp3",0.8)
-B.a4T=new A.ey("prolog-narasibicara.mp3",1)
+B.a4R=new A.ey("clickbutton2.mp3",0.8)
+B.a4S=new A.ey("prolog-narasibicara.mp3",1)
 B.Fs=new A.ey("buy.mp3",0.9)
 B.l3=new A.ey("clickbutton-tung.mp3",0.9)
+B.a4T=new A.ey("latarprologawal.mp3",0.6)
 B.a4U=new A.ey("dentumanmelodivoting.mp3",0.45)
 B.a4V=new A.ey("clickbutton.mp3",0.8)
 B.a4W=new A.ey("thunder.mp3",0.9)
