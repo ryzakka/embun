@@ -10,6 +10,7 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import '../common/cloth_transition.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
@@ -327,7 +328,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.2.11',
+                                    'BALAI PERTEMUAN DESA V2.2.12',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -721,8 +722,8 @@ class _LobbyPageState extends State<LobbyPage>
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => PrologueFlow(gameId: id, repo: repo),
+                ClothTransition.route(
+                  PrologueFlow(gameId: id, repo: repo),
                 ),
               );
             });

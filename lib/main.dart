@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/asset_catalog.dart';
+import 'features/common/cloth_transition.dart';
 import 'features/common/ornate.dart';
 import 'features/common/sfx.dart';
 import 'features/lobby/lobby_page.dart';
@@ -18,6 +19,7 @@ Future<void> main() async {
   Sfx.I.init();
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await AssetCatalog.load();
+  await ClothTransition.preload();
   runApp(const ProviderScope(child: EmbunApp()));
 }
 
