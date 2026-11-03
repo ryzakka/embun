@@ -6,6 +6,7 @@ import '../../data/game_repository.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/cloth_transition.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/scene_flow.dart';
@@ -119,6 +120,16 @@ class _TablePageState extends State<TablePage> {
   bool _leaving = false;
   bool disguiseMode = false; // Mode samaran layar untuk Si Terbisik
   int? _ceremonyDay; // hari yang adegan pelemparan kartunya sudah selesai
+
+  // Kain terhempas di pergantian fase (lihat ClothSweepLayer). Matikan salah
+  // satunya dengan false bila tidak diinginkan.
+  static const _clothAfterCeremony = true; // pelemparan kartu -> hasil efek
+  static const _clothToDiscussion = true; // hasil efek -> diskusi
+  final _cloth = GlobalKey<ClothSweepLayerState>();
+
+  /// Fase lama yang ditahan di layar sampai kain menutup penuh. Server
+  /// mengganti fase seketika, sedangkan kain butuh ~0,75 dtk untuk menutup.
+  Map<String, dynamic>? _heldGame;
   int? darkSeed;
 
   // Kemampuan acak warga (hanya terlihat oleh pemiliknya).
@@ -491,8 +502,10 @@ class _TablePageState extends State<TablePage> {
     }
     final changed = game?['day'] != g['day'] || game?['phase'] != g['phase'];
     final prev = game;
+    final holdOld = _startClothToDiscussion(prev, g);
     setState(() {
       game = g;
+      if (holdOld) _heldGame = prev;
       _checkVoteReveal(prev, g);
       _checkNight(prev, g);
       _checkDayIntro(g);
@@ -500,6 +513,21 @@ class _TablePageState extends State<TablePage> {
     });
     // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
     if (changed) _refreshHand();
+  }
+
+  /// Hasil efek selesai dan fase berganti ke diskusi: putar kain, dan tahan
+  /// tampilan hasil efek sampai kain menutup penuh. true = fase lama ditahan.
+  bool _startClothToDiscussion(
+      Map<String, dynamic>? prev, Map<String, dynamic> g) {
+    if (!_clothToDiscussion || prev == null) return false;
+    if (prev['status'] != 'playing' || g['status'] != 'playing') return false;
+    if (prev['phase'] != 'effects' || g['phase'] != 'discussion') return false;
+    // Hanya bila hasil efek memang sedang tampil (adegan lempar sudah usai).
+    if (prev['day'] != g['day'] || _ceremonyDay != prev['day']) return false;
+    return _cloth.currentState?.play(onCovered: () {
+      if (mounted) setState(() => _heldGame = null);
+    }) ??
+        false;
   }
 
   // ===================== malam di antara hari biasa =====================
@@ -1123,6 +1151,7 @@ class _TablePageState extends State<TablePage> {
     final phase = (g['phase'] as String?) ?? 'day';
     return chatFx &&
         !_chatOpen &&
+        _heldGame == null &&
         _dayIntro == null &&
         (phase == 'day' || phase == 'discussion');
   }
@@ -1136,6 +1165,7 @@ class _TablePageState extends State<TablePage> {
         _voteReveal != null ||
         _nightOn ||
         _nightScene != null ||
+        _heldGame != null ||
         g['phase'] == 'effects';
   }
 
@@ -1152,7 +1182,7 @@ class _TablePageState extends State<TablePage> {
         children: [
           g == null
               ? const EmbunLoading(text: 'Memasuki desa...')
-              : _content(g),
+              : _content(_heldGame ?? g),
           // Dipasang di sini (bukan di _content) supaya tetap hidup antar
           // fase dan tidak memutar ulang pesan lama.
           Positioned.fill(
@@ -1204,6 +1234,8 @@ class _TablePageState extends State<TablePage> {
           if (_nightOn && _nightScene == null)
             Positioned.fill(child: _nightChoiceLayer()),
           if (_nightScene != null) Positioned.fill(child: _nightLayer()),
+          // Paling atas: kain menutupi semua lapisan lain.
+          Positioned.fill(child: ClothSweepLayer(key: _cloth)),
         ],
       ),
     );
@@ -1238,7 +1270,14 @@ class _TablePageState extends State<TablePage> {
         defs: defs,
         dark: showAsAntag,
         onDone: () {
-          if (mounted) setState(() => _ceremonyDay = day);
+          if (!mounted) return;
+          void toEffects() {
+            if (mounted) setState(() => _ceremonyDay = day);
+          }
+
+          final played = _clothAfterCeremony &&
+              (_cloth.currentState?.play(onCovered: toEffects) ?? false);
+          if (!played) toEffects();
         },
       );
     }

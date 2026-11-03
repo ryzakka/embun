@@ -1,5 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'sfx.dart';
 
 /// Transisi kain batik terhempas: kiri-bawah -> kanan-atas.
 ///
@@ -13,6 +15,12 @@ import 'package:flutter/material.dart';
 class ClothTransition {
   static ui.FragmentProgram? _program;
   static ui.FragmentShader? _shader;
+
+  /// true bila shader sudah termuat (kain bisa diputar).
+  static bool get isReady => _program != null;
+
+  /// Instans shader baru (tiap lapisan overlay memegang miliknya sendiri).
+  static ui.FragmentShader? createShader() => _program?.fragmentShader();
 
   static Future<void> preload() async {
     try {
@@ -57,6 +65,102 @@ class ClothTransition {
               ],
             );
           },
+        );
+      },
+    );
+  }
+}
+
+/// Lapisan kain untuk pergantian fase DI DALAM satu halaman (bukan rute).
+///
+/// Pasang sebagai anak TERAKHIR sebuah Stack, supaya kain menutupi semuanya:
+///
+///   final _cloth = GlobalKey<ClothSweepLayerState>();
+///   ...
+///   Positioned.fill(child: ClothSweepLayer(key: _cloth)),
+///
+/// Lalu panggil `_cloth.currentState?.play(onCovered: ...)`. [onCovered]
+/// dipanggil tepat saat kain menutup layar penuh: di situlah isi layar
+/// boleh diganti tanpa terlihat pemain. Selama kain berjalan, sentuhan ke
+/// layar di bawahnya ditahan.
+class ClothSweepLayer extends StatefulWidget {
+  final Duration duration;
+  const ClothSweepLayer({
+    super.key,
+    this.duration = const Duration(milliseconds: 1500),
+  });
+
+  @override
+  State<ClothSweepLayer> createState() => ClothSweepLayerState();
+}
+
+class ClothSweepLayerState extends State<ClothSweepLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+  AnimationController(vsync: this, duration: widget.duration);
+  ui.FragmentShader? _shader;
+  final List<VoidCallback> _onCovered = [];
+  bool _covered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addListener(_tick);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _shader?.dispose();
+    Sfx.I.release(this);
+    super.dispose();
+  }
+
+  void _tick() {
+    if (_covered || _c.value < 0.5) return;
+    _covered = true;
+    HapticFeedback.mediumImpact();
+    final cbs = List<VoidCallback>.of(_onCovered);
+    _onCovered.clear();
+    for (final cb in cbs) {
+      cb();
+    }
+  }
+
+  /// Memutar kain. Mengembalikan false bila kain TIDAK diputar (shader belum
+  /// termuat, atau kain sudah lewat titik tutup): pemanggil harus mengganti
+  /// isi layar sendiri, sekarang juga. [onCovered] tidak dipanggil saat false.
+  bool play({VoidCallback? onCovered}) {
+    if (!mounted) return false;
+    _shader ??= ClothTransition.createShader();
+    if (_shader == null) return false;
+    if (_c.isAnimating) {
+      if (_covered) return false;
+      if (onCovered != null) _onCovered.add(onCovered);
+      return true;
+    }
+    _covered = false;
+    _onCovered.clear();
+    if (onCovered != null) _onCovered.add(onCovered);
+    Sfx.I.playAny(Snd.winds, owner: this, tag: 'cloth', replace: true);
+    _c.forward(from: 0);
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shader = _shader;
+    if (shader == null) return const SizedBox.shrink();
+    final seconds = widget.duration.inMilliseconds / 1000.0;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final v = _c.value;
+        if (v <= 0.001 || v >= 0.999) return const SizedBox.shrink();
+        return AbsorbPointer(
+          child: SizedBox.expand(
+            child: CustomPaint(painter: _ClothPainter(shader, v, v * seconds)),
+          ),
         );
       },
     );
