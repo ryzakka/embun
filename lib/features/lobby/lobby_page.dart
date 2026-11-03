@@ -329,7 +329,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.2.15',
+                                    'BALAI PERTEMUAN DESA V2.2.16',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -394,8 +394,16 @@ class _LobbyPageState extends State<LobbyPage>
   );
 
   /// Panduan kini layar penuh (cara bermain, karakter, dan kartu item).
-  void _openGuide() => Navigator.of(context)
-      .push(MaterialPageRoute<void>(builder: (_) => const GuidePage()));
+  /// Panduan kini layar penuh (cara bermain, karakter, dan kartu item).
+  void _openGuide() {
+    Sfx.I.playAny(Snd.winds);
+    Navigator.of(context).push(
+      ClothTransition.route<void>(
+        const GuidePage(),
+        style: ClothStyle.selendangBata,
+      ),
+    );
+  }
 
   Widget _menu() {
     return LayoutBuilder(builder: (context, c) {
