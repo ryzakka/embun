@@ -34,6 +34,7 @@ import 'vote_reveal_scene.dart';
 import 'night_scene.dart';
 import 'night_plan_dialog.dart';
 import 'night_choice.dart';
+import 'my_info_sheet.dart';
 import 'player_sheet.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
@@ -1098,6 +1099,23 @@ class _TablePageState extends State<TablePage> {
   void _openGuide() => Navigator.of(context)
       .push(MaterialPageRoute<void>(builder: (_) => const GuidePage()));
 
+  /// Infoku: karakter, kemampuan (warga), dan wajah asli + samaran (Si
+  /// Terbisik). Memakai data yang sudah dimuat meja; kemampuan dimuat ulang
+  /// dulu supaya status "terpakai" segar.
+  Future<void> _openMyInfo() async {
+    await _loadAbility();
+    if (!mounted) return;
+    await showMyInfoDialog(
+      context,
+      isAntag: isAntag,
+      name: (_meRow?['name'] as String?) ?? '',
+      characterStem: (_meRow?['character_card'] as String?) ?? 'default',
+      darkSeed: darkSeed,
+      abilityDef: isAntag ? null : abilityDefs[abilityId],
+      abilityUsed: abilityUsed,
+    );
+  }
+
   void _openEmotes(int day) {
     showModalBottomSheet<void>(
       context: context,
@@ -1919,6 +1937,8 @@ class _TablePageState extends State<TablePage> {
                   switch (v) {
                     case 'guide':
                       _openGuide();
+                    case 'me':
+                      _openMyInfo();
                     case 'players':
                       _showPlayersSheet(day);
                     case 'fx':
@@ -1932,6 +1952,7 @@ class _TablePageState extends State<TablePage> {
                   }
                 },
                 itemBuilder: (_) => [
+                  item('me', 'persona', 'Infoku'),
                   item('players', 'persona', 'Daftar warga'),
                   item('guide', 'info', 'Panduan'),
                   item(
@@ -2110,6 +2131,16 @@ class _TablePageState extends State<TablePage> {
             onPressed: () => setState(() => disguiseMode = !disguiseMode),
             icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
+        IconButton(
+          tooltip: 'Infoku',
+          visualDensity: VisualDensity.compact,
+          onPressed: _openMyInfo,
+          icon: Icon(
+            Icons.badge_rounded,
+            size: 26,
+            color: showAsAntag ? const Color(0xFFB07CE8) : EmbunColors.leaf,
+          ),
+        ),
         _abilityButton(),
         IconButton(
           tooltip: 'Panduan',

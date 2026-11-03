@@ -56,6 +56,11 @@ class LobbyRepository {
   Future<void> finishPrologue(String gameId) =>
       _db.rpc('finish_prologue', params: {'p_game': gameId});
 
+  /// Prolog: suara "lewati cerita". Cerita baru dilewati bila SEMUA pemain
+  /// sudah memilih lewati (atau ceritanya sudah selesai di perangkatnya).
+  Future<void> storySkip(String gameId, bool skip) =>
+      _db.rpc('story_skip', params: {'p_game': gameId, 'p_skip': skip});
+
   Stream<List<Map<String, dynamic>>> players(String gameId) => _db
       .from('game_players')
       .stream(primaryKey: ['game_id', 'user_id'])

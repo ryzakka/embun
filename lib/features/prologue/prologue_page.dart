@@ -210,6 +210,12 @@ class _PrologueFlowState extends State<PrologueFlow>
   final _gr = GameRepository();
   Timer? _beat;
 
+  // Lewati cerita bersama: baru jalan bila SEMUA pemain setuju.
+  StreamSubscription<Map<String, dynamic>?>? _storySub;
+  bool _iSkipped = false;
+  int _skipCount = 0;
+  int _total = 0;
+
   // Penggerak prolog: kemajuan adegan, silang-pudar antar adegan, dan jam
   // berkelanjutan untuk partikel.
   late final AnimationController _sc = AnimationController(
@@ -255,6 +261,7 @@ class _PrologueFlowState extends State<PrologueFlow>
       if (mounted && me.isNotEmpty) {
         setState(() {
           myCard = me.first['character_card'] as String;
+          _total = rows.length;
         });
       }
     });
@@ -267,6 +274,13 @@ class _PrologueFlowState extends State<PrologueFlow>
       _startScene();
       // Narasi diputar dari awal cerita; musik latar otomatis meredup.
       Sfx.I.narrate(Snd.narasiProlog, owner: this);
+      // Suara lewati dari semua pemain; bila lengkap, semua pindah bersamaan.
+      _storySub = widget.repo.game(widget.gameId).listen((g) {
+        if (g == null || !mounted) return;
+        final n = (g['story_skips'] as int?) ?? 0;
+        if (n != _skipCount) setState(() => _skipCount = n);
+        if (g['story_skipped'] == true) _toShuffling();
+      });
     }
 
     _gr.tick(widget.gameId).catchError((_) {});
@@ -323,12 +337,27 @@ class _PrologueFlowState extends State<PrologueFlow>
       }
       _startScene();
     } else {
+      // Cerita tuntas di sini: dihitung "sudah lewat" supaya tidak menahan
+      // pemain yang menekan Lewati.
+      widget.repo.storySkip(widget.gameId, true).catchError((_) {});
       _toShuffling();
     }
   }
 
+  /// Tombol Lewati: hanya memberi (atau menarik) suara; layar tetap di cerita
+  /// sampai semua pemain setuju.
+  void _toggleSkip() {
+    if (step != _Step.story) return;
+    final want = !_iSkipped;
+    setState(() => _iSkipped = want);
+    widget.repo.storySkip(widget.gameId, want).catchError((_) {
+      if (mounted) setState(() => _iSkipped = !want); // gagal: kembalikan
+    });
+  }
+
   void _toShuffling() {
     if (step != _Step.story) return;
+    _storySub?.cancel();
     _sc.stop();
     Sfx.I.stopNarration();
     if (!mounted) return;
@@ -517,6 +546,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     _beat?.cancel();
     _waitTimer?.cancel();
     _gameSub?.cancel();
+    _storySub?.cancel();
     Sfx.I.release(this); // juga menghentikan narasi milik halaman ini
     _sc.dispose();
     _xf.dispose();
@@ -914,9 +944,11 @@ class _PrologueFlowState extends State<PrologueFlow>
                           const SizedBox(width: 12),
                           MedallionButton(
                             icon: 'skip2',
-                            label: 'Lewati',
+                            label: _iSkipped ? 'Batal' : 'Lewati',
                             size: 40,
-                            onTap: _toShuffling,
+                            selected: _iSkipped,
+                            badge: _total > 0 ? '$_skipCount/$_total' : null,
+                            onTap: _toggleSkip,
                           ),
                         ],
                       ),
