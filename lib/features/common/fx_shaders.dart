@@ -17,6 +17,7 @@ class FxShaders {
   static ui.FragmentProgram? omenSky; // awan bercahaya petir
   static ui.FragmentProgram? divine; // berkas cahaya + kilau foil
   static ui.FragmentProgram? voteReveal; // kabut tegang + hantaman + vonis
+  static ui.FragmentProgram? prologue; // kabut, berkas cahaya, bulir, denyut benih
 
   static Future<void> preload() async {
     Future<ui.FragmentProgram?> load(String asset) async {
@@ -34,12 +35,14 @@ class FxShaders {
       load('shaders/omen_sky.frag'),
       load('shaders/divine.frag'),
       load('shaders/vote_reveal.frag'),
+      load('shaders/prologue_fx.frag'),
     ]);
     atmosphere = r[0];
     cardMorph = r[1];
     omenSky = r[2];
     divine = r[3];
     voteReveal = r[4];
+    prologue = r[5];
   }
 
   /// Instans shader baru, atau null bila efek dimatikan / program tak ada.

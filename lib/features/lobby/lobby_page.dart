@@ -329,7 +329,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.4',
+                                    'BALAI PERTEMUAN DESA V2.5',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -656,7 +656,7 @@ class _LobbyPageState extends State<LobbyPage>
 
   Future<void> _pickCard(String id, Map<String, dynamic> me) async {
     if (me['ready'] == true) return; // terkunci selama siap
-    final stems = AssetCatalog.I.stems(protagonisDir);
+    final stems = protagonistStems();
     final chosen = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: const Color(0xFF12201E),

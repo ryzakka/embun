@@ -7,7 +7,9 @@ import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/fx_shaders.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
 import '../common/sfx.dart';
 import '../table/table_page.dart';
 import 'character_pick.dart';
@@ -134,16 +136,6 @@ const _prologue = [
   ),
 ];
 
-/// Waktu mulai adegan [i] (ms) pada berkas narasi: jumlah durasi adegan
-/// sebelumnya. Total durasi adegan (47 dtk) sama dengan panjang narasi.
-int _sceneStartMs(int i) {
-  var t = 0;
-  for (var k = 0; k < i; k++) {
-    t += _prologue[k].ms;
-  }
-  return t;
-}
-
 List<double> _sat(double s) {
   final inv = 1 - s;
   final r = 0.2126 * inv, g = 0.7152 * inv, b = 0.0722 * inv;
@@ -228,6 +220,15 @@ class _PrologueFlowState extends State<PrologueFlow>
   bool _seedFired = false;
   bool _precached = false;
 
+  // Penutup cerita: adegan terakhir ditahan sampai narasi benar-benar habis,
+  // lalu layar memudar ke gelap sebelum kocok kartu.
+  bool _closing = false;
+  late final AnimationController _outro = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100));
+
+  /// Shader atmosfer prolog; null = pakai painter lama (kabut/cahaya/bulir).
+  ui.FragmentShader? _fx;
+
   // Controller untuk animasi putar/kocok kartu
   late final AnimationController _shuffleCtrl;
   List<String> randomStems = [];
@@ -237,9 +238,10 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   void initState() {
     super.initState();
+    _fx = FxShaders.make(FxShaders.prologue);
     Sfx.I.music(Snd.bgmProlog, owner: this);
     if (widget.resume) step = _Step.role;
-    randomStems = AssetCatalog.I.stems(protagonisDir);
+    randomStems = protagonistStems();
     _shuffleCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -271,15 +273,15 @@ class _PrologueFlowState extends State<PrologueFlow>
       if (s == AnimationStatus.completed) _advance();
     });
     if (!widget.resume) {
-      _startScene();
-      // Narasi diputar dari awal cerita; musik latar otomatis meredup.
-      Sfx.I.narrate(Snd.narasiProlog, owner: this);
+      // Narasi dimulai lebih dulu; adegan baru berjalan begitu suaranya
+      // benar-benar terdengar, supaya gambar dan kalimat sejajar dengan suara.
+      _beginStory();
       // Suara lewati dari semua pemain; bila lengkap, semua pindah bersamaan.
       _storySub = widget.repo.game(widget.gameId).listen((g) {
         if (g == null || !mounted) return;
         final n = (g['story_skips'] as int?) ?? 0;
         if (n != _skipCount) setState(() => _skipCount = n);
-        if (g['story_skipped'] == true) _toShuffling();
+        if (g['story_skipped'] == true && !_closing) _toShuffling();
       });
     }
 
@@ -322,26 +324,52 @@ class _PrologueFlowState extends State<PrologueFlow>
     }
   }
 
-  /// Lanjut ke adegan berikutnya. [seek] true = pemain mengetuk layar: narasi
-  /// ikut dilompatkan ke awal adegan yang dituju. Saat adegan berganti
-  /// sendiri, narasi sudah sejajar sehingga tidak perlu digeser.
-  void _advance({bool seek = false}) {
+  /// Lanjut ke adegan berikutnya. Hanya dipanggil saat adegan berakhir
+  /// sendiri (tidak ada lagi ketukan layar untuk melompat).
+  void _advance() {
     if (!mounted || step != _Step.story) return;
     if (line < _prologue.length - 1) {
       setState(() {
         _prev = line;
         line++;
       });
-      if (seek) {
-        Sfx.I.seekNarration(Duration(milliseconds: _sceneStartMs(line)));
-      }
       _startScene();
     } else {
       // Cerita tuntas di sini: dihitung "sudah lewat" supaya tidak menahan
       // pemain yang menekan Lewati.
       widget.repo.storySkip(widget.gameId, true).catchError((_) {});
-      _toShuffling();
+      _finishStory();
     }
+  }
+
+  /// Memutar narasi dari awal (musik latar otomatis meredup), lalu memulai
+  /// adegan pertama. Bila suara lambat dimuat (>3 dtk) adegan jalan juga;
+  /// penutup cerita tetap menunggu narasi, jadi suara tidak pernah terpotong.
+  Future<void> _beginStory() async {
+    try {
+      await Sfx.I
+          .narrate(Snd.narasiProlog, owner: this)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    if (!mounted || step != _Step.story) return;
+    _startScene();
+  }
+
+  /// Adegan terakhir selesai: TAHAN sampai suara narator habis, beri jeda
+  /// hening sesaat, memudar ke gelap, baru lanjut. Bila suara dibisukan atau
+  /// tak pernah berbunyi, tidak ada yang ditunggu. Batas aman 10 dtk.
+  Future<void> _finishStory() async {
+    if (_closing || step != _Step.story) return;
+    setState(() => _closing = true);
+    try {
+      await Sfx.I.narrationDone.timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    if (!mounted || step != _Step.story) return;
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted || step != _Step.story) return;
+    await _outro.forward(from: 0);
+    if (!mounted || step != _Step.story) return;
+    _toShuffling();
   }
 
   /// Tombol Lewati: hanya memberi (atau menarik) suara; layar tetap di cerita
@@ -359,7 +387,9 @@ class _PrologueFlowState extends State<PrologueFlow>
     if (step != _Step.story) return;
     _storySub?.cancel();
     _sc.stop();
-    Sfx.I.stopNarration();
+    // Sepakat melewati: suara dipelankan sampai senyap, bukan dipotong.
+    // (Pada akhir alami narasi sudah habis, jadi ini tidak berbuat apa-apa.)
+    unawaited(Sfx.I.fadeOutNarration());
     if (!mounted) return;
     setState(() => step = _Step.shuffling);
     HapticFeedback.heavyImpact();
@@ -392,8 +422,7 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   /// Tiga kartu baik acak dengan judul berbeda satu sama lain.
   List<String> _rollGood() {
-    final pool = AssetCatalog.I
-        .stems(protagonisDir)
+    final pool = protagonistStems()
         .where((s) => s != 'default')
         .toList()
       ..shuffle(Random());
@@ -548,6 +577,8 @@ class _PrologueFlowState extends State<PrologueFlow>
     _gameSub?.cancel();
     _storySub?.cancel();
     Sfx.I.release(this); // juga menghentikan narasi milik halaman ini
+    _fx?.dispose();
+    _outro.dispose();
     _sc.dispose();
     _xf.dispose();
     _loop.dispose();
@@ -811,156 +842,175 @@ class _PrologueFlowState extends State<PrologueFlow>
   );
 
   Widget _story() {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _advance(seek: true),
-      child: LayoutBuilder(builder: (context, box) {
-        final h = box.maxHeight;
-        return AnimatedBuilder(
-          animation: Listenable.merge([_sc, _xf, _loop]),
-          builder: (context, _) {
-            final s = _prologue[line];
-            final p = _sc.value;
-            final x = Curves.easeInOut.transform(_xf.value);
-            final ms = p * s.ms;
-            final time = _loop.value * 120;
-            final d = s.decayFrom + (s.decayTo - s.decayFrom) * p;
-            final open = line == 0 ? x : 1.0;
-            final barH = min(h * 0.065, 44.0) * Curves.easeOut.transform(open);
-            final vignette = 0.42 + 0.25 * d;
+    return LayoutBuilder(builder: (context, box) {
+      final h = box.maxHeight;
+      return AnimatedBuilder(
+        animation: Listenable.merge([_sc, _xf, _loop, _outro]),
+        builder: (context, _) {
+          final s = _prologue[line];
+          final p = _sc.value;
+          final x = Curves.easeInOut.transform(_xf.value);
+          final ms = p * s.ms;
+          final time = _loop.value * 120;
+          final d = s.decayFrom + (s.decayTo - s.decayFrom) * p;
+          final open = line == 0 ? x : 1.0;
+          final barH = min(h * 0.065, 44.0) * Curves.easeOut.transform(open);
+          final vignette = 0.42 + 0.25 * d;
 
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_prev != null && x < 1) _sceneImage(_prev!, 1.0),
-                Opacity(opacity: x, child: _sceneImage(line, p)),
-                // kabut, cahaya, daun, benih
+          // Atmosfer shader: tampilan tiap adegan dicampur dengan adegan
+          // sebelumnya selama silang-pudar, supaya warna kabut tak melompat.
+          var look = _FxLook.of(s.mood, d, p);
+          if (_prev != null && x < 1) {
+            final ps = _prologue[_prev!];
+            look = _FxLook.lerp(_FxLook.of(ps.mood, ps.decayTo, 1.0), look, x);
+          }
+          final seedOn = s.mood == _Mood.dark;
+          final seedBeat = pow(max(0.0, sin(time * 2.6)), 6).toDouble();
+          final pulse = seedOn ? _seg(p, 0.52, 0.72) * seedBeat : 0.0;
+          final shockT = seedOn ? _seg(p, 0.52, 0.80) : 0.0;
+          final shock = (shockT > 0 && shockT < 1) ? shockT : -1.0;
+          final fx = _fx;
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_prev != null && x < 1) _sceneImage(_prev!, 1.0),
+              Opacity(opacity: x, child: _sceneImage(line, p)),
+              // atmosfer shader: kabut volumetrik, berkas cahaya, bulir, benih
+              if (fx != null)
                 IgnorePointer(
                   child: CustomPaint(
-                    painter: _FxPainter(
-                      mood: s.mood,
+                    painter: _FogPainter(
+                      shader: fx,
+                      look: look,
                       time: time,
                       p: p,
-                      decay: d,
-                      intro: x,
+                      intro: line == 0 ? x : 1.0,
+                      shock: shock,
+                      pulse: pulse,
+                    ),
+                    size: Size.infinite,
+                  ),
+                ),
+              // daun, debu, benih (dan kabut/cahaya/bulir bila tanpa shader)
+              IgnorePointer(
+                child: CustomPaint(
+                  painter: _FxPainter(
+                    mood: s.mood,
+                    time: time,
+                    p: p,
+                    decay: d,
+                    intro: x,
+                    shaderOn: fx != null,
+                  ),
+                ),
+              ),
+              // vinyet
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      radius: 1.0,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: vignette),
+                      ],
+                      stops: const [0.5, 1.0],
                     ),
                   ),
                 ),
-                // vinyet
-                IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        radius: 1.0,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: vignette),
-                        ],
-                        stops: const [0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // bayangan bawah agar teks terbaca
-                IgnorePointer(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: FractionallySizedBox(
-                      heightFactor: 0.55,
-                      widthFactor: 1,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.8),
-                            ],
-                          ),
+              ),
+              // bayangan bawah agar teks terbaca
+              IgnorePointer(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: 0.55,
+                    widthFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.8),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                // bilah sinema
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                      height: barH,
-                      width: double.infinity,
-                      child: const ColoredBox(color: Colors.black)),
-                ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SizedBox(
-                      height: barH,
-                      width: double.infinity,
-                      child: const ColoredBox(color: Colors.black)),
-                ),
-                // teks
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: barH + 62,
-                  child: Center(child: _storyText(s, ms)),
-                ),
-                // petunjuk
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: barH + 12,
-                  child: Opacity(
-                    opacity: _smooth(_seg(ms, 1500, 2600)) * 0.7,
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+              ),
+              // bilah sinema
+              Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                    height: barH,
+                    width: double.infinity,
+                    child: const ColoredBox(color: Colors.black)),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SizedBox(
+                    height: barH,
+                    width: double.infinity,
+                    child: const ColoredBox(color: Colors.black)),
+              ),
+              // teks
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: barH + 62,
+                child: Center(child: _storyText(s, ms)),
+              ),
+              // bilah kemajuan + lewati
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 8, 0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GameIcon('touch', size: 26),
-                        SizedBox(width: 6),
-                        Text('Ketuk untuk lanjut',
-                            style: TextStyle(
-                                color: Colors.white70, fontSize: 12)),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: _progressBar(p),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Tak ada lagi yang dilewati saat penutup berjalan.
+                        AnimatedOpacity(
+                          opacity: _closing ? 0 : 1,
+                          duration: const Duration(milliseconds: 400),
+                          child: IgnorePointer(
+                            ignoring: _closing,
+                            child: MedallionButton(
+                              icon: 'skip2',
+                              label: _iSkipped ? 'Batal' : 'Lewati',
+                              size: 40,
+                              selected: _iSkipped,
+                              badge:
+                              _total > 0 ? '$_skipCount/$_total' : null,
+                              onTap: _toggleSkip,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                // bilah kemajuan + lewati
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 8, 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: _progressBar(p),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          MedallionButton(
-                            icon: 'skip2',
-                            label: _iSkipped ? 'Batal' : 'Lewati',
-                            size: 40,
-                            selected: _iSkipped,
-                            badge: _total > 0 ? '$_skipCount/$_total' : null,
-                            onTap: _toggleSkip,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      }),
-    );
+              ),
+              // memudar ke gelap setelah narasi habis
+              sceneVeil(Curves.easeInOut.transform(_outro.value)),
+            ],
+          );
+        },
+      );
+    });
   }
 
   // ====================== kocok kartu & peran ======================
@@ -1017,21 +1067,25 @@ class _FxPainter extends CustomPainter {
   final double p; // kemajuan adegan 0..1
   final double decay; // 0 subur .. 1 mati
   final double intro; // 0..1 saat adegan baru masuk
+  final bool shaderOn; // true = kabut, cahaya, bulir digambar oleh shader
   _FxPainter({
     required this.mood,
     required this.time,
     required this.p,
     required this.decay,
     required this.intro,
+    this.shaderOn = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (intro <= 0.01) return;
-    _fog(canvas, size);
-    if (mood == _Mood.lush || mood == _Mood.hope) _rays(canvas, size);
-    if (mood == _Mood.lush || mood == _Mood.hope || mood == _Mood.dark) {
-      _motes(canvas, size);
+    if (!shaderOn) {
+      _fog(canvas, size);
+      if (mood == _Mood.lush || mood == _Mood.hope) _rays(canvas, size);
+      if (mood == _Mood.lush || mood == _Mood.hope || mood == _Mood.dark) {
+        _motes(canvas, size);
+      }
     }
     if (mood == _Mood.fading || mood == _Mood.barren) _leaves(canvas, size);
     if (mood == _Mood.barren) _dust(canvas, size);
@@ -1234,4 +1288,100 @@ class _FxPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FxPainter old) => true;
+}
+
+/// Parameter tampilan atmosfer shader untuk satu suasana.
+class _FxLook {
+  final double fog, rays, motes, lightX, dark;
+  final Color fogCol, lightCol;
+  const _FxLook({
+    required this.fog,
+    required this.rays,
+    required this.motes,
+    required this.lightX,
+    required this.dark,
+    required this.fogCol,
+    required this.lightCol,
+  });
+
+  static _FxLook of(_Mood m, double decay, double p) => switch (m) {
+    _Mood.lush => const _FxLook(
+        fog: 0.30, rays: 0.55, motes: 0.8, lightX: 0.15, dark: 0.0,
+        fogCol: Color(0xFFDFF3E6), lightCol: Color(0xFFFFE9A8)),
+    _Mood.hope => const _FxLook(
+        fog: 0.25, rays: 1.0, motes: 1.0, lightX: 0.5, dark: 0.0,
+        fogCol: Color(0xFFFFE9B0), lightCol: Color(0xFFFFD98A)),
+    _Mood.fading => _FxLook(
+        fog: 0.45 + 0.30 * decay, rays: 0.15, motes: 0.2, lightX: 0.3,
+        dark: 0.10 + 0.15 * decay,
+        fogCol: const Color(0xFFD8D4C8), lightCol: const Color(0xFFE6D8A8)),
+    _Mood.barren => const _FxLook(
+        fog: 0.55, rays: 0.0, motes: 0.0, lightX: 0.3, dark: 0.30,
+        fogCol: Color(0xFFC9C3B6), lightCol: Color(0xFFD8C79A)),
+    _Mood.dark => _FxLook(
+        fog: 0.60 + 0.30 * p, rays: 0.0, motes: 0.5, lightX: 0.5,
+        dark: 0.35 + 0.50 * p,
+        fogCol: const Color(0xFFB07CE8), lightCol: const Color(0xFFB07CE8)),
+  };
+
+  static _FxLook lerp(_FxLook a, _FxLook b, double t) {
+    double l(double x, double y) => x + (y - x) * t;
+    return _FxLook(
+      fog: l(a.fog, b.fog),
+      rays: l(a.rays, b.rays),
+      motes: l(a.motes, b.motes),
+      lightX: l(a.lightX, b.lightX),
+      dark: l(a.dark, b.dark),
+      fogCol: Color.lerp(a.fogCol, b.fogCol, t)!,
+      lightCol: Color.lerp(a.lightCol, b.lightCol, t)!,
+    );
+  }
+}
+
+/// Menggambar shaders/prologue_fx.frag. Urutan setFloat HARUS sama dengan
+/// deklarasi uniform di berkas shader itu.
+class _FogPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final _FxLook look;
+  final double time, p, intro, shock, pulse;
+  const _FogPainter({
+    required this.shader,
+    required this.look,
+    required this.time,
+    required this.p,
+    required this.intro,
+    required this.shock,
+    required this.pulse,
+  });
+
+  void _rgb(int i, Color c) {
+    shader
+      ..setFloat(i, c.r)
+      ..setFloat(i + 1, c.g)
+      ..setFloat(i + 2, c.b);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (intro <= 0.01 || size.isEmpty) return;
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, p)
+      ..setFloat(4, look.fog)
+      ..setFloat(5, look.rays)
+      ..setFloat(6, look.motes)
+      ..setFloat(7, look.lightX)
+      ..setFloat(8, shock)
+      ..setFloat(9, intro)
+      ..setFloat(10, pulse)
+      ..setFloat(11, look.dark);
+    _rgb(12, look.fogCol);
+    _rgb(15, look.lightCol);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _FogPainter old) => true;
 }

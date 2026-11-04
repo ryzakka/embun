@@ -1,17 +1,22 @@
 import 'dart:math';
 import 'package:flutter/services.dart';
 
-const protagonisDir = 'assets/kartu/protagonis';
-const antagonisDir = 'assets/kartu/antagonis';
+// Kartu karakter protagonis dibagi dua folder menurut jenis kelamin. Nama
+// berkas diawali `pria-` / `wanita-`, jadi id (stem) tetap unik lintas folder.
+// [protagonisDir] adalah induknya: pakai HANYA untuk `startsWith` pada path.
+const protagonisDir = 'assets/kartu/CharPro';
+const protagonisPriaDir = 'assets/kartu/CharPro/CharPro-Pria';
+const protagonisWanitaDir = 'assets/kartu/CharPro/CharPro-Wanita';
+const antagonisDir = 'assets/kartu/CharAnta';
 const pohonDir = 'assets/pohon';
 const bentangDir = 'assets/bentang';
-const kartuWargaDir = 'assets/kartu/powerpro';
-const kartuAntagDir = 'assets/kartu/poweranta';
-const kartuMalamDir = 'assets/kartu/powernight'; // kartu serangan malam (ungu)
-const kartuSiangDir = 'assets/kartu/powersun'; // kartu siang warga (kuning)
+const kartuWargaDir = 'assets/kartu/ItemPro';
+const kartuAntagDir = 'assets/kartu/ItemAnta';
+const kartuMalamDir = 'assets/kartu/ItemAntaNight'; // kartu serangan malam (ungu)
+const kartuSiangDir = 'assets/kartu/ItemProDay'; // kartu siang warga (kuning)
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
-const kemampuanDir = 'assets/kartu/kemampuan';
+const kemampuanDir = 'assets/kartu/CharSkill';
 // Bila isi assets/ikon/sudah adalah versi transparan, ganti ke
 // 'assets/ikon/sudah' (dan daftarkan foldernya di pubspec.yaml).
 const ikonDir = 'assets/ikon';
@@ -55,10 +60,18 @@ class AssetCatalog {
       (_byFolder[folder]?.keys.toList() ?? <String>[])..sort();
 }
 
-String? protagonistPath(String id) => AssetCatalog.I.file(protagonisDir, id);
+/// Semua id karakter protagonis (pria + wanita), terurut.
+List<String> protagonistStems() => [
+  ...AssetCatalog.I.stems(protagonisPriaDir),
+  ...AssetCatalog.I.stems(protagonisWanitaDir),
+]..sort();
+
+String? protagonistPath(String id) =>
+    AssetCatalog.I.file(protagonisPriaDir, id) ??
+        AssetCatalog.I.file(protagonisWanitaDir, id);
 
 String randomProtagonist() {
-  final s = AssetCatalog.I.stems(protagonisDir);
+  final s = protagonistStems();
   return s.isEmpty ? 'default' : s[Random().nextInt(s.length)];
 }
 
@@ -253,12 +266,13 @@ const kAntagonisAspect = kTallAspect;
 /// powernight), kemampuan (biru), dan punggungnya. Item protagonis tetap lama.
 double cardAspectFor(String? path) {
   if (path == null) return kTallAspect;
-  if (path.startsWith(protagonisDir) ||
-      path.startsWith(antagonisDir) ||
-      path.startsWith(kartuAntagDir) ||
-      path.startsWith(kartuMalamDir) ||
-      path.startsWith(kartuSiangDir) ||
-      path.startsWith(kemampuanDir)) {
+  // Akhiran '/' agar ItemAnta tidak ikut mencocokkan ItemAntaNight, dst.
+  if (path.startsWith('$protagonisDir/') ||
+      path.startsWith('$antagonisDir/') ||
+      path.startsWith('$kartuAntagDir/') ||
+      path.startsWith('$kartuMalamDir/') ||
+      path.startsWith('$kartuSiangDir/') ||
+      path.startsWith('$kemampuanDir/')) {
     return kTallAspect;
   }
   if (path.startsWith(punggungDir)) {
@@ -283,10 +297,29 @@ double cardAspectForDef(Map<String, dynamic>? def) {
 /// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
   if (stem == 'default') return 'Belum memilih';
+  final isFemale = stem.startsWith('wanita-');
   final base = stem
+      .replaceAll(RegExp(r'^(pria|wanita)-'), '')
       .replaceAll(RegExp(r'\d+$'), '')
       .replaceAll(RegExp(r'(pria|wanita)$'), '');
+  if (base == 'peraga') return isFemale ? 'Peragawati' : 'Peragawan';
   const names = {
+    // kartu CharPro (pria/wanita)
+    'ilmuwan': 'Ilmuwan Desa',
+    'mastersauna': 'Master Sauna',
+    'matamata': 'Mata-mata',
+    'nelayanlautdalam': 'Nelayan Laut Dalam',
+    'pandaibesi': 'Pandai Besi',
+    'pemahatbatu': 'Pemahat Batu',
+    'penambangemas': 'Penambang Emas',
+    'penari': 'Penari',
+    'pengukirkayu': 'Pengukir Kayu',
+    'penjelajah': 'Penjelajah',
+    'peracik': 'Peracik',
+    'peselancar': 'Peselancar',
+    'peternakkelinci': 'Peternak Kelinci',
+    'tukangdaging': 'Tukang Daging',
+    'pengajar': 'Pengajar',
     // kartu baru
     'bangsawan-bangsawan': 'Bangsawan',
     'bangsawan-gouverneur': 'Gubernur',

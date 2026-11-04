@@ -90,6 +90,13 @@ class Sfx with WidgetsBindingObserver {
   AudioPlayer? _nar;
   Object? _narOwner;
   StreamSubscription<void>? _narSub;
+  Completer<void>? _narDone;
+  double _narVol = 1.0;
+
+  /// Selesai saat narasi yang sedang berjalan habis (atau dihentikan).
+  /// Langsung selesai bila tidak ada narasi (mis. suara dibisukan), jadi
+  /// aman ditunggu tanpa memeriksa apa pun dulu.
+  Future<void> get narrationDone => _narDone?.future ?? Future<void>.value();
 
   bool _inited = false;
   bool _paused = false;
@@ -276,6 +283,8 @@ class Sfx with WidgetsBindingObserver {
     final p = AudioPlayer();
     _nar = p;
     _narOwner = owner;
+    _narVol = s.volume;
+    _narDone = Completer<void>();
     _kick(); // musik meredup
     try {
       await p.setReleaseMode(ReleaseMode.stop);
@@ -296,6 +305,22 @@ class Sfx with WidgetsBindingObserver {
     }
   }
 
+  /// Pelankan narasi sampai senyap lalu hentikan (bukan dipotong mendadak).
+  /// Dipakai saat semua pemain sepakat melewati cerita.
+  Future<void> fadeOutNarration({int ms = 450}) async {
+    final p = _nar;
+    if (p == null) return;
+    const steps = 9;
+    for (var i = steps - 1; i >= 0; i--) {
+      if (!identical(_nar, p)) return;
+      try {
+        await p.setVolume(_narVol * i / steps);
+      } catch (_) {}
+      await Future<void>.delayed(Duration(milliseconds: ms ~/ steps));
+    }
+    if (identical(_nar, p)) await stopNarration();
+  }
+
   /// Hentikan narasi; musik latar naik lagi.
   Future<void> stopNarration() async {
     final p = _nar;
@@ -303,6 +328,9 @@ class Sfx with WidgetsBindingObserver {
     _narOwner = null;
     _narSub?.cancel();
     _narSub = null;
+    final done = _narDone;
+    _narDone = null;
+    if (done != null && !done.isCompleted) done.complete();
     _kick();
     if (p == null) return;
     try {

@@ -1106,7 +1106,7 @@ class _Char {
 
 List<_Char> _protagonists() {
   final stems =
-  AssetCatalog.I.stems(protagonisDir).where((s) => s != 'default').toList();
+  protagonistStems().where((s) => s != 'default').toList();
   final counts = <String, int>{};
   for (final s in stems) {
     counts[characterTitle(s)] = (counts[characterTitle(s)] ?? 0) + 1;
