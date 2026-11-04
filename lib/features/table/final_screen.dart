@@ -85,6 +85,7 @@ const _lastPage = 6;
 const _endReasonText = {
   'daun_penuh': 'Daun Hayu kembali penuh.',
   'tertangkap': 'Si Terbisik berhasil ditangkap.',
+  'panah': 'Si Terbisik tumbang oleh Busur Terakhir.',
   'antag_left': 'Si Terbisik meninggalkan desa.',
   'daun_habis': 'Daun terakhir Hayu gugur.',
   'waktu_habis': 'Waktu habis sebelum desa pulih.',

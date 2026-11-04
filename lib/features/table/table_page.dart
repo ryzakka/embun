@@ -1570,6 +1570,7 @@ class _TablePageState extends State<TablePage> {
         events: events,
         trades: trades,
         dark: showAsAntag,
+        isAntag: isAntag,
         onHandChanged: _refreshHand,
       );
     }

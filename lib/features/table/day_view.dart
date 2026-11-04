@@ -8,6 +8,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import 'bow_dialog.dart';
 import 'card_tile.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
@@ -86,6 +87,10 @@ class DayView extends StatefulWidget {
   /// bulir hitam, bukan tetes embun.
   final bool dark;
 
+  /// Peran asli pemain ini Si Terbisik (meski sedang tampil sebagai warga).
+  /// Dipakai agar Busur Terakhir tampil abu-abu dan tak bisa dipakai.
+  final bool isAntag;
+
   /// Kunci untuk tab / panel Meja bila induk perlu tahu posisinya (animasi
   /// kartu masuk / keluar dari pemain lain). Opsional.
   final GlobalKey? mejaKey;
@@ -112,6 +117,7 @@ class DayView extends StatefulWidget {
     required this.events,
     required this.trades,
     this.dark = false,
+    this.isAntag = false,
     this.mejaKey,
     this.onHandChanged,
   });
@@ -230,22 +236,49 @@ class _DayViewState extends State<DayView>
   }
 
   /// Kartu kuning di Meja: ketuk -> pratinjau dengan tombol "Pakai sekarang".
+  bool _isBow(Map<String, dynamic>? def) {
+    final e = def?['effect'];
+    return e is Map && e['day'] == 'shoot';
+  }
+
   Future<void> _useDayCard(Map<String, dynamic> h) async {
     final def = widget.defs[h['card_id']];
     if (def == null) return;
+    final bow = _isBow(def);
+
+    // Busur Terakhir hanya untuk warga: di tangan Si Terbisik ia mati.
+    if (bow && widget.isAntag) {
+      await showCardPreview(context, def);
+      if (mounted) _toast('Hanya warga desa yang bisa memakai Busur Terakhir.');
+      return;
+    }
+
     await showCardPreview(
       context,
       def,
-      actionLabel: 'Pakai sekarang',
-      onAction: () => _run(() async {
-        final r =
-        await widget.repo.useDayCard(widget.gameId, h['id'] as String);
-        if (!mounted) return;
-        _toast('${r['message'] ?? 'Kartu dipakai'}');
-        if (r['mode'] == 'reroll_market') await _loadOffers();
-        await _loadGuards();
-        widget.onHandChanged?.call();
-      }),
+      actionLabel: bow ? 'Bidik' : 'Pakai sekarang',
+      onAction: () async {
+        String? target;
+        if (bow) {
+          if (!mounted) return;
+          target = await showBowTargetDialog(
+            context,
+            players: widget.players,
+            myId: widget.repo.myId,
+          );
+          if (target == null) return;
+        }
+        await _run(() async {
+          final r = await widget.repo
+              .useDayCard(widget.gameId, h['id'] as String, target: target);
+          if (!mounted) return;
+          if (r['mode'] == 'shoot') HapticFeedback.heavyImpact();
+          _toast('${r['message'] ?? 'Kartu dipakai'}');
+          if (r['mode'] == 'reroll_market') await _loadOffers();
+          await _loadGuards();
+          widget.onHandChanged?.call();
+        });
+      },
     );
   }
 
@@ -266,7 +299,7 @@ class _DayViewState extends State<DayView>
             StatusTag(
               text: q['kind'] == 'mirror'
                   ? 'Cermin Kecil aktif'
-                  : 'Perlindungan Malam aktif',
+                  : 'Perisai Malam aktif',
               color: EmbunColors.gold,
               icon: q['kind'] == 'mirror'
                   ? Icons.flip_rounded
@@ -1178,6 +1211,8 @@ class _DayViewState extends State<DayView>
                         def: widget.defs[hand[i]['card_id']],
                         fallbackName: hand[i]['card_id'] as String,
                         width: g.w,
+                        gray: widget.isAntag &&
+                            _isBow(widget.defs[hand[i]['card_id']]),
                         onTap: widget.defs[hand[i]['card_id']]?['kind'] == 'siang'
                             ? () => _useDayCard(hand[i])
                             : null,

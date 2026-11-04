@@ -124,6 +124,9 @@ class CardTile extends StatelessWidget {
   final String? badge; // mis. 'Terbeli', menggantikan harga
   final VoidCallback? onTap;
 
+  /// Tampil abu-abu (kartu yang tak bisa dipakai pemegangnya).
+  final bool gray;
+
   /// Lebar tile; tinggi = lebar * [aspect]. Dihitung dari ruang yang tersedia
   /// supaya pas di ponsel maupun desktop.
   final double width;
@@ -142,6 +145,7 @@ class CardTile extends StatelessWidget {
     this.costOverride,
     this.badge,
     this.onTap,
+    this.gray = false,
     this.width = 140,
     this.aspect,
   });
@@ -162,34 +166,37 @@ class CardTile extends StatelessWidget {
         onTap!();
       },
       onLongPress: d == null ? null : () => showCardPreview(context, d),
-      child: Opacity(
-        opacity: dim ? 0.45 : 1,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: width,
-          height: h,
-          transform: Matrix4.translationValues(0, selected ? -10 : 0, 0),
-          padding: path == null ? const EdgeInsets.all(10) : EdgeInsets.zero,
-          decoration: BoxDecoration(
-            color: bad ? const Color(0xFF241F2E) : const Color(0xFF1F3A33),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected
-                  ? EmbunColors.gold
-                  : EmbunColors.goldDim.withValues(alpha: 0.6),
-              width: selected ? 3 : 1.2,
+      child: _Grayscale(
+        on: gray,
+        child: Opacity(
+          opacity: dim ? 0.45 : 1,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: width,
+            height: h,
+            transform: Matrix4.translationValues(0, selected ? -10 : 0, 0),
+            padding: path == null ? const EdgeInsets.all(10) : EdgeInsets.zero,
+            decoration: BoxDecoration(
+              color: bad ? const Color(0xFF241F2E) : const Color(0xFF1F3A33),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected
+                    ? EmbunColors.gold
+                    : EmbunColors.goldDim.withValues(alpha: 0.6),
+                width: selected ? 3 : 1.2,
+              ),
+              boxShadow: selected
+                  ? [
+                BoxShadow(
+                    color: EmbunColors.gold.withValues(alpha: 0.45),
+                    blurRadius: 14),
+              ]
+                  : null,
             ),
-            boxShadow: selected
-                ? [
-              BoxShadow(
-                  color: EmbunColors.gold.withValues(alpha: 0.45),
-                  blurRadius: 14),
-            ]
-                : null,
+            child: path == null
+                ? _textBody(bad, cost)
+                : _artBody(path, bad, cost, d != null),
           ),
-          child: path == null
-              ? _textBody(bad, cost)
-              : _artBody(path, bad, cost, d != null),
         ),
       ),
     );
@@ -291,4 +298,24 @@ class CardBack extends StatelessWidget {
       child: GameImage(path: itemBackPath(dark: dark), cacheWidth: 200),
     ),
   );
+}
+
+/// Mengubah anak menjadi hitam-putih bila [on].
+class _Grayscale extends StatelessWidget {
+  final bool on;
+  final Widget child;
+  const _Grayscale({required this.on, required this.child});
+
+  @override
+  Widget build(BuildContext context) => on
+      ? ColorFiltered(
+    colorFilter: const ColorFilter.matrix(<double>[
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0, 0, 0, 1, 0,
+    ]),
+    child: child,
+  )
+      : child;
 }

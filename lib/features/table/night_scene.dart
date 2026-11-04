@@ -142,6 +142,8 @@ class _NightSceneState extends State<NightScene>
           HapticFeedback.heavyImpact();
           Future.delayed(
               const Duration(milliseconds: 140), HapticFeedback.heavyImpact);
+        } else if (k == 'bow') {
+          HapticFeedback.heavyImpact();
         } else if (k == 'private') {
           HapticFeedback.mediumImpact();
         } else {
@@ -486,6 +488,10 @@ class _NightSceneState extends State<NightScene>
         color = EmbunColors.blood;
         icon = Icons.warning_amber_rounded;
         tag = 'BAHAYA';
+      case 'bow':
+        color = EmbunColors.gold;
+        icon = Icons.gps_fixed_rounded;
+        tag = 'BUSUR TERAKHIR';
       case 'private':
         color = EmbunColors.gold;
         icon = Icons.lock_rounded;

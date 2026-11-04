@@ -319,9 +319,10 @@ class GameRepository {
   }
 
   /// Memakai kartu kuning (hari biasa). Hasil: {mode, message}.
-  Future<Map<String, dynamic>> useDayCard(String gameId, String handId) async {
+  Future<Map<String, dynamic>> useDayCard(String gameId, String handId,
+      {String? target}) async {
     final r = await _db.rpc('use_day_card',
-        params: {'p_game': gameId, 'p_hand_id': handId});
+        params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target});
     return Map<String, dynamic>.from(r as Map);
   }
 

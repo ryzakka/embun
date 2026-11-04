@@ -252,7 +252,7 @@ class _EndingCinematicState extends State<EndingCinematic>
     if (_win) {
       if (r == 'antag_left') return _Kind.left;
       if (r == 'daun_penuh') return _Kind.bloom;
-      if (r == 'tertangkap') return tier();
+      if (r == 'tertangkap' || r == 'panah') return tier();
       return l >= 30 ? _Kind.bloom : tier(); // tanpa data: simpulkan dari daun
     }
     if (r == 'waktu_habis') return _Kind.dusk;

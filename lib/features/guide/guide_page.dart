@@ -1297,9 +1297,10 @@ const _kindHelp = {
       'sasaran.',
   'siang':
   'Kartu kuning, hanya untuk warga. Ketuk di Meja pada hari biasa untuk '
-      'memakainya saat itu juga: mengacak ulang pasar, atau menjaga dirimu '
-      'dari serangan malam sampai akhir sesi. Pemakaiannya tidak '
-      'diumumkan ke siapa pun.',
+      'memakainya saat itu juga: mengacak ulang pasar, menjaga dirimu '
+      'dari serangan malam sampai akhir sesi, menambah embun, atau '
+      'memulihkan satu nyawa, atau (Busur Terakhir, khusus warga) memanah '
+      'Si Terbisik. Pemakaiannya tidak diumumkan saat itu juga.',
 };
 
 class _ItemsTab extends StatefulWidget {
