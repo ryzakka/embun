@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/fx_shaders.dart';
 import '../common/scene_flow.dart';
+import '../common/sfx.dart';
 
 double _seg(double t, double a, double b) =>
     ((t - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -87,6 +89,12 @@ class _DayTransitionState extends State<DayTransition>
   final Set<int> _fired = {};
   bool _done = false;
 
+  /// Kabut fajar + bulir cahaya (prologue_fx.frag). Null = painter lama.
+  ui.FragmentShader? _fogFx;
+
+  /// Berkas cahaya matahari dari cakrawala (divine.frag mode 0). Null = tanpa.
+  ui.FragmentShader? _sunFx;
+
   bool get _offering => widget.day % widget.cycle == 0;
 
   Color get _warm => widget.dark
@@ -104,10 +112,18 @@ class _DayTransitionState extends State<DayTransition>
   @override
   void initState() {
     super.initState();
+    _fogFx = FxShaders.make(FxShaders.prologue);
+    _sunFx = FxShaders.make(FxShaders.divine);
     c.addListener(() {
       final t = c.value * _totalMs / _playMs;
-      if (t >= 0.04 && _fired.add(0)) HapticFeedback.lightImpact();
-      if (t >= _land && _fired.add(1)) HapticFeedback.mediumImpact();
+      if (t >= 0.04 && _fired.add(0)) {
+        HapticFeedback.lightImpact();
+        Sfx.I.playAny(Snd.winds, owner: this, tag: 'dawn-wind');
+      }
+      if (t >= _land && _fired.add(1)) {
+        HapticFeedback.mediumImpact();
+        Sfx.I.play(Snd.fairyGrow, owner: this, tag: 'dawn-land');
+      }
       if (t >= 0.68 && _fired.add(2)) HapticFeedback.selectionClick();
     });
     c.forward().whenComplete(_finish);
@@ -122,6 +138,9 @@ class _DayTransitionState extends State<DayTransition>
   @override
   void dispose() {
     c.dispose();
+    _fogFx?.dispose();
+    _sunFx?.dispose();
+    Sfx.I.release(this);
     super.dispose();
   }
 
@@ -417,7 +436,13 @@ class _DayTransitionState extends State<DayTransition>
                   ),
                   // bintang, bulan tenggelam, matahari terbit, sinar
                   CustomPaint(
-                    painter: _SkyPainter(t: t, warm: warm, seed: widget.day),
+                    painter: _SkyPainter(
+                      t: t,
+                      warm: warm,
+                      seed: widget.day,
+                      // Pendar bulat lama dikurangi bila berkas shader menyala.
+                      glow: _sunFx == null ? 1.0 : 0.5,
+                    ),
                   ),
                   // siluet desa + Hayu (menyambung dari layar malam)
                   if (reveal < 0.99)
@@ -450,8 +475,21 @@ class _DayTransitionState extends State<DayTransition>
                   ),
                   // kabut malam + butiran cahaya fajar
                   CustomPaint(
-                    painter: _MotesPainter(t: t, warm: warm, seed: widget.day),
+                    painter: _fogFx == null
+                        ? _MotesPainter(t: t, warm: warm, seed: widget.day)
+                        : _DawnFogPainter(
+                        shader: _fogFx!, t: t, sec: ms / 1000, warm: warm),
                   ),
+                  // berkas cahaya dari matahari yang terbit
+                  if (_sunFx != null)
+                    CustomPaint(
+                      painter: _SunRaysPainter(
+                          shader: _sunFx!,
+                          t: t,
+                          sec: ms / 1000,
+                          reveal: reveal,
+                          warm: warm),
+                    ),
                   // vinyet agar teks terbaca
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -503,7 +541,15 @@ class _SkyPainter extends CustomPainter {
   final double t;
   final Color warm;
   final int seed;
-  _SkyPainter({required this.t, required this.warm, required this.seed});
+
+  /// Pengali pendar bulat di sekitar matahari (1 = penuh).
+  final double glow;
+  _SkyPainter({
+    required this.t,
+    required this.warm,
+    required this.seed,
+    this.glow = 1.0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -571,7 +617,7 @@ class _SkyPainter extends CustomPainter {
       r * 5.5,
       Paint()
         ..shader = RadialGradient(colors: [
-          warm.withValues(alpha: 0.65 * sunT),
+          warm.withValues(alpha: 0.65 * sunT * glow),
           warm.withValues(alpha: 0),
         ]).createShader(Rect.fromCircle(center: c, radius: r * 5.5)),
     );
@@ -849,4 +895,106 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RingPainter old) => old.t != t;
+}
+
+void _setRgb(ui.FragmentShader s, int i, Color c) {
+  s
+    ..setFloat(i, c.r)
+    ..setFloat(i + 1, c.g)
+    ..setFloat(i + 2, c.b);
+}
+
+/// Kabut fajar dan bulir cahaya dari shaders/prologue_fx.frag, menggantikan
+/// [_MotesPainter]. Urutan setFloat HARUS sama dengan deklarasi uniform di
+/// berkas shader itu. Berkas cahayanya (uRays) sengaja 0: sumbernya di shader
+/// itu tetap di atas layar, jadi sinar matahari dipegang [_SunRaysPainter].
+/// Denyut (uPulse) dan gelombang kejut (uShock) adalah efek benih hitam
+/// berwarna ungu; keduanya dimatikan.
+class _DawnFogPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final double t, sec;
+  final Color warm;
+  const _DawnFogPainter({
+    required this.shader,
+    required this.t,
+    required this.sec,
+    required this.warm,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    // Kabut malam menipis menjelang matahari naik; bulir muncul setelahnya.
+    final fog = 0.55 * _seg(t, 0.0, 0.12) * (1 - _seg(t, 0.30, 0.66));
+    final motes = 0.9 * _seg(t, 0.5, 0.7);
+    final fogCol = Color.lerp(
+        const Color(0xFF9AA8CC), warm, 0.45 * _seg(t, 0.3, 0.6))!;
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, sec)
+      ..setFloat(3, t.clamp(0.0, 1.0).toDouble())
+      ..setFloat(4, fog)
+      ..setFloat(5, 0) // uRays
+      ..setFloat(6, motes)
+      ..setFloat(7, 0.45) // uLightX: sejajar dengan matahari
+      ..setFloat(8, -1) // uShock: mati
+      ..setFloat(9, 1) // uIntro
+      ..setFloat(10, 0) // uPulse: mati
+      ..setFloat(11, 0); // uDark
+    _setRgb(shader, 12, fogCol);
+    _setRgb(shader, 15, warm);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DawnFogPainter old) =>
+      old.t != t || old.sec != sec;
+}
+
+/// Berkas cahaya volumetrik dari matahari yang naik (shaders/divine.frag,
+/// mode 0, dilukis aditif). Pusatnya mengikuti piringan matahari di
+/// [_SkyPainter]. Setelah lanskap muncul, cahaya meredup supaya tidak
+/// bertabrakan dengan matahari pada gambar latar.
+class _SunRaysPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final double t, sec, reveal;
+  final Color warm;
+  const _SunRaysPainter({
+    required this.shader,
+    required this.t,
+    required this.sec,
+    required this.reveal,
+    required this.warm,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final sunT = Curves.easeOutCubic.transform(_seg(t, 0.15, 0.62));
+    final env = 0.9 * sunT * (1 - 0.65 * reveal);
+    if (env <= 0.01) return;
+    final c = Offset(size.width * 0.45, size.height * (0.98 - 0.52 * sunT));
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, sec)
+      ..setFloat(3, 0) // uMode 0 = berkas cahaya
+      ..setFloat(4, env)
+      ..setFloat(5, c.dx)
+      ..setFloat(6, c.dy)
+      ..setFloat(7, 0);
+    _setRgb(shader, 8, Color.lerp(warm, Colors.white, 0.35)!);
+    _setRgb(shader, 11, warm);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SunRaysPainter old) =>
+      old.t != t || old.sec != sec || old.reveal != reveal;
 }

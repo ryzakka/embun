@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' show max;
 import 'package:flutter/material.dart';
 import '../../data/announcement_repository.dart';
+import '../../data/app_info.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../common/art.dart';
@@ -84,6 +85,18 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     };
   }
 
+  /// Versi terbaru pada entri "pembaruan" yang lebih baru dari yang terpasang.
+  String? _newerVersion(List<Map<String, dynamic>> items) {
+    String? best;
+    for (final m in items) {
+      if (m['kind'] != 'pembaruan') continue;
+      final v = ((m['version'] as String?) ?? '').trim();
+      if (v.isEmpty || !AppInfo.isNewer(v)) continue;
+      if (best == null || AppInfo.compare(v, best) > 0) best = v;
+    }
+    return best;
+  }
+
   String _date(String? iso) {
     final d = DateTime.tryParse(iso ?? '')?.toLocal();
     return d == null ? '' : '${d.day} ${_months[d.month - 1]} ${d.year}';
@@ -147,7 +160,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   shadows: [Shadow(color: Colors.black, blurRadius: 10)],
                 ),
               ),
-              Text('Kabar desa dan log pembaruan',
+              Text('Log pembaruan  ·  versimu ${AppInfo.tag}',
                   style: TextStyle(fontSize: 12, color: Colors.white60)),
             ],
           ),
@@ -193,6 +206,18 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   icon: 'alert',
                   text: 'Gagal memuat ulang: ${errMsg(_error!)}',
                   accent: EmbunColors.blood,
+                ),
+              ),
+            ),
+          if (_newerVersion(items) case final v?)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: NoticeStrip(
+                  icon: 'info',
+                  text: 'Versi V$v sudah tersedia (versimu ${AppInfo.tag}). '
+                      'Muat ulang halaman atau perbarui aplikasimu.',
+                  accent: EmbunColors.gold,
                 ),
               ),
             ),
@@ -279,7 +304,8 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
 
     final meta = [
       isUpdate ? 'Pembaruan' : 'Pengumuman',
-      if (version.isNotEmpty) 'v$version',
+      if (version.isNotEmpty)
+        AppInfo.isCurrent(version) ? 'v$version (terpasang)' : 'v$version',
       _date(m['published_at'] as String?),
     ].where((e) => e.isNotEmpty).join('  ·  ');
 

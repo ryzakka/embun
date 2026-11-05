@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'data/app_info.dart';
 import 'data/asset_catalog.dart';
 import 'features/common/cloth_transition.dart';
 import 'features/common/fx_shaders.dart';
@@ -68,6 +69,30 @@ class _LauncherState extends State<_Launcher> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      const ColoredBox(color: kSceneInk, child: SizedBox.expand());
+  Widget build(BuildContext context) => Material(
+    color: kSceneInk,
+    child: SizedBox.expand(
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 28),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 700),
+              builder: (_, v, child) => Opacity(opacity: v, child: child),
+              child: Text(
+                AppInfo.tag,
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 4,
+                  color: EmbunColors.gold.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

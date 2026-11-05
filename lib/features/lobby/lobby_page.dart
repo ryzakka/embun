@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/announcement_repository.dart';
+import '../../data/app_info.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -398,7 +399,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.5.8',
+                                    AppInfo.titleLine,
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -473,6 +474,28 @@ class _LobbyPageState extends State<LobbyPage>
       ),
     );
   }
+
+  /// Nomor versi kecil di pojok menu; diketuk membuka Pengumuman.
+  Widget _versionFooter() => Positioned(
+    bottom: 8,
+    right: 12,
+    child: InkWell(
+      onTap: _openNews,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Text(
+          _unreadNews > 0 ? '${AppInfo.tag}  ·  ada kabar baru' : AppInfo.tag,
+          style: TextStyle(
+            fontSize: 11.5,
+            letterSpacing: 1.2,
+            color: _unreadNews > 0 ? EmbunColors.gold : Colors.white54,
+            shadows: const [Shadow(color: Colors.black, blurRadius: 8)],
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _menu() {
     return LayoutBuilder(builder: (context, c) {
@@ -598,6 +621,7 @@ class _LobbyPageState extends State<LobbyPage>
                   child: _backButton(
                           () => setState(() => _stage = _Stage.title)),
                 ),
+                _versionFooter(),
                 if (wide)
                   Positioned.fill(
                     child: Padding(
