@@ -15,7 +15,7 @@ import '../common/shader_fx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
-import 'public_rooms_sheet.dart';
+import 'public_rooms_page.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
@@ -139,23 +139,37 @@ class _LobbyPageState extends State<LobbyPage>
     });
   }
 
-  /// Menu "Ruangan Publik": buka layar gabung, lalu langsung tampilkan daftar.
+  /// Daftar ruangan publik (layar penuh). Nama diisi dan gabung dilakukan di
+  /// dalam layar itu; bila berhasil, layar menutup dan ruangan tampil di sini.
   void _openPublicList() {
-    _openEntry(true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _browsePublic();
-    });
+    HapticFeedback.selectionClick();
+    Sfx.I.playAny(Snd.winds);
+    Navigator.of(context).push(
+      ClothTransition.route<void>(
+        PublicRoomsPage(
+          repo: repo,
+          nameCtrl: nameCtrl,
+          onJoin: _joinPublic,
+          onCreate: () {
+            setState(() => _createPublic = true);
+            _openEntry(false);
+          },
+        ),
+        style: ClothStyle.daunHayu,
+      ),
+    );
   }
 
-  Future<void> _browsePublic() async {
-    final code = await showPublicRooms(context, repo);
-    if (code == null || !mounted) return;
-    codeCtrl.text = code;
-    if (nameCtrl.text.trim().isEmpty) {
-      _toast('Kode $code terisi. Isi namamu, lalu tekan Gabung');
-      return;
+  /// Null bila berhasil bergabung; kalau gagal, pesan galatnya.
+  Future<String?> _joinPublic(String code) async {
+    try {
+      final id =
+      await repo.joinGame(code, nameCtrl.text, randomProtagonist());
+      if (mounted) setState(() => gameId = id);
+      return null;
+    } catch (e) {
+      return errMsg(e);
     }
-    _run((card) => repo.joinGame(code, nameCtrl.text, card));
   }
 
   Future<void> _setPublic(String id, bool v) async {
@@ -358,7 +372,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.5.5',
+                                    'BALAI PERTEMUAN DESA V2.5.7',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -703,7 +717,7 @@ class _LobbyPageState extends State<LobbyPage>
                 kind: EmbunButtonKind.secondary,
                 expand: true,
                 height: 46,
-                onPressed: busy ? null : _browsePublic,
+                onPressed: busy ? null : _openPublicList,
               ),
             ],
           ],
@@ -1258,8 +1272,7 @@ class _LobbyPageState extends State<LobbyPage>
     ),
     child: Row(
       children: [
-        Icon(pub ? Icons.public_rounded : Icons.lock_outline_rounded,
-            size: 20, color: pub ? EmbunColors.leaf : Colors.white54),
+        GameIcon(pub ? 'persona' : 'lock', size: 30),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
