@@ -15,6 +15,7 @@ import '../common/shader_fx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
+import 'public_rooms_sheet.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
@@ -52,6 +53,7 @@ class _LobbyPageState extends State<LobbyPage>
 
   late _Stage _stage;
   bool _joinMode = false;
+  bool _createPublic = false;
   bool _booted = false;
 
   // Jam berkelanjutan untuk latar bergerak, kunang-kunang, dan melayang.
@@ -135,6 +137,33 @@ class _LobbyPageState extends State<LobbyPage>
       _joinMode = join;
       _stage = _Stage.entry;
     });
+  }
+
+  /// Menu "Ruangan Publik": buka layar gabung, lalu langsung tampilkan daftar.
+  void _openPublicList() {
+    _openEntry(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _browsePublic();
+    });
+  }
+
+  Future<void> _browsePublic() async {
+    final code = await showPublicRooms(context, repo);
+    if (code == null || !mounted) return;
+    codeCtrl.text = code;
+    if (nameCtrl.text.trim().isEmpty) {
+      _toast('Kode $code terisi. Isi namamu, lalu tekan Gabung');
+      return;
+    }
+    _run((card) => repo.joinGame(code, nameCtrl.text, card));
+  }
+
+  Future<void> _setPublic(String id, bool v) async {
+    try {
+      await repo.setRoomPublic(id, v);
+    } catch (e) {
+      _toast(errMsg(e));
+    }
   }
 
   // ====================== kerangka & latar ======================
@@ -329,7 +358,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.5.3',
+                                    'BALAI PERTEMUAN DESA V2.5.5',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -423,12 +452,18 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: () => _openEntry(true)),
         _MenuTile(
             index: 2,
+            icon: 'persona',
+            label: 'Ruangan Publik',
+            center: !wide,
+            onTap: _openPublicList),
+        _MenuTile(
+            index: 3,
             icon: 'info',
             label: 'Panduan',
             center: !wide,
             onTap: _openGuide),
         _MenuTile(
-            index: 3,
+            index: 4,
             icon: 'plus',
             label: 'Permainan Lainnya',
             center: !wide,
@@ -436,7 +471,7 @@ class _LobbyPageState extends State<LobbyPage>
         ValueListenableBuilder<bool>(
           valueListenable: Sfx.I.muted,
           builder: (_, m, _) => _MenuTile(
-              index: 4,
+              index: 5,
               icon: 'announcement',
               label: m ? 'Suara: Mati' : 'Suara: Nyala',
               center: !wide,
@@ -445,7 +480,7 @@ class _LobbyPageState extends State<LobbyPage>
         ValueListenableBuilder<bool>(
           valueListenable: ShaderFx.enabled,
           builder: (_, on, _) => _MenuTile(
-              index: 5,
+              index: 6,
               icon: 'show',
               label: on ? 'Efek Visual: Nyala' : 'Efek Visual: Mati',
               center: !wide,
@@ -628,6 +663,19 @@ class _LobbyPageState extends State<LobbyPage>
                 ),
               ),
             ],
+            if (!join)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _createPublic,
+                onChanged:
+                busy ? null : (v) => setState(() => _createPublic = v),
+                title: const Text('Ruangan publik'),
+                subtitle: const Text(
+                  'Tampil di daftar supaya orang lain bisa bergabung. '
+                      'Matikan untuk ruangan privat (hanya lewat kode).',
+                  style: TextStyle(fontSize: 11.5, color: Colors.white60),
+                ),
+              ),
             const SizedBox(height: 14),
             EmbunButton(
               label: join ? 'Gabung' : 'Buat Ruangan',
@@ -643,9 +691,21 @@ class _LobbyPageState extends State<LobbyPage>
                 _run((card) => repo.joinGame(
                     codeCtrl.text.trim(), nameCtrl.text, card));
               }
-                  : () =>
-                  _run((card) => repo.createGame(nameCtrl.text, card)),
+                  : () => _run((card) => repo.createGame(
+                  nameCtrl.text, card,
+                  isPublic: _createPublic)),
             ),
+            if (join) ...[
+              const SizedBox(height: 8),
+              EmbunButton(
+                label: 'Cari ruangan publik',
+                icon: 'persona',
+                kind: EmbunButtonKind.secondary,
+                expand: true,
+                height: 46,
+                onPressed: busy ? null : _browsePublic,
+              ),
+            ],
           ],
         ),
       ),
@@ -799,7 +859,9 @@ class _LobbyPageState extends State<LobbyPage>
       ),
       const SizedBox(height: 10),
       _codeHeader(game['code'] as String),
-      const SizedBox(height: 18),
+      const SizedBox(height: 8),
+      _visibilityRow(id, game['is_public'] == true, isHost),
+      const SizedBox(height: 14),
       SectionHeader(
         icon: 'persona',
         title: 'Pemain ${players.length}/$_maxPlayers · siap $readyN',
@@ -1186,6 +1248,32 @@ class _LobbyPageState extends State<LobbyPage>
       );
     });
   }
+
+  Widget _visibilityRow(String id, bool pub, bool isHost) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.3)),
+    ),
+    child: Row(
+      children: [
+        Icon(pub ? Icons.public_rounded : Icons.lock_outline_rounded,
+            size: 20, color: pub ? EmbunColors.leaf : Colors.white54),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            pub
+                ? 'Ruangan publik: tampil di daftar'
+                : 'Ruangan privat: hanya lewat kode',
+            style: const TextStyle(fontSize: 12.5, color: Colors.white70),
+          ),
+        ),
+        if (isHost)
+          Switch(value: pub, onChanged: (v) => _setPublic(id, v)),
+      ],
+    ),
+  );
 
   Widget _codeHeader(String code) => Container(
     padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),

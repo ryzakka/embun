@@ -12,10 +12,25 @@ class LobbyRepository {
     }
   }
 
-  Future<String> createGame(String name, String card) async {
+  Future<String> createGame(String name, String card,
+      {bool isPublic = false}) async {
     await ensureSignedIn();
-    return await _db.rpc('create_game',
-        params: {'p_name': name, 'p_card': card}) as String;
+    return await _db.rpc('create_game', params: {
+      'p_name': name,
+      'p_card': card,
+      'p_public': isPublic,
+    }) as String;
+  }
+
+  /// Host: ubah ruangan lobi menjadi publik / privat.
+  Future<void> setRoomPublic(String gameId, bool value) =>
+      _db.rpc('set_room_public', params: {'p_game': gameId, 'p_public': value});
+
+  /// Ruangan publik yang masih bisa dimasuki (lobi, belum penuh).
+  Future<List<Map<String, dynamic>>> publicGames() async {
+    await ensureSignedIn();
+    final rows = await _db.rpc('list_public_games') as List;
+    return [for (final x in rows) Map<String, dynamic>.from(x as Map)];
   }
 
   Future<String> joinGame(String code, String name, String card) async {
