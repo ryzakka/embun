@@ -60,6 +60,10 @@ class VoteRevealScene extends StatefulWidget {
   State<VoteRevealScene> createState() => _VoteRevealSceneState();
 }
 
+/// Suara "Kabut" dari kartu Fitnah: bukan pemain, tak dihitung dalam jumlah
+/// pemilih, tetapi dihitung sebagai satu suara untuk sasarannya.
+const _kFogId = '00000000-0000-0000-0000-000000000000';
+
 class _Person {
   final String id;
   final String name;
@@ -121,12 +125,13 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     final rows = widget.rows;
     _votes = [for (final r in rows) if (r['target_id'] != null) r];
     _abstain = [for (final r in rows) if (r['target_id'] == null) r];
-    _total = rows.length;
+    _total = rows.where((r) => r['voter_id'] != _kFogId).length;
 
     final seen = <String>{};
     final people = <_Person>[];
     for (final r in rows) {
       final id = r['voter_id'] as String;
+      if (id == _kFogId) continue;
       if (seen.add(id)) {
         people.add(_Person(id, '${r['voter_name']}', r['voter_card'] as String?));
       }
@@ -660,16 +665,22 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
                 card: v['voter_card'] as String?,
                 // Patuhilah Padaku: kartu palu hakim yang masuk, bukan
                 // kartu karakter pemilih.
-                artPath: _weightOf(v) >= 2
+                artPath: v['voter_id'] == _kFogId
+                    ? AssetCatalog.I.file(kartuMalamDir, 'pindaisalah')
+                    : (_weightOf(v) >= 2
                     ? AssetCatalog.I.file(kemampuanDir, 'kemampuan6')
-                    : null,
+                    : null),
                 width: cardW,
-                tag: _weightOf(v) >= 2
+                tag: v['voter_id'] == _kFogId
+                    ? 'Fitnah'
+                    : (_weightOf(v) >= 2
                     ? (voterMine ? 'Suaramu x2' : 'Palu x2')
-                    : (voterMine ? 'Suaramu' : null),
-                glow: _weightOf(v) >= 2
+                    : (voterMine ? 'Suaramu' : null)),
+                glow: v['voter_id'] == _kFogId
+                    ? EmbunColors.mist
+                    : (_weightOf(v) >= 2
                     ? EmbunColors.gold
-                    : (voterMine ? EmbunColors.gold : EmbunColors.leaf),
+                    : (voterMine ? EmbunColors.gold : EmbunColors.leaf)),
                 ring: voterMine,
               ),
             ),

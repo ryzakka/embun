@@ -246,10 +246,10 @@ class _DayViewState extends State<DayView>
     if (def == null) return;
     final bow = _isBow(def);
 
-    // Busur Terakhir hanya untuk warga: di tangan Si Terbisik ia mati.
-    if (bow && widget.isAntag) {
+    // Kartu kuning warga di tangan Si Terbisik (hasil curian) tak bisa dipakai.
+    if (widget.isAntag && def['side'] == 'warga') {
       await showCardPreview(context, def);
-      if (mounted) _toast('Hanya warga desa yang bisa memakai Busur Terakhir.');
+      if (mounted) _toast('Kartu warga tidak bisa dipakai Si Terbisik.');
       return;
     }
 
@@ -297,13 +297,17 @@ class _DayViewState extends State<DayView>
         children: [
           for (final q in active)
             StatusTag(
-              text: q['kind'] == 'mirror'
-                  ? 'Cermin Kecil aktif'
-                  : 'Perisai Malam aktif',
+              text: switch (q['kind']) {
+                'mirror' => 'Cermin Kecil aktif',
+                'accuse' => 'Perisai Tuduhan aktif',
+                _ => 'Perisai Malam aktif',
+              },
               color: EmbunColors.gold,
-              icon: q['kind'] == 'mirror'
-                  ? Icons.flip_rounded
-                  : Icons.shield_rounded,
+              icon: switch (q['kind']) {
+                'mirror' => Icons.flip_rounded,
+                'accuse' => Icons.gavel_rounded,
+                _ => Icons.shield_rounded,
+              },
               fontSize: 11,
             ),
         ],
@@ -1212,7 +1216,8 @@ class _DayViewState extends State<DayView>
                         fallbackName: hand[i]['card_id'] as String,
                         width: g.w,
                         gray: widget.isAntag &&
-                            _isBow(widget.defs[hand[i]['card_id']]),
+                            widget.defs[hand[i]['card_id']]?['kind'] == 'siang' &&
+                            widget.defs[hand[i]['card_id']]?['side'] == 'warga',
                         onTap: widget.defs[hand[i]['card_id']]?['kind'] == 'siang'
                             ? () => _useDayCard(hand[i])
                             : null,

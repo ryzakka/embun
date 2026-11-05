@@ -1562,7 +1562,11 @@ class _TablePageState extends State<TablePage> {
         gameId: widget.gameId,
         day: day,
         priceMod: (g['price_mod'] as int?) ?? 0,
-        extraBuy: (g['extra_buy'] as int?) ?? 0,
+        // Jatah tambahan dari kejadian desa + dari Keranjang Baru (pribadi).
+        extraBuy: ((g['extra_buy'] as int?) ?? 0) +
+            (myState?['extra_buy_day'] == day
+                ? ((myState?['extra_buy_n'] as int?) ?? 0)
+                : 0),
         hand: hand,
         defs: defs,
         balance: balance,

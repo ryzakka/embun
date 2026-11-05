@@ -1294,14 +1294,16 @@ const _kindHelp = {
   'penguat':
   'Menaikkan laju embun (atau bulir hitam) pemakainya untuk seterusnya.',
   'malam':
-  'Dilancarkan Si Terbisik saat malam tiba: menyedot embun, membakar '
-      'atau mencuri kartu, menebalkan kabut, mengacaukan pemeriksaan, atau '
-      'menyamar. Semua pemain hanya mendengar bahwa ada serangan, tanpa '
-      'sasaran.',
+  'Kartu kuasa Si Terbisik (10 sampai 20 bulir hitam, jadi perlu '
+      'ditabung), dilancarkan saat malam tiba: menyedot embun, membakar atau '
+      'mencuri kartu termahal, menyedot kemampuan, menebalkan kabut, '
+      'memutarbalik pemeriksaan, memfitnah, atau mengalihkan tuduhan. Semua '
+      'pemain hanya mendengar bahwa ada serangan, tanpa sasaran.',
   'siang':
-  'Kartu kuning, hanya untuk warga. Ketuk di Meja pada hari biasa untuk '
+  'Kartu kuning, hanya untuk warga (10 sampai 20 embun, jadi perlu '
+      'ditabung). Ketuk di Meja pada hari biasa untuk '
       'memakainya saat itu juga: mengacak ulang pasar, menjaga dirimu '
-      'dari serangan malam sampai akhir sesi, menambah embun, atau '
+      'dari serangan malam atau tuduhan sampai akhir sesi, menambah embun, atau '
       'memulihkan satu nyawa, atau (Busur Terakhir, khusus warga) memanah '
       'Si Terbisik. Pemakaiannya tidak diumumkan saat itu juga.',
 };
@@ -1536,9 +1538,10 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
     'sekali_pakai':
     'Dipakai dengan menekan tombol kemampuan di bilah atas meja (Patuhilah '
         'Padaku dipakai di layar voting). Hanya sekali, dan bisa disedot '
-        'sebelum terpakai oleh serangan malam Si Terbisik.',
+        'sebelum terpakai oleh Stetoskop Pencuri Hati milik Si Terbisik.',
     'pasif': 'Bekerja otomatis saat syaratnya terpenuhi. Tidak perlu '
-        'dipakai, dan tidak bisa disedot.',
+        'dipakai, tetapi tetap bisa disedot Stetoskop Pencuri Hati sebelum '
+        'sempat bekerja.',
   };
 
   @override
