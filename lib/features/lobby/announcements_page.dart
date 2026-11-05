@@ -478,7 +478,12 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lines = text.replaceAll('\r\n', '\n').split('\n');
+    // Toleran: "\n" yang terketik literal (mis. dari Table Editor Supabase)
+    // juga dianggap baris baru.
+    final lines = text
+        .replaceAll('\r\n', '\n')
+        .replaceAll(r'\n', '\n')
+        .split('\n');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
