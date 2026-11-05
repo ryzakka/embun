@@ -1064,6 +1064,8 @@ class _TablePageState extends State<TablePage> {
       phase: (game?['phase'] as String?) ?? '',
       jailed: me != null && isJailed(me, day),
       others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
+      everyone: _alive,
+      day: day,
       intro: intro,
       onUsed: () {
         _loadAbility();
@@ -1525,6 +1527,8 @@ class _TablePageState extends State<TablePage> {
         locked: iAmReady,
         readyCount: readyCount,
         total: alive.length,
+        hasHammer: !isAntag && abilityId == 'palu_hakim' && !abilityUsed,
+        onHammerUsed: () => _loadAbility(),
       );
     } else if (phase == 'offering') {
       body = OfferingView(

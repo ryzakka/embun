@@ -36,6 +36,10 @@ class VotingView extends StatefulWidget {
   final int readyCount;
   final int total;
 
+  /// Pemain memegang Patuhilah Padaku yang belum terpakai.
+  final bool hasHammer;
+  final VoidCallback? onHammerUsed;
+
   const VotingView({
     super.key,
     required this.repo,
@@ -45,6 +49,8 @@ class VotingView extends StatefulWidget {
     this.locked = false,
     this.readyCount = 0,
     this.total = 0,
+    this.hasHammer = false,
+    this.onHammerUsed,
   });
 
   @override
@@ -55,6 +61,7 @@ class _VotingViewState extends State<VotingView>
     with TickerProviderStateMixin {
   String? target;
   bool busy = false;
+  bool _hammer = false; // pakai Patuhilah Padaku pada suara ini
 
   // Segel suara: tampil sebentar sebelum suara benar-benar dikirim.
   bool stamping = false;
@@ -159,8 +166,10 @@ class _VotingViewState extends State<VotingView>
     if (!mounted) return;
     var ok = false;
     try {
-      await widget.repo.submitVote(widget.gameId, t);
+      final useHammer = widget.hasHammer && _hammer && t != null;
+      await widget.repo.submitVote(widget.gameId, t, hammer: useHammer);
       ok = true;
+      if (useHammer) widget.onHammerUsed?.call();
     } catch (e) {
       if (mounted) setState(() => _error = errMsg(e));
     } finally {
@@ -521,6 +530,42 @@ class _VotingViewState extends State<VotingView>
                   ),
                 ),
                 SizedBox(height: compact ? 6 : 8),
+                if (widget.hasHammer && target != null && !busy) ...[
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _hammer = !_hammer);
+                    },
+                    child: Padding(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.gavel_rounded,
+                              size: 20,
+                              color: _hammer ? EmbunColors.gold : Colors.white54),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Pakai Patuhilah Padaku: suaramu bernilai 2',
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: _hammer
+                                      ? EmbunColors.gold
+                                      : Colors.white60),
+                            ),
+                          ),
+                          Switch(
+                            value: _hammer,
+                            onChanged: (v) => setState(() => _hammer = v),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 4 : 6),
+                ],
                 if (stacked) ...[
                   lock,
                   const SizedBox(height: 8),

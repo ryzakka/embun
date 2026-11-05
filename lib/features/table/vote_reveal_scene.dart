@@ -233,7 +233,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
 
       setState(() {
         _stage = 3; // terhitung
-        _counts[tid] = (_counts[tid] ?? 0) + 1;
+        _counts[tid] = (_counts[tid] ?? 0) + _weightOf(v);
       });
       HapticFeedback.selectionClick();
 
@@ -291,6 +291,9 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   }
 
   // ------------------------- data bantu -------------------------
+
+  /// Bobot suara (2 bila pemilih memakai Patuhilah Padaku).
+  int _weightOf(Map<String, dynamic> v) => (v['weight'] as int?) ?? 1;
 
   _Person? _person(String? id) {
     for (final p in _people) {
@@ -655,9 +658,18 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
               child: _VoteCard(
                 name: _voterName(v),
                 card: v['voter_card'] as String?,
+                // Patuhilah Padaku: kartu palu hakim yang masuk, bukan
+                // kartu karakter pemilih.
+                artPath: _weightOf(v) >= 2
+                    ? AssetCatalog.I.file(kemampuanDir, 'kemampuan6')
+                    : null,
                 width: cardW,
-                tag: voterMine ? 'Suaramu' : null,
-                glow: voterMine ? EmbunColors.gold : EmbunColors.leaf,
+                tag: _weightOf(v) >= 2
+                    ? (voterMine ? 'Suaramu x2' : 'Palu x2')
+                    : (voterMine ? 'Suaramu' : null),
+                glow: _weightOf(v) >= 2
+                    ? EmbunColors.gold
+                    : (voterMine ? EmbunColors.gold : EmbunColors.leaf),
                 ring: voterMine,
               ),
             ),
@@ -1228,6 +1240,9 @@ class _EmberPainter extends CustomPainter {
 class _VoteCard extends StatelessWidget {
   final String name;
   final String? card;
+
+  /// Gambar kartu pengganti (mis. palu hakim); null = kartu karakter [card].
+  final String? artPath;
   final double width;
   final String? tag;
   final Color glow;
@@ -1236,6 +1251,7 @@ class _VoteCard extends StatelessWidget {
   const _VoteCard({
     required this.name,
     required this.card,
+    this.artPath,
     required this.width,
     required this.glow,
     this.tag,
@@ -1275,7 +1291,7 @@ class _VoteCard extends StatelessWidget {
                 : null,
           ),
           child: CardArt(
-            path: protagonistPath(card ?? 'default'),
+            path: artPath ?? protagonistPath(card ?? 'default'),
             width: width,
             glow: glow,
           ),

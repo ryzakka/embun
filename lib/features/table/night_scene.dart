@@ -144,6 +144,8 @@ class _NightSceneState extends State<NightScene>
               const Duration(milliseconds: 140), HapticFeedback.heavyImpact);
         } else if (k == 'bow') {
           HapticFeedback.heavyImpact();
+        } else if (k == 'skill') {
+          HapticFeedback.mediumImpact();
         } else if (k == 'private') {
           HapticFeedback.mediumImpact();
         } else {
@@ -492,6 +494,10 @@ class _NightSceneState extends State<NightScene>
         color = EmbunColors.gold;
         icon = Icons.gps_fixed_rounded;
         tag = 'BUSUR TERAKHIR';
+      case 'skill':
+        color = EmbunColors.mist;
+        icon = Icons.auto_awesome_rounded;
+        tag = 'HARGA KEMAMPUAN';
       case 'private':
         color = EmbunColors.gold;
         icon = Icons.lock_rounded;

@@ -8,6 +8,7 @@ import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../table/ability_panel.dart';
 import '../table/card_tile.dart';
 
 /// Panduan layar penuh dengan tiga tab: Cara Bermain, Karakter, Kartu Item.
@@ -25,7 +26,7 @@ class GuidePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       initialIndex: initialTab,
       child: Scaffold(
         backgroundColor: EmbunColors.bg,
@@ -75,6 +76,7 @@ class GuidePage extends StatelessWidget {
                       Tab(child: _TabLabel('Cara Bermain')),
                       Tab(child: _TabLabel('Karakter')),
                       Tab(child: _TabLabel('Kartu Item')),
+                      Tab(child: _TabLabel('Kemampuan')),
                     ],
                   ),
                   const Expanded(
@@ -83,6 +85,7 @@ class GuidePage extends StatelessWidget {
                         _HowToTab(),
                         _CharactersTab(),
                         _ItemsTab(),
+                        _AbilitiesTab(),
                       ],
                     ),
                   ),
@@ -1495,6 +1498,272 @@ class _ItemsTabState extends State<_ItemsTab>
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Center(
                     child: Text('Tidak ada kartu.',
+                        style: TextStyle(color: Colors.white54)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+// ====================================================================
+// Tab 4: Kemampuan
+// ====================================================================
+
+Map<String, Map<String, dynamic>>? _abilityCache;
+
+class _AbilitiesTab extends StatefulWidget {
+  const _AbilitiesTab();
+  @override
+  State<_AbilitiesTab> createState() => _AbilitiesTabState();
+}
+
+class _AbilitiesTabState extends State<_AbilitiesTab>
+    with AutomaticKeepAliveClientMixin {
+  Map<String, Map<String, dynamic>>? defs = _abilityCache;
+  String? error;
+  bool loading = false;
+  int kindIdx = 0; // 0 = semua, 1 = sekali pakai, 2 = pasif
+
+  static const _groups = ['sekali_pakai', 'pasif'];
+  static const _groupLabel = {'sekali_pakai': 'Sekali pakai', 'pasif': 'Pasif'};
+  static const _groupIcon = {'sekali_pakai': 'item', 'pasif': 'plus'};
+  static const _groupHelp = {
+    'sekali_pakai':
+    'Dipakai dengan menekan tombol kemampuan di bilah atas meja (Patuhilah '
+        'Padaku dipakai di layar voting). Hanya sekali, dan bisa disedot '
+        'sebelum terpakai oleh serangan malam Si Terbisik.',
+    'pasif': 'Bekerja otomatis saat syaratnya terpenuhi. Tidak perlu '
+        'dipakai, dan tidak bisa disedot.',
+  };
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (defs == null) _load();
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _fetch() async {
+    final repo = GameRepository();
+    try {
+      return await repo.abilityDefs();
+    } catch (_) {
+      await LobbyRepository().ensureSignedIn();
+      return await repo.abilityDefs();
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final d = await _fetch();
+      _abilityCache = d;
+      if (mounted) setState(() => defs = d);
+    } catch (e) {
+      if (mounted) setState(() => error = errMsg(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  /// Urut: sekali pakai dulu, lalu pasif; "Hanya Orang Biasa" paling akhir.
+  List<Map<String, dynamic>> _list(String kind) {
+    final list = [
+      for (final d in (defs ?? {}).values)
+        if (d['kind'] == kind) d,
+    ];
+    list.sort((a, b) {
+      final ab = a['id'] == 'biasa' ? 1 : 0;
+      final bb = b['id'] == 'biasa' ? 1 : 0;
+      if (ab != bb) return ab - bb;
+      return '${a['name']}'.compareTo('${b['name']}');
+    });
+    return list;
+  }
+
+  void _info(Map<String, dynamic> d) {
+    final id = '${d['id']}';
+    final accent = abilityAccent(id);
+    final kind = d['kind'] == 'pasif' ? 'Pasif' : 'Sekali pakai';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: OrnatePanel(
+            accent: accent,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(child: AbilityCardView(def: d, width: 170)),
+                  const SizedBox(height: 14),
+                  Text('${d['name']}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: accent)),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border:
+                        Border.all(color: accent.withValues(alpha: 0.7)),
+                      ),
+                      child: Text(kind,
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: accent)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text('${d['description']}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13, height: 1.4)),
+                  const Divider(height: 24),
+                  EmbunButton(
+                    label: 'Tutup',
+                    icon: 'silang',
+                    kind: EmbunButtonKind.secondary,
+                    height: 46,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(Map<String, dynamic> d, double w) {
+    final accent = abilityAccent('${d['id']}');
+    return GestureDetector(
+      onTap: () => _info(d),
+      child: Column(
+        children: [
+          AbilityCardView(def: d, width: w),
+          const SizedBox(height: 8),
+          _caption('${d['name']}', accent),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    if (defs == null) {
+      return Center(
+        child: error == null
+            ? const EmbunLoading(text: 'Memuat daftar kemampuan...')
+            : Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const GameIcon('alert', size: 56),
+              const SizedBox(height: 10),
+              Text(error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 14),
+              EmbunButton(
+                label: 'Coba lagi',
+                icon: 'wait',
+                onPressed: loading ? null : _load,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    int n(String k) => _list(k).length;
+    final total = n('sekali_pakai') + n('pasif');
+    final idx = kindIdx.clamp(0, _groups.length).toInt();
+    final shown = idx == 0 ? _groups : [_groups[idx - 1]];
+    const accent = EmbunColors.leaf;
+
+    return _Page(
+      children: [
+        _BookmarkPanel(
+          tabs: [
+            _BmTab('Kemampuan Warga', accent, count: '$total'),
+          ],
+          selected: 0,
+          onSelect: (_) {},
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _rich(
+                'Di awal permainan, tiap warga mendapat **satu kemampuan '
+                    'acak** yang tidak bisa dibeli dan tidak ada dua pemain '
+                    'yang sama. Jumlah kemampuan nyata tergantung banyak pemain '
+                    '(**1** untuk 4 sampai 5 pemain, **2** untuk 6 sampai 7, '
+                    '**3** untuk 8); sisanya hanyalah warga biasa. Si '
+                    'Terbisik tidak mendapat kemampuan. Ketuk kartu untuk '
+                    'membaca efeknya.',
+                size: 12.5,
+                color: Colors.white70,
+                bold: accent,
+              ),
+              const SizedBox(height: 12),
+              _Segmented(
+                labels: ['Semua', for (final k in _groups) _groupLabel[k]!],
+                counts: [total, for (final k in _groups) n(k)],
+                selected: idx,
+                accent: accent,
+                onSelect: (i) => setState(() => kindIdx = i),
+              ),
+              const SizedBox(height: 18),
+              for (final k in shown)
+                if (n(k) > 0) ...[
+                  _groupHeader(
+                    _groupIcon[k]!,
+                    _groupLabel[k]!,
+                    n(k),
+                    accent,
+                    help: _groupHelp[k],
+                  ),
+                      () {
+                    final list = _list(k);
+                    return _Grid(
+                      key: ValueKey('ab-$k-$idx'),
+                      count: list.length,
+                      minCell: 120,
+                      item: (i, w) => _tile(list[i], w),
+                    );
+                  }(),
+                  const SizedBox(height: 24),
+                ],
+              if (total == 0)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text('Belum ada kemampuan.',
                         style: TextStyle(color: Colors.white54)),
                   ),
                 ),

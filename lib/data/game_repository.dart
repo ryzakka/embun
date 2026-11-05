@@ -167,8 +167,15 @@ class GameRepository {
   Future<void> readyToVote(String gameId) =>
       _db.rpc('ready_to_vote', params: {'p_game': gameId});
 
-  Future<void> submitVote(String gameId, String? target) =>
-      _db.rpc('submit_vote', params: {'p_game': gameId, 'p_target': target});
+  /// [hammer] = pakai Patuhilah Padaku (suara bernilai 2). Hanya sah bila
+  /// pemain memegang kemampuannya dan [target] tidak kosong.
+  Future<void> submitVote(String gameId, String? target,
+      {bool hammer = false}) =>
+      _db.rpc('submit_vote', params: {
+        'p_game': gameId,
+        'p_target': target,
+        'p_hammer': hammer,
+      });
 
   /// Detak jantung + penegakan tenggat fase.
   Future<void> tick(String gameId) {
@@ -360,9 +367,9 @@ class GameRepository {
 
   /// Memakai kemampuan sekali pakai. Hasil: {result, message, ...}.
   Future<Map<String, dynamic>> useAbility(String gameId,
-      {String? target}) async {
+      {String? target, String? option}) async {
     final r = await _db.rpc('use_ability',
-        params: {'p_game': gameId, 'p_target': target});
+        params: {'p_game': gameId, 'p_target': target, 'p_option': option});
     return Map<String, dynamic>.from(r as Map);
   }
 

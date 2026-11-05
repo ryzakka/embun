@@ -6,6 +6,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'flip_card.dart';
+import 'player_status.dart';
 
 /// Kemampuan acak khusus warga. Definisinya ada di tabel `ability_definitions`;
 /// berkas ini hanya tampilan dan pemakaiannya.
@@ -15,6 +16,13 @@ IconData abilityIcon(String id) => switch (id) {
   'tumbuhan' => Icons.spa_rounded,
   'pedagang' => Icons.storefront_rounded,
   'lidah_manis' => Icons.record_voice_over_rounded,
+  'mata_suci' => Icons.remove_red_eye_rounded,
+  'kamera_rekaan' => Icons.photo_camera_rounded,
+  'arloji_khayal' => Icons.hourglass_top_rounded,
+  'jemari_magis' => Icons.back_hand_rounded,
+  'kebangkitan_arwah' => Icons.auto_awesome_rounded,
+  'palu_hakim' => Icons.gavel_rounded,
+  'kunci_segel' => Icons.vpn_key_rounded,
   _ => Icons.person_outline_rounded,
 };
 
@@ -23,11 +31,26 @@ Color abilityAccent(String id) => switch (id) {
   'tumbuhan' => EmbunColors.leaf,
   'pedagang' => EmbunColors.gold,
   'lidah_manis' => const Color(0xFFE8A0C8),
+  'mata_suci' => const Color(0xFF7FD8FF),
+  'kamera_rekaan' => const Color(0xFFB0B8C8),
+  'arloji_khayal' => const Color(0xFF8FA8FF),
+  'jemari_magis' => const Color(0xFF9BE08A),
+  'kebangkitan_arwah' => const Color(0xFFBFE8FF),
+  'palu_hakim' => const Color(0xFFD9A066),
+  'kunci_segel' => const Color(0xFFE8C766),
   _ => EmbunColors.goldDim,
 };
 
 /// Kemampuan yang dipakai dengan menekan tombol (selain itu bekerja sendiri).
-bool abilityIsManual(String id) => id == 'jangan_bohong' || id == 'pedagang';
+bool abilityIsManual(String id) => const {
+  'jangan_bohong',
+  'pedagang',
+  'mata_suci',
+  'kamera_rekaan',
+  'arloji_khayal',
+  'jemari_magis',
+  'kunci_segel',
+}.contains(id);
 
 /// Kartu kemampuan (rasio 3:4). Memakai gambar di assets/kartu/kemampuan bila
 /// ada; bila belum, tampil sebagai kartu berikon.
@@ -141,6 +164,11 @@ Future<void> showAbilityDialog(
       required String phase,
       required bool jailed,
       required List<Map<String, dynamic>> others,
+
+      /// Semua pemain yang masih di desa, termasuk diri sendiri (Kunci Segel
+      /// boleh membebaskan diri sendiri).
+      required List<Map<String, dynamic>> everyone,
+      required int day,
       required VoidCallback onUsed,
       bool intro = false,
     }) =>
@@ -155,6 +183,8 @@ Future<void> showAbilityDialog(
         phase: phase,
         jailed: jailed,
         others: others,
+        everyone: everyone,
+        day: day,
         onUsed: onUsed,
         intro: intro,
       ),
@@ -168,6 +198,8 @@ class _AbilityDialog extends StatefulWidget {
   final String phase;
   final bool jailed;
   final List<Map<String, dynamic>> others;
+  final List<Map<String, dynamic>> everyone;
+  final int day;
   final VoidCallback onUsed;
   final bool intro;
 
@@ -179,6 +211,8 @@ class _AbilityDialog extends StatefulWidget {
     required this.phase,
     required this.jailed,
     required this.others,
+    required this.everyone,
+    required this.day,
     required this.onUsed,
     required this.intro,
   });
@@ -196,13 +230,14 @@ class _AbilityDialogState extends State<_AbilityDialog> {
   String get _id => '${widget.def['id']}';
   bool get _usedNow => widget.used || result != null;
 
-  Future<void> _use() async {
+  Future<void> _use({String? option}) async {
     setState(() {
       busy = true;
       error = null;
     });
     try {
-      final r = await widget.repo.useAbility(widget.gameId, target: target);
+      final r = await widget.repo
+          .useAbility(widget.gameId, target: target, option: option);
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       setState(() => result = r);
@@ -228,7 +263,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
       'benar' => (EmbunColors.blood, Icons.warning_amber_rounded),
       'ragu' => (EmbunColors.gold, Icons.help_outline_rounded),
       'bukan' => (EmbunColors.leaf, Icons.check_circle_outline_rounded),
-      _ => (EmbunColors.gold, Icons.storefront_rounded),
+      _ => (abilityAccent(_id), abilityIcon(_id)),
     };
     final isRead = _id == 'jangan_bohong';
     return Container(
@@ -265,6 +300,183 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     );
   }
 
+  bool get _phaseOk => switch (_id) {
+    'mata_suci' => widget.phase == 'day' || widget.phase == 'discussion',
+    'kamera_rekaan' => widget.phase == 'day',
+    'arloji_khayal' =>
+    widget.phase == 'discussion' || widget.phase == 'voting',
+    'jemari_magis' => widget.phase == 'day',
+    'kunci_segel' => widget.phase == 'day',
+    _ => false,
+  };
+
+  String get _phaseHint => switch (_id) {
+    'mata_suci' => 'Mata batin hanya terbuka saat hari biasa atau musyawarah.',
+    'kamera_rekaan' => 'Kamera hanya bisa dipasang di hari biasa.',
+    'arloji_khayal' =>
+    'Arloji hanya bisa diputar saat musyawarah atau voting.',
+    'jemari_magis' => 'Jemari hanya bisa menyentuh Hayu di hari biasa.',
+    'kunci_segel' => 'Kunci Segel hanya bisa dipakai di hari biasa.',
+    _ => '',
+  };
+
+  /// Dikurung (sudah atau akan mulai), belum keluar dari desa.
+  bool _hasJail(Map<String, dynamic> p) {
+    if (isOut(p)) return false;
+    final from = p['jailed_day'] as int?;
+    if (from == null) return false;
+    final until = (p['jailed_until'] as int?) ?? from;
+    return until >= widget.day;
+  }
+
+  Widget _picker(List<Map<String, dynamic>> list, String empty) {
+    if (list.isEmpty) return _note(empty);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        for (final p in list)
+          ChoiceChip(
+            avatar: PlayerAvatar(
+              path: protagonistPath(p['character_card'] as String),
+              size: 24,
+            ),
+            label: Text(p['user_id'] == widget.repo.myId
+                ? '${p['name']} (kamu)'
+                : p['name'] as String),
+            selected: target == p['user_id'],
+            showCheckmark: false,
+            selectedColor: abilityAccent(_id).withValues(alpha: 0.28),
+            onSelected: busy
+                ? null
+                : (_) => setState(() => target = p['user_id'] as String),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _confirmSacrifice() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Berkorban untuk Hayu?'),
+        content: const Text(
+            'Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam '
+                'tiba. Ini tidak bisa dibatalkan.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Berkorban')),
+        ],
+      ),
+    );
+    if (ok == true && mounted) _use(option: 'ten');
+  }
+
+  /// Tombol pemakaian untuk kemampuan manual yang baru.
+  Widget _newActions() {
+    if (!_phaseOk) return _note(_phaseHint);
+    const gap = SizedBox(height: 10);
+    switch (_id) {
+      case 'mata_suci':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _note('Harga: 1 nyawa, dibayar saat malam tiba.',
+                color: EmbunColors.gold),
+            gap,
+            const Text('Pilih satu pemain:',
+                style: TextStyle(fontSize: 12.5, color: EmbunColors.gold)),
+            const SizedBox(height: 8),
+            _picker(widget.others, 'Tidak ada pemain lain.'),
+            const SizedBox(height: 12),
+            EmbunButton(
+              label: 'Buka mata batin',
+              icon: 'show',
+              expand: true,
+              onPressed: busy || target == null ? null : () => _use(),
+            ),
+          ],
+        );
+      case 'kamera_rekaan':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _note('Malam ini kamu akan tahu jenis serangan malam yang terjadi, '
+                'atau tahu malam itu damai. Hasilnya muncul di musyawarah '
+                'berikutnya.'),
+            gap,
+            EmbunButton(
+              label: 'Pasang kamera',
+              icon: 'show',
+              expand: true,
+              onPressed: busy ? null : () => _use(),
+            ),
+          ],
+        );
+      case 'arloji_khayal':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _note('Menambah 60 detik pada fase yang sedang berjalan, tanpa '
+                'menyebut namamu.'),
+            gap,
+            EmbunButton(
+              label: 'Putar arloji',
+              icon: 'timer',
+              expand: true,
+              onPressed: busy ? null : () => _use(),
+            ),
+          ],
+        );
+      case 'jemari_magis':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _note('Harga dibayar saat malam tiba. Pilih satu.'),
+            gap,
+            EmbunButton(
+              label: '+5 daun, harga 1 nyawa',
+              icon: 'plus',
+              expand: true,
+              onPressed: busy ? null : () => _use(option: 'five'),
+            ),
+            const SizedBox(height: 8),
+            EmbunButton(
+              label: '+10 daun, berkorban diri',
+              icon: 'plus',
+              kind: EmbunButtonKind.secondary,
+              expand: true,
+              height: 46,
+              onPressed: busy ? null : _confirmSacrifice,
+            ),
+          ],
+        );
+      case 'kunci_segel':
+        final jailed = [for (final p in widget.everyone) if (_hasJail(p)) p];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Pilih pemain yang dikurung:',
+                style: TextStyle(fontSize: 12.5, color: EmbunColors.gold)),
+            const SizedBox(height: 8),
+            _picker(jailed, 'Tidak ada yang sedang dikurung.'),
+            const SizedBox(height: 12),
+            EmbunButton(
+              label: 'Bebaskan',
+              icon: 'lock',
+              expand: true,
+              onPressed: busy || target == null ? null : () => _use(),
+            ),
+          ],
+        );
+    }
+    return const SizedBox.shrink();
+  }
+
   /// Bagian bawah: penjelasan status atau tombol pemakaian.
   Widget _actions() {
     if (result != null) return _resultPanel();
@@ -275,12 +487,22 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         'lidah_manis' => _usedNow
             ? 'Sudah terpakai: tuduhan pertamamu sudah dilewati.'
             : 'Bekerja otomatis saat kamu pertama kali dituduh mayoritas.',
+        'kebangkitan_arwah' => _usedNow
+            ? 'Sudah terpakai: arwahmu sudah bangkit satu kali.'
+            : 'Bekerja otomatis saat kamu akan tersingkir dari desa: arwahmu '
+            'bangkit dengan 1 nyawa, sebagai warga biasa.',
+        'palu_hakim' => _usedNow
+            ? 'Sudah terpakai: palumu sudah jatuh satu kali.'
+            : 'Dipakai di layar voting: nyalakan "Patuhilah Padaku" sebelum '
+            'mengunci suara, dan suaramu bernilai 2.',
         _ => 'Tidak ada yang perlu dipakai. Kamu warga desa biasa.',
       };
       return _note(text);
     }
 
     if (_usedNow) return _note('Kemampuan ini sudah terpakai.');
+
+    if (_id != 'jangan_bohong' && _id != 'pedagang') return _newActions();
 
     if (_id == 'jangan_bohong') {
       final can = widget.phase == 'day' || widget.phase == 'discussion';
