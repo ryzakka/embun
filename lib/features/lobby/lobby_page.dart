@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/announcement_repository.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -15,6 +16,7 @@ import '../common/shader_fx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import 'more_games_sheet.dart';
+import 'announcements_page.dart';
 import 'public_rooms_page.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
@@ -41,6 +43,7 @@ class _LobbyPageState extends State<LobbyPage>
     with SingleTickerProviderStateMixin {
   final repo = LobbyRepository();
   final _gr = GameRepository();
+  final _news = AnnouncementRepository();
   final nameCtrl = TextEditingController();
   final codeCtrl = TextEditingController();
   String? gameId;
@@ -54,6 +57,7 @@ class _LobbyPageState extends State<LobbyPage>
   late _Stage _stage;
   bool _joinMode = false;
   bool _createPublic = false;
+  int _unreadNews = 0;
   bool _booted = false;
 
   // Jam berkelanjutan untuk latar bergerak, kunang-kunang, dan melayang.
@@ -79,6 +83,7 @@ class _LobbyPageState extends State<LobbyPage>
   Future<void> _boot() async {
     try {
       await repo.ensureSignedIn();
+      unawaited(_refreshNews());
       final g = await repo.activeGame();
       if (!mounted) return;
       if (g != null) {
@@ -137,6 +142,27 @@ class _LobbyPageState extends State<LobbyPage>
       _joinMode = join;
       _stage = _Stage.entry;
     });
+  }
+
+  Future<void> _refreshNews() async {
+    try {
+      final n = await _news.unreadCount();
+      if (mounted && n != _unreadNews) setState(() => _unreadNews = n);
+    } catch (_) {
+      // Tabel belum ada / offline: menu tetap tampil tanpa penanda.
+    }
+  }
+
+  Future<void> _openNews() async {
+    HapticFeedback.selectionClick();
+    Sfx.I.playAny(Snd.winds);
+    await Navigator.of(context).push(
+      ClothTransition.route<void>(
+        AnnouncementsPage(repo: _news),
+        style: ClothStyle.bungaKrem,
+      ),
+    );
+    if (mounted) _refreshNews();
   }
 
   /// Daftar ruangan publik (layar penuh). Nama diisi dan gabung dilakukan di
@@ -372,7 +398,7 @@ class _LobbyPageState extends State<LobbyPage>
                                 child: Transform.translate(
                                   offset: Offset(0, (1 - st) * 10),
                                   child: Text(
-                                    'BALAI PERTEMUAN DESA V2.5.7',
+                                    'BALAI PERTEMUAN DESA V2.5.8',
                                     style: TextStyle(
                                       fontSize: 12,
                                       letterSpacing: 4,
@@ -478,6 +504,13 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: _openGuide),
         _MenuTile(
             index: 4,
+            icon: 'logorhistory',
+            label: 'Pengumuman',
+            badge: _unreadNews,
+            center: !wide,
+            onTap: _openNews),
+        _MenuTile(
+            index: 5,
             icon: 'plus',
             label: 'Permainan Lainnya',
             center: !wide,
@@ -485,7 +518,7 @@ class _LobbyPageState extends State<LobbyPage>
         ValueListenableBuilder<bool>(
           valueListenable: Sfx.I.muted,
           builder: (_, m, _) => _MenuTile(
-              index: 5,
+              index: 6,
               icon: 'announcement',
               label: m ? 'Suara: Mati' : 'Suara: Nyala',
               center: !wide,
@@ -494,7 +527,7 @@ class _LobbyPageState extends State<LobbyPage>
         ValueListenableBuilder<bool>(
           valueListenable: ShaderFx.enabled,
           builder: (_, on, _) => _MenuTile(
-              index: 6,
+              index: 7,
               icon: 'show',
               label: on ? 'Efek Visual: Nyala' : 'Efek Visual: Mati',
               center: !wide,
@@ -1472,6 +1505,7 @@ class _MenuTile extends StatefulWidget {
   final String icon;
   final String label;
   final bool center;
+  final int badge;
   final VoidCallback onTap;
   const _MenuTile({
     required this.index,
@@ -1479,6 +1513,7 @@ class _MenuTile extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.center = false,
+    this.badge = 0,
   });
 
   @override
@@ -1553,6 +1588,31 @@ class _MenuTileState extends State<_MenuTile> {
                   ),
                   child: Text(widget.label),
                 ),
+                if (widget.badge > 0) ...[
+                  const SizedBox(width: 10),
+                  Container(
+                    constraints:
+                    const BoxConstraints(minWidth: 22, minHeight: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: EmbunColors.gold,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                            color: EmbunColors.gold.withValues(alpha: 0.6),
+                            blurRadius: 8),
+                      ],
+                    ),
+                    child: Text(
+                      widget.badge >= 99 ? '99+' : '${widget.badge}',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF07130F)),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
