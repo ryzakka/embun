@@ -368,7 +368,7 @@ class CardTile extends StatelessWidget {
       child: _Grayscale(
         on: gray,
         child: Opacity(
-          opacity: dim ? 0.45 : 1,
+          opacity: dim ? 0.78 : 1,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: width,

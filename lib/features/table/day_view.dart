@@ -561,11 +561,13 @@ class _DayViewState extends State<DayView>
 
   // ====================== bahan dasar ======================
 
+  /// Warna aksen peran: emas untuk warga, ungu untuk peran gelap.
+  Color get _accent => widget.dark ? EmbunColors.mist : EmbunColors.gold;
+
   BoxDecoration _glassDeco({double radius = 16}) => BoxDecoration(
-    color: Colors.black.withValues(alpha: 0.32),
+    color: Colors.black.withValues(alpha: 0.58),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-        color: EmbunColors.goldDim.withValues(alpha: 0.4), width: 1.2),
+    border: Border.all(color: _accent.withValues(alpha: 0.55), width: 1.4),
   );
 
   Widget _card(Widget child) => Container(
@@ -588,7 +590,7 @@ class _DayViewState extends State<DayView>
         const Spacer(),
         if (trailing != null)
           Text(trailing,
-              style: const TextStyle(fontSize: 11, color: Colors.white54)),
+              style: const TextStyle(fontSize: 11, color: Colors.white70)),
       ],
     ),
   );
@@ -625,7 +627,7 @@ class _DayViewState extends State<DayView>
           const SizedBox(height: 2),
           Text(hint,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: Colors.white38)),
+              style: const TextStyle(fontSize: 12, color: Colors.white60)),
         ],
       ),
     ),
@@ -757,7 +759,7 @@ class _DayViewState extends State<DayView>
           _chip('lock', 'Dikurung', color: EmbunColors.blood)
         else
           _chip('item', 'Jatah $remain',
-              color: remain > 0 ? Colors.white70 : Colors.white38),
+              color: remain > 0 ? Colors.white70 : Colors.white60),
         if (mod != 0)
           _chip(mod > 0 ? 'plus' : 'minus', 'Harga ${mod > 0 ? '+' : ''}$mod',
               color: mod < 0 ? Colors.greenAccent : Colors.orangeAccent),
@@ -1045,9 +1047,9 @@ class _DayViewState extends State<DayView>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
+        color: Colors.black.withValues(alpha: 0.58),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.4)),
+        border: Border.all(color: _accent.withValues(alpha: 0.55)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1124,11 +1126,11 @@ class _DayViewState extends State<DayView>
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.32),
+          color: Colors.black.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
               color: (bad ? EmbunColors.mist : EmbunColors.gold)
-                  .withValues(alpha: 0.35)),
+                  .withValues(alpha: 0.6)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1364,24 +1366,35 @@ class _DayViewState extends State<DayView>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: accent)),
               ),
-              const SizedBox(width: 6),
-              Text('$count',
-                  style: const TextStyle(fontSize: 11, color: Colors.white54)),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('$count',
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: accent)),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                    height: 1, color: accent.withValues(alpha: 0.3)),
+                    height: 1, color: accent.withValues(alpha: 0.45)),
               ),
             ],
           ),
           const SizedBox(height: 3),
           Text(hint,
               style: const TextStyle(
-                  fontSize: 11, height: 1.3, color: Colors.white54)),
+                  fontSize: 11, height: 1.3, color: Colors.white70)),
         ],
       ),
     );
@@ -1470,51 +1483,64 @@ class _DayViewState extends State<DayView>
         ];
         if (inGroup.isEmpty) continue;
         final total = inGroup.fold<int>(0, (a, s) => a + s.length);
-        sections.add(_mejaGroupHeader(gi, total));
-        sections.add(
-          Wrap(
-            alignment: WrapAlignment.start,
-            spacing: g.gap,
-            runSpacing: g.gap,
+        final groupAccent = widget.dark ? EmbunColors.mist : EmbunColors.gold;
+        sections.add(Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: groupAccent.withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final s in inGroup)
-              // Kartu baru muncul membal; kunci per jenis + status.
-                _Pop(
-                  key: ValueKey('hand-${s.first['card_id']}-'
-                      '${s.first['charged'] == true}'),
-                  index: pop++,
-                  child: _preview(
-                    widget.defs[s.first['card_id']],
-                    CardTile(
-                      def: widget.defs[s.first['card_id']],
-                      fallbackName: s.first['card_id'] as String,
-                      width: g.w,
-                      count: s.length,
-                      gray: (widget.isAntag &&
-                          widget.defs[s.first['card_id']]?['kind'] ==
-                              'siang' &&
-                          widget.defs[s.first['card_id']]?['side'] ==
-                              'warga') ||
-                          (widget.defs[s.first['card_id']]?['kind'] ==
-                              'lanjutan' &&
-                              widget.defs[s.first['card_id']]?['side'] !=
-                                  mySide),
-                      tag: _handTag(s.first),
-                      faded: _isDormant(s.first),
-                      onTap:
-                      switch (widget.defs[s.first['card_id']]?['kind']) {
-                        'siang' => () => _useDayCard(s.first),
-                        'lanjutan' => () => _useAdvanced(s.first),
-                        'poin' => () => _showPoinHint(s.first),
-                        _ => null,
-                      },
+              _mejaGroupHeader(gi, total),
+              Wrap(
+                alignment: WrapAlignment.start,
+                spacing: g.gap,
+                runSpacing: g.gap,
+                children: [
+                  for (final s in inGroup)
+                  // Kartu baru muncul membal; kunci per jenis + status.
+                    _Pop(
+                      key: ValueKey('hand-${s.first['card_id']}-'
+                          '${s.first['charged'] == true}'),
+                      index: pop++,
+                      child: _preview(
+                        widget.defs[s.first['card_id']],
+                        CardTile(
+                          def: widget.defs[s.first['card_id']],
+                          fallbackName: s.first['card_id'] as String,
+                          width: g.w,
+                          count: s.length,
+                          gray: (widget.isAntag &&
+                              widget.defs[s.first['card_id']]?['kind'] ==
+                                  'siang' &&
+                              widget.defs[s.first['card_id']]?['side'] ==
+                                  'warga') ||
+                              (widget.defs[s.first['card_id']]?['kind'] ==
+                                  'lanjutan' &&
+                                  widget.defs[s.first['card_id']]?['side'] !=
+                                      mySide),
+                          tag: _handTag(s.first),
+                          faded: _isDormant(s.first),
+                          onTap:
+                          switch (widget.defs[s.first['card_id']]?['kind']) {
+                            'siang' => () => _useDayCard(s.first),
+                            'lanjutan' => () => _useAdvanced(s.first),
+                            'poin' => () => _showPoinHint(s.first),
+                            _ => null,
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                ],
+              ),
             ],
           ),
-        );
-        sections.add(const SizedBox(height: 18));
+        ));
+        sections.add(const SizedBox(height: 12));
       }
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
@@ -1524,7 +1550,7 @@ class _DayViewState extends State<DayView>
             if (strip != null) strip,
             const Text('Tekan lama kartu untuk membaca efeknya.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.white38)),
+                style: TextStyle(fontSize: 11, color: Colors.white60)),
             const SizedBox(height: 10),
             if (combo != null) combo,
             ...sections,
@@ -1575,7 +1601,7 @@ class _DayViewState extends State<DayView>
             const SizedBox(height: 6),
             Text(label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11.5, color: Colors.white54)),
+                style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
           ],
         ),
       );
@@ -1593,7 +1619,7 @@ class _DayViewState extends State<DayView>
         ),
         const SizedBox(height: 4),
         const Text('Ketuk untuk melepas',
-            style: TextStyle(fontSize: 10, color: Colors.white38)),
+            style: TextStyle(fontSize: 10, color: Colors.white60)),
       ],
     );
   }
@@ -1612,7 +1638,7 @@ class _DayViewState extends State<DayView>
                 faded
                     ? 'Belum ada kartu lanjutan yang perlu diaktifkan.'
                     : 'Belum ada $_poinName. Belilah di Toko.',
-                style: const TextStyle(fontSize: 12, color: Colors.white38)),
+                style: const TextStyle(fontSize: 12, color: Colors.white60)),
           )
         else
           Wrap(
@@ -1661,7 +1687,7 @@ class _DayViewState extends State<DayView>
                 'Pilih satu kartu lanjutan dan satu kartu syarat, lalu '
                     'tempatkan.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.white54)),
+                style: TextStyle(fontSize: 11, color: Colors.white70)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(10),
@@ -1844,7 +1870,7 @@ class _DayViewState extends State<DayView>
         ),
         const SizedBox(width: 8),
         Text('H${e['day']}',
-            style: const TextStyle(fontSize: 10, color: Colors.white38)),
+            style: const TextStyle(fontSize: 10, color: Colors.white60)),
       ],
     ),
   );
@@ -1864,7 +1890,7 @@ class _DayViewState extends State<DayView>
             'Ketuk avatar pemain di atas untuk memberi embun, menukar '
                 'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
                 'sebuah kartu untuk membaca efeknya.',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
+            style: TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ),
       ],
@@ -1909,7 +1935,7 @@ class _DayViewState extends State<DayView>
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text('Belum ada yang terjadi...',
-                style: TextStyle(color: Colors.white38)),
+                style: TextStyle(color: Colors.white60)),
           )
         else
           for (final e in feed) _feedRow(e),
@@ -1956,13 +1982,11 @@ class _DayViewState extends State<DayView>
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: on ? EmbunColors.gold.withValues(alpha: 0.16) : Colors.transparent,
+          color: on ? _accent.withValues(alpha: 0.26) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: on
-                ? EmbunColors.gold.withValues(alpha: 0.65)
-                : Colors.transparent,
-            width: 1.2,
+            color: on ? _accent.withValues(alpha: 0.95) : Colors.white24,
+            width: on ? 1.6 : 1,
           ),
         ),
         child: Column(
@@ -1981,7 +2005,7 @@ class _DayViewState extends State<DayView>
                 isLabelVisible: badge > 0,
                 label: Text('$badge'),
                 child: Opacity(
-                    opacity: on ? 1 : 0.65,
+                    opacity: on ? 1 : 0.88,
                     child: GameIcon(_tabIcons[i], size: 25)),
               ),
             ),
@@ -1989,10 +2013,20 @@ class _DayViewState extends State<DayView>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                  color: on ? EmbunColors.cream : Colors.white70,
+                  fontSize: 11,
+                  fontWeight: on ? FontWeight.w800 : FontWeight.w500,
+                  color: on ? EmbunColors.cream : Colors.white.withValues(alpha: 0.85),
                 )),
+            const SizedBox(height: 2),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: 3,
+              width: on ? 22 : 0,
+              decoration: BoxDecoration(
+                color: _accent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
           ],
         ),
       ),
