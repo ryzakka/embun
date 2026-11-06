@@ -1396,7 +1396,7 @@ class _TablePageState extends State<TablePage> {
   Widget _sidebar(int day, int cycle, int leaves, int worms,
       DateTime? deadline, bool isHost) =>
       Container(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: Colors.black38,
         child: Column(
           children: [
             Expanded(
@@ -1843,9 +1843,8 @@ class _TablePageState extends State<TablePage> {
         },
       );
 
-  /// Kartu identitas: peran (Warga / Si Terbisik) dan karakter yang dipegang.
-  /// Mengikuti [showAsAntag], jadi mode "Samarkan layar" tidak membocorkan
-  /// peran asli ke pemain lain yang melirik layar.
+  /// Identitas pemain (peran + karakter). Mengikuti [showAsAntag], jadi mode
+  /// "Samarkan layar" tidak membocorkan peran asli.
   Widget _identity(String myCardId, {required bool compact}) {
     final seed = darkSeed;
     final avatar = showAsAntag
@@ -1863,23 +1862,10 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  /// Pil kecil untuk keterangan di bilah atas (hari, daun, ulat).
-  Widget _hdrChip(Widget child) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white24),
-    ),
-    child: child,
-  );
-
-  /// Header ponsel, tiga tingkat supaya hierarkinya jelas:
-  ///  1. identitas (peran + karakter) di kiri, aksi (obrolan, kemampuan,
-  ///     menu) di kanan,
-  ///  2. saldo dalam pil emas yang menonjol, lalu hari / daun / ulat /
-  ///     hitung mundur / jumlah siap,
-  ///  3. keterangan persembahan berikutnya.
+  /// Header ponsel: satu permukaan, dua baris, tanpa kotak di dalamnya.
+  ///  Baris 1: identitas di kiri, aksi di kanan.
+  ///  Baris 2: saldo (emas, menonjol) di kiri; hari, daun, hitung mundur,
+  ///           jumlah siap, dan keterangan persembahan di kanan.
   Widget _phoneHeader({
     required double balance,
     required double rate,
@@ -1898,7 +1884,6 @@ class _TablePageState extends State<TablePage> {
     final due = day % cycle == 0
         ? 'Malam persembahan'
         : 'Persembahan ${cycle - day % cycle} hari lagi';
-    final roleColor = showAsAntag ? RoleColors.terbisik : RoleColors.warga;
 
     PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
         PopupMenuItem<String>(
@@ -1912,18 +1897,21 @@ class _TablePageState extends State<TablePage> {
           ),
         );
 
+    const dot = Padding(
+      padding: EdgeInsets.symmetric(horizontal: 7),
+      child: Text('·', style: TextStyle(color: Colors.white38)),
+    );
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+      padding: const EdgeInsets.fromLTRB(10, 6, 2, 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: roleColor.withValues(alpha: 0.45)),
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Tingkat 1: siapa aku + aksi.
           Row(
             children: [
               Expanded(
@@ -1940,13 +1928,13 @@ class _TablePageState extends State<TablePage> {
                     tooltip: 'Obrolan',
                     visualDensity: VisualDensity.compact,
                     onPressed: _openChat,
-                    icon: const GameIcon('discuss', size: 30),
+                    icon: const GameIcon('discuss', size: 28),
                   ),
                 ),
               _abilityButton(),
               PopupMenuButton<String>(
                 tooltip: 'Menu',
-                icon: const GameIcon('menu', size: 30),
+                icon: const GameIcon('menu', size: 28),
                 padding: EdgeInsets.zero,
                 onSelected: (v) {
                   switch (v) {
@@ -1994,110 +1982,104 @@ class _TablePageState extends State<TablePage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Tingkat 2: saldo menonjol, lalu keterangan hari.
+          const Divider(height: 10, color: Colors.white12),
           Padding(
-            padding: const EdgeInsets.only(right: 4),
+            padding: const EdgeInsets.only(right: 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(6, 3, 12, 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: EmbunColors.gold.withValues(alpha: 0.85),
-                        width: 1.4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun',
-                          size: 28),
-                      const SizedBox(width: 6),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          BalanceFx(
-                            key: _balanceKey,
-                            quiet: _quietBalance,
-                            balance: balance,
-                            day: day,
-                            dark: showAsAntag,
-                            ready: myState != null,
-                            hold: _dayIntro != null || _holdIntro,
-                            builder: (context, shown) => Text(_fmt(shown),
-                                maxLines: 1,
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    height: 1.05,
-                                    fontWeight: FontWeight.bold,
-                                    color: EmbunColors.gold)),
-                          ),
-                          Text('+${_fmt(rate)}/hari',
-                              maxLines: 1,
-                              style: const TextStyle(
-                                  fontSize: 10.5, color: Colors.white70)),
-                        ],
-                      ),
-                    ],
-                  ),
+                GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 26),
+                const SizedBox(width: 6),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BalanceFx(
+                      key: _balanceKey,
+                      quiet: _quietBalance,
+                      balance: balance,
+                      day: day,
+                      dark: showAsAntag,
+                      ready: myState != null,
+                      hold: _dayIntro != null || _holdIntro,
+                      builder: (context, shown) => Text(_fmt(shown),
+                          maxLines: 1,
+                          style: const TextStyle(
+                              fontSize: 21,
+                              height: 1.05,
+                              fontWeight: FontWeight.bold,
+                              color: EmbunColors.gold)),
+                    ),
+                    Text('+${_fmt(rate)}/hari',
+                        maxLines: 1,
+                        style: const TextStyle(
+                            fontSize: 10.5, color: Colors.white70)),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _hdrChip(Text('HARI $day',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2))),
-                      _hdrChip(Row(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const GameIcon('helaidaun', size: 18),
-                          const SizedBox(width: 3),
-                          Text('$leaves',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600)),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('HARI $day',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1)),
+                              dot,
+                              const GameIcon('helaidaun', size: 18),
+                              const SizedBox(width: 3),
+                              Text('$leaves',
+                                  style: const TextStyle(fontSize: 13)),
+                              if (worms > 0) ...[
+                                dot,
+                                Text('🐛 $worms',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.purpleAccent)),
+                              ],
+                              dot,
+                              Countdown(
+                                  deadline: deadline,
+                                  style: const TextStyle(fontSize: 13)),
+                              dot,
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => _showPlayersSheet(day),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const GameIcon('persona', size: 18),
+                                    const SizedBox(width: 3),
+                                    Text('$readyCount/${_alive.length}',
+                                        style:
+                                        const TextStyle(fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (showDue)
+                            Text(due,
+                                style: const TextStyle(
+                                    fontSize: 10.5, color: Colors.white70)),
                         ],
-                      )),
-                      if (worms > 0)
-                        _hdrChip(Text('🐛 $worms',
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.purpleAccent))),
-                      _hdrChip(Countdown(
-                          deadline: deadline,
-                          style: const TextStyle(fontSize: 13))),
-                      ActionChip(
-                        avatar: const GameIcon('persona', size: 18),
-                        label: Text('$readyCount/${_alive.length}',
-                            style: const TextStyle(fontSize: 11.5)),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onPressed: () => _showPlayersSheet(day),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          // Tingkat 3: keterangan pendukung.
-          if (showDue)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, left: 4),
-              child: Text(due,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
-            ),
         ],
       ),
     );
@@ -2108,118 +2090,109 @@ class _TablePageState extends State<TablePage> {
       {required bool showChat}) {
     final unread =
     (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
-    final roleColor = showAsAntag ? RoleColors.terbisik : RoleColors.warga;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: roleColor.withValues(alpha: 0.45)),
-      ),
-      child: Row(
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
-            child: _identity(myCardId, compact: false),
-          ),
-          const SizedBox(width: 14),
-          // Ikon + saldo + laju dibungkus satu BalanceFx; label "+N hari ini"
-          // melayang di ruang kosong sebelum tombol-tombol.
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: BalanceFx(
-                key: _balanceKey,
-                quiet: _quietBalance,
-                balance: balance,
-                day: day,
-                dark: showAsAntag,
-                ready: myState != null,
-                hold: _dayIntro != null || _holdIntro,
-                builder: (context, shown) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 34),
-                    const SizedBox(width: 6),
-                    Text(_fmt(shown),
-                        style: const TextStyle(
-                            fontSize: 30, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    // Label dan laju menyusut lebih dulu bila lebar terbatas.
-                    Flexible(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(showAsAntag ? 'bulir hitam' : 'tetes embun',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13)),
-                          Text('+${_fmt(rate)}/hari',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.white60)),
-                        ],
-                      ),
+    return Row(
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 300),
+          child: _identity(myCardId, compact: false),
+        ),
+        const SizedBox(width: 18),
+        // Ikon + saldo + laju dibungkus satu BalanceFx; label "+N hari ini"
+        // melayang di ruang kosong sebelum tombol-tombol.
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: BalanceFx(
+              key: _balanceKey,
+              quiet: _quietBalance,
+              balance: balance,
+              day: day,
+              dark: showAsAntag,
+              ready: myState != null,
+              hold: _dayIntro != null || _holdIntro,
+              builder: (context, shown) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 34),
+                  const SizedBox(width: 6),
+                  Text(_fmt(shown),
+                      style: const TextStyle(
+                          fontSize: 30, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  // Label dan laju menyusut lebih dulu bila lebar terbatas.
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(showAsAntag ? 'bulir hitam' : 'tetes embun',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13)),
+                        Text('+${_fmt(rate)}/hari',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.white60)),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SfxMuteButton(size: 24),
+        ),
+        const SfxMuteButton(size: 24),
+        IconButton(
+          tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(() => chatFx = !chatFx),
+          icon: Opacity(
+            opacity: chatFx ? 1 : 0.4,
+            child: const GameIcon('showaddgraphic', size: 30),
+          ),
+        ),
+        if (showChat)
+          Badge(
+            isLabelVisible: unread > 0,
+            label: Text('$unread'),
+            child: IconButton(
+              tooltip: 'Obrolan',
+              onPressed: _openChat,
+              icon: const GameIcon('discuss', size: 30),
+            ),
+          ),
+        if (isAntag)
           IconButton(
-            tooltip: chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => setState(() => chatFx = !chatFx),
-            icon: Opacity(
-              opacity: chatFx ? 1 : 0.4,
-              child: const GameIcon('showaddgraphic', size: 30),
-            ),
+            tooltip: disguiseMode ? 'Matikan Samaran' : 'Samarkan Layar',
+            onPressed: () => setState(() => disguiseMode = !disguiseMode),
+            icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
           ),
-          if (showChat)
-            Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: IconButton(
-                tooltip: 'Obrolan',
-                onPressed: _openChat,
-                icon: const GameIcon('discuss', size: 30),
-              ),
-            ),
-          if (isAntag)
-            IconButton(
-              tooltip: disguiseMode ? 'Matikan Samaran' : 'Samarkan Layar',
-              onPressed: () => setState(() => disguiseMode = !disguiseMode),
-              icon: GameIcon(disguiseMode ? 'hide' : 'show', size: 30),
-            ),
-          IconButton(
-            tooltip: 'Infoku',
-            visualDensity: VisualDensity.compact,
-            onPressed: _openMyInfo,
-            icon: Icon(
-              Icons.badge_rounded,
-              size: 26,
-              color: showAsAntag ? const Color(0xFFB07CE8) : EmbunColors.leaf,
-            ),
+        IconButton(
+          tooltip: 'Infoku',
+          visualDensity: VisualDensity.compact,
+          onPressed: _openMyInfo,
+          icon: Icon(
+            Icons.badge_rounded,
+            size: 26,
+            color: showAsAntag ? const Color(0xFFB07CE8) : EmbunColors.leaf,
           ),
-          _abilityButton(),
-          IconButton(
-            tooltip: 'Panduan',
-            visualDensity: VisualDensity.compact,
-            onPressed: _openGuide,
-            icon: const Icon(Icons.menu_book_rounded,
-                size: 26, color: EmbunColors.gold),
-          ),
-          ActionChip(
-            avatar: const GameIcon('persona', size: 22),
-            label: Text('$readyCount/${_alive.length}'),
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _showPlayersSheet(day),
-          ),
-        ],
-      ),
+        ),
+        _abilityButton(),
+        IconButton(
+          tooltip: 'Panduan',
+          visualDensity: VisualDensity.compact,
+          onPressed: _openGuide,
+          icon: const Icon(Icons.menu_book_rounded,
+              size: 26, color: EmbunColors.gold),
+        ),
+        ActionChip(
+          avatar: const GameIcon('persona', size: 22),
+          label: Text('$readyCount/${_alive.length}'),
+          visualDensity: VisualDensity.compact,
+          onPressed: () => _showPlayersSheet(day),
+        ),
+      ],
     );
   }
 
