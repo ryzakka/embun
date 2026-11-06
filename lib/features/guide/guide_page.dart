@@ -1460,7 +1460,7 @@ class _ItemsTabState extends State<_ItemsTab>
           width: w,
           showCost: true,
           badge: base ? 'Dasar' : null,
-          onTap: () => showCardPreview(context, d),
+          onTap: () => showCardPreview(context, d, defs: defs),
         ),
         const SizedBox(height: 8),
         _caption('${d['name']}', dark ? EmbunColors.mist : EmbunColors.cream),

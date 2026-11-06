@@ -301,7 +301,7 @@ class _DayViewState extends State<DayView>
     if (def == null) return;
     final mine = def['side'] == (widget.isAntag ? 'antagonis' : 'warga');
     if (h['charged'] == true || !mine) {
-      await showCardPreview(context, def);
+      await showCardPreview(context, def, defs: widget.defs);
       if (mounted) {
         _toast(h['charged'] == true
             ? 'Kartu ini sudah aktif. Persembahkan di malam persembahan.'
@@ -312,6 +312,7 @@ class _DayViewState extends State<DayView>
     await showCardPreview(
       context,
       def,
+      defs: widget.defs,
       actionLabel: 'Gabungkan dengan $_poinName',
       onAction: () => _run(() async {
         final r = await widget.repo.fuseCards(widget.gameId, h['id'] as String);
@@ -326,7 +327,7 @@ class _DayViewState extends State<DayView>
   Future<void> _showPoinHint(Map<String, dynamic> h) async {
     final def = widget.defs[h['card_id']];
     if (def == null) return;
-    await showCardPreview(context, def);
+    await showCardPreview(context, def, defs: widget.defs);
     if (mounted) {
       _toast('Ketuk kartu lanjutanmu untuk menggabungkannya dengan $_poinName.');
     }

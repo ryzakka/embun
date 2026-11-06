@@ -46,6 +46,100 @@ List<double> _lerpMatrix(double t) => [
     _identityMatrix[i] + (_fadedMatrix[i] - _identityMatrix[i]) * t,
 ];
 
+/// Blok \"Syarat gabungan\" pada pratinjau kartu lanjutan: gambar kartu poin
+/// yang harus digabungkan. [defs] (bila ada) memberi nama dan harga terbaru;
+/// tanpa itu dipakai data bawaan.
+Widget _poinRequirement(
+    Map<String, dynamic> def, Map<String, Map<String, dynamic>>? defs) {
+  final bad = def['side'] == 'antagonis';
+  final reqs = bad
+      ? const [
+    ('poin_dna', 'rekayasa-poindna', 'Poin DNA'),
+    ('kapsul_dna', 'rekayasa-kapsuldna', 'Kapsul DNA'),
+  ]
+      : const [
+    ('poin_regenerasi', 'gen-poinregenerasi', 'Poin Regenerasi'),
+  ];
+  final accent = bad ? EmbunColors.mist : EmbunColors.gold;
+
+  Widget one((String, String, String) r) {
+    final d = defs?[r.$1] ??
+        {
+          'id': r.$1,
+          'side': bad ? 'antagonis' : 'warga',
+          'kind': 'poin',
+          'art': r.$2,
+          'name': r.$3,
+        };
+    final path = cardArtPath(d);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (path != null)
+          CardArt(path: path, width: 96, glow: accent)
+        else
+          GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 56),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: 110,
+          child: Text('${d['name'] ?? r.$3}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: EmbunColors.cream)),
+        ),
+      ],
+    );
+  }
+
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(top: 14),
+    padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.28),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: accent.withValues(alpha: 0.45)),
+    ),
+    child: Column(
+      children: [
+        Text('Syarat gabungan',
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w800, color: accent)),
+        const SizedBox(height: 4),
+        const Text(
+            'Gabungkan di Meja (hari biasa) dengan salah satu kartu ini '
+                'agar kartu ini AKTIF:',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11.5, height: 1.35, color: Colors.white60)),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (var i = 0; i < reqs.length; i++) ...[
+              if (i > 0)
+                const Text('atau',
+                    style: TextStyle(fontSize: 12, color: Colors.white54)),
+              one(reqs[i]),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+            bad
+                ? 'Poin habis sekali pakai. Kapsul DNA cukup untuk dua kartu.'
+                : 'Poin habis sekali pakai.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11.5, color: Colors.white54)),
+      ],
+    ),
+  );
+}
+
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
 /// jenis, harga, dan deskripsi efek. Deskripsi tidak tercetak di gambar, jadi
 /// pemain membacanya di sini.
@@ -57,6 +151,7 @@ Future<void> showCardPreview(
     Map<String, dynamic> def, {
       String? actionLabel,
       Future<void> Function()? onAction,
+      Map<String, Map<String, dynamic>>? defs,
     }) {
   final bad = def['side'] == 'antagonis';
   final glow = bad
@@ -112,6 +207,7 @@ Future<void> showCardPreview(
               ),
               const Divider(height: 22),
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
+              if (def['kind'] == 'lanjutan') _poinRequirement(def, defs),
               const SizedBox(height: 14),
               if (actionLabel != null && act != null) ...[
                 EmbunButton(
