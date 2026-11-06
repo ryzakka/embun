@@ -157,7 +157,7 @@ class _DayTransitionState extends State<DayTransition>
       behavior: HitTestBehavior.opaque,
       onTap: _finish,
       child: LayoutBuilder(builder: (context, box) {
-        final w = box.maxWidth, h = box.maxHeight;
+        final h = box.maxHeight;
         final numSize = (h * 0.28).clamp(64.0, 120.0).toDouble();
 
         return AnimatedBuilder(

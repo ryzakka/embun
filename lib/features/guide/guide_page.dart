@@ -450,18 +450,15 @@ class _Grid extends StatelessWidget {
   final int count;
   final Widget Function(int index, double cellWidth) item;
   final double minCell;
-  final double gap;
-  final double rowGap;
-  final int maxCols;
+  static const double gap = 12;
+  static const double rowGap = 18;
+  static const int maxCols = 6;
 
   const _Grid({
     super.key,
     required this.count,
     required this.item,
     this.minCell = 112,
-    this.gap = 12,
-    this.rowGap = 18,
-    this.maxCols = 6,
   });
 
   @override
@@ -1000,7 +997,7 @@ class _HowToTab extends StatelessWidget {
             _step(
                 1,
                 'Hari biasa (dua hari)',
-                'Beli **1 kartu per hari** di Pasar Pagi (3 tawaran acak). '
+                'Beli **1 kartu per hari** di Pasar Pagi (4 tawaran acak). '
                     'Boleh memberi embun (1 sampai 3, maks 3 kali sehari), '
                     'menukar kartu, mengirim isyarat, dan mengobrol. Tekan '
                     '"Akhiri hari" bila selesai.'),

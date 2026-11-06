@@ -954,9 +954,10 @@ class _DayViewState extends State<DayView>
     }
     return LayoutBuilder(builder: (context, c) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _armMarket());
-      const gap = 12.0;
       const chrome = 22 + 6 + 8 + 38 + 4 + 24 + 12.0;
       final n = o.length;
+      // Empat tawaran atau lebih: jarak dirapatkan supaya muat di ponsel.
+      final gap = n >= 4 ? 8.0 : 12.0;
       var w = (c.maxWidth - 8 - (n - 1) * gap) / n;
       var maxA = kItemAspect;
       for (final e in o) {
@@ -971,7 +972,7 @@ class _DayViewState extends State<DayView>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < n; i++) ...[
-            if (i > 0) const SizedBox(width: gap),
+            if (i > 0) SizedBox(width: gap),
             _shopCol(i, n, o[i], w, gap),
           ],
         ],
