@@ -18,7 +18,9 @@ import 'package:flutter/foundation.dart';
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
 
 const _tabToko = 0;
-const _tabBalai = 2;
+const _tabMeja = 1;
+const _tabGabung = 2;
+const _tabBalai = 3;
 
 /// Tiga susunan layar, dipilih dari ruang yang diberikan induk (bukan ukuran
 /// layar), jadi tetap benar di jendela desktop, tablet, dan ponsel diputar:
@@ -136,6 +138,14 @@ class _DayViewState extends State<DayView>
     ..repeat();
   double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
   int tab = _tabToko;
+  // Tab Gabung: kartu lanjutan dan kartu syarat (poin) yang diletakkan di
+  // petak, dikenali lewat card_id. Penggabungan baru terjadi saat
+  // "Tempatkan" ditekan.
+  String? _fuseAdv;
+  String? _fusePoin;
+  // Mode wide: panel kanan bisa dialihkan dari Meja ke Gabung.
+  bool _railGabung = false;
+  _Mode _lastMode = _Mode.phone;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
   List<Map<String, dynamic>> _guards = []; // perlindungan / cermin aktif
@@ -296,8 +306,18 @@ class _DayViewState extends State<DayView>
 
   String get _poinName => widget.isAntag ? 'Poin DNA' : 'Poin Regenerasi';
 
-  /// Kartu lanjutan di Meja: ketuk -> pratinjau dengan tombol
-  /// "Gabungkan dengan Poin". Kartu aktif lalu bisa dipersembahkan.
+  /// Buka tab Gabung (di mode wide: alihkan panel kanan ke Gabung). Bila
+  /// [advCardId] diberikan, kartu lanjutan itu langsung diletakkan di petak.
+  void _openGabung([String? advCardId]) {
+    setState(() {
+      if (advCardId != null) _fuseAdv = advCardId;
+      _railGabung = true;
+    });
+    if (_lastMode != _Mode.wide) _goTab(_tabGabung);
+  }
+
+  /// Kartu lanjutan di Meja: ketuk -> hanya pratinjau. Penggabungan dengan
+  /// kartu syarat dilakukan di tab Gabung.
   Future<void> _useAdvanced(Map<String, dynamic> h) async {
     final def = widget.defs[h['card_id']];
     if (def == null) return;
@@ -315,15 +335,63 @@ class _DayViewState extends State<DayView>
       context,
       def,
       defs: widget.defs,
-      actionLabel: 'Gabungkan dengan $_poinName',
-      onAction: () => _run(() async {
-        final r = await widget.repo.fuseCards(widget.gameId, h['id'] as String);
-        if (!mounted) return;
-        HapticFeedback.mediumImpact();
-        _toast('${r['message'] ?? 'Kartu aktif'}');
-        widget.onHandChanged?.call();
-      }),
+      actionLabel: 'Buka tab Gabung',
+      onAction: () async {
+        if (mounted) _openGabung(h['card_id'] as String);
+      },
     );
+  }
+
+  /// Hitung kartu di tangan yang cocok untuk tab Gabung: kartu lanjutan
+  /// milik perananmu yang belum aktif, dan kartu syarat (poin) sepihak.
+  /// Dikelompokkan per jenis kartu, dengan jumlahnya.
+  ({List<(String, int)> adv, List<(String, int)> poin}) _fuseCandidates() {
+    final mySide = widget.isAntag ? 'antagonis' : 'warga';
+    final adv = <String, int>{}, poin = <String, int>{};
+    for (final h in widget.hand) {
+      final d = widget.defs[h['card_id']];
+      if (d == null || d['side'] != mySide) continue;
+      final id = h['card_id'] as String;
+      if (d['kind'] == 'lanjutan' && h['charged'] != true) {
+        adv[id] = (adv[id] ?? 0) + 1;
+      } else if (d['kind'] == 'poin') {
+        poin[id] = (poin[id] ?? 0) + 1;
+      }
+    }
+    return (
+    adv: [for (final e in adv.entries) (e.key, e.value)],
+    poin: [for (final e in poin.entries) (e.key, e.value)],
+    );
+  }
+
+  /// Tempatkan: gabungkan kartu lanjutan di petak dengan kartu syarat.
+  Future<void> _doFuse() async {
+    final advId = _fuseAdv;
+    if (advId == null || _fusePoin == null) return;
+    Map<String, dynamic>? row;
+    for (final h in widget.hand) {
+      if (h['card_id'] == advId && h['charged'] != true) {
+        row = h;
+        break;
+      }
+    }
+    if (row == null) {
+      setState(() => _fuseAdv = null);
+      _toast('Kartu lanjutan itu sudah tidak ada di mejamu.');
+      return;
+    }
+    final handId = row['id'] as String;
+    await _run(() async {
+      final r = await widget.repo.fuseCards(widget.gameId, handId);
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _fuseAdv = null;
+        _fusePoin = null;
+      });
+      _toast('${r['message'] ?? 'Kartu aktif'}');
+      widget.onHandChanged?.call();
+    });
   }
 
   Future<void> _showPoinHint(Map<String, dynamic> h) async {
@@ -331,7 +399,7 @@ class _DayViewState extends State<DayView>
     if (def == null) return;
     await showCardPreview(context, def, defs: widget.defs);
     if (mounted) {
-      _toast('Ketuk kartu lanjutanmu untuk menggabungkannya dengan $_poinName.');
+      _toast('Gabungkan $_poinName dengan kartu lanjutanmu di tab Gabung.');
     }
   }
 
@@ -1240,7 +1308,7 @@ class _DayViewState extends State<DayView>
   static const _mejaGroupInfo = [
     ('item', 'Pakai di siang', 'Ketuk kartu untuk memakainya saat itu juga.'),
     ('plus', 'Kombinasi',
-    'Gabungkan kartu lanjutan dengan kartu poin, lalu persembahkan.'),
+    'Gabungkan di tab Gabung, lalu persembahkan.'),
     ('danger', 'Serangan malam', 'Dilancarkan saat malam tiba.'),
     ('donations', 'Untuk persembahan',
     'Dipersembahkan di malam persembahan.'),
@@ -1337,34 +1405,38 @@ class _DayViewState extends State<DayView>
     if (ready) {
       final n = dormant < poin ? dormant : poin;
       text = 'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
-          'Ketuk kartu lanjutan untuk menggabungkannya.';
+          'Buka tab Gabung untuk menempatkannya.';
     } else if (dormant > 0) {
       text = 'Kartu lanjutanmu belum aktif. Beli $_poinName di Toko, '
-          'lalu gabungkan di sini.';
+          'lalu gabungkan di tab Gabung.';
     } else {
       text = '$_poinName tersimpan. Beli kartu lanjutan di Toko, '
-          'lalu gabungkan di sini.';
+          'lalu gabungkan di tab Gabung.';
     }
     final c = ready ? EmbunColors.gold : Colors.white70;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const GameIcon('plus', size: 26),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(text,
-                style: TextStyle(fontSize: 12, height: 1.35, color: c)),
-          ),
-        ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: ready ? () => _openGabung() : null,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: c.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: c.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const GameIcon('plus', size: 26),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(text,
+                  style: TextStyle(fontSize: 12, height: 1.35, color: c)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1470,6 +1542,195 @@ class _DayViewState extends State<DayView>
       Expanded(child: _mejaBody()),
     ],
   );
+
+  // ====================== Gabung ======================
+
+  /// Petak kosong / terisi untuk satu kartu. Ketuk petak terisi untuk
+  /// mengosongkannya lagi.
+  Widget _fuseSlot({
+    required String label,
+    required String? cardId,
+    required double w,
+    required VoidCallback onClear,
+    required bool faded,
+  }) {
+    final h = w * 9 / 7;
+    if (cardId == null) {
+      return Container(
+        width: w,
+        height: h,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: EmbunColors.goldDim.withValues(alpha: 0.55), width: 1.4),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(opacity: 0.5, child: const GameIcon('plus', size: 34)),
+            const SizedBox(height: 6),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11.5, color: Colors.white54)),
+          ],
+        ),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CardTile(
+          def: widget.defs[cardId],
+          fallbackName: cardId,
+          width: w,
+          faded: faded,
+          selected: true,
+          onTap: onClear,
+        ),
+        const SizedBox(height: 4),
+        const Text('Ketuk untuk melepas',
+            style: TextStyle(fontSize: 10, color: Colors.white38)),
+      ],
+    );
+  }
+
+  Widget _fuseTray(String title, String? icon, List<(String, int)> items,
+      String? picked, _Grid g, ValueChanged<String?> onPick,
+      {required bool faded}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section(title, icon: icon),
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+                faded
+                    ? 'Belum ada kartu lanjutan yang perlu diaktifkan.'
+                    : 'Belum ada $_poinName. Belilah di Toko.',
+                style: const TextStyle(fontSize: 12, color: Colors.white38)),
+          )
+        else
+          Wrap(
+            spacing: g.gap,
+            runSpacing: g.gap,
+            children: [
+              for (final it in items)
+                CardTile(
+                  key: ValueKey('fuse-${it.$1}'),
+                  def: widget.defs[it.$1],
+                  fallbackName: it.$1,
+                  width: g.w,
+                  count: it.$2,
+                  selected: picked == it.$1,
+                  faded: faded,
+                  onTap: () => onPick(picked == it.$1 ? null : it.$1),
+                ),
+            ],
+          ),
+        const SizedBox(height: 14),
+      ],
+    );
+  }
+
+  Widget _gabungBody({double minW = 96}) {
+    final c = _fuseCandidates();
+    // Pilihan yang sudah tidak ada di tangan dilepas otomatis.
+    final advOk = _fuseAdv != null && c.adv.any((e) => e.$1 == _fuseAdv);
+    final poinOk = _fusePoin != null && c.poin.any((e) => e.$1 == _fusePoin);
+    final adv = advOk ? _fuseAdv : null;
+    final poin = poinOk ? _fusePoin : null;
+    if (c.adv.isEmpty && c.poin.isEmpty) {
+      return _empty('plus', 'Belum ada yang bisa digabung',
+          'Beli kartu lanjutan dan $_poinName di Toko, lalu gabungkan di sini.');
+    }
+    final ready = adv != null && poin != null;
+    return LayoutBuilder(builder: (context, box) {
+      final g = _mejaGrid(box.maxWidth, minW);
+      final slotW = min(130.0, (box.maxWidth - 56) / 2);
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+                'Pilih satu kartu lanjutan dan satu kartu syarat, lalu '
+                    'tempatkan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: Colors.white54)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: _glassDeco(radius: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _fuseSlot(
+                    label: 'Kartu lanjutan',
+                    cardId: adv,
+                    w: slotW,
+                    faded: poin == null,
+                    onClear: () => setState(() => _fuseAdv = null),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('+',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: EmbunColors.gold)),
+                  ),
+                  _fuseSlot(
+                    label: 'Kartu syarat',
+                    cardId: poin,
+                    w: slotW,
+                    faded: false,
+                    onClear: () => setState(() => _fusePoin = null),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            EmbunButton(
+              label: ready ? 'Tempatkan' : 'Pilih kedua kartu',
+              icon: 'plus',
+              expand: true,
+              height: 48,
+              kind: ready ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
+              onPressed: ready && !busy ? _doFuse : null,
+            ),
+            const SizedBox(height: 16),
+            _fuseTray('Kartu lanjutan', 'plus', c.adv, adv, g,
+                    (id) => setState(() => _fuseAdv = id),
+                faded: true),
+            _fuseTray('Kartu syarat', 'bulirembun', c.poin, poin, g,
+                    (id) => setState(() => _fusePoin = id),
+                faded: false),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _gabungPage() {
+    final c = _fuseCandidates();
+    final n = min(
+        c.adv.fold<int>(0, (a, e) => a + e.$2),
+        c.poin.fold<int>(0, (a, e) => a + e.$2));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _pageHeader('plus', 'Gabungkan kartu',
+            trailing: n == 0 ? null : '$n pasangan siap'),
+        const SizedBox(height: 6),
+        Expanded(child: _gabungBody()),
+      ],
+    );
+  }
 
   // ====================== Balai ======================
 
@@ -1672,14 +1933,21 @@ class _DayViewState extends State<DayView>
 
   // ====================== navigasi ======================
 
-  static const _tabIcons = ['store', 'mydeck2', 'announcement'];
+  static const _tabIcons = ['store', 'mydeck2', 'plus', 'announcement'];
 
   Widget _tab(int i) {
-    final labels = ['Toko', 'Meja · ${widget.hand.length}', 'Balai'];
+    final labels = ['Toko', 'Meja · ${widget.hand.length}', 'Gabung', 'Balai'];
     final on = tab == i;
-    final badge = i == _tabBalai ? _incoming.length : 0;
+    var badge = 0;
+    if (i == _tabBalai) {
+      badge = _incoming.length;
+    } else if (i == _tabGabung) {
+      final c = _fuseCandidates();
+      badge = min(c.adv.fold<int>(0, (a, e) => a + e.$2),
+          c.poin.fold<int>(0, (a, e) => a + e.$2));
+    }
     return GestureDetector(
-      key: i == 1 ? _mejaKey : null,
+      key: i == _tabMeja ? _mejaKey : null,
       behavior: HitTestBehavior.opaque,
       onTap: () => _goTab(i),
       child: AnimatedContainer(
@@ -1703,7 +1971,7 @@ class _DayViewState extends State<DayView>
             AnimatedBuilder(
               animation: _t,
               builder: (context, child) => Transform.scale(
-                scale: badge > 0
+                scale: badge > 0 && i == _tabBalai
                     ? 1 + 0.14 * sin(_t.value * 2 * pi * 2).abs()
                     : 1.0,
                 child: child,
@@ -1771,7 +2039,7 @@ class _DayViewState extends State<DayView>
     );
   }
 
-  /// Dok bawah ponsel: tiga tab dan tombol akhiri hari dalam satu baris.
+  /// Dok bawah ponsel: empat tab dan tombol akhiri hari dalam satu baris.
   Widget _dock() => Container(
     padding: const EdgeInsets.all(6),
     decoration: _glassDeco(radius: 20),
@@ -1786,10 +2054,10 @@ class _DayViewState extends State<DayView>
         Row(
           children: [
             Expanded(
-              flex: 3,
+              flex: 4,
               child: Row(
                 children: [
-                  for (var i = 0; i < 3; i++) Expanded(child: _tab(i)),
+                  for (var i = 0; i < 4; i++) Expanded(child: _tab(i)),
                 ],
               ),
             ),
@@ -1812,7 +2080,7 @@ class _DayViewState extends State<DayView>
           child: SingleChildScrollView(
             child: Column(
               children: [
-                for (var i = 0; i < 3; i++) ...[
+                for (var i = 0; i < 4; i++) ...[
                   _tab(i),
                   const SizedBox(height: 6),
                 ],
@@ -1832,7 +2100,7 @@ class _DayViewState extends State<DayView>
     ),
   );
 
-  Widget _pager3({required bool side}) => PageView(
+  Widget _pager4({required bool side}) => PageView(
     controller: _pager,
     onPageChanged: (i) => setState(() => tab = i),
     children: [
@@ -1842,6 +2110,9 @@ class _DayViewState extends State<DayView>
       Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: _mejaPage()),
+      Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: _gabungPage()),
       Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: _balaiPage()),
@@ -1871,6 +2142,41 @@ class _DayViewState extends State<DayView>
         ),
       );
 
+  /// Sakelar kecil di panel kanan: Meja atau Gabung.
+  Widget _railSwitch() {
+    Widget pill(String text, bool on, VoidCallback f) => GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: f,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color:
+          on ? EmbunColors.gold.withValues(alpha: 0.18) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: on
+                  ? EmbunColors.gold.withValues(alpha: 0.65)
+                  : Colors.white24),
+        ),
+        child: Text(text,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                color: on ? EmbunColors.cream : Colors.white70)),
+      ),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        pill('Meja · ${widget.hand.length}', !_railGabung,
+                () => setState(() => _railGabung = false)),
+        const SizedBox(width: 6),
+        pill('Gabung', _railGabung, () => setState(() => _railGabung = true)),
+      ],
+    );
+  }
+
   /// Rel kanan: Meja, Balai, lalu tombol akhiri hari yang selalu terlihat.
   Widget _rail() {
     final n = _incoming.length;
@@ -1882,11 +2188,12 @@ class _DayViewState extends State<DayView>
           child: KeyedSubtree(
             key: _mejaKey,
             child: _railPanel(
-              icon: 'mydeck2',
-              title: 'Mejamu',
-              trailing: Text('${widget.hand.length} kartu',
-                  style: const TextStyle(fontSize: 12, color: Colors.white60)),
-              child: _mejaBody(minW: 84),
+              icon: _railGabung ? 'plus' : 'mydeck2',
+              title: _railGabung ? 'Gabungkan' : 'Mejamu',
+              trailing: _railSwitch(),
+              child: _railGabung
+                  ? _gabungBody(minW: 84)
+                  : _mejaBody(minW: 84),
             ),
           ),
         ),
@@ -1927,12 +2234,13 @@ class _DayViewState extends State<DayView>
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
-      switch (_modeFor(box)) {
+      _lastMode = _modeFor(box);
+      switch (_lastMode) {
         case _Mode.phone:
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _pager3(side: false)),
+              Expanded(child: _pager4(side: false)),
               const SizedBox(height: 8),
               _dock(),
             ],
@@ -1943,7 +2251,7 @@ class _DayViewState extends State<DayView>
             children: [
               _sideRail(),
               const SizedBox(width: 10),
-              Expanded(child: _pager3(side: true)),
+              Expanded(child: _pager4(side: true)),
             ],
           );
         case _Mode.wide:

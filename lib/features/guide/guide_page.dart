@@ -1078,10 +1078,12 @@ class _HowToTab extends StatelessWidget {
                     'belum digabung tampak pudar, berlabel "Butuh poin".'),
             _step(
                 2,
-                'Gabungkan di Meja',
-                'Hari biasa: ketuk kartu lanjutan, lalu "Gabungkan dengan '
-                    'Poin". Satu poin habis dan kartu menjadi **AKTIF**. '
-                    'Tidak diumumkan, dan boleh walau sedang dikurung.'),
+                'Gabungkan di tab Gabung',
+                'Hari biasa: buka tab **Gabung**, letakkan satu kartu '
+                    'lanjutan dan satu kartu syarat (poin) di petak, lalu '
+                    'tekan "Tempatkan". Satu poin habis dan kartu menjadi '
+                    '**AKTIF**. Tidak diumumkan, dan boleh walau sedang '
+                    'dikurung.'),
             _step(
                 3,
                 'Persembahkan',
@@ -1362,8 +1364,8 @@ const _itemGroupHelp = {
   'penguat': 'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.',
   'siang': 'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
       'dipersembahkan.',
-  'kombinasi': 'Kartu lanjutan harus digabung dengan kartu poin di Meja '
-      'sebelum bisa dipersembahkan.',
+  'kombinasi': 'Kartu lanjutan harus digabung dengan kartu poin di tab '
+      'Gabung sebelum bisa dipersembahkan.',
   'malam': 'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
       'tahu ada serangan.',
 };
