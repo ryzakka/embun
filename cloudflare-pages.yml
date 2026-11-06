@@ -1,0 +1,36 @@
+# OPSI C (opsional): build Flutter di GitHub Actions lalu kirim ke Cloudflare
+# Pages. Dengan ini build/web TIDAK perlu lagi di-commit.
+#
+# Syarat: proyek Pages dibuat sebagai "Direct Upload" (bukan sambungan Git):
+#   npx wrangler pages project create embun --production-branch=main
+# Secrets di GitHub (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN   (izin: Cloudflare Pages - Edit)
+#   CLOUDFLARE_ACCOUNT_ID
+name: Deploy ke Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable   # kode memakai Dart 3.8+ (elemen null-aware di list)
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build web --release
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build/web --project-name=embun --branch=${{ github.ref_name }}

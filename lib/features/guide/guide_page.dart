@@ -718,6 +718,61 @@ class _Segmented extends StatelessWidget {
     required this.onSelect,
   });
 
+  /// Lebar minimal satu sel; di bawah itu baris dibuat bisa digeser.
+  static const _minCell = 84.0;
+
+  Widget _cell(int i) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: () {
+      if (i != selected) {
+        HapticFeedback.selectionClick();
+        onSelect(i);
+      }
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      height: 46,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: i == selected
+            ? accent.withValues(alpha: 0.22)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border:
+        Border.all(color: i == selected ? accent : Colors.transparent),
+      ),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                labels[i],
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight:
+                  i == selected ? FontWeight.w800 : FontWeight.w600,
+                  color: i == selected ? accent : Colors.white70,
+                ),
+              ),
+              Text(
+                '${counts[i]}',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: i == selected
+                      ? accent.withValues(alpha: 0.9)
+                      : Colors.white38,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(4),
@@ -726,65 +781,25 @@ class _Segmented extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.35)),
     ),
-    child: Row(
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (i != selected) {
-                  HapticFeedback.selectionClick();
-                  onSelect(i);
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                height: 46,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: i == selected
-                      ? accent.withValues(alpha: 0.22)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: i == selected ? accent : Colors.transparent),
-                ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          labels[i],
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: i == selected
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            color: i == selected ? accent : Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          '${counts[i]}',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: i == selected
-                                ? accent.withValues(alpha: 0.9)
-                                : Colors.white38,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    ),
+    child: LayoutBuilder(builder: (context, c) {
+      final scroll = c.maxWidth / labels.length < _minCell;
+      if (!scroll) {
+        return Row(
+          children: [
+            for (var i = 0; i < labels.length; i++) Expanded(child: _cell(i)),
+          ],
+        );
+      }
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              SizedBox(width: _minCell, child: _cell(i)),
+          ],
+        ),
+      );
+    }),
   );
 }
 
@@ -947,7 +962,7 @@ class _HowToTab extends StatelessWidget {
     return _Page(
       maxWidth: 780,
       header: _stats(),
-      // Layar lebar: kiri = Tujuan + Siklus, kanan = sisanya.
+      // Layar lebar: kiri = Tujuan, Siklus, Kartu lanjutan; kanan = sisanya.
       column: (i) => const [0, 1, 0, 1, 0, 1, 1][i],
       children: [
         _Section(
@@ -955,9 +970,8 @@ class _HowToTab extends StatelessWidget {
           title: 'Tujuan',
           children: [
             _para('**Hayu**, pohon tua desa, sedang meredup. Jumlah daunnya '
-                'adalah nyawa desa. Warga berusaha menyelamatkannya; satu orang '
-                'di antara kalian, **Si Terbisik**, diam-diam berusaha '
-                'menghancurkannya.'),
+                'adalah nyawa desa: warga berusaha menyelamatkannya, '
+                '**Si Terbisik** diam-diam menghancurkannya.'),
             const SizedBox(height: 4),
             _wins(),
           ],
@@ -966,63 +980,53 @@ class _HowToTab extends StatelessWidget {
           icon: 'persona',
           title: 'Peran',
           children: [
-            _bullet('Di awal, satu orang dipilih acak menjadi Si Terbisik, '
-                'sisanya warga. Hanya kamu yang tahu perannya.'),
-            _bullet('Nama dan wajahmu diacak. Selama permainan kamu dikenal '
-                'dengan **nama kartu karakter** (misalnya "Guru" atau '
-                '"Nelayan 2"), bukan nama aslimu.'),
-            _bullet('Warga memakai **tetes embun**, Si Terbisik memakai '
-                '**bulir hitam**. Keduanya dipakai untuk berbelanja kartu.'),
-            _bullet('Hayu mulai dengan 10 dikurangi jumlah pemain daun '
-                '(paling sedikit 4).'),
+            _bullet('Satu pemain acak menjadi Si Terbisik, sisanya warga. '
+                'Hanya kamu yang tahu perannya.'),
+            _bullet('Namamu diacak menjadi **nama kartu karakter** '
+                '(mis. "Guru", "Nelayan 2").'),
+            _bullet('Warga berbelanja dengan **tetes embun**, Si Terbisik '
+                'dengan **bulir hitam**.'),
+            _bullet('Daun awal Hayu: 10 dikurangi jumlah pemain '
+                '(minimal 4).'),
           ],
         ),
         _Section(
           icon: 'hari',
           title: 'Satu siklus (3 hari)',
           children: [
-            _para('Permainan berlangsung 12 hari, terbagi menjadi empat '
-                'siklus. Tiap siklus: dua hari biasa, lalu satu malam '
-                'persembahan.'),
+            _para('12 hari = 4 siklus. Tiap siklus: **2 hari biasa** lalu '
+                '**1 malam persembahan**.'),
             const SizedBox(height: 4),
             _step(
                 1,
                 'Hari biasa (dua hari)',
-                'Belanja **satu kartu per hari** di Pasar Pagi (tiga tawaran '
-                    'acak sesuai fraksimu). Kamu juga bisa **memberi embun** '
-                    '(1 sampai 3, maksimal 3 kali sehari), **menukar kartu**, '
-                    'mengirim isyarat, dan mengobrol. Kabar pagi dapat mengubah '
-                    'harga, memberi bonus, atau membocorkan petunjuk. Tekan '
-                    '"Akhiri hari" bila sudah selesai.'),
+                'Beli **1 kartu per hari** di Pasar Pagi (3 tawaran acak). '
+                    'Boleh memberi embun (1 sampai 3, maks 3 kali sehari), '
+                    'menukar kartu, mengirim isyarat, dan mengobrol. Tekan '
+                    '"Akhiri hari" bila selesai.'),
             _step(
                 2,
                 'Malam persembahan (hari 3, 6, 9, 12)',
-                'Pilih **1 atau 2 kartu** untuk dipersembahkan kepada Hayu. '
-                    'Semua kartu, baik maupun jahat, dilempar **tanpa nama '
-                    'pemilik**, dan kartu yang sudah dipersembahkan tidak '
-                    'kembali. Tiap malam persembahan kamu menerima satu kartu '
-                    'dasar. Si Terbisik **wajib menyertakan Roti Surplus** '
-                    '(+1 daun, menguras 2 bulir hitam) sebagai samaran.'),
+                'Persembahkan **1 atau 2 kartu** ke Hayu, tanpa nama '
+                    'pemilik. Si Terbisik **wajib menyertakan Roti Surplus** '
+                    'sebagai samaran.'),
             _step(
                 3,
                 'Efek',
-                'Kartu-kartu dilempar ke Hayu dalam urutan acak, lalu hasilnya '
-                    'muncul sebagai gelembung baik atau buruk. Kabut juga '
-                    'menggerogoti beberapa daun tiap malam persembahan. Setelah '
-                    'itu terbuka **berapa kartu** yang diserahkan tiap pemain, '
-                    'tetapi bukan kartu apa.'),
+                'Kartu dilempar acak; hasilnya muncul sebagai gelembung '
+                    'baik atau buruk. Kabut ikut menggerogoti daun. Lalu '
+                    'terbuka **berapa** kartu tiap pemain, bukan apa.'),
             _step(
                 4,
                 'Musyawarah',
-                'Bicaralah lewat obrolan. Bandingkan petunjuk: hasil '
-                    'pemeriksaan pribadi, desas-desus, kabar pagi, dan jumlah '
-                    'kartu yang diserahkan.'),
+                'Bandingkan petunjuk lewat obrolan: pemeriksaan pribadi, '
+                    'desas-desus, kabar pagi, jumlah kartu.'),
             _step(
                 5,
                 'Pemungutan suara',
-                'Tiap pemain menuduh satu orang atau tidak memilih. Tuduhan '
-                    'berlaku bila mendapat **lebih dari separuh** suara pemain '
-                    'yang masih di desa.',
+                'Tuduh satu orang atau tidak memilih. Tuduhan sah bila '
+                    'mendapat **lebih dari separuh** suara pemain yang '
+                    'masih di desa.',
                 last: true),
           ],
         ),
@@ -1030,82 +1034,68 @@ class _HowToTab extends StatelessWidget {
           icon: 'bulirembun',
           title: 'Embun dan kartu',
           children: [
-            _bullet('Embunmu bertambah tiap pagi sesuai **laju** (awalnya 3 '
-                'per hari). Pagi pertama tiap siklus baru ada bonus +5.'),
-            _bullet('Semua kartu dipakai dengan cara **dipersembahkan** di '
-                'malam persembahan, maksimal 2 per malam.'),
+            _bullet('Embun bertambah tiap pagi sesuai **laju** (awal 3). '
+                'Pagi pertama tiap siklus ada bonus +5.'),
+            _bullet('**Perlindungan** menahan serangan pada malam itu saja.'),
             const SizedBox(height: 4),
             _infoRow('donations', 'Persembahan',
-                'Efek langsung: menambah daun (kartu baik) atau mengurangi daun (kartu jahat), memberi perlindungan, mencuri embun, dan sebagainya.'),
-            _infoRow('item', 'Sekali pakai',
-                'Alat pemeriksaan atau trik, misalnya melihat apakah persembahan seseorang tampak baik atau buruk. Hasilnya hanya kamu yang tahu, dan tidak selalu bisa dipercaya.'),
+                'Efek langsung saat dilempar ke Hayu: menambah atau '
+                    'mengurangi daun, perlindungan, mencuri embun.'),
+            _infoRow('item', 'Sekali pakai (warga)',
+                'Alat periksa. Hasilnya hanya kamu yang tahu, dan tidak '
+                    'selalu benar.'),
             _infoRow('plus', 'Penguat',
-                'Menaikkan laju embun (atau bulir hitam) milikmu untuk seterusnya.'),
+                'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.'),
             _infoRow('plus', 'Kartu lanjutan',
-                'Kartu kuat yang harus **digabung dengan kartu poin** dulu sebelum bisa dipersembahkan. Penjelasan lengkap ada di bagian **Kartu lanjutan** di bawah.'),
+                'Harus digabung dengan kartu poin dulu. Lihat bagian di '
+                    'bawah.'),
+            _infoRow('item', 'Kartu kuning (warga)',
+                'Dipakai di Meja pada hari biasa, bukan dipersembahkan: '
+                    'perisai, cermin, embun, nyawa, atau panah.'),
+            _infoRow('danger', 'Serangan malam (Si Terbisik)',
+                'Dilancarkan saat malam tiba. Desa hanya tahu ada serangan, '
+                    'bukan sasarannya.'),
             const SizedBox(height: 2),
-            _bullet('**Perlindungan** menahan serangan yang mengurangi daun '
-                'pada malam itu saja.'),
-            _bullet('Ketuk lama sebuah kartu untuk membaca efeknya. Daftar '
-                'lengkap ada di tab **Kartu Item**.'),
+            _bullet('Yang bisa dipersembahkan: Persembahan, Sekali pakai, '
+                'Penguat, dan kartu lanjutan yang AKTIF (maks 2 per malam).'),
+            _bullet('Tekan lama kartu untuk membaca efeknya. Daftar lengkap '
+                'ada di tab **Kartu Item**.'),
           ],
         ),
         _Section(
           icon: 'plus',
           title: 'Kartu lanjutan (kombinasi)',
           children: [
-            _para('Sebagian kartu kuat **tidak bisa langsung dipersembahkan**. '
-                'Kartu ini disebut **kartu lanjutan** dan harus lebih dulu '
-                '**digabung** dengan satu **kartu poin**. Warga memakai '
-                '**Kartu Regenerasi + Poin Regenerasi**; Si Terbisik memakai '
-                '**Kartu Rekayasa + Poin DNA**. Kartu fraksi lain tidak bisa '
-                'kamu gabungkan.'),
-            const SizedBox(height: 4),
+            _para('Kartu lanjutan harus **digabung** dengan satu **kartu '
+                'poin** sebelum bisa dipersembahkan.'),
+            _bullet('**Warga**: Kartu Regenerasi + Poin Regenerasi.'),
+            _bullet('**Si Terbisik**: Kartu Rekayasa + Poin DNA.'),
+            const SizedBox(height: 6),
             _step(
                 1,
-                'Siapkan dua bahan',
-                'Beli **kartu lanjutan** dan **kartu poin** di Pasar Pagi; '
-                    'keduanya muncul acak di tawaran harianmu seperti kartu '
-                    'lain. Kartu lanjutan yang belum digabung tampak **pudar** '
-                    'dan berlabel \"Butuh poin\". Kartu poin tidak bisa '
-                    'dipersembahkan sendirian.'),
+                'Beli keduanya',
+                'Keduanya muncul acak di Pasar Pagi. Kartu lanjutan yang '
+                    'belum digabung tampak pudar, berlabel "Butuh poin".'),
             _step(
                 2,
                 'Gabungkan di Meja',
-                'Pada **hari biasa**, buka Meja, ketuk kartu lanjutan, lalu '
-                    'tekan \"Gabungkan dengan Poin\". Satu kartu poin **habis '
-                    'terpakai** dan kartu lanjutan berubah menjadi **AKTIF**. '
-                    'Penggabungan tidak diumumkan ke pemain lain, dan boleh '
-                    'dilakukan walau kamu sedang dikurung.'),
+                'Hari biasa: ketuk kartu lanjutan, lalu "Gabungkan dengan '
+                    'Poin". Satu poin habis dan kartu menjadi **AKTIF**. '
+                    'Tidak diumumkan, dan boleh walau sedang dikurung.'),
             _step(
                 3,
-                'Persembahkan seperti biasa',
-                'Kartu yang sudah AKTIF dipersembahkan di malam persembahan '
-                    'dan ikut dihitung dalam jatah **1 sampai 2 kartu**. '
-                    'Kartu lanjutan yang belum aktif **ditolak** saat '
-                    'dipersembahkan.',
+                'Persembahkan',
+                'Kartu AKTIF dipersembahkan seperti kartu biasa. Yang belum '
+                    'aktif ditolak.',
                 last: true),
             const SizedBox(height: 10),
-            _bullet('**Harga**: kartu lanjutannya murah (5), tetapi poinnya '
-                'mahal (16), jadi satu kartu kombinasi menelan sekitar 21 '
-                'embun. Menabung dan merencanakan belanja itu penting.'),
-            _bullet('**Kapsul DNA** (khusus Si Terbisik) setara **dua** Poin '
-                'DNA: cukup untuk mengaktifkan dua Kartu Rekayasa. Setelah '
-                'pemakaian pertama, satu Poin DNA tertinggal di tanganmu. '
-                'Poin biasa selalu dipakai lebih dulu, kapsul paling akhir.'),
-            _bullet('**Status AKTIF tidak ikut berpindah.** Kartu yang '
-                'ditukar atau dicuri kembali menjadi tidak aktif dan harus '
-                'digabung ulang oleh pemilik barunya. Tawaran tukar yang '
-                'masih menggantung atas kartu itu ikut dibatalkan saat kamu '
-                'menggabungkannya.'),
-            _bullet('Kartu poin termasuk kartu **mahal** di tanganmu, jadi '
-                'mudah menjadi sasaran Kerikil Panas atau Curian Malam yang '
-                'mengincar kartu termahal. **Gabungkan secepatnya** bila '
-                'kamu sudah punya pasangannya.'),
-            _bullet('Tanpa kartu poin, tombol gabung akan gagal dengan '
-                'pesan bahwa kamu butuh Poin Regenerasi atau Poin DNA. '
-                'Pastikan poinnya sudah ada sebelum membeli banyak kartu '
-                'lanjutan.'),
+            _bullet('**Harga**: kartu lanjutan 5 + poin 16, sekitar 21 '
+                'embun per kombinasi.'),
+            _bullet('**Kapsul DNA** (Si Terbisik) setara 2 Poin DNA: cukup '
+                'untuk dua kartu Rekayasa.'),
+            _bullet('Kartu yang ditukar atau dicuri **kehilangan status '
+                'AKTIF**. Kartu poin yang mahal juga mudah jadi sasaran '
+                'Kerikil Panas dan Curian Malam, jadi gabungkan secepatnya.'),
           ],
         ),
         _Section(
@@ -1113,27 +1103,25 @@ class _HowToTab extends StatelessWidget {
           title: 'Dua nyawa, kurungan, dan keluar',
           accent: EmbunColors.blood,
           children: [
-            _para('Setiap pemain punya **2 nyawa** (dua hati di avatarnya). '
-                'Dituduh mayoritas berarti kehilangan satu nyawa.'),
+            _para('Tiap pemain punya **2 nyawa** (dua hati di avatar). '
+                'Dituduh mayoritas = kehilangan satu nyawa, dan Hayu '
+                'kehilangan 1 daun.'),
             _step(
                 1,
                 'Tuduhan pertama: dikurung',
-                'Pemain itu dikurung **sampai musyawarah berikutnya** dan Hayu '
-                    'kehilangan 1 daun. Akibatnya tampak sama untuk semua '
-                    'peran. Yang dikurung tidak bisa membeli kartu dan tidak '
-                    'bisa menawarkan tukar kartu, tetapi tetap bisa menerima '
-                    'kartu, mempersembahkan kartu yang ia pegang, bicara, dan '
-                    'memilih. Beberapa kartu jahat juga bisa mengurung orang.'),
+                'Dikurung **sampai musyawarah berikutnya**. Tidak bisa '
+                    'membeli atau menawarkan tukar kartu, tetapi tetap bisa '
+                    'menerima kartu, mempersembahkan, bicara, dan memilih.'),
             _step(
                 2,
                 'Tuduhan kedua: tertangkap atau keluar',
-                'Bila ia Si Terbisik, ia **tertangkap** dan warga menang. Bila '
-                    'ia warga, ia **keluar dari desa**: perannya terbuka, ia '
-                    'hanya bisa menonton, dan Hayu kembali kehilangan 1 daun.',
+                'Si Terbisik **tertangkap** dan warga menang. Warga '
+                    '**keluar dari desa**: perannya terbuka dan ia hanya '
+                    'bisa menonton.',
                 last: true),
-            _bullet('Bila pemain yang tersisa kurang dari 3, **Si Terbisik '
-                'menang**. Salah tuduh itu mahal, jadi pikirkan baik-baik '
-                'sebelum menuduh orang yang sama dua kali.',
+            _bullet('Pemain tersisa kurang dari 3: **Si Terbisik menang**. '
+                'Pikirkan baik-baik sebelum menuduh orang yang sama dua '
+                'kali.',
                 dot: EmbunColors.blood, bold: EmbunColors.blood),
           ],
         ),
@@ -1141,15 +1129,14 @@ class _HowToTab extends StatelessWidget {
           icon: 'info',
           title: 'Tips',
           children: [
-            _bullet('Satu petunjuk belum tentu benar. Pemeriksaan bisa '
-                'dikelabui oleh kartu seperti Topeng, Cermin Khayal, atau '
-                'Boneka Sawah.'),
+            _bullet('Satu petunjuk belum tentu benar: Topeng, Cermin Khayal, '
+                'dan Boneka Sawah bisa mengelabui pemeriksaan.'),
             _bullet('Perhatikan **siapa yang jarang membeli** atau selalu '
                 'menyerahkan jumlah kartu yang sama.'),
-            _bullet('Isyarat (emoji) bisa dikirim ke semua orang atau satu '
-                'pemain, maksimal 8 per hari.'),
-            _bullet('Sebagai Si Terbisik, tidak perlu menyerang setiap malam: '
-                'persembahan yang tampak biasa adalah samaran terbaikmu.'),
+            _bullet('Isyarat (emoji) bisa ke semua orang atau satu pemain, '
+                'maks 8 per hari.'),
+            _bullet('Si Terbisik: tidak perlu menyerang tiap malam. '
+                'Persembahan yang tampak biasa adalah samaran terbaik.'),
           ],
         ),
       ],
@@ -1290,14 +1277,12 @@ class _CharactersTabState extends State<_CharactersTab>
                 list.length,
                 accent,
                 help: dark
-                    ? 'Hanya satu pemain per permainan menjadi Si Terbisik. '
-                    'Ia memakai wajah gelap ini di layarnya sendiri, '
-                    'sementara pemain lain tetap melihat kartu karakter '
-                    'biasanya. Wajah gelap terungkap saat permainan berakhir.'
-                    : 'Dibagikan acak di awal permainan. Namamu selama bermain '
-                    'adalah nama kartu yang kamu dapat (diberi nomor bila '
-                    'kembar). Kartu karakter hanya penampilan, tidak mengubah '
-                    'kekuatan. Ketuk kartu untuk memperbesar.',
+                    ? 'Dipakai Si Terbisik di layarnya sendiri; pemain lain '
+                    'tetap melihat kartu karakter biasa. Terungkap saat '
+                    'permainan berakhir. Ketuk kartu untuk memperbesar.'
+                    : 'Dibagikan acak di awal; namamu mengikuti kartu ini '
+                    '(diberi nomor bila kembar). Hanya penampilan, tidak '
+                    'mengubah kekuatan. Ketuk kartu untuk memperbesar.',
               ),
               if (list.isEmpty)
                 const Padding(
@@ -1342,49 +1327,49 @@ class _CharactersTabState extends State<_CharactersTab>
 /// Disimpan selama aplikasi hidup supaya tab tidak memuat ulang.
 Map<String, Map<String, dynamic>>? _defsCache;
 
-const _kinds = [
+/// Kelompok kartu di tab ini. Kartu poin dan kartu lanjutan digabung dalam
+/// satu kelompok "Kombinasi" supaya segmen tetap sedikit.
+const _itemGroups = [
   'persembahan',
   'sekali_pakai',
   'penguat',
-  'malam',
   'siang',
-  'poin',
-  'lanjutan',
+  'kombinasi',
+  'malam',
 ];
 
-const _kindHelp = {
-  'persembahan':
-  'Efek langsung saat dipersembahkan: menambah atau mengurangi daun, '
-      'memberi perlindungan, mencuri embun, dan sebagainya.',
-  'sekali_pakai':
-  'Alat pemeriksaan dan trik. Habis setelah dipersembahkan; hasilnya '
-      'dilihat pemakainya saja.',
-  'penguat':
-  'Menaikkan laju embun (atau bulir hitam) pemakainya untuk seterusnya.',
-  'malam':
-  'Kartu kuasa Si Terbisik (10 sampai 20 bulir hitam, jadi perlu '
-      'ditabung), dilancarkan saat malam tiba: menyedot embun, membakar atau '
-      'mencuri kartu termahal, menyedot kemampuan, menebalkan kabut, '
-      'memutarbalik pemeriksaan, memfitnah, atau mengalihkan tuduhan. Semua '
-      'pemain hanya mendengar bahwa ada serangan, tanpa sasaran.',
-  'siang':
-  'Kartu kuning, hanya untuk warga (10 sampai 20 embun, jadi perlu '
-      'ditabung). Ketuk di Meja pada hari biasa untuk '
-      'memakainya saat itu juga: mengacak ulang pasar, menjaga dirimu '
-      'dari serangan malam atau tuduhan sampai akhir sesi, menambah embun, atau '
-      'memulihkan satu nyawa, atau (Busur Terakhir, khusus warga) memanah '
-      'Si Terbisik. Pemakaiannya tidak diumumkan saat itu juga.',
-  'poin':
-  'Bahan penggabung, tidak bisa dipersembahkan sendiri. Di Meja (hari '
-      'biasa), gabungkan satu kartu poin dengan satu kartu lanjutan agar '
-      'kartu itu aktif. Poin habis sekali pakai; Kapsul DNA cukup untuk '
-      'dua kartu.',
-  'lanjutan':
-  'Kartu kuat yang wajib digabung dengan kartu poin dulu (Poin '
-      'Regenerasi untuk warga, Poin DNA untuk Si Terbisik). Ketuk di Meja '
-      'pada hari biasa untuk menggabungkan; setelah berlabel AKTIF baru bisa '
-      'dipersembahkan.',
+const _itemGroupLabel = {
+  'persembahan': 'Persembahan',
+  'sekali_pakai': 'Sekali pakai',
+  'penguat': 'Penguat',
+  'siang': 'Kartu kuning',
+  'kombinasi': 'Kombinasi',
+  'malam': 'Serangan malam',
 };
+
+const _itemGroupIcon = {
+  'persembahan': 'donations',
+  'sekali_pakai': 'item',
+  'penguat': 'plus',
+  'siang': 'item',
+  'kombinasi': 'plus',
+  'malam': 'danger',
+};
+
+const _itemGroupHelp = {
+  'persembahan': 'Efek langsung saat dipersembahkan ke Hayu.',
+  'sekali_pakai': 'Alat periksa. Hasilnya hanya dilihat pemakainya.',
+  'penguat': 'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.',
+  'siang': 'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
+      'dipersembahkan.',
+  'kombinasi': 'Kartu lanjutan harus digabung dengan kartu poin di Meja '
+      'sebelum bisa dipersembahkan.',
+  'malam': 'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
+      'tahu ada serangan.',
+};
+
+String _itemGroupOf(String? kind) =>
+    (kind == 'poin' || kind == 'lanjutan') ? 'kombinasi' : (kind ?? 'persembahan');
 
 class _ItemsTab extends StatefulWidget {
   const _ItemsTab();
@@ -1503,12 +1488,29 @@ class _ItemsTabState extends State<_ItemsTab>
     final dark = faction == 1;
     final all = dark ? bad : good;
     final accent = dark ? EmbunColors.mist : EmbunColors.leaf;
-    int n(String k) => all.where((d) => d['kind'] == k).length;
-    // Hanya jenis yang ada pada fraksi ini (Warga tidak punya "Serangan malam").
-    final present = [for (final k in _kinds) if (n(k) > 0) k];
+    int n(String g) =>
+        all.where((d) => _itemGroupOf(d['kind'] as String?) == g).length;
+    // Hanya kelompok yang ada pada fraksi ini.
+    final present = [for (final g in _itemGroups) if (n(g) > 0) g];
     final idx = kindIdx.clamp(0, present.length).toInt();
-    final selectedKind = idx == 0 ? null : present[idx - 1];
-    final kinds = selectedKind == null ? present : [selectedKind];
+    final shown = idx == 0 ? present : [present[idx - 1]];
+
+    List<Map<String, dynamic>> inGroup(String g) {
+      final l = [
+        for (final d in all)
+          if (_itemGroupOf(d['kind'] as String?) == g) d,
+      ];
+      // Kombinasi: kartu lanjutan dulu, lalu kartu poin; sisanya menurut harga.
+      l.sort((a, b) {
+        final ak = a['kind'] == 'poin' ? 1 : 0;
+        final bk = b['kind'] == 'poin' ? 1 : 0;
+        if (ak != bk) return ak - bk;
+        final c = ((a['cost'] as int?) ?? 0) - ((b['cost'] as int?) ?? 0);
+        if (c != 0) return c;
+        return '${a['name']}'.compareTo('${b['name']}');
+      });
+      return l;
+    }
 
     return _Page(
       children: [
@@ -1529,11 +1531,11 @@ class _ItemsTabState extends State<_ItemsTab>
               _rich(
                 dark
                     ? 'Dibeli dengan **bulir hitam**. Ketuk kartu untuk '
-                    'membaca efeknya. Kartu berlabel "Dasar" tidak dijual; '
-                    'dibagikan tiap malam persembahan.'
+                    'detail. Label "Dasar" = tidak dijual, dibagikan tiap '
+                    'malam persembahan.'
                     : 'Dibeli dengan **tetes embun**. Ketuk kartu untuk '
-                    'membaca efeknya. Kartu berlabel "Dasar" tidak dijual; '
-                    'dibagikan tiap malam persembahan.',
+                    'detail. Label "Dasar" = tidak dijual, dibagikan tiap '
+                    'malam persembahan.',
                 size: 12.5,
                 color: Colors.white70,
                 bold: accent,
@@ -1542,37 +1544,33 @@ class _ItemsTabState extends State<_ItemsTab>
               _Segmented(
                 labels: [
                   'Semua',
-                  for (final k in present) kindLabel[k] ?? k,
+                  for (final g in present) _itemGroupLabel[g] ?? g,
                 ],
-                counts: [all.length, for (final k in present) n(k)],
+                counts: [all.length, for (final g in present) n(g)],
                 selected: idx,
                 accent: accent,
                 onSelect: (i) => setState(() => kindIdx = i),
               ),
               const SizedBox(height: 18),
-              for (final k in kinds)
-                if (n(k) > 0) ...[
-                  _groupHeader(
-                    kindIcon[k] ?? 'item',
-                    kindLabel[k] ?? k,
-                    n(k),
-                    accent,
-                    help: _kindHelp[k],
-                  ),
-                      () {
-                    final list = [
-                      for (final d in all)
-                        if (d['kind'] == k) d,
-                    ];
-                    return _Grid(
-                      key: ValueKey('$faction-$k-$idx'),
-                      count: list.length,
-                      minCell: 120,
-                      item: (i, w) => _tile(list[i], w, dark),
-                    );
-                  }(),
-                  const SizedBox(height: 24),
-                ],
+              for (final g in shown) ...[
+                _groupHeader(
+                  _itemGroupIcon[g] ?? 'item',
+                  _itemGroupLabel[g] ?? g,
+                  n(g),
+                  accent,
+                  help: _itemGroupHelp[g],
+                ),
+                    () {
+                  final list = inGroup(g);
+                  return _Grid(
+                    key: ValueKey('$faction-$g-$idx'),
+                    count: list.length,
+                    minCell: 120,
+                    item: (i, w) => _tile(list[i], w, dark),
+                  );
+                }(),
+                const SizedBox(height: 24),
+              ],
               if (all.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
@@ -1613,13 +1611,9 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   static const _groupLabel = {'sekali_pakai': 'Sekali pakai', 'pasif': 'Pasif'};
   static const _groupIcon = {'sekali_pakai': 'item', 'pasif': 'plus'};
   static const _groupHelp = {
-    'sekali_pakai':
-    'Dipakai dengan menekan tombol kemampuan di bilah atas meja (Patuhilah '
-        'Padaku dipakai di layar voting). Hanya sekali, dan bisa disedot '
-        'sebelum terpakai oleh Stetoskop Pencuri Hati milik Si Terbisik.',
-    'pasif': 'Bekerja otomatis saat syaratnya terpenuhi. Tidak perlu '
-        'dipakai, tetapi tetap bisa disedot Stetoskop Pencuri Hati sebelum '
-        'sempat bekerja.',
+    'sekali_pakai': 'Tekan tombol kemampuan di bilah atas meja (Patuhilah '
+        'Padaku: di layar voting). Hanya sekali.',
+    'pasif': 'Bekerja otomatis saat syaratnya terpenuhi.',
   };
 
   @override
@@ -1799,19 +1793,19 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _rich(
-                'Di awal permainan, tiap warga mendapat **satu kemampuan '
-                    'acak** yang tidak bisa dibeli dan tidak ada dua pemain '
-                    'yang sama. Jumlah kemampuan nyata tergantung banyak pemain '
-                    '(**1** untuk 4 sampai 5 pemain, **2** untuk 6 sampai 7, '
-                    '**3** untuk 8); sisanya hanyalah warga biasa. Si '
-                    'Terbisik tidak mendapat kemampuan. Ketuk kartu untuk '
-                    'membaca efeknya.',
-                size: 12.5,
-                color: Colors.white70,
-                bold: accent,
-              ),
-              const SizedBox(height: 12),
+              _bullet('Tiap warga mendapat **satu kemampuan acak**. Tidak '
+                  'bisa dibeli dan tidak ada yang kembar.',
+                  dot: accent, bold: accent),
+              _bullet('Jumlah kemampuan nyata: **0** (3 pemain), **1** '
+                  '(4-5), **2** (6-7), **3** (8). Sisanya warga biasa.',
+                  dot: accent, bold: accent),
+              _bullet('Si Terbisik tidak punya kemampuan, tetapi Stetoskop '
+                  'Pencuri Hati miliknya bisa menyedot kemampuan yang '
+                  'belum terpakai.',
+                  dot: accent, bold: accent),
+              _bullet('Ketuk kartu untuk membaca efeknya.',
+                  dot: accent, bold: accent),
+              const SizedBox(height: 8),
               _Segmented(
                 labels: ['Semua', for (final k in _groups) _groupLabel[k]!],
                 counts: [total, for (final k in _groups) n(k)],

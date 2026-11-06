@@ -1,0 +1,23 @@
+# Cloudflare Pages: salin ke folder web/ proyek Flutter.
+# Flutter ikut menyalinnya ke build/web/_headers saat `flutter build web`.
+# Berkas masuk dan service worker harus selalu dicek ulang, supaya
+# pembaruan aplikasi langsung terbaca pemain.
+
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/flutter_bootstrap.js
+  Cache-Control: no-cache
+/main.dart.js
+  Cache-Control: no-cache
+/flutter_service_worker.js
+  Cache-Control: no-cache
+/version.json
+  Cache-Control: no-cache
+/manifest.json
+  Cache-Control: no-cache
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
