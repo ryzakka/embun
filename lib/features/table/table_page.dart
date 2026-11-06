@@ -1223,7 +1223,7 @@ class _TablePageState extends State<TablePage> {
               // Tanpa sidebar di ponsel: adegan memakai lebar penuh dan
               // lebih pendek supaya tidak menutupi kartu terlalu banyak.
               leftInset: _narrow ? 12 : 137,
-              topInset: _narrow ? 172 : 190,
+              topInset: _narrow ? 140 : 190,
               bottomInset: _narrow ? 96 : 130,
               sceneHeight: _narrow ? 190 : 240,
             ),
@@ -1592,7 +1592,7 @@ class _TablePageState extends State<TablePage> {
     // disembunyikan supaya ruang vertikal tidak habis.
     final showStrip = phase == 'day' || phase == 'discussion';
 
-    final gap = _short ? 6.0 : (narrow ? 8.0 : 12.0);
+    final gap = _short ? 6.0 : (narrow ? 6.0 : 12.0);
     final showVerdict = verdict != null &&
         phase == 'day' &&
         _dayIntro == null &&
@@ -1600,8 +1600,8 @@ class _TablePageState extends State<TablePage> {
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: narrow ? 10 : (_wide ? 24 : 16),
-        vertical: narrow ? 8 : 14,
+        horizontal: narrow ? 8 : (_wide ? 24 : 16),
+        vertical: narrow ? 6 : 14,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1647,6 +1647,7 @@ class _TablePageState extends State<TablePage> {
             KeyedSubtree(
               key: _stripKey,
               child: VillageStrip(
+                compact: _narrow,
                 myId: repo.myId,
                 players: players,
                 emotes: emotes,
@@ -1862,10 +1863,11 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  /// Header ponsel: satu permukaan, dua baris, tanpa kotak di dalamnya.
-  ///  Baris 1: identitas di kiri, aksi di kanan.
-  ///  Baris 2: saldo (emas, menonjol) di kiri; hari, daun, hitung mundur,
-  ///           jumlah siap, dan keterangan persembahan di kanan.
+  /// Header ponsel, serendah mungkin supaya ruang kartu lega.
+  ///  Baris 1 (52 px): identitas di kiri; saldo emas, obrolan, kemampuan,
+  ///  dan menu di kanan.
+  ///  Baris 2 (24 px): hari, daun, hitung mundur, dan keterangan persembahan
+  ///  sebagai satu baris teks; jumlah pemain siap di ujung kanan.
   Widget _phoneHeader({
     required double balance,
     required double rate,
@@ -1882,7 +1884,7 @@ class _TablePageState extends State<TablePage> {
     final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
     final readyCount = _alive.where((p) => p['ready'] == true).length;
     final due = day % cycle == 0
-        ? 'Malam persembahan'
+        ? 'Persembahan malam ini'
         : 'Persembahan ${cycle - day % cycle} hari lagi';
 
     PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
@@ -1898,12 +1900,12 @@ class _TablePageState extends State<TablePage> {
         );
 
     const dot = Padding(
-      padding: EdgeInsets.symmetric(horizontal: 7),
+      padding: EdgeInsets.symmetric(horizontal: 6),
       child: Text('·', style: TextStyle(color: Colors.white38)),
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 6, 2, 8),
+      padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(14),
@@ -1912,84 +1914,19 @@ class _TablePageState extends State<TablePage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _identity(myCardId, compact: true),
-                ),
-              ),
-              if (showChat)
-                Badge(
-                  isLabelVisible: unread > 0,
-                  label: Text('$unread'),
-                  child: IconButton(
-                    tooltip: 'Obrolan',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _openChat,
-                    icon: const GameIcon('discuss', size: 28),
+          SizedBox(
+            height: 52,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _identity(myCardId, compact: true),
                   ),
                 ),
-              _abilityButton(),
-              PopupMenuButton<String>(
-                tooltip: 'Menu',
-                icon: const GameIcon('menu', size: 28),
-                padding: EdgeInsets.zero,
-                onSelected: (v) {
-                  switch (v) {
-                    case 'guide':
-                      _openGuide();
-                    case 'me':
-                      _openMyInfo();
-                    case 'players':
-                      _showPlayersSheet(day);
-                    case 'fx':
-                      setState(() => chatFx = !chatFx);
-                    case 'sound':
-                      Sfx.I.muted.value = !Sfx.I.muted.value;
-                    case 'mask':
-                      setState(() => disguiseMode = !disguiseMode);
-                    case 'exit':
-                      if (!busy) _confirmExit(isHost);
-                  }
-                },
-                itemBuilder: (_) => [
-                  item('me', 'persona', 'Infoku'),
-                  item('players', 'persona', 'Daftar warga'),
-                  item('guide', 'info', 'Panduan'),
-                  item(
-                      'fx',
-                      'showaddgraphic',
-                      chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
-                      c: chatFx ? Colors.amberAccent : null),
-                  item('sound', 'announcement',
-                      Sfx.I.muted.value ? 'Nyalakan suara' : 'Matikan suara',
-                      c: Sfx.I.muted.value ? null : Colors.amberAccent),
-                  if (isAntag)
-                    item(
-                        'mask',
-                        disguiseMode ? 'hide' : 'show',
-                        disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
-                        c: disguiseMode ? Colors.amberAccent : null),
-                  const PopupMenuDivider(),
-                  item(
-                      'exit',
-                      isHost ? 'bubarkan' : 'keluar',
-                      isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
-                      c: Colors.redAccent),
-                ],
-              ),
-            ],
-          ),
-          const Divider(height: 10, color: Colors.white12),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 26),
                 const SizedBox(width: 6),
+                GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 24),
+                const SizedBox(width: 4),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2005,7 +1942,7 @@ class _TablePageState extends State<TablePage> {
                       builder: (context, shown) => Text(_fmt(shown),
                           maxLines: 1,
                           style: const TextStyle(
-                              fontSize: 21,
+                              fontSize: 20,
                               height: 1.05,
                               fontWeight: FontWeight.bold,
                               color: EmbunColors.gold)),
@@ -2016,68 +1953,133 @@ class _TablePageState extends State<TablePage> {
                             fontSize: 10.5, color: Colors.white70)),
                   ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('HARI $day',
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1)),
-                              dot,
-                              const GameIcon('helaidaun', size: 18),
-                              const SizedBox(width: 3),
-                              Text('$leaves',
-                                  style: const TextStyle(fontSize: 13)),
-                              if (worms > 0) ...[
-                                dot,
-                                Text('🐛 $worms',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.purpleAccent)),
-                              ],
-                              dot,
-                              Countdown(
-                                  deadline: deadline,
-                                  style: const TextStyle(fontSize: 13)),
-                              dot,
-                              GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => _showPlayersSheet(day),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const GameIcon('persona', size: 18),
-                                    const SizedBox(width: 3),
-                                    Text('$readyCount/${_alive.length}',
-                                        style:
-                                        const TextStyle(fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (showDue)
-                            Text(due,
+                const SizedBox(width: 2),
+                if (showChat)
+                  Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    child: IconButton(
+                      tooltip: 'Obrolan',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _openChat,
+                      icon: const GameIcon('discuss', size: 28),
+                    ),
+                  ),
+                _abilityButton(),
+                PopupMenuButton<String>(
+                  tooltip: 'Menu',
+                  icon: const GameIcon('menu', size: 28),
+                  padding: EdgeInsets.zero,
+                  onSelected: (v) {
+                    switch (v) {
+                      case 'guide':
+                        _openGuide();
+                      case 'me':
+                        _openMyInfo();
+                      case 'players':
+                        _showPlayersSheet(day);
+                      case 'fx':
+                        setState(() => chatFx = !chatFx);
+                      case 'sound':
+                        Sfx.I.muted.value = !Sfx.I.muted.value;
+                      case 'mask':
+                        setState(() => disguiseMode = !disguiseMode);
+                      case 'exit':
+                        if (!busy) _confirmExit(isHost);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    item('me', 'persona', 'Infoku'),
+                    item('players', 'persona', 'Daftar warga'),
+                    item('guide', 'info', 'Panduan'),
+                    item(
+                        'fx',
+                        'showaddgraphic',
+                        chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
+                        c: chatFx ? Colors.amberAccent : null),
+                    item('sound', 'announcement',
+                        Sfx.I.muted.value ? 'Nyalakan suara' : 'Matikan suara',
+                        c: Sfx.I.muted.value ? null : Colors.amberAccent),
+                    if (isAntag)
+                      item(
+                          'mask',
+                          disguiseMode ? 'hide' : 'show',
+                          disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
+                          c: disguiseMode ? Colors.amberAccent : null),
+                    const PopupMenuDivider(),
+                    item(
+                        'exit',
+                        isHost ? 'bubarkan' : 'keluar',
+                        isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
+                        c: Colors.redAccent),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 24,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('HARI $day',
                                 style: const TextStyle(
-                                    fontSize: 10.5, color: Colors.white70)),
-                        ],
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1)),
+                            dot,
+                            const GameIcon('helaidaun', size: 17),
+                            const SizedBox(width: 3),
+                            Text('$leaves',
+                                style: const TextStyle(fontSize: 12.5)),
+                            if (worms > 0) ...[
+                              dot,
+                              Text('🐛 $worms',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.purpleAccent)),
+                            ],
+                            dot,
+                            Countdown(
+                                deadline: deadline,
+                                style: const TextStyle(fontSize: 12.5)),
+                            if (showDue) ...[
+                              dot,
+                              Text(due,
+                                  style: const TextStyle(
+                                      fontSize: 11.5, color: Colors.white70)),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _showPlayersSheet(day),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const GameIcon('persona', size: 17),
+                        const SizedBox(width: 3),
+                        Text('$readyCount/${_alive.length}',
+                            style: const TextStyle(fontSize: 12.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

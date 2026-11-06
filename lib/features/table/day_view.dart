@@ -546,14 +546,21 @@ class _DayViewState extends State<DayView>
     );
   }
 
+  /// Di ponsel ada tiga halaman: Toko, Meja (dengan sakelar Kartu / Gabung),
+  /// dan Balai. Tab Gabung lama dipetakan ke Meja.
+  int _pageOf(int t) => t == _tabBalai ? 2 : (t == _tabToko ? 0 : 1);
+
   void _goTab(int i) {
+    if (i == _tabGabung) i = _tabMeja;
     if (i == tab) return;
+    HapticFeedback.selectionClick();
     setState(() => tab = i);
     if (!_pager.hasClients) return;
-    if ((i - (_pager.page ?? tab.toDouble())).abs() > 1.5) {
-      _pager.jumpToPage(i);
+    final pg = _pageOf(i);
+    if ((pg - (_pager.page ?? pg.toDouble())).abs() > 1.5) {
+      _pager.jumpToPage(pg);
     } else {
-      _pager.animateToPage(i,
+      _pager.animateToPage(pg,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic);
     }
@@ -836,7 +843,7 @@ class _DayViewState extends State<DayView>
 
   /// Satu kolom toko: nama di atas, kartu, tombol Beli, harga di bawahnya.
   Widget _shopCol(int i, int n, Map<String, dynamic> offer, double w,
-      double gap) {
+      double gap, {bool phone = false}) {
     final id = offer['card_id'] as String;
     final def = widget.defs[id];
     final bad = def?['side'] == 'antagonis';
@@ -878,16 +885,16 @@ class _DayViewState extends State<DayView>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 22,
+            height: phone ? 18 : 22,
             child: Center(
               child: Text(_cardName(id),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: phone ? 11.5 : 12.5,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.3,
-                      color: accent)),
+                      color: (phone && i != sel) ? Colors.white70 : accent)),
             ),
           ),
           const SizedBox(height: 6),
@@ -910,15 +917,18 @@ class _DayViewState extends State<DayView>
               front: front,
             ),
           ),
-          const SizedBox(height: 8),
-          EmbunButton(
-            label: bought ? 'Terbeli' : 'Beli',
-            expand: true,
-            height: 38,
-            kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
-            onPressed: can ? () => _buyOffer(id, i) : null,
-          ),
-          const SizedBox(height: 4),
+          if (!phone) ...[
+            const SizedBox(height: 8),
+            EmbunButton(
+              label: bought ? 'Terbeli' : 'Beli',
+              expand: true,
+              height: 38,
+              kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
+              onPressed: can ? () => _buyOffer(id, i) : null,
+            ),
+            const SizedBox(height: 4),
+          ] else
+            const SizedBox(height: 4),
           SizedBox(
             height: 24,
             child: Row(
@@ -939,7 +949,7 @@ class _DayViewState extends State<DayView>
     );
   }
 
-  Widget _shopColumns() {
+  Widget _shopColumns({bool phone = false}) {
     final o = offers;
     if (o == null) return const EmbunLoading();
     if (o.isEmpty) {
@@ -947,7 +957,7 @@ class _DayViewState extends State<DayView>
     }
     return LayoutBuilder(builder: (context, c) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _armMarket());
-      const chrome = 22 + 6 + 8 + 38 + 4 + 24 + 12.0;
+      final chrome = phone ? 64.0 : 114.0;
       final n = o.length;
       // Empat tawaran atau lebih: jarak dirapatkan supaya muat di ponsel.
       final gap = n >= 4 ? 8.0 : 12.0;
@@ -966,7 +976,7 @@ class _DayViewState extends State<DayView>
         children: [
           for (var i = 0; i < n; i++) ...[
             if (i > 0) SizedBox(width: gap),
-            _shopCol(i, n, o[i], w, gap),
+            _shopCol(i, n, o[i], w, gap, phone: phone),
           ],
         ],
       );
@@ -1092,7 +1102,7 @@ class _DayViewState extends State<DayView>
 
   /// Keterangan ringkas kartu terpilih untuk ponsel, tempat panel samping
   /// tidak muat: nama, jenis, efek (dua baris), dan alasan belum bisa dibeli.
-  Widget _shopInfoCompact() {
+  Widget _shopInfoCompact({bool showReason = true}) {
     final o = offers;
     if (o == null || o.isEmpty) return const SizedBox.shrink();
     final i = sel.clamp(0, o.length - 1).toInt();
@@ -1141,7 +1151,7 @@ class _DayViewState extends State<DayView>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 11.5, height: 1.3, color: Colors.white70)),
-                  if (reason != null)
+                  if (showReason && reason != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: Text(reason,
@@ -1162,8 +1172,77 @@ class _DayViewState extends State<DayView>
   /// Panel toko. Hierarki: (1) judul + saldo, (2) status jatah / harga,
   /// (3) kartu dan tombol Beli, (4) keterangan kartu terpilih. Bagian (2)
   /// dan (4) menyesuaikan tinggi yang tersedia.
+  /// Toko untuk ponsel, tanpa bingkai hias. Atas: judul, jatah, saldo.
+  /// Tengah: kartu sebesar mungkin. Bawah (zona jempol): keterangan kartu
+  /// terpilih dan satu tombol Beli selebar layar. Bila belum bisa dibeli,
+  /// tombol memuat alasannya ("Embun kurang 3", "Jatah belanja habis").
+  Widget _shopPhone(BoxConstraints box) {
+    final o = offers;
+    final showInfo = box.maxHeight >= 400;
+    final idx = (o != null && o.isNotEmpty)
+        ? sel.clamp(0, o.length - 1).toInt()
+        : 0;
+    final Map<String, dynamic>? cur =
+    (o != null && o.isNotEmpty) ? o[idx] : null;
+    final String? id = cur?['card_id'] as String?;
+    final int price = id == null ? 0 : _price(id);
+    final String? reason =
+    (cur == null || id == null) ? null : _blockReason(cur, price);
+    final bad = id != null && widget.defs[id]?['side'] == 'antagonis';
+    final can = id != null && reason == null && !busy;
+    final label = id == null
+        ? 'Belum ada tawaran'
+        : (reason ?? 'Beli ${_cardName(id)} · $price');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const GameIcon('store', size: 28),
+            const SizedBox(width: 8),
+            const Text('Pasar Pagi',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    color: EmbunColors.gold)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _statusChips(),
+              ),
+            ),
+            if (_kabarHidden && _hasKabar) ...[
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _showKabar,
+                child: _chip('announcement', 'Kabar', color: EmbunColors.gold),
+              ),
+              const SizedBox(width: 6),
+            ],
+            _balancePill(size: 24),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Expanded(child: _shopMat(_shopColumns(phone: true))),
+        if (showInfo) _shopInfoCompact(showReason: false),
+        const SizedBox(height: 8),
+        EmbunButton(
+          label: label,
+          icon: can ? (bad ? 'bulirhitam' : 'bulirembun') : null,
+          expand: true,
+          height: 50,
+          kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
+          onPressed: can ? () => _buyOffer(id!, idx) : null,
+        ),
+      ],
+    );
+  }
+
   Widget _shopPanel({required bool wide}) =>
       LayoutBuilder(builder: (context, box) {
+        if (!wide) return _shopPhone(box);
         final short = box.maxHeight < 400;
         final showCompact = !wide && box.maxHeight >= 470;
         final infoW = (box.maxWidth * 0.34).clamp(210.0, 270.0).toDouble();
@@ -1519,13 +1598,68 @@ class _DayViewState extends State<DayView>
     });
   }
 
+  /// Sakelar dua segmen gaya tab garis-bawah (tanpa kotak): Kartu | Gabung.
+  Widget _segSwitch() {
+    final c = _fuseCandidates();
+    final n = min(c.adv.fold<int>(0, (a, e) => a + e.$2),
+        c.poin.fold<int>(0, (a, e) => a + e.$2));
+    Widget seg(String text, bool on, VoidCallback f, {int badge = 0}) =>
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (!on) HapticFeedback.selectionClick();
+              f();
+            },
+            child: Container(
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: on ? _accent : Colors.white24,
+                    width: on ? 3 : 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(text,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: on ? FontWeight.w800 : FontWeight.w500,
+                        color: on ? EmbunColors.cream : Colors.white70,
+                      )),
+                  if (badge > 0) ...[
+                    const SizedBox(width: 6),
+                    Text('$badge siap',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: _accent)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+    return Row(
+      children: [
+        seg('Kartu · ${widget.hand.length}', !_railGabung,
+                () => setState(() => _railGabung = false)),
+        seg('Gabung', _railGabung, () => setState(() => _railGabung = true),
+            badge: n),
+      ],
+    );
+  }
+
   Widget _mejaPage() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      _pageHeader('mydeck2', 'Kartu di mejamu',
-          trailing: '${widget.hand.length} kartu'),
-      const SizedBox(height: 6),
-      Expanded(child: _mejaBody()),
+      _segSwitch(),
+      const SizedBox(height: 8),
+      Expanded(child: _railGabung ? _gabungBody() : _mejaBody()),
     ],
   );
 
@@ -1700,22 +1834,6 @@ class _DayViewState extends State<DayView>
         ),
       );
     });
-  }
-
-  Widget _gabungPage() {
-    final c = _fuseCandidates();
-    final n = min(
-        c.adv.fold<int>(0, (a, e) => a + e.$2),
-        c.poin.fold<int>(0, (a, e) => a + e.$2));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _pageHeader('plus', 'Gabungkan kartu',
-            trailing: n == 0 ? null : '$n pasangan siap'),
-        const SizedBox(height: 6),
-        Expanded(child: _gabungBody()),
-      ],
-    );
   }
 
   // ====================== Balai ======================
@@ -1922,12 +2040,13 @@ class _DayViewState extends State<DayView>
   static const _tabIcons = ['store', 'mydeck2', 'plus', 'announcement'];
 
   Widget _tab(int i) {
-    final labels = ['Toko', 'Meja · ${widget.hand.length}', 'Gabung', 'Balai'];
+    final labels = ['Toko', 'Meja', 'Gabung', 'Balai'];
     final on = tab == i;
     var badge = 0;
     if (i == _tabBalai) {
       badge = _incoming.length;
-    } else if (i == _tabGabung) {
+    } else if (i == _tabMeja) {
+      // Pasangan kartu siap digabung: lencana di tab Meja.
       final c = _fuseCandidates();
       badge = min(c.adv.fold<int>(0, (a, e) => a + e.$2),
           c.poin.fold<int>(0, (a, e) => a + e.$2));
@@ -2041,10 +2160,11 @@ class _DayViewState extends State<DayView>
         Row(
           children: [
             Expanded(
-              flex: 4,
+              flex: 3,
               child: Row(
                 children: [
-                  for (var i = 0; i < 4; i++) Expanded(child: _tab(i)),
+                  for (final i in const [_tabToko, _tabMeja, _tabBalai])
+                    Expanded(child: _tab(i)),
                 ],
               ),
             ),
@@ -2067,7 +2187,7 @@ class _DayViewState extends State<DayView>
           child: SingleChildScrollView(
             child: Column(
               children: [
-                for (var i = 0; i < 4; i++) ...[
+                for (final i in const [_tabToko, _tabMeja, _tabBalai]) ...[
                   _tab(i),
                   const SizedBox(height: 6),
                 ],
@@ -2089,7 +2209,8 @@ class _DayViewState extends State<DayView>
 
   Widget _pager4({required bool side}) => PageView(
     controller: _pager,
-    onPageChanged: (i) => setState(() => tab = i),
+    onPageChanged: (i) =>
+        setState(() => tab = i == 2 ? _tabBalai : i),
     children: [
       Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -2097,9 +2218,6 @@ class _DayViewState extends State<DayView>
       Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: _mejaPage()),
-      Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: _gabungPage()),
       Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: _balaiPage()),

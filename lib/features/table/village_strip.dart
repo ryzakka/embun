@@ -33,6 +33,9 @@ class VillageStrip extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onTapPlayer;
   final VoidCallback onEmoteButton;
 
+  /// Ponsel: avatar lebih kecil dan tanpa label status, supaya hemat tinggi.
+  final bool compact;
+
   /// Kunci global per avatar, supaya animasi pemberian tahu posisinya.
   final GlobalKey Function(String userId)? avatarKeyFor;
 
@@ -45,6 +48,7 @@ class VillageStrip extends StatefulWidget {
     required this.day,
     required this.onTapPlayer,
     required this.onEmoteButton,
+    this.compact = false,
     this.avatarKeyFor,
   });
 
@@ -144,7 +148,7 @@ class _VillageStripState extends State<VillageStrip> {
         child: Column(
           children: [
             SizedBox(
-              height: 20,
+              height: widget.compact ? 14 : 20,
               child: live != null ? Center(child: _targetChip(live, now)) : null,
             ),
             Stack(
@@ -209,7 +213,7 @@ class _VillageStripState extends State<VillageStrip> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 2, vertical: 1),
-                        child: LivesRow(lives: livesLeft(p), size: 11),
+                        child: LivesRow(lives: livesLeft(p), size: widget.compact ? 9 : 11),
                       ),
                     ),
                   ),
@@ -250,9 +254,9 @@ class _VillageStripState extends State<VillageStrip> {
                     : Colors.white70,
               ),
             ),
-            if (out)
+            if (out && !widget.compact)
               const StatusTag(text: 'Keluar', color: Colors.white54, fontSize: 9)
-            else if (jailed)
+            else if (jailed && !widget.compact)
               const StatusTag(
                   text: 'Dikurung', color: EmbunColors.blood, fontSize: 9),
           ],
@@ -430,21 +434,27 @@ class _VillageStripState extends State<VillageStrip> {
     return LayoutBuilder(builder: (context, box) {
       // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
       // bila tidak, deretan bisa digulir dengan lebar sel tetap.
-      const gap = 6.0, minW = 56.0, maxW = 84.0, scrollW = 62.0;
-      final avail = box.maxWidth - 56; // ruang tombol isyarat
+      final cp = widget.compact;
+      final gap = 6.0;
+      final minW = cp ? 46.0 : 56.0;
+      final maxW = cp ? 64.0 : 84.0;
+      final scrollW = cp ? 52.0 : 62.0;
+      final avail = box.maxWidth - (cp ? 50 : 56); // ruang tombol isyarat
       final n = widget.players.length;
       final fits = n > 0 && n * minW + (n - 1) * gap <= avail;
       final cellW = fits
           ? ((avail - (n - 1) * gap) / n).clamp(minW, maxW).toDouble()
           : scrollW;
-      final avatar = (cellW * 0.62).clamp(36.0, 52.0).toDouble();
+      final avatar = (cellW * 0.62)
+          .clamp(cp ? 30.0 : 36.0, cp ? 40.0 : 52.0)
+          .toDouble();
       final Widget list = fits
           ? Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < n; i++) ...[
-            if (i > 0) const SizedBox(width: gap),
+            if (i > 0) SizedBox(width: gap),
             _cell(widget.players[i], now, cellW, avatar),
           ],
         ],
@@ -454,12 +464,12 @@ class _VillageStripState extends State<VillageStrip> {
         children: [
           for (final p in widget.players)
             Padding(
-              padding: const EdgeInsets.only(right: gap),
+              padding: EdgeInsets.only(right: gap),
               child: _cell(p, now, cellW, avatar),
             ),
         ],
       );
-      return _strip(list, avatar + 54);
+      return _strip(list, avatar + (cp ? 36 : 54));
     });
   }
 
@@ -475,9 +485,9 @@ class _VillageStripState extends State<VillageStrip> {
               behavior: HitTestBehavior.opaque,
               onTap: widget.onEmoteButton,
               child: Container(
-                width: 44,
-                height: 44,
-                margin: const EdgeInsets.symmetric(horizontal: 6),
+                width: widget.compact ? 38 : 44,
+                height: widget.compact ? 38 : 44,
+                margin: EdgeInsets.symmetric(horizontal: widget.compact ? 4 : 6),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
