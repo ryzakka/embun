@@ -288,6 +288,10 @@ class _DayViewState extends State<DayView>
     return h['charged'] == true ? 'AKTIF' : 'Butuh poin';
   }
 
+  /// Kartu lanjutan yang belum digabung dengan poin: gambarnya memudar.
+  bool _isDormant(Map<String, dynamic> h) =>
+      widget.defs[h['card_id']]?['kind'] == 'lanjutan' && h['charged'] != true;
+
   String get _poinName => widget.isAntag ? 'Poin DNA' : 'Poin Regenerasi';
 
   /// Kartu lanjutan di Meja: ketuk -> pratinjau dengan tombol
@@ -1268,6 +1272,7 @@ class _DayViewState extends State<DayView>
                             widget.defs[hand[i]['card_id']]?['kind'] == 'siang' &&
                             widget.defs[hand[i]['card_id']]?['side'] == 'warga',
                         tag: _handTag(hand[i]),
+                        faded: _isDormant(hand[i]),
                         onTap: switch (widget.defs[hand[i]['card_id']]?['kind']) {
                           'siang' => () => _useDayCard(hand[i]),
                           'lanjutan' => () => _useAdvanced(hand[i]),

@@ -24,6 +24,28 @@ const kindIcon = {
   'lanjutan': 'plus',
 };
 
+/// Matriks warna: tanpa perubahan.
+const _identityMatrix = <double>[
+  1, 0, 0, 0, 0,
+  0, 1, 0, 0, 0,
+  0, 0, 1, 0, 0,
+  0, 0, 0, 1, 0,
+];
+
+/// Matriks warna: abu-abu gelap (luminans x 0,55). Dipakai untuk kartu
+/// lanjutan yang belum digabung dengan kartu poin.
+const _fadedMatrix = <double>[
+  0.117, 0.393, 0.040, 0, 0,
+  0.117, 0.393, 0.040, 0, 0,
+  0.117, 0.393, 0.040, 0, 0,
+  0, 0, 0, 1, 0,
+];
+
+List<double> _lerpMatrix(double t) => [
+  for (var i = 0; i < 20; i++)
+    _identityMatrix[i] + (_fadedMatrix[i] - _identityMatrix[i]) * t,
+];
+
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
 /// jenis, harga, dan deskripsi efek. Deskripsi tidak tercetak di gambar, jadi
 /// pemain membacanya di sini.
@@ -131,6 +153,11 @@ class CardTile extends StatelessWidget {
   /// Tampil abu-abu (kartu yang tak bisa dipakai pemegangnya).
   final bool gray;
 
+  /// Gambar kartu memudar jadi abu-abu gelap (kartu lanjutan yang belum
+  /// digabung dengan kartu poin). Hanya gambarnya; label dan harga tetap
+  /// terang. Berubah dengan transisi halus saat kartu menjadi aktif.
+  final bool faded;
+
   /// Lebar tile; tinggi = lebar * [aspect]. Dihitung dari ruang yang tersedia
   /// supaya pas di ponsel maupun desktop.
   final double width;
@@ -153,6 +180,7 @@ class CardTile extends StatelessWidget {
     this.badge,
     this.onTap,
     this.gray = false,
+    this.faded = false,
     this.width = 140,
     this.aspect,
     this.tag,
@@ -185,7 +213,11 @@ class CardTile extends StatelessWidget {
             transform: Matrix4.translationValues(0, selected ? -10 : 0, 0),
             padding: path == null ? const EdgeInsets.all(10) : EdgeInsets.zero,
             decoration: BoxDecoration(
-              color: bad ? const Color(0xFF241F2E) : const Color(0xFF1F3A33),
+              color: faded
+                  ? const Color(0xFF1C1F1E)
+                  : bad
+                  ? const Color(0xFF241F2E)
+                  : const Color(0xFF1F3A33),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: selected
@@ -210,6 +242,24 @@ class CardTile extends StatelessWidget {
     );
   }
 
+  /// Gambar kartu; memudar halus ke abu-abu gelap bila [faded].
+  Widget _image(String path) {
+    final img = GameImage(path: path, cacheWidth: 320);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: faded ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOut,
+      child: img,
+      builder: (context, t, child) {
+        if (t <= 0.001) return child!;
+        return ColorFiltered(
+          colorFilter: ColorFilter.matrix(_lerpMatrix(t)),
+          child: child,
+        );
+      },
+    );
+  }
+
   /// Gambar kartu memenuhi tile; harga di pojok kanan atas.
   Widget _artBody(String path, bool bad, int cost, bool hasInfo) {
     return ClipRRect(
@@ -217,7 +267,7 @@ class CardTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          GameImage(path: path, cacheWidth: 320),
+          _image(path),
           if (showCost)
             Positioned(
               top: 6,
