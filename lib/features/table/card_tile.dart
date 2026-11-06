@@ -46,98 +46,160 @@ List<double> _lerpMatrix(double t) => [
     _identityMatrix[i] + (_fadedMatrix[i] - _identityMatrix[i]) * t,
 ];
 
-/// Blok \"Syarat gabungan\" pada pratinjau kartu lanjutan: gambar kartu poin
-/// yang harus digabungkan. [defs] (bila ada) memberi nama dan harga terbaru;
-/// tanpa itu dipakai data bawaan.
-Widget _poinRequirement(
-    Map<String, dynamic> def, Map<String, Map<String, dynamic>>? defs) {
-  final bad = def['side'] == 'antagonis';
-  final reqs = bad
-      ? const [
-    ('poin_dna', 'rekayasa-poindna', 'Poin DNA'),
-    ('kapsul_dna', 'rekayasa-kapsuldna', 'Kapsul DNA'),
-  ]
-      : const [
-    ('poin_regenerasi', 'gen-poinregenerasi', 'Poin Regenerasi'),
-  ];
-  final accent = bad ? EmbunColors.mist : EmbunColors.gold;
+/// Gambar kartu pada pratinjau. Untuk kartu lanjutan, kartu syarat (poin)
+/// tampil mini menindih sudut kiri atas gambar, jadi tidak memakan ruang.
+/// Ketuk kartu mini untuk membuka/menutup keterangannya di atas gambar.
+/// [defs] (bila ada) memberi nama dan harga terbaru; tanpa itu dipakai data
+/// bawaan.
+class _CardPreviewArt extends StatefulWidget {
+  final Map<String, dynamic> def;
+  final String path;
+  final Color glow;
+  final Map<String, Map<String, dynamic>>? defs;
+  const _CardPreviewArt({
+    required this.def,
+    required this.path,
+    required this.glow,
+    this.defs,
+  });
 
-  Widget one((String, String, String) r) {
-    final d = defs?[r.$1] ??
+  @override
+  State<_CardPreviewArt> createState() => _CardPreviewArtState();
+}
+
+class _CardPreviewArtState extends State<_CardPreviewArt> {
+  static const double _w = 200;
+  static const double _miniW = 62;
+  bool _info = false;
+
+  bool get _bad => widget.def['side'] == 'antagonis';
+
+  /// Definisi kartu syarat: dari [defs] bila ada, bila tidak data bawaan.
+  Map<String, dynamic> get _req {
+    final id = _bad ? 'poin_dna' : 'poin_regenerasi';
+    return widget.defs?[id] ??
         {
-          'id': r.$1,
-          'side': bad ? 'antagonis' : 'warga',
+          'id': id,
+          'side': _bad ? 'antagonis' : 'warga',
           'kind': 'poin',
-          'art': r.$2,
-          'name': r.$3,
+          'art': _bad ? 'rekayasa-poindna' : 'gen-poinregenerasi',
+          'name': _bad ? 'Poin DNA' : 'Poin Regenerasi',
+          'cost': 16,
         };
-    final path = cardArtPath(d);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (path != null)
-          CardArt(path: path, width: 96, glow: accent)
-        else
-          GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 56),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 110,
-          child: Text('${d['name'] ?? r.$3}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: EmbunColors.cream)),
-        ),
-      ],
-    );
   }
 
-  return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(top: 14),
-    padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.28),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: accent.withValues(alpha: 0.45)),
-    ),
-    child: Column(
-      children: [
-        Text('Syarat gabungan',
-            style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w800, color: accent)),
-        const SizedBox(height: 4),
-        const Text(
-            'Gabungkan di Meja (hari biasa) dengan salah satu kartu ini '
-                'agar kartu ini AKTIF:',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11.5, height: 1.35, color: Colors.white60)),
-        const SizedBox(height: 10),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (var i = 0; i < reqs.length; i++) ...[
-              if (i > 0)
-                const Text('atau',
-                    style: TextStyle(fontSize: 12, color: Colors.white54)),
-              one(reqs[i]),
-            ],
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-            bad
-                ? 'Poin habis sekali pakai. Kapsul DNA cukup untuk dua kartu.'
-                : 'Poin habis sekali pakai.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11.5, color: Colors.white54)),
-      ],
-    ),
-  );
+  @override
+  Widget build(BuildContext context) {
+    final main = CardArt(path: widget.path, width: _w, glow: widget.glow);
+    if (widget.def['kind'] != 'lanjutan') return main;
+
+    final req = _req;
+    final reqPath = cardArtPath(req);
+    final name = '${req['name'] ?? ''}';
+    final cost = req['cost'] as int?;
+    final accent = _bad ? EmbunColors.mist : EmbunColors.gold;
+    final info = _bad
+        ? 'Gabungkan kartu ini dengan $name di Meja (hari biasa) agar AKTIF '
+        'dan bisa dipersembahkan. Kapsul DNA juga bisa dipakai: satu '
+        'kapsul cukup untuk dua kartu Rekayasa. Poin habis sekali pakai.'
+        : 'Gabungkan kartu ini dengan $name di Meja (hari biasa) agar AKTIF '
+        'dan bisa dipersembahkan. Poin habis sekali pakai.';
+
+    return SizedBox(
+      width: _w,
+      height: _w * cardAspectFor(widget.path),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          main,
+          // Keterangan: menutupi bagian bawah gambar, tidak mengubah tata letak.
+          if (_info)
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 8,
+              child: GestureDetector(
+                onTap: () => setState(() => _info = false),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: accent.withValues(alpha: 0.7)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          cost == null
+                              ? 'Syarat: $name'
+                              : 'Syarat: $name ($cost)',
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: accent)),
+                      const SizedBox(height: 4),
+                      Text(info,
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              height: 1.35,
+                              color: Colors.white70)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          // Kartu syarat mini, menindih sudut kiri atas.
+          Positioned(
+            top: -8,
+            left: -8,
+            child: GestureDetector(
+              onTap: () {
+                Sfx.I.click(Snd.clickTung);
+                setState(() => _info = !_info);
+              },
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    foregroundDecoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: accent, width: 1.8),
+                    ),
+                    child: reqPath != null
+                        ? CardArt(path: reqPath, width: _miniW, glow: accent)
+                        : SizedBox(
+                      width: _miniW,
+                      height: _miniW * 1.5,
+                      child: Center(
+                          child: GameIcon(
+                              _bad ? 'bulirhitam' : 'bulirembun',
+                              size: 40)),
+                    ),
+                  ),
+                  Positioned(
+                    right: -5,
+                    bottom: -5,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: accent, width: 1.4),
+                      ),
+                      child: Icon(Icons.info_outline, size: 13, color: accent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
@@ -176,7 +238,8 @@ Future<void> showCardPreview(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (path != null) ...[
-                CardArt(path: path, width: 200, glow: glow),
+                _CardPreviewArt(
+                    def: def, path: path, glow: glow, defs: defs),
                 const SizedBox(height: 14),
               ],
               Text('${def['name'] ?? ''}',
@@ -207,7 +270,6 @@ Future<void> showCardPreview(
               ),
               const Divider(height: 22),
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
-              if (def['kind'] == 'lanjutan') _poinRequirement(def, defs),
               const SizedBox(height: 14),
               if (actionLabel != null && act != null) ...[
                 EmbunButton(
@@ -265,6 +327,10 @@ class CardTile extends StatelessWidget {
   /// Label kecil di pojok kiri atas (mis. "AKTIF" / "Butuh poin").
   final String? tag;
 
+  /// Jumlah kartu sama yang ditumpuk; lencana "xN" di pojok kanan bawah
+  /// muncul bila lebih dari 1.
+  final int count;
+
   const CardTile({
     super.key,
     required this.def,
@@ -280,6 +346,7 @@ class CardTile extends StatelessWidget {
     this.width = 140,
     this.aspect,
     this.tag,
+    this.count = 1,
   });
 
   @override
@@ -329,9 +396,34 @@ class CardTile extends StatelessWidget {
               ]
                   : null,
             ),
-            child: path == null
-                ? _textBody(bad, cost)
-                : _artBody(path, bad, cost, d != null),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                path == null
+                    ? _textBody(bad, cost)
+                    : _artBody(path, bad, cost, d != null),
+                if (count > 1)
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: EmbunColors.gold.withValues(alpha: 0.8)),
+                      ),
+                      child: Text('\u00d7$count',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: EmbunColors.gold)),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

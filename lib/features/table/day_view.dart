@@ -284,7 +284,9 @@ class _DayViewState extends State<DayView>
 
   /// Label di kartu lanjutan: "AKTIF" bila sudah digabung dengan poin.
   String? _handTag(Map<String, dynamic> h) {
-    if (widget.defs[h['card_id']]?['kind'] != 'lanjutan') return null;
+    final d = widget.defs[h['card_id']];
+    if (d?['kind'] != 'lanjutan') return null;
+    if (d?['side'] != (widget.isAntag ? 'antagonis' : 'warga')) return null;
     return h['charged'] == true ? 'AKTIF' : 'Butuh poin';
   }
 
@@ -1224,6 +1226,149 @@ class _DayViewState extends State<DayView>
     );
   }
 
+  // ---- Meja: kartu dikelompokkan menurut fungsinya ----
+
+  /// 0 = pakai di siang, 1 = kombinasi (lanjutan + poin), 2 = serangan malam,
+  /// 3 = untuk persembahan (sisanya).
+  int _mejaGroupOf(String? kind) => switch (kind) {
+    'siang' => 0,
+    'lanjutan' || 'poin' => 1,
+    'malam' => 2,
+    _ => 3,
+  };
+
+  static const _mejaGroupInfo = [
+    ('item', 'Pakai di siang', 'Ketuk kartu untuk memakainya saat itu juga.'),
+    ('plus', 'Kombinasi',
+    'Gabungkan kartu lanjutan dengan kartu poin, lalu persembahkan.'),
+    ('danger', 'Serangan malam', 'Dilancarkan saat malam tiba.'),
+    ('donations', 'Untuk persembahan',
+    'Dipersembahkan di malam persembahan.'),
+  ];
+
+  /// Kartu yang sama (dan berstatus sama) ditumpuk jadi satu, dengan lencana
+  /// jumlah. Urutan: kelompok, lalu yang perlu perhatian, lalu harga.
+  List<List<Map<String, dynamic>>> _mejaStacks() {
+    final byKey = <String, List<Map<String, dynamic>>>{};
+    for (final h in widget.hand) {
+      (byKey['${h['card_id']}|${h['charged'] == true}'] ??= []).add(h);
+    }
+    final stacks = byKey.values.toList();
+    Map<String, dynamic>? def(List<Map<String, dynamic>> s) =>
+        widget.defs[s.first['card_id']];
+    int rank(List<Map<String, dynamic>> s) {
+      final d = def(s);
+      final g = _mejaGroupOf(d?['kind'] as String?);
+      // Dalam Kombinasi: lanjutan dulu, lalu poin.
+      final sub = d?['kind'] == 'poin' ? 1 : 0;
+      return g * 10 + sub;
+    }
+    stacks.sort((x, y) {
+      final r = rank(x) - rank(y);
+      if (r != 0) return r;
+      // Kartu lanjutan yang belum aktif didahulukan.
+      final cx = x.first['charged'] == true ? 1 : 0;
+      final cy = y.first['charged'] == true ? 1 : 0;
+      if (cx != cy) return cx - cy;
+      final kx = ((def(x)?['cost'] as int?) ?? 0);
+      final ky = ((def(y)?['cost'] as int?) ?? 0);
+      if (kx != ky) return ky - kx;
+      return '${def(x)?['name']}'.compareTo('${def(y)?['name']}');
+    });
+    return stacks;
+  }
+
+  Widget _mejaGroupHeader(int g, int count) {
+    final (icon, title, hint) = _mejaGroupInfo[g];
+    final accent = widget.dark ? EmbunColors.mist : EmbunColors.gold;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GameIcon(icon, size: 22),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: accent)),
+              ),
+              const SizedBox(width: 6),
+              Text('$count',
+                  style: const TextStyle(fontSize: 11, color: Colors.white54)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                    height: 1, color: accent.withValues(alpha: 0.3)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(hint,
+              style: const TextStyle(
+                  fontSize: 11, height: 1.3, color: Colors.white54)),
+        ],
+      ),
+    );
+  }
+
+  /// Petunjuk singkat bila ada kartu lanjutan / poin yang belum dipasangkan.
+  Widget? _comboHint() {
+    final mySide = widget.isAntag ? 'antagonis' : 'warga';
+    var dormant = 0, poin = 0;
+    for (final h in widget.hand) {
+      final d = widget.defs[h['card_id']];
+      if (d == null || d['side'] != mySide) continue;
+      if (d['kind'] == 'lanjutan' && h['charged'] != true) dormant++;
+      if (d['kind'] == 'poin') {
+        final eff = d['effect'];
+        poin += (eff is Map ? (eff['poin'] as num?)?.toInt() : null) ?? 1;
+      }
+    }
+    if (dormant == 0 && poin == 0) return null;
+    final ready = dormant > 0 && poin > 0;
+    final String text;
+    if (ready) {
+      final n = dormant < poin ? dormant : poin;
+      text = 'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
+          'Ketuk kartu lanjutan untuk menggabungkannya.';
+    } else if (dormant > 0) {
+      text = 'Kartu lanjutanmu belum aktif. Beli $_poinName di Toko, '
+          'lalu gabungkan di sini.';
+    } else {
+      text = '$_poinName tersimpan. Beli kartu lanjutan di Toko, '
+          'lalu gabungkan di sini.';
+    }
+    final c = ready ? EmbunColors.gold : Colors.white70;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const GameIcon('plus', size: 26),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(fontSize: 12, height: 1.35, color: c)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _mejaBodyInner({double minW = 96}) {
     final hand = widget.hand;
     final strip = _guardStrip();
@@ -1234,57 +1379,82 @@ class _DayViewState extends State<DayView>
           ? empty
           : Column(children: [strip, Expanded(child: empty)]);
     }
-    final hasDay = hand.any((h) {
-      final k = widget.defs[h['card_id']]?['kind'];
-      return k == 'siang' || k == 'lanjutan';
-    });
+    final stacks = _mejaStacks();
+    final combo = _comboHint();
+    final mySide = widget.isAntag ? 'antagonis' : 'warga';
+
     return LayoutBuilder(builder: (context, box) {
       final g = _mejaGrid(box.maxWidth, minW);
-      return SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 4, bottom: 8),
-        child: Column(
-          children: [
-            if (strip != null) strip,
-            Text(
-                hasDay
-                    ? 'Tekan lama kartu untuk membaca efeknya. Ketuk kartu kuning atau kartu lanjutan untuk memakainya.'
-                    : 'Tekan lama kartu untuk membaca efeknya.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: Colors.white38)),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: g.gap,
-              runSpacing: g.gap,
-              children: [
-                // Kartu baru muncul membal; kartu lama tidak diulang
-                // (kunci per baris tangan).
-                for (var i = 0; i < hand.length; i++)
-                  _Pop(
-                    key: ValueKey('hand-${hand[i]['id'] ?? i}'),
-                    index: i,
-                    child: _preview(
-                      widget.defs[hand[i]['card_id']],
-                      CardTile(
-                        def: widget.defs[hand[i]['card_id']],
-                        fallbackName: hand[i]['card_id'] as String,
-                        width: g.w,
-                        gray: widget.isAntag &&
-                            widget.defs[hand[i]['card_id']]?['kind'] == 'siang' &&
-                            widget.defs[hand[i]['card_id']]?['side'] == 'warga',
-                        tag: _handTag(hand[i]),
-                        faded: _isDormant(hand[i]),
-                        onTap: switch (widget.defs[hand[i]['card_id']]?['kind']) {
-                          'siang' => () => _useDayCard(hand[i]),
-                          'lanjutan' => () => _useAdvanced(hand[i]),
-                          'poin' => () => _showPoinHint(hand[i]),
-                          _ => null,
-                        },
-                      ),
+      final sections = <Widget>[];
+      var pop = 0;
+      for (var gi = 0; gi < _mejaGroupInfo.length; gi++) {
+        final inGroup = [
+          for (final s in stacks)
+            if (_mejaGroupOf(
+                widget.defs[s.first['card_id']]?['kind'] as String?) ==
+                gi)
+              s,
+        ];
+        if (inGroup.isEmpty) continue;
+        final total = inGroup.fold<int>(0, (a, s) => a + s.length);
+        sections.add(_mejaGroupHeader(gi, total));
+        sections.add(
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: g.gap,
+            runSpacing: g.gap,
+            children: [
+              for (final s in inGroup)
+              // Kartu baru muncul membal; kunci per jenis + status.
+                _Pop(
+                  key: ValueKey('hand-${s.first['card_id']}-'
+                      '${s.first['charged'] == true}'),
+                  index: pop++,
+                  child: _preview(
+                    widget.defs[s.first['card_id']],
+                    CardTile(
+                      def: widget.defs[s.first['card_id']],
+                      fallbackName: s.first['card_id'] as String,
+                      width: g.w,
+                      count: s.length,
+                      gray: (widget.isAntag &&
+                          widget.defs[s.first['card_id']]?['kind'] ==
+                              'siang' &&
+                          widget.defs[s.first['card_id']]?['side'] ==
+                              'warga') ||
+                          (widget.defs[s.first['card_id']]?['kind'] ==
+                              'lanjutan' &&
+                              widget.defs[s.first['card_id']]?['side'] !=
+                                  mySide),
+                      tag: _handTag(s.first),
+                      faded: _isDormant(s.first),
+                      onTap:
+                      switch (widget.defs[s.first['card_id']]?['kind']) {
+                        'siang' => () => _useDayCard(s.first),
+                        'lanjutan' => () => _useAdvanced(s.first),
+                        'poin' => () => _showPoinHint(s.first),
+                        _ => null,
+                      },
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
+          ),
+        );
+        sections.add(const SizedBox(height: 18));
+      }
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (strip != null) strip,
+            const Text('Tekan lama kartu untuk membaca efeknya.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: Colors.white38)),
+            const SizedBox(height: 10),
+            if (combo != null) combo,
+            ...sections,
           ],
         ),
       );
