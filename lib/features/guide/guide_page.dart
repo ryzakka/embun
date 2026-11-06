@@ -948,7 +948,7 @@ class _HowToTab extends StatelessWidget {
       maxWidth: 780,
       header: _stats(),
       // Layar lebar: kiri = Tujuan + Siklus, kanan = sisanya.
-      column: (i) => const [0, 1, 0, 1, 1, 1][i],
+      column: (i) => const [0, 1, 0, 1, 0, 1, 1][i],
       children: [
         _Section(
           icon: 'helaidaun',
@@ -1041,11 +1041,71 @@ class _HowToTab extends StatelessWidget {
                 'Alat pemeriksaan atau trik, misalnya melihat apakah persembahan seseorang tampak baik atau buruk. Hasilnya hanya kamu yang tahu, dan tidak selalu bisa dipercaya.'),
             _infoRow('plus', 'Penguat',
                 'Menaikkan laju embun (atau bulir hitam) milikmu untuk seterusnya.'),
+            _infoRow('plus', 'Kartu lanjutan',
+                'Kartu kuat yang harus **digabung dengan kartu poin** dulu sebelum bisa dipersembahkan. Penjelasan lengkap ada di bagian **Kartu lanjutan** di bawah.'),
             const SizedBox(height: 2),
             _bullet('**Perlindungan** menahan serangan yang mengurangi daun '
                 'pada malam itu saja.'),
             _bullet('Ketuk lama sebuah kartu untuk membaca efeknya. Daftar '
                 'lengkap ada di tab **Kartu Item**.'),
+          ],
+        ),
+        _Section(
+          icon: 'plus',
+          title: 'Kartu lanjutan (kombinasi)',
+          children: [
+            _para('Sebagian kartu kuat **tidak bisa langsung dipersembahkan**. '
+                'Kartu ini disebut **kartu lanjutan** dan harus lebih dulu '
+                '**digabung** dengan satu **kartu poin**. Warga memakai '
+                '**Kartu Regenerasi + Poin Regenerasi**; Si Terbisik memakai '
+                '**Kartu Rekayasa + Poin DNA**. Kartu fraksi lain tidak bisa '
+                'kamu gabungkan.'),
+            const SizedBox(height: 4),
+            _step(
+                1,
+                'Siapkan dua bahan',
+                'Beli **kartu lanjutan** dan **kartu poin** di Pasar Pagi; '
+                    'keduanya muncul acak di tawaran harianmu seperti kartu '
+                    'lain. Kartu lanjutan yang belum digabung tampak **pudar** '
+                    'dan berlabel \"Butuh poin\". Kartu poin tidak bisa '
+                    'dipersembahkan sendirian.'),
+            _step(
+                2,
+                'Gabungkan di Meja',
+                'Pada **hari biasa**, buka Meja, ketuk kartu lanjutan, lalu '
+                    'tekan \"Gabungkan dengan Poin\". Satu kartu poin **habis '
+                    'terpakai** dan kartu lanjutan berubah menjadi **AKTIF**. '
+                    'Penggabungan tidak diumumkan ke pemain lain, dan boleh '
+                    'dilakukan walau kamu sedang dikurung.'),
+            _step(
+                3,
+                'Persembahkan seperti biasa',
+                'Kartu yang sudah AKTIF dipersembahkan di malam persembahan '
+                    'dan ikut dihitung dalam jatah **1 sampai 2 kartu**. '
+                    'Kartu lanjutan yang belum aktif **ditolak** saat '
+                    'dipersembahkan.',
+                last: true),
+            const SizedBox(height: 10),
+            _bullet('**Harga**: kartu lanjutannya murah (5), tetapi poinnya '
+                'mahal (16), jadi satu kartu kombinasi menelan sekitar 21 '
+                'embun. Menabung dan merencanakan belanja itu penting.'),
+            _bullet('**Kapsul DNA** (khusus Si Terbisik) setara **dua** Poin '
+                'DNA: cukup untuk mengaktifkan dua Kartu Rekayasa. Setelah '
+                'pemakaian pertama, satu Poin DNA tertinggal di tanganmu. '
+                'Poin biasa selalu dipakai lebih dulu, kapsul paling akhir.'),
+            _bullet('**Status AKTIF tidak ikut berpindah.** Kartu yang '
+                'ditukar atau dicuri kembali menjadi tidak aktif dan harus '
+                'digabung ulang oleh pemilik barunya. Tawaran tukar yang '
+                'masih menggantung atas kartu itu ikut dibatalkan saat kamu '
+                'menggabungkannya.'),
+            _bullet('Kartu poin termasuk kartu **mahal** di tanganmu, jadi '
+                'mudah menjadi sasaran Kerikil Panas atau Curian Malam yang '
+                'mengincar kartu termahal. **Gabungkan secepatnya** bila '
+                'kamu sudah punya pasangannya.'),
+            _bullet('Tanpa kartu poin, tombol gabung akan gagal dengan '
+                'pesan bahwa kamu butuh Poin Regenerasi atau Poin DNA. '
+                'Pastikan poinnya sudah ada sebelum membeli banyak kartu '
+                'lanjutan.'),
           ],
         ),
         _Section(
@@ -1282,7 +1342,15 @@ class _CharactersTabState extends State<_CharactersTab>
 /// Disimpan selama aplikasi hidup supaya tab tidak memuat ulang.
 Map<String, Map<String, dynamic>>? _defsCache;
 
-const _kinds = ['persembahan', 'sekali_pakai', 'penguat', 'malam', 'siang'];
+const _kinds = [
+  'persembahan',
+  'sekali_pakai',
+  'penguat',
+  'malam',
+  'siang',
+  'poin',
+  'lanjutan',
+];
 
 const _kindHelp = {
   'persembahan':
@@ -1306,6 +1374,16 @@ const _kindHelp = {
       'dari serangan malam atau tuduhan sampai akhir sesi, menambah embun, atau '
       'memulihkan satu nyawa, atau (Busur Terakhir, khusus warga) memanah '
       'Si Terbisik. Pemakaiannya tidak diumumkan saat itu juga.',
+  'poin':
+  'Bahan penggabung, tidak bisa dipersembahkan sendiri. Di Meja (hari '
+      'biasa), gabungkan satu kartu poin dengan satu kartu lanjutan agar '
+      'kartu itu aktif. Poin habis sekali pakai; Kapsul DNA cukup untuk '
+      'dua kartu.',
+  'lanjutan':
+  'Kartu kuat yang wajib digabung dengan kartu poin dulu (Poin '
+      'Regenerasi untuk warga, Poin DNA untuk Si Terbisik). Ketuk di Meja '
+      'pada hari biasa untuk menggabungkan; setelah berlabel AKTIF baru bisa '
+      'dipersembahkan.',
 };
 
 class _ItemsTab extends StatefulWidget {
