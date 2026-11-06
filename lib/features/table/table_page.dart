@@ -2231,6 +2231,7 @@ class _TablePageState extends State<TablePage> {
     if (!bubar && !_endingSeen) {
       return EndingCinematic(
         key: const ValueKey('ending'),
+        myId: repo.myId,
         wargaMenang: wargaMenang,
         leaves: leaves,
         verdict: verdict,

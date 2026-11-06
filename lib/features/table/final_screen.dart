@@ -168,6 +168,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   bool get _win => widget.wargaMenang;
   Color get _accent => _win ? EmbunColors.leaf : EmbunColors.mist;
 
+  /// Hasil untuk pemain ini (bukan hanya kubu pemenang). Selama peran belum
+  /// termuat, dianggap sama dengan kubu pemenang.
+  bool get _iWon => _viewerWon ?? _win;
+  bool get _iKnow => _viewerWon != null;
+
   @override
   void initState() {
     super.initState();
@@ -408,7 +413,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               builder: (_, _) => CustomPaint(
                 painter: _AmbientPainter(
                   time: _loop.value * 600,
-                  win: _win,
+                  win: _iWon,
                   sakura: widget.leaves >= 30,
                 ),
                 size: Size.infinite,
@@ -454,12 +459,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               builder: (_, _) {
                 if (_page != 0) return const SizedBox.shrink();
                 final t = _pa.value;
-                final a = _win
+                final a = _iWon
                     ? 0.75 * (1 - _smooth(_seg(t, 0, 0.12)))
                     : 0.7 * (1 - _smooth(_seg(t, 0, 0.3)));
                 if (a <= 0.01) return const SizedBox.shrink();
                 return ColoredBox(
-                  color: (_win ? const Color(0xFFFFF0B0) : Colors.black)
+                  color: (_iWon ? const Color(0xFFFFF0B0) : Colors.black)
                       .withValues(alpha: a),
                   child: const SizedBox.expand(),
                 );
@@ -492,6 +497,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               ),
             ),
           ),
+          _outcomeChip(),
           if (_page < _lastPage)
             TextButton(
               onPressed: () => _goto(_lastPage),
@@ -499,6 +505,108 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             ),
           const SizedBox(width: 6),
         ],
+      ),
+    );
+  }
+
+  /// Lencana kecil "MENANG" / "KALAH" di bilah atas, tampil di semua bab.
+  Widget _outcomeChip() {
+    if (!_iKnow) return const SizedBox.shrink();
+    final c = _iWon ? EmbunColors.gold : EmbunColors.blood;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c, width: 1.4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_iWon ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+              size: 16, color: c),
+          const SizedBox(width: 5),
+          Text(_iWon ? 'MENANG' : 'KALAH',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: c)),
+        ],
+      ),
+    );
+  }
+
+  /// Papan hasil besar di bab pertama: jawaban atas "aku menang atau kalah?"
+  /// Baris kecil di bawahnya menyebut peranmu dan nasib desa.
+  Widget _outcomeBanner(double t) {
+    final won = _iWon;
+    final know = _iKnow;
+    final c = won ? EmbunColors.gold : EmbunColors.blood;
+    final String word = know
+        ? (won ? 'KAMU MENANG' : 'KAMU KALAH')
+        : (widget.wargaMenang ? 'WARGA DESA MENANG' : 'SI TERBISIK MENANG');
+    final myRoleAntag = _secrets[widget.myId]?['role'] == 'antagonis';
+    final String sub = know
+        ? 'Sebagai ${_factionName(myRoleAntag)} · '
+        '${widget.wargaMenang ? 'desa kembali mekar' : 'desa kembali redup'}'
+        : '';
+    final p = Curves.easeOutBack.transform(_seg(t, 0.04, 0.2));
+    return Opacity(
+      opacity: _smooth(_seg(t, 0.04, 0.14)),
+      child: Transform.scale(
+        scale: _lerp(0.8, 1, p),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                c.withValues(alpha: won ? 0.30 : 0.26),
+                Colors.black.withValues(alpha: 0.35),
+              ],
+            ),
+            border: Border.all(color: c, width: 2),
+            boxShadow: [
+              BoxShadow(color: c.withValues(alpha: 0.35), blurRadius: 22),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+                  size: 40, color: c),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  word,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 3,
+                    height: 1.1,
+                    color: won ? EmbunColors.cream : Colors.white,
+                    shadows: [
+                      Shadow(color: c.withValues(alpha: 0.9), blurRadius: 20),
+                    ],
+                  ),
+                ),
+              ),
+              if (sub.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(sub,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 13, height: 1.25, color: Colors.white70)),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -607,25 +715,14 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _up(
-          t,
-          0,
-          0.15,
-          SizedBox(
-            height: 44,
-            child: GameImage(
-                path: logoPath('logoteks-transparent'),
-                fit: BoxFit.contain,
-                cacheWidth: 600),
-          ),
-        ),
+        _outcomeBanner(t),
         const SizedBox(height: 10),
         Opacity(
           opacity: treeIn,
           child: Transform.scale(
             scale: _lerp(0.92, 1, treeIn),
             child: SizedBox(
-              height: 200,
+              height: 170,
               child: TreePortrait(leaves: leaves, pathOverride: sakura),
             ),
           ),
@@ -671,10 +768,20 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                 children: [
                   Opacity(
                     opacity: _smooth(_seg(t, 0.5, 0.7)),
+                    child: const Text('NASIB DESA',
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                            color: Colors.white60)),
+                  ),
+                  const SizedBox(height: 2),
+                  Opacity(
+                    opacity: _smooth(_seg(t, 0.5, 0.7)),
                     child: Text(
                       _win ? 'Hayu mekar kembali!' : 'Hayu layu, desa kembali redup...',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         letterSpacing: spacing,
                         height: 1.15,
@@ -765,10 +872,10 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       word = widget.wargaMenang ? 'WARGA MENANG' : 'SI TERBISIK MENANG';
       sub = '';
     } else if (won) {
-      word = 'KEMENANGAN!';
+      word = 'KAMU MENANG!';
       sub = 'Fraksimu, ${_factionName(!widget.wargaMenang)}, berjaya.';
     } else {
-      word = 'KEKALAHAN';
+      word = 'KAMU KALAH';
       sub = '${_factionName(!widget.wargaMenang)} meraih kemenangan.';
     }
     final col = won == false ? EmbunColors.blood : EmbunColors.gold;

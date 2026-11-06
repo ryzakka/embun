@@ -192,11 +192,15 @@ class EndingCinematic extends StatefulWidget {
   final List<Map<String, dynamic>> players;
   final VoidCallback onDone;
 
+  /// Id pemain yang menonton; dipakai untuk menyatakan "kamu menang / kalah".
+  final String? myId;
+
   /// Opsional: games.end_reason bila server menyediakannya.
   final String? endReason;
 
   const EndingCinematic({
     super.key,
+    this.myId,
     required this.wargaMenang,
     required this.leaves,
     required this.secrets,
@@ -232,6 +236,9 @@ class _EndingCinematicState extends State<EndingCinematic>
   final List<List<Offset>> _cracks = _makeCracks();
 
   bool _revealReady = false;
+
+  /// Hasil untuk pemain ini; null selama peran belum termuat.
+  bool? _myWon;
   Map<String, dynamic>? _antag; // {name, seed, card, username}
   bool _hapClimax = false;
   bool _hapTitle = false;
@@ -290,8 +297,12 @@ class _EndingCinematicState extends State<EndingCinematic>
 
   Future<void> _load() async {
     Map<String, dynamic>? found;
+    bool? myWon;
     try {
       final s = await widget.secrets;
+      final id = widget.myId;
+      final myRole = id == null ? null : s[id]?['role'];
+      if (myRole != null) myWon = (myRole == 'antagonis') != widget.wargaMenang;
       for (final e in s.entries) {
         if (e.value['role'] == 'antagonis') {
           String name = '?';
@@ -319,6 +330,7 @@ class _EndingCinematicState extends State<EndingCinematic>
     if (!mounted) return;
     setState(() {
       _antag = found;
+      _myWon = myWon;
       _revealReady = true;
     });
     // Timeline sempat menunggu data di titik pengungkapan.
@@ -628,11 +640,20 @@ class _EndingCinematicState extends State<EndingCinematic>
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 320),
-                  child: EmbunButton(
-                    label: 'Lihat rekap',
-                    icon: 'centang',
-                    expand: true,
-                    onPressed: _finish,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_myWon != null) ...[
+                        _myOutcome(small: true),
+                        const SizedBox(height: 12),
+                      ],
+                      EmbunButton(
+                        label: 'Lihat rekap',
+                        icon: 'centang',
+                        expand: true,
+                        onPressed: _finish,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -655,6 +676,36 @@ class _EndingCinematicState extends State<EndingCinematic>
       ));
     }
     return Stack(fit: StackFit.expand, children: layers);
+  }
+
+  /// Pernyataan hasil pribadi: "KAMU MENANG" (emas) / "KAMU KALAH" (merah).
+  Widget _myOutcome({bool small = false}) {
+    final won = _myWon ?? _win;
+    final c = won ? EmbunColors.gold : EmbunColors.blood;
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: small ? 14 : 18, vertical: small ? 6 : 9),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c, width: 2),
+        boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 18)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+              size: small ? 22 : 28, color: c),
+          const SizedBox(width: 8),
+          Text(won ? 'KAMU MENANG' : 'KAMU KALAH',
+              style: TextStyle(
+                  fontSize: small ? 16 : 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.5,
+                  color: won ? EmbunColors.cream : Colors.white)),
+        ],
+      ),
+    );
   }
 
   Widget _title(double t) {
@@ -680,6 +731,13 @@ class _EndingCinematicState extends State<EndingCinematic>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_myWon != null) ...[
+              Opacity(
+                opacity: _smooth(_seg(t, 0.50, 0.56)),
+                child: _myOutcome(),
+              ),
+              const SizedBox(height: 10),
+            ],
             Opacity(
               opacity: _smooth(_seg(t, 0.50, 0.55)),
               child: Text(
