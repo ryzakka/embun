@@ -10,6 +10,8 @@ const kindLabel = {
   'penguat': 'Penguat',
   'malam': 'Serangan malam',
   'siang': 'Pakai di siang',
+  'poin': 'Kartu poin',
+  'lanjutan': 'Kartu lanjutan',
 };
 
 const kindIcon = {
@@ -18,6 +20,8 @@ const kindIcon = {
   'penguat': 'plus',
   'malam': 'danger',
   'siang': 'item',
+  'poin': 'bulirembun',
+  'lanjutan': 'plus',
 };
 
 /// Pratinjau besar kartu (tekan-tahan di kartu mana pun): gambar, nama,
@@ -135,6 +139,9 @@ class CardTile extends StatelessWidget {
   /// dan malam 2:3, item protagonis 9/7.
   final double? aspect;
 
+  /// Label kecil di pojok kiri atas (mis. "AKTIF" / "Butuh poin").
+  final String? tag;
+
   const CardTile({
     super.key,
     required this.def,
@@ -148,6 +155,7 @@ class CardTile extends StatelessWidget {
     this.gray = false,
     this.width = 140,
     this.aspect,
+    this.tag,
   });
 
   @override
@@ -234,6 +242,29 @@ class CardTile extends StatelessWidget {
                             color: EmbunColors.gold)),
                   ],
                 ),
+              ),
+            ),
+          if (tag != null)
+            Positioned(
+              top: 6,
+              left: 6,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: (tag == 'AKTIF' ? EmbunColors.leaf : EmbunColors.goldDim)
+                          .withValues(alpha: 0.9)),
+                ),
+                child: Text(tag!,
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: tag == 'AKTIF'
+                            ? EmbunColors.leaf
+                            : EmbunColors.gold)),
               ),
             ),
           if (selected)

@@ -55,6 +55,14 @@ class GameRepository {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  /// Gabungkan kartu lanjutan (Regenerasi / Rekayasa) dengan satu kartu poin
+  /// di tangan. Hasil: {message, hand_id}. Kartu menjadi aktif (charged).
+  Future<Map<String, dynamic>> fuseCards(String gameId, String handId) async {
+    final r = await _db.rpc('fuse_cards',
+        params: {'p_game': gameId, 'p_hand_id': handId});
+    return Map<String, dynamic>.from(r as Map);
+  }
+
   Future<void> finishDay(String gameId, {String? card}) =>
       _db.rpc('finish_day', params: {'p_game': gameId, 'p_card': card});
 

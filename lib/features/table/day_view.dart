@@ -282,6 +282,52 @@ class _DayViewState extends State<DayView>
     );
   }
 
+  /// Label di kartu lanjutan: "AKTIF" bila sudah digabung dengan poin.
+  String? _handTag(Map<String, dynamic> h) {
+    if (widget.defs[h['card_id']]?['kind'] != 'lanjutan') return null;
+    return h['charged'] == true ? 'AKTIF' : 'Butuh poin';
+  }
+
+  String get _poinName => widget.isAntag ? 'Poin DNA' : 'Poin Regenerasi';
+
+  /// Kartu lanjutan di Meja: ketuk -> pratinjau dengan tombol
+  /// "Gabungkan dengan Poin". Kartu aktif lalu bisa dipersembahkan.
+  Future<void> _useAdvanced(Map<String, dynamic> h) async {
+    final def = widget.defs[h['card_id']];
+    if (def == null) return;
+    final mine = def['side'] == (widget.isAntag ? 'antagonis' : 'warga');
+    if (h['charged'] == true || !mine) {
+      await showCardPreview(context, def);
+      if (mounted) {
+        _toast(h['charged'] == true
+            ? 'Kartu ini sudah aktif. Persembahkan di malam persembahan.'
+            : 'Kartu ini bukan untuk perananmu, jadi tidak bisa diaktifkan.');
+      }
+      return;
+    }
+    await showCardPreview(
+      context,
+      def,
+      actionLabel: 'Gabungkan dengan $_poinName',
+      onAction: () => _run(() async {
+        final r = await widget.repo.fuseCards(widget.gameId, h['id'] as String);
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        _toast('${r['message'] ?? 'Kartu aktif'}');
+        widget.onHandChanged?.call();
+      }),
+    );
+  }
+
+  Future<void> _showPoinHint(Map<String, dynamic> h) async {
+    final def = widget.defs[h['card_id']];
+    if (def == null) return;
+    await showCardPreview(context, def);
+    if (mounted) {
+      _toast('Ketuk kartu lanjutanmu untuk menggabungkannya dengan $_poinName.');
+    }
+  }
+
   /// Lencana perlindungan / cermin yang masih berlaku sampai akhir sesi.
   Widget? _guardStrip() {
     final active = _guards
@@ -1183,7 +1229,10 @@ class _DayViewState extends State<DayView>
           ? empty
           : Column(children: [strip, Expanded(child: empty)]);
     }
-    final hasDay = hand.any((h) => widget.defs[h['card_id']]?['kind'] == 'siang');
+    final hasDay = hand.any((h) {
+      final k = widget.defs[h['card_id']]?['kind'];
+      return k == 'siang' || k == 'lanjutan';
+    });
     return LayoutBuilder(builder: (context, box) {
       final g = _mejaGrid(box.maxWidth, minW);
       return SingleChildScrollView(
@@ -1193,7 +1242,7 @@ class _DayViewState extends State<DayView>
             if (strip != null) strip,
             Text(
                 hasDay
-                    ? 'Tekan lama kartu untuk membaca efeknya. Ketuk kartu kuning untuk memakainya.'
+                    ? 'Tekan lama kartu untuk membaca efeknya. Ketuk kartu kuning atau kartu lanjutan untuk memakainya.'
                     : 'Tekan lama kartu untuk membaca efeknya.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 11, color: Colors.white38)),
@@ -1218,9 +1267,13 @@ class _DayViewState extends State<DayView>
                         gray: widget.isAntag &&
                             widget.defs[hand[i]['card_id']]?['kind'] == 'siang' &&
                             widget.defs[hand[i]['card_id']]?['side'] == 'warga',
-                        onTap: widget.defs[hand[i]['card_id']]?['kind'] == 'siang'
-                            ? () => _useDayCard(hand[i])
-                            : null,
+                        tag: _handTag(hand[i]),
+                        onTap: switch (widget.defs[hand[i]['card_id']]?['kind']) {
+                          'siang' => () => _useDayCard(hand[i]),
+                          'lanjutan' => () => _useAdvanced(hand[i]),
+                          'poin' => () => _showPoinHint(hand[i]),
+                          _ => null,
+                        },
                       ),
                     ),
                   ),

@@ -14,6 +14,8 @@ const kartuWargaDir = 'assets/kartu/ItemPro';
 const kartuAntagDir = 'assets/kartu/ItemAnta';
 const kartuMalamDir = 'assets/kartu/ItemAntaNight'; // kartu serangan malam (ungu)
 const kartuSiangDir = 'assets/kartu/ItemProDay'; // kartu siang warga (kuning)
+const kartuRekayasaDir = 'assets/kartu/ItemAntaRekayasa'; // Kartu Rekayasa + Poin DNA
+const kartuRegenerasiDir = 'assets/kartu/ItemProRegenerasi'; // Kartu Regenerasi + Poin Regenerasi
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
 const kemampuanDir = 'assets/kartu/CharSkill';
@@ -238,6 +240,13 @@ String? cardArtPath(Map<String, dynamic>? def) {
     return AssetCatalog.I.file(kartuMalamDir, stem) ??
         AssetCatalog.I.file(kartuAntagDir, stem);
   }
+  if (def['kind'] == 'lanjutan' || def['kind'] == 'poin') {
+    // Kartu lanjutan + kartu poin: folder sendiri per sisi; bila belum ada,
+    // jatuh ke folder item biasa.
+    final bad = def['side'] == 'antagonis';
+    return AssetCatalog.I.file(bad ? kartuRekayasaDir : kartuRegenerasiDir, stem) ??
+        AssetCatalog.I.file(bad ? kartuAntagDir : kartuWargaDir, stem);
+  }
   if (def['kind'] == 'siang') {
     // Kartu kuning: folder sendiri; bila belum ada, jatuh ke folder warga.
     return AssetCatalog.I.file(kartuSiangDir, stem) ??
@@ -272,6 +281,8 @@ double cardAspectFor(String? path) {
       path.startsWith('$kartuAntagDir/') ||
       path.startsWith('$kartuMalamDir/') ||
       path.startsWith('$kartuSiangDir/') ||
+      path.startsWith('$kartuRekayasaDir/') ||
+      path.startsWith('$kartuRegenerasiDir/') ||
       path.startsWith('$kemampuanDir/')) {
     return kTallAspect;
   }
@@ -287,7 +298,9 @@ double cardAspectForDef(Map<String, dynamic>? def) {
   if (def == null) return kItemAspect;
   return (def['side'] == 'antagonis' ||
       def['kind'] == 'malam' ||
-      def['kind'] == 'siang')
+      def['kind'] == 'siang' ||
+      def['kind'] == 'lanjutan' ||
+      def['kind'] == 'poin')
       ? kTallAspect
       : kItemAspect;
 }

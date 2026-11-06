@@ -2,7 +2,7 @@ name: embun
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 2.6.0+1
+version: 2.7.0+1
 
 environment:
   sdk: ^3.10.8
@@ -38,6 +38,8 @@ flutter:
     - assets/kartu/ItemProDay/
     - assets/kartu/ItemAnta/
     - assets/kartu/ItemAntaNight/
+    - assets/kartu/ItemAntaRekayasa/
+    - assets/kartu/ItemProRegenerasi/
     - assets/kartu/punggungkartu/
     - assets/kartu/CharSkill/
     - assets/logo/

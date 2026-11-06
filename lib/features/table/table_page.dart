@@ -1541,6 +1541,10 @@ class _TablePageState extends State<TablePage> {
         // dipersembahkan.
         hand: hand.where((h) {
           final k = defs[h['card_id']]?['kind'];
+          // Kartu poin tak bisa dipersembahkan; kartu lanjutan hanya bila
+          // sudah digabung dengan poin (aktif).
+          if (k == 'poin') return false;
+          if (k == 'lanjutan' && h['charged'] != true) return false;
           return k != 'malam' && k != 'siang';
         }).toList(),
         defs: defs,
