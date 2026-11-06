@@ -1,12 +1,14 @@
 {
-    "name": "embun",
-    "short_name": "embun",
+    "name": "Embun - Balai Pertemuan Desa",
+    "short_name": "Embun",
+    "description": "Permainan kartu sosial multipemain di Balai Pertemuan Desa: peran rahasia, diskusi, tukar kartu, dan pemungutan suara.",
+    "lang": "id",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
+    "background_color": "#07130F",
+    "theme_color": "#07130F",
     "prefer_related_applications": false,
     "icons": [
         {

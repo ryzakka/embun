@@ -1,38 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+  <!-- Diganti otomatis oleh `flutter build` (--base-href). Jangan diubah. -->
   <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- iOS meta tags & icons -->
+  <title>Embun - Balai Pertemuan Desa</title>
+  <meta name="description" content="Embun: permainan kartu sosial multipemain di Balai Pertemuan Desa. Terima peran rahasia, berdiskusi, bertukar kartu, lalu putuskan siapa yang harus pergi sebelum malam tiba. Main gratis di browser.">
+  <link rel="canonical" href="https://embun.pages.dev/">
+
+  <!-- Warna bilah alamat di ponsel (sama dengan latar game) -->
+  <meta name="theme-color" content="#07130F">
+
+  <!-- Pratinjau saat tautan dibagikan (WhatsApp, Telegram, Discord, dll.) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Embun">
+  <meta property="og:title" content="Embun - Balai Pertemuan Desa">
+  <meta property="og:description" content="Permainan kartu sosial multipemain: peran rahasia, diskusi, tukar kartu, dan pemungutan suara. Main gratis di browser.">
+  <meta property="og:url" content="https://embun.pages.dev/">
+  <meta property="og:image" content="https://embun.pages.dev/icons/Icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:locale" content="id_ID">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Embun - Balai Pertemuan Desa">
+  <meta name="twitter:description" content="Permainan kartu sosial multipemain: peran rahasia, diskusi, tukar kartu, dan pemungutan suara.">
+  <meta name="twitter:image" content="https://embun.pages.dev/icons/Icon-512.png">
+
+  <!-- iOS -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="embun">
+  <meta name="apple-mobile-web-app-title" content="Embun">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <!-- Ikon tab -->
+  <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>embun</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Latar gelap selama game dimuat, agar tidak berkedip putih -->
+  <style>html,body{margin:0;background:#07130F}</style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+<script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
