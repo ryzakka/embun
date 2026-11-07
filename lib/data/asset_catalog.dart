@@ -167,6 +167,12 @@ String? phaseScenery(String phase, int day, int leaves) {
         'rumahdesa2-gersang',
         'rumahdesa-gersang',
       ], day);
+    case 'research':
+      pick = _rotate(const [
+        'kuali-racikan',
+        'perpustakaantua',
+        'mejaku',
+      ], day);
     case 'discussion':
       pick = _rotate([
         'balaidesa-dalamsiang',

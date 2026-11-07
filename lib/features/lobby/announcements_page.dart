@@ -281,7 +281,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               sliver: SliverList.builder(
                 itemCount: visible.length,
                 itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  padding: const EdgeInsets.only(top: 6, bottom: 6),
                   child: _card(visible[i], i),
                 ),
               ),
@@ -330,102 +330,109 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     final version = ((m['version'] as String?) ?? '').trim();
     final hasBody = body.isNotEmpty;
     final open = hasBody && (_manual[id] ?? (unread || pinned || index == 0));
-    // Pembaruan: tampil beda bila memuat tautan unduhan / versinya lebih baru.
     final dl = isUpdate ? findDownloadLink(body) : null;
     final newer = isUpdate && version.isNotEmpty && AppInfo.isNewer(version);
 
+    // Baris kecil di bawah judul: versi (bila ada) dan tanggal.
     final meta = [
-      isUpdate ? 'Pembaruan' : 'Pengumuman',
       if (version.isNotEmpty)
         AppInfo.isCurrent(version) ? 'v$version (terpasang)' : 'v$version',
       _date(m['published_at'] as String?),
     ].where((e) => e.isNotEmpty).join('  ·  ');
 
-    // Lencana tambahan khusus pembaruan (maksimal satu).
-    final StatusTag? tagUpdate = newer
-        ? const StatusTag(
-        text: 'Versi baru',
-        color: EmbunColors.gold,
-        icon: Icons.new_releases_rounded)
-        : (dl != null
-        ? StatusTag(
-        text: dl.info.kind == LinkKind.store ? 'Toko' : 'Unduhan',
-        color: EmbunColors.leaf,
-        icon: dl.info.kind == LinkKind.store
-            ? Icons.storefront_rounded
-            : Icons.download_rounded)
-        : (isUpdate && version.isNotEmpty && AppInfo.isCurrent(version)
-        ? const StatusTag(
-        text: 'Terpasang',
-        color: EmbunColors.leaf,
-        icon: Icons.check_circle_outline_rounded)
-        : null));
-
     final card = Material(
-      color: isUpdate
-          ? Color.alphaBlend(accent.withValues(alpha: newer ? 0.10 : 0.05),
-          Colors.black.withValues(alpha: 0.36))
-          : Colors.black.withValues(alpha: 0.36),
+      color: Colors.black.withValues(alpha: 0.38),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: (unread || newer)
-              ? accent.withValues(alpha: 0.85)
-              : EmbunColors.goldDim.withValues(alpha: 0.5),
-          width: (unread || newer) ? 1.5 : 1,
+          color: unread
+              ? accent.withValues(alpha: 0.8)
+              : EmbunColors.goldDim.withValues(alpha: 0.45),
+          width: unread ? 1.4 : 1,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: hasBody ? () => setState(() => _manual[id] = !open) : null,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GameIcon(isUpdate ? 'logorhistory' : 'announcement',
-                      size: 36),
+                  GameIcon(isUpdate ? 'logorhistory' : 'announcement', size: 34),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Tingkat 1: jenis + penanda status (kecil, tenang).
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              isUpdate ? 'PEMBARUAN' : 'PENGUMUMAN',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: accent.withValues(alpha: 0.95),
+                              ),
+                            ),
+                            if (pinned)
+                              const StatusTag(
+                                  text: 'Disematkan', color: EmbunColors.gold),
+                            if (unread)
+                              const StatusTag(
+                                  text: 'Baru', color: EmbunColors.leaf),
+                            if (newer)
+                              const StatusTag(
+                                  text: 'Versi baru', color: EmbunColors.gold),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        // Tingkat 2: judul, paling menonjol.
                         Text(
                           '${m['title']}',
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
+                            fontSize: 17,
+                            height: 1.25,
+                            fontWeight: FontWeight.w800,
                             color: EmbunColors.cream,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(meta,
-                            style: TextStyle(
-                                fontSize: 11.5,
-                                letterSpacing: 0.3,
-                                color: accent.withValues(alpha: 0.9))),
+                        // Tingkat 3: versi dan tanggal.
+                        if (meta.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(meta,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white54)),
+                        ],
                       ],
                     ),
                   ),
                   if (hasBody)
-                    AnimatedRotation(
-                      turns: open ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: const Icon(Icons.expand_more_rounded,
-                          color: Colors.white54),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 2),
+                      child: AnimatedRotation(
+                        turns: open ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.expand_more_rounded,
+                            color: Colors.white54),
+                      ),
                     ),
                 ],
               ),
-              // Versi baru dengan tautan unduhan: tombol langsung terlihat
-              // walau kartu sedang tertutup.
+              // Versi baru dengan tautan unduhan: tombol terlihat walau tertutup.
               if (newer && dl != null && !open)
                 Padding(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 12),
                   child: EmbunButton(
                     label: 'Unduh V$version',
                     kind: EmbunButtonKind.primary,
@@ -440,19 +447,14 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                 alignment: Alignment.topCenter,
                 child: open
                     ? Padding(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 12, right: 2),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Container(
                         height: 1,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            accent.withValues(alpha: 0.6),
-                            accent.withValues(alpha: 0),
-                          ]),
-                        ),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        color: Colors.white12,
                       ),
                       AnnouncementBody(text: body, accent: accent),
                     ],
@@ -468,38 +470,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
 
     return Semantics(
       label: '${isUpdate ? 'Pembaruan' : 'Pengumuman'}: ${m['title']}',
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          card,
-          if (pinned || unread || tagUpdate != null)
-            Positioned(
-              top: -8,
-              left: 12,
-              right: 12,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (pinned)
-                        const StatusTag(
-                            text: 'Disematkan', color: EmbunColors.gold),
-                      if (pinned && (unread || tagUpdate != null))
-                        const SizedBox(width: 6),
-                      if (unread)
-                        const StatusTag(text: 'Baru', color: EmbunColors.leaf),
-                      if (unread && tagUpdate != null) const SizedBox(width: 6),
-                      if (tagUpdate != null) tagUpdate,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      child: card,
     );
   }
 

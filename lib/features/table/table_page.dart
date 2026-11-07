@@ -29,6 +29,7 @@ import 'final_screen.dart';
 import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
+import 'research_view.dart';
 import '../guide/guide_page.dart';
 import 'ability_panel.dart';
 import 'vote_reveal_scene.dart';
@@ -784,7 +785,7 @@ class _TablePageState extends State<TablePage> {
       _lastIntroDay = day;
       if (!(day == 1 && phase == 'day')) return;
     } else {
-      if (phase != 'day' || day == _lastIntroDay) return;
+      if ((phase != 'research' && phase != 'day') || day == _lastIntroDay) return;
       _lastIntroDay = day;
     }
     _dayIntro = {
@@ -1558,6 +1559,21 @@ class _TablePageState extends State<TablePage> {
       );
     } else if (iAmOut) {
       body = _spectatorBody();
+    } else if (phase == 'research') {
+      body = ResearchView(
+        key: ValueKey('res$day'),
+        repo: repo,
+        gameId: widget.gameId,
+        day: day,
+        defs: defs,
+        balance: balance,
+        jailed: jailed,
+        iAmReady: iAmReady,
+        readyCount: readyCount,
+        total: alive.length,
+        dark: showAsAntag,
+        onBought: _refreshHand,
+      );
     } else {
       body = DayView(
         marketTick: _marketTick,
@@ -1590,7 +1606,8 @@ class _TablePageState extends State<TablePage> {
 
     // Saat voting, daftar tersangka sudah memuat semua pemain: deretan desa
     // disembunyikan supaya ruang vertikal tidak habis.
-    final showStrip = phase == 'day' || phase == 'discussion';
+    final showStrip =
+        phase == 'day' || phase == 'research' || phase == 'discussion';
 
     final gap = _short ? 6.0 : (narrow ? 6.0 : 12.0);
     final showVerdict = verdict != null &&

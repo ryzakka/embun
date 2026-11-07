@@ -215,6 +215,17 @@ class GameRepository {
           params: {'p_game': gameId, 'p_emoji': emoji, 'p_target': target});
 
   // ---- v2 ----
+  Future<Map<String, dynamic>> researchStock(String gameId) async {
+    final r = await _db.rpc('research_stock', params: {'p_game': gameId});
+    return Map<String, dynamic>.from(r as Map);
+  }
+
+  Future<void> buyResearch(String gameId, String card) =>
+      _db.rpc('buy_research_card', params: {'p_game': gameId, 'p_card': card});
+
+  Future<void> finishResearch(String gameId) =>
+      _db.rpc('finish_research', params: {'p_game': gameId});
+
   Future<void> buyCard(String gameId, String card) =>
       _db.rpc('buy_card', params: {'p_game': gameId, 'p_card': card});
 
