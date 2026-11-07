@@ -58,6 +58,15 @@ class AssetCatalog {
 
   String? file(String folder, String stem) => _byFolder[folder]?[stem];
 
+  /// Berkas pertama (urut abjad) yang namanya diawali [prefix]. Dipakai bila
+  /// nama lengkapnya tak pasti atau panjang.
+  String? byPrefix(String folder, String prefix) {
+    final m = _byFolder[folder];
+    if (m == null) return null;
+    final keys = m.keys.where((k) => k.startsWith(prefix)).toList()..sort();
+    return keys.isEmpty ? null : m[keys.first];
+  }
+
   List<String> stems(String folder) =>
       (_byFolder[folder]?.keys.toList() ?? <String>[])..sort();
 }
@@ -92,7 +101,7 @@ String? treePath(int leaves) =>
 
 /// 30 daun = lembah-hijau0 ... makin sedikit daun makin gelap
 String? landscapePath(int leaves) => leaves <= 0
-    ? AssetCatalog.I.file(bentangDir, 'desajembatan-keringgulita')
+    ? firstScenery(const ['lembah-hantumurka', 'desajembatan-keringgulita'])
     : AssetCatalog.I.file(bentangDir, 'lembah-hijau${_scale(leaves, 5.99)}');
 
 String? sceneryPath(String stem) => AssetCatalog.I.file(bentangDir, stem);
@@ -116,11 +125,16 @@ const kBentangZoom = 1.08;
 String? _rotate(List<String> stems, int day) {
   final have = [
     for (final s in stems)
-      if (AssetCatalog.I.file(bentangDir, s) != null) s
+      if (_scenery(s) != null) _scenery(s)!
   ];
   if (have.isEmpty) return null;
-  return AssetCatalog.I.file(bentangDir, have[day.abs() % have.length]);
+  return have[day.abs() % have.length];
 }
+
+/// Seperti [sceneryPath], tetapi nama berakhiran `*` dicocokkan sebagai awalan.
+String? _scenery(String stem) => stem.endsWith('*')
+    ? AssetCatalog.I.byPrefix(bentangDir, stem.substring(0, stem.length - 1))
+    : AssetCatalog.I.file(bentangDir, stem);
 
 /// Latar meja menurut fase, hari, dan kesehatan Hayu.
 ///
@@ -146,6 +160,7 @@ String? phaseScenery(String phase, int day, int leaves) {
         'menaralonceng-sianghari',
         'gerobakdankeranjang',
         'tepisungai-tanggaterjalsianghari',
+        'balkon-siang',
       ], day)
           : _rotate(const [
         'ladang-gersang',
@@ -153,11 +168,13 @@ String? phaseScenery(String phase, int day, int leaves) {
         'rumahdesa-gersang',
       ], day);
     case 'discussion':
-      pick = _rotate(const [
+      pick = _rotate([
         'balaidesa-dalamsiang',
         'sinarmataharikedalamrumah',
         'kamarkayudesa',
         'perpustakaantua',
+        // Hayu mulai kering: sosok di atas rak perpustakaan ikut bergilir.
+        if (leaves < 20) 'hantu-perempuanbertopengdiatasrak*',
       ], day);
     case 'voting':
       pick = firstScenery(const ['alunalun-tiangberpita']);
@@ -172,7 +189,7 @@ String? phaseScenery(String phase, int day, int leaves) {
 
 /// Langit malam: tenang, atau langit serangan (sama untuk SEMUA pemain).
 String? nightSkyPath({required bool attack}) => firstScenery(attack
-    ? const ['langit-malammerahunggelap', 'langit-malamberawan']
+    ? const ['langit-malammerahungugelap', 'langit-malamberawan']
     : const ['langit-malamberawan']);
 
 /// Lembah malam tempat langit itu turun: tenang atau kering akibat serangan.
@@ -187,6 +204,57 @@ String? nightVictimPath(String? scene) => switch (scene) {
   'rumah' => firstScenery(const ['rumah-malamdepanpintu']),
   _ => null,
 };
+
+// ---- hantu ----
+
+/// Hantu yang muncul pada korban serangan malam (hanya di layar korban):
+/// `sumur` (Racun Sumur) -> perempuan keluar dari sumur, `rumah` (Maling
+/// Embun) -> sosok pria di dalam kamar.
+String? nightGhostPath(String? scene) => switch (scene) {
+  'sumur' => firstScenery(const ['hantu-perempuankeluarsumur']),
+  'rumah' => firstScenery(const ['hantu-priapenggodadikamar']),
+  _ => null,
+};
+
+/// Orang-orangan sawah yang merayap mendekat, urut dari jauh ke dekat
+/// (dipakai adegan pemain diusir). Hanya yang berkasnya ada.
+List<String> scarecrowFrames() => [
+  for (final s in const [
+    'hantu-jeramidiladang',
+    'hantu-jeramigerakdiam',
+    'hantujeramigerakmaju',
+  ])
+    if (sceneryPath(s) != null) sceneryPath(s)!
+];
+
+/// Hantu murka yang menampakkan diri di atas lembah saat Hayu mati.
+List<String> wrathGhostPaths() => [
+  for (final s in const [
+    'hantumurka-perempuanbungameraih',
+    'hantumurka-topengpria',
+    'hantumurka-wanitatopengjubah',
+  ])
+    if (sceneryPath(s) != null) sceneryPath(s)!
+];
+
+/// Latar layar akhir saat Si Terbisik menang.
+///   waktu habis : malam di desa, sosok setengah kuda di sisi gerobak
+///   daun habis  : lembah hantu murka (lihat [landscapePath])
+String? defeatScenery({required int leaves, String? endReason}) {
+  if (endReason == 'waktu_habis' && leaves > 0) {
+    return firstScenery(const [
+      'hantu-manusiaberbadansetengahkuda01',
+      'keterasingan',
+    ]);
+  }
+  if (leaves <= 0 || endReason == 'daun_habis') {
+    return firstScenery(const [
+      'lembah-hantumurka',
+      'keterasingan',
+    ]);
+  }
+  return firstScenery(const ['keterasingan']);
+}
 
 String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
 

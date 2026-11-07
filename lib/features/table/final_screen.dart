@@ -403,10 +403,14 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           Backdrop(
               path: _win
                   ? landscapePath(widget.leaves)
-                  : (firstScenery(const ['keterasingan']) ??
+                  : (defeatScenery(
+                  leaves: widget.leaves, endReason: widget.endReason) ??
                   landscapePath(widget.leaves)),
               dark: !_win,
               dim: 0.62),
+          // Daun habis: hantu murka menampakkan diri bergiliran di lembah.
+          if (!_win && (widget.leaves <= 0 || widget.endReason == 'daun_habis'))
+            Apparition(paths: wrathGhostPaths()),
           IgnorePointer(
             child: AnimatedBuilder(
               animation: _loop,

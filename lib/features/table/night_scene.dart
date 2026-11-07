@@ -25,11 +25,13 @@ double _smooth(double x) => x * x * (3 - 2 * x);
 ///   MALAM TENANG (semua pemain)
 ///     langit-malamberawan -> kamera turun -> lembah-malamindah
 ///   ADA SERANGAN (semua pemain: sama persis, tanpa sasaran / jenis)
-///     langit-malamberawan -> hentakan + kilat merah -> langit-malammerahunggelap
+///     langit-malamberawan -> hentakan + kilat merah -> langit-malammerahungugelap
 ///     -> kamera turun -> lembah-malamkering
 ///   KORBAN SAJA (baris pribadi ber-scene)
 ///     lembah-malamkering -> kamera turun lagi -> sumur-gelapmalam (Racun Sumur)
 ///     atau rumah-malamdepanpintu (Maling Embun), bersama baris pribadinya.
+///     Sesaat kemudian hantunya menampakkan diri di gambar yang sama:
+///     hantu-perempuankeluarsumur (sumur) / hantu-priapenggodadikamar (rumah).
 ///
 /// Pemain lain tak pernah melihat dua gambar terakhir itu. Kabut Pekat tidak
 /// punya korban pribadi, jadi bagi semua orang berhenti di lembah-malamkering.
@@ -59,6 +61,7 @@ class _NightSceneState extends State<NightScene>
   // (_tiltMs), lalu napas 200 ms sebelum turun lagi ke sumur / rumah.
   static const _privAfter = 800 + _tiltMs + 200;
   static const _privHold = 1800; // jeda tambahan setelah baris pribadi terbaca
+  static const _ghostExtra = 1400; // tambahan waktu bila hantu menampakkan diri
 
   late final List<Map<String, dynamic>> _lines;
   late final List<double> _starts; // kapan tiap baris mulai muncul (ms)
@@ -77,6 +80,7 @@ class _NightSceneState extends State<NightScene>
   late final String? _valCalm = nightValleyPath(attack: false);
   late final String? _valAtk = nightValleyPath(attack: true);
   late final String? _victimImg;
+  late final String? _ghostImg;
 
   @override
   void initState() {
@@ -96,6 +100,7 @@ class _NightSceneState extends State<NightScene>
         ? null
         : (_lines[_privateIdx]['scene'] as String?);
     _victimImg = nightVictimPath(_victimScene);
+    _ghostImg = _victimImg == null ? null : nightGhostPath(_victimScene);
 
     // Tiap baris diberi waktu baca sesuai panjang teksnya (dan baris lama
     // tetap terlihat, jadi yang paling akhir yang paling butuh waktu).
@@ -116,7 +121,9 @@ class _NightSceneState extends State<NightScene>
     final lastRead = _slot(_lines[last]);
     _total = (_starts[last] +
         lastRead +
-        (_privateIdx >= 0 ? _privHold : _hold) +
+        (_privateIdx >= 0
+            ? _privHold + (_ghostImg != null ? _ghostExtra : 0)
+            : _hold) +
         kSceneFadeOutMs)
         .round();
 
@@ -241,6 +248,13 @@ class _NightSceneState extends State<NightScene>
       if (hasVictim) {
         layers.add(_layer(_victimImg, _smooth(_seg(pVic, 0.0, 0.7)), h,
             incoming: true, p: pVic));
+        // Hantu menyusup perlahan, lalu berkedip tak menentu.
+        if (_ghostImg != null) {
+          final g = _smooth(_seg(ms, privAt + 1500, privAt + 2600));
+          final flicker =
+              0.88 + 0.12 * math.sin(ms / 1000 * 23) * math.cos(ms / 1000 * 7);
+          layers.add(_layer(_ghostImg, g * flicker, h, incoming: false, p: 0));
+        }
       }
     }
     return Stack(fit: StackFit.expand, children: layers);

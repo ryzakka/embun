@@ -26,7 +26,7 @@ const _omenScenery = [
   'awan-gelap',
   'awangelap',
   'awan-gelapdramatis',
-  'langit-malammerahunggelap',
+  'langit-malammerahungugelap',
   'langit-malamberawan',
 ];
 

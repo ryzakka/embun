@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 
@@ -92,6 +93,76 @@ class Backdrop extends StatelessWidget {
               .withValues(alpha: dim),
         ),
       ],
+    );
+  }
+}
+
+/// Sosok yang menampakkan diri pelan-pelan di atas latar, lalu lenyap; tiap
+/// putaran berganti ke gambar berikutnya dari [paths]. Tidak menerima sentuhan.
+class Apparition extends StatefulWidget {
+  final List<String> paths;
+  final double peak; // opasitas tertinggi (0..1)
+  final Duration cycle;
+  const Apparition({
+    super.key,
+    required this.paths,
+    this.peak = 0.55,
+    this.cycle = const Duration(seconds: 9),
+  });
+
+  @override
+  State<Apparition> createState() => _ApparitionState();
+}
+
+class _ApparitionState extends State<Apparition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+  AnimationController(vsync: this, duration: widget.cycle);
+  int _i = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addStatusListener((st) {
+      if (st == AnimationStatus.completed && mounted) {
+        setState(() => _i = (_i + 1) % widget.paths.length);
+        _c.forward(from: 0);
+      }
+    });
+    // Jeda sebentar supaya lembah terlihat sepi dulu.
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.paths.isEmpty) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, _) {
+          final t = _c.value;
+          final bell = math.pow(math.sin(math.pi * t), 2).toDouble();
+          final flicker = 0.92 + 0.08 * math.sin(t * 90);
+          return Opacity(
+            opacity: (widget.peak * bell * flicker).clamp(0.0, 1.0).toDouble(),
+            child: Transform.scale(
+              scale: 1.04 + 0.06 * t,
+              child: GameImage(
+                  key: ValueKey(_i),
+                  path: widget.paths[_i],
+                  cacheWidth: 1280),
+            ),
+          );
+        },
+      ),
     );
   }
 }

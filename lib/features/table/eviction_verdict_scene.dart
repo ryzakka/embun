@@ -193,6 +193,14 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
     final bg = sceneryPath('jalanjauhdesa') ??
         sceneryPath('desajembatan-keringgulita') ??
         sceneryPath('keterasingan');
+    // Setelah hati pecah, orang-orangan sawah merayap mendekat: berdiri di
+    // ladang -> bergerak diam-diam -> maju (urut dari jauh ke dekat).
+    final scare = scarecrowFrames();
+    double scareA(int i) => switch (i) {
+      0 => _smooth(_seg(t, 0.52, 0.64)),
+      1 => _smooth(_seg(t, 0.68, 0.76)),
+      _ => _smooth(_seg(t, 0.82, 0.90)),
+    };
 
     // Potret.
     final pIn = _seg(t, 0.05, 0.16);
@@ -232,10 +240,26 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
           colorFilter: _gray(bgSat),
           child: Transform.scale(
             scale: bgScale,
-            child: GameImage(path: bg, cacheWidth: 1600),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GameImage(path: bg, cacheWidth: 1600),
+                for (var i = 0; i < scare.length && i < 3; i++)
+                  if (scareA(i) > 0.01)
+                    Opacity(
+                      opacity: (scareA(i) * 0.9).clamp(0.0, 1.0).toDouble(),
+                      child: GameImage(path: scare[i], cacheWidth: 1600),
+                    ),
+              ],
+            ),
           ),
         ),
-        ColoredBox(color: _night.withValues(alpha: scrimA)),
+        // Perendam sedikit ditipiskan agar orang-orangan sawah terlihat.
+        ColoredBox(
+            color: _night.withValues(
+                alpha: (scrimA -
+                    (scare.isEmpty ? 0.0 : 0.16 * _smooth(_seg(t, 0.52, 0.90))))
+                    .clamp(0.0, 1.0))),
 
         // Kabut ungu dan bara yang naik.
         IgnorePointer(
