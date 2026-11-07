@@ -620,9 +620,8 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: _openGuide),
         _MenuTile(
             index: 3,
-            icon: 'info',
+            icon: 'tutor',
             label: 'Tutorial',
-            materialIcon: Icons.school_rounded,
             badge: _tutorialNew ? 1 : 0,
             center: !wide,
             onTap: _openTutorial),

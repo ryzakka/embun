@@ -273,6 +273,8 @@ class _TutorialPageState extends State<TutorialPage>
           color: EmbunColors.gold,
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
         ),
+        const GameIcon('tutor', size: 30),
+        const SizedBox(width: 8),
         const Text(
           'Tutorial',
           style: TextStyle(
@@ -290,10 +292,11 @@ class _TutorialPageState extends State<TutorialPage>
           icon: Icon(
               _voice ? Icons.volume_up_rounded : Icons.volume_off_rounded),
         ),
-        TextButton(
+        TextButton.icon(
           onPressed: () => Navigator.of(context).maybePop(),
           style: TextButton.styleFrom(foregroundColor: Colors.white60),
-          child: const Text('Lewati'),
+          icon: const GameIcon('skip2', size: 22),
+          label: const Text('Lewati'),
         ),
       ],
     ),
