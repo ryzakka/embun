@@ -100,10 +100,11 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
     final accent = _bad ? EmbunColors.mist : EmbunColors.gold;
     final info = _bad
         ? 'Gabungkan kartu ini dengan $name di tab Gabung (hari biasa) agar AKTIF '
-        'dan bisa dipersembahkan. Kapsul DNA juga bisa dipakai: satu '
-        'kapsul cukup untuk dua kartu Rekayasa. Poin habis sekali pakai.'
+        'dan bisa dipersembahkan. Poin DNA II dipakai untuk dua kartu Rekayasa '
+        'dan Kapsul DNA untuk tiga. Poin habis sekali pakai.'
         : 'Gabungkan kartu ini dengan $name di tab Gabung (hari biasa) agar AKTIF '
-        'dan bisa dipersembahkan. Poin habis sekali pakai.';
+        'dan bisa dipersembahkan. Poin Regenerasi II dipakai untuk dua kartu '
+        'dan III untuk tiga. Poin habis sekali pakai.';
 
     return SizedBox(
       width: _w,

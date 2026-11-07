@@ -52666,7 +52666,7 @@ for(s=J.aS(a),r=null;s.t();){q=s.gP()
 if(!J.c(q.h(0,"kind"),"pembaruan"))continue
 q=A.aB(q.h(0,"version"))
 p=B.d.fn(q==null?"":q)
-if(p.length===0||A.aXi(p,"2.7.11")<=0)continue
+if(p.length===0||A.aXi(p,"2.7.12")<=0)continue
 if(r==null||A.aXi(p,r)>0)r=p}return r},
 J(a){var s,r=null,q="assets/bentang",p=A.bz().bx(q,"balaidesa-dalamsiang")
 if(p==null)p=A.bz().bx(q,"rumahdesa-hijau")
@@ -52683,7 +52683,7 @@ s=A.a([],t.p)
 q=o.e
 if(q!=null)s.push(new A.on(new A.a4(B.nB,new A.mm("alert","Gagal memuat ulang: "+A.ee(q),B.x,n),n),n))
 p=o.atz(l)
-if(p!=null)s.push(new A.on(new A.a4(B.ub,new A.mm("info","Versi V"+p+" sudah tersedia (versimu V2.7.11). Muat ulang halaman atau perbarui aplikasimu.",B.k,n),n),n))
+if(p!=null)s.push(new A.on(new A.a4(B.ub,new A.mm("info","Versi V"+p+" sudah tersedia (versimu V2.7.12). Muat ulang halaman atau perbarui aplikasimu.",B.k,n),n),n))
 q=J.bd(l)
 if(q.gI(l)>=3)s.push(new A.on(new A.a4(B.RA,o.amm(),n),n))
 if(q.gaf(l))s.push(A.Wl(o.ZL("Kabar dan catatan pembaruan akan muncul di sini.",m,"Belum ada pengumuman"),!1))
@@ -52702,7 +52702,7 @@ if(a1==null){a1=a||a0||a4===0
 q=a1}else q=a1}else q=!1
 a1=A.a([c?f:e],t.s)
 if(s.length!==0){p="v"+s
-a1.push(A.aXi(s,"2.7.11")===0?p+" (terpasang)":p)}p=A.aB(a3.h(0,"published_at"))
+a1.push(A.aXi(s,"2.7.12")===0?p+" (terpasang)":p)}p=A.aB(a3.h(0,"published_at"))
 p=A.R7(p==null?"":p)
 o=p==null?g:p.a9d()
 a1.push(o==null?"":""+A.aYK(o)+" "+B.X8[A.aYN(o)-1]+" "+A.FP(o))
@@ -53214,7 +53214,7 @@ o=p*1.2
 n=t.p
 q=A.af(A.bN(A.bp(B.h,new A.a3(p*1.3,p,A.at(B.h,A.a([A.aj(k,k,B.m,k,k,new A.T(k,k,k,k,k,new A.bE(B.h,0.5,B.A,k,0,A.a([B.k.m(0.18+0.12*r),B.k.m(0)],t.O),k,k),B.aN),k,o,k,k,k,k,k,o),new A.cz(A.bz().bx("assets/logo","ikon-transparent"),B.d6,B.h,1000,k)],n),B.r,B.P),k),0.88+0.12*q),new A.f(0,i*5)),q)
 i=l.d
-i=A.af(A.bN(A.x("BALAI PERTEMUAN DESA V2.7.11",k,k,k,k,k,A.az(k,k,B.k.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.kA,k,k),k,k),new A.f(0,(1-i)*10)),i)
+i=A.af(A.bN(A.x("BALAI PERTEMUAN DESA V2.7.12",k,k,k,k,k,A.az(k,k,B.k.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.kA,k,k),k,k),new A.f(0,(1-i)*10)),i)
 o=l.e
 p=j.ay
 m=p?"Mulai":"Memuat..."
@@ -53255,7 +53255,7 @@ q=A.x(q>=99?"99+":""+q,m,m,m,m,m,m,m,m)
 i=i.gavh()
 q=A.b6(m,A.C8(B.In,m,A.eS(m,B.ml,m,A.af(B.TC,p?1:0.85),m,m,i,B.kc,m,m,"Pengumuman",m),p,q,m),m,m,m,8,4,m)
 o=A.ad(8)
-n=p?"V2.7.11  \xb7  ada kabar baru":"V2.7.11"
+n=p?"V2.7.12  \xb7  ada kabar baru":"V2.7.12"
 i=A.a([r,q,A.b6(8,A.hD(!1,o,!0,new A.a4(B.R4,A.x(n,m,m,m,m,m,A.az(m,m,p?B.k:B.b2,m,m,m,m,m,m,m,m,11.5,m,m,m,m,m,!0,m,1.2,m,m,m,B.ot,m,m),m,m),m),m,!0,m,m,m,m,m,m,m,m,m,i,m,m,m,m,m,m,m),m,m,m,12,m,m)],h)
 if(k)i.push(A.bJ(0,new A.a4(B.S7,new A.c0(B.mc,m,m,A.fz(B.mc,A.ai(A.a([j.$1(Math.min(380,l*0.34)),B.a7o,f],h),B.dz,m,B.f,B.t,0,m),B.b7),m),m)))
 else i.push(A.bJ(0,A.aXI(m,m,A.a([A.Wl(new A.a4(B.RP,A.V(A.a([j.$1(Math.min(320,l-48)),B.ly,B.cx,f],h),B.l,B.f,B.n),m),!1)],h))))
@@ -56481,7 +56481,7 @@ o=A.h(b==null?"":b)
 n=A.bu(r.h(0,"cost"))
 m=J.c(f.a.c.h(0,d),c)?B.v:B.k
 b="Gabungkan kartu ini dengan "+o
-l=J.c(f.a.c.h(0,d),c)?b+" di tab Gabung (hari biasa) agar AKTIF dan bisa dipersembahkan. Kapsul DNA juga bisa dipakai: satu kapsul cukup untuk dua kartu Rekayasa. Poin habis sekali pakai.":b+" di tab Gabung (hari biasa) agar AKTIF dan bisa dipersembahkan. Poin habis sekali pakai."
+l=J.c(f.a.c.h(0,d),c)?b+" di tab Gabung (hari biasa) agar AKTIF dan bisa dipersembahkan. Poin DNA II dipakai untuk dua kartu Rekayasa dan Kapsul DNA untuk tiga. Poin habis sekali pakai.":b+" di tab Gabung (hari biasa) agar AKTIF dan bisa dipersembahkan. Poin Regenerasi II dipakai untuk dua kartu dan III untuk tiga. Poin habis sekali pakai."
 b=A.rn(f.a.d)
 q=t.p
 k=A.a([a],q)
@@ -68498,7 +68498,7 @@ A.a13.prototype={
 ac(){this.ao()
 $.al.p3$.push(new A.aHj(this))},
 J(a){var s=null
-return A.ek(B.a0,!0,s,A.We(A.em(!0,new A.c0(B.b0,s,s,new A.a4(B.QI,A.fL(new A.aHi(),A.x("V2.7.11",s,s,s,s,s,A.az(s,s,B.k.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.y,B.fv,s,new A.av(0,1,t.t),t.i),s),s),B.a7,!0)),B.m,B.bL,0,s,s,s,s,s,B.bk)}}
+return A.ek(B.a0,!0,s,A.We(A.em(!0,new A.c0(B.b0,s,s,new A.a4(B.QI,A.fL(new A.aHi(),A.x("V2.7.12",s,s,s,s,s,A.az(s,s,B.k.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.y,B.fv,s,new A.av(0,1,t.t),t.i),s),s),B.a7,!0)),B.m,B.bL,0,s,s,s,s,s,B.bk)}}
 A.aHj.prototype={
 $1(a){return this.a9V(a)},
 a9V(a){var s=0,r=A.t(t.H),q,p=this,o
@@ -125903,7 +125903,7 @@ B.Hj=new A.n(!0,B.k,null,null,null,null,20,B.N,null,0.8,null,null,null,null,null
 B.R=new A.zv(2,"ellipsis")
 B.afm=new A.as("Pengumuman",null,B.Hj,null,null,null,B.R,1,null,null)
 B.dn=new A.n(!0,B.aZ,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.afQ=new A.as("Log pembaruan  \xb7  versimu V2.7.11",null,B.dn,null,null,null,null,null,null,null)
+B.afQ=new A.as("Log pembaruan  \xb7  versimu V2.7.12",null,B.dn,null,null,null,null,null,null,null)
 B.We=s([B.afm,B.afQ],t.p)
 B.Pe=new A.kG(B.a2,B.f,B.n,B.Y,null,B.cz,null,0,B.We,null)
 B.SD=new A.eQ(1,B.bq,B.Pe,null)

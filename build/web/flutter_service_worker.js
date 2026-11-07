@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "637af062e5cbad11588696ec6c58001f",
-"assets/AssetManifest.bin.json": "b4925801b1383b8404da7aec5a8889c0",
+const RESOURCES = {"assets/AssetManifest.bin": "a2c3dbbb61a268cb6f56ce4c6ac2e3ce",
+"assets/AssetManifest.bin.json": "3f06229c7382706d44c080ec1fd93fed",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/anyaman-gelap.webp": "5322aff6e036276cb3e8960a77599f9b",
 "assets/assets/bentang/anyaman-rusak.webp": "21b76bbe9458a9952369cf8d1b451492",
@@ -245,7 +245,8 @@ const RESOURCES = {"assets/AssetManifest.bin": "637af062e5cbad11588696ec6c58001f
 "assets/assets/kartu/ItemAntaRekayasa/rekayasa-genetika.webp": "f6fe79e618e732f59a8b63cbe0473b4a",
 "assets/assets/kartu/ItemAntaRekayasa/rekayasa-kapsuldna.webp": "5b316b55651a9c856dc6b98d5f0880db",
 "assets/assets/kartu/ItemAntaRekayasa/rekayasa-karbon.webp": "8e2a36e8c2c96723f5671d43de2c2434",
-"assets/assets/kartu/ItemAntaRekayasa/rekayasa-poindna.webp": "1e0190dea663a29ec57837d22a9023df",
+"assets/assets/kartu/ItemAntaRekayasa/rekayasa-poindna.webp": "b0c9db98e25f1bb7da0b0f584525d89f",
+"assets/assets/kartu/ItemAntaRekayasa/rekayasa-poindna2.webp": "1e9f3eb620c648644d475c81f71e7ac4",
 "assets/assets/kartu/ItemAntaRekayasa/rekayasa-tanah.webp": "35b94eb94c4d53c970a0b717579278f2",
 "assets/assets/kartu/ItemAntaRekayasa/rekayasa-ulat.webp": "a5dbdcc764a4200832e514ab77f3f97e",
 "assets/assets/kartu/ItemPro/airsuci.webp": "f21d80d6432fdda0cb76ef84449f7d34",
@@ -295,6 +296,8 @@ const RESOURCES = {"assets/AssetManifest.bin": "637af062e5cbad11588696ec6c58001f
 "assets/assets/kartu/ItemProRegenerasi/gen-lacticacid.webp": "aec6ea5c198fd4494f26219b4294661f",
 "assets/assets/kartu/ItemProRegenerasi/gen-mediakultur.webp": "aa1c6fb0b39473f3537f501dced90c0a",
 "assets/assets/kartu/ItemProRegenerasi/gen-poinregenerasi.webp": "3e9e06f44f996f6d93509f07d142c365",
+"assets/assets/kartu/ItemProRegenerasi/gen-poinregenerasi2.webp": "54e25b9070ac9af6bed496dcfb27e1b4",
+"assets/assets/kartu/ItemProRegenerasi/gen-poinregenerasi3.webp": "af3fe123b5029c3e91353c32623a179b",
 "assets/assets/kartu/ItemProRegenerasi/gen-pupukeco.webp": "4b3ce68514b64df1d1ae72cbea65c456",
 "assets/assets/kartu/ItemProRegenerasi/gen-semprotannanokarier.webp": "4e60793b1129e3bab14c01ff37862025",
 "assets/assets/kartu/ItemProRegenerasi/gen-soilmoistureprobe.webp": "47ed2fc7d8d078bb037f2c45cfdc47ac",
@@ -374,7 +377,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "637af062e5cbad11588696ec6c58001f
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "ab9637d5c4a7df0dfbd6ec58f277f3c3",
+"flutter_bootstrap.js": "0f7d511ee1c744ec60854ed406367d29",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -385,7 +388,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "637af062e5cbad11588696ec6c58001f
 "icons/Icon-maskable-512.webp": "21d7710de6b473107c3376fe3a48a797",
 "index.html": "e8810c49a8158ad25b7df982a3df3ea5",
 "/": "e8810c49a8158ad25b7df982a3df3ea5",
-"main.dart.js": "ccbdd2f15006332e36462acedb463516",
+"main.dart.js": "8d98318fc8c5accc7dbf7c2e856e59fb",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "version.json": "274fdcc09e121db6177e9ac0d79e27b5",
 "_headers": "37cb9ac50993ed26a84190a1031c15c3"};
