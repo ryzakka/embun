@@ -87,24 +87,7 @@ class _ResearchViewState extends State<ResearchView> {
 
   Future<void> _buy(Map<String, dynamic> it) async {
     final id = it['card_id'] as String;
-    final price = (it['price'] as num).toInt();
     final name = (widget.defs[id]?['name'] as String?) ?? id;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text('Beli $name?'),
-        content: Text('Harga $price embun. Jatah riset tersisa $_left.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('Batal')),
-          TextButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('Beli')),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
     setState(() => _busy = true);
     try {
       await widget.repo.buyResearch(widget.gameId, id);
@@ -146,7 +129,8 @@ class _ResearchViewState extends State<ResearchView> {
                     fontSize: 22, fontWeight: FontWeight.bold, color: accent)),
             const SizedBox(height: 4),
             const Text(
-              'Kartu poin dan lanjutan dijual di sini, +20% dari harga biasa.',
+              'Kartu poin dan lanjutan dijual di sini, +20% dari harga biasa. '
+                  'Tekan tahan kartu untuk melihat detailnya.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.white70),
             ),
@@ -213,16 +197,35 @@ class _ResearchViewState extends State<ResearchView> {
     final done = it['bought'] == true;
     final afford = widget.balance >= price;
     final can = !_closed && !done && _left > 0 && afford && !_busy;
-    return CardTile(
-      def: widget.defs[id],
-      fallbackName: id,
+    final label = done
+        ? 'Terbeli'
+        : (!afford && !_closed && _left > 0)
+        ? 'Embun kurang'
+        : 'Beli · $price';
+    return SizedBox(
       width: w,
-      showCost: true,
-      costOverride: price,
-      badge: done ? 'Terbeli' : null,
-      tag: done ? null : '+20%',
-      dim: !can,
-      onTap: can ? () => _buy(it) : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CardTile(
+            def: widget.defs[id],
+            fallbackName: id,
+            width: w,
+            showCost: true,
+            costOverride: price,
+            tag: done ? null : '+20%',
+            dim: !can,
+          ),
+          const SizedBox(height: 8),
+          EmbunButton(
+            label: label,
+            expand: true,
+            height: 40,
+            kind: can ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
+            onPressed: can ? () => _buy(it) : null,
+          ),
+        ],
+      ),
     );
   }
 }
