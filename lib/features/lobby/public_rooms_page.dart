@@ -30,24 +30,30 @@ class _Room {
   );
 }
 
-/// Daftar ruangan publik, layar penuh.
+/// Gabung Ruangan, layar penuh, dengan dua tab: "Pakai Kode" (kode dari
+/// teman) dan "Ruangan Publik" (daftar yang bisa langsung dimasuki).
 ///
-/// Namamu diisi di sini (memakai [nameCtrl] milik lobi), dan [onJoin] yang
-/// menjalankan permintaan gabung. Bila berhasil, halaman menutup sendiri dan
-/// lobi menampilkan ruangannya. [onCreate] dipanggil setelah halaman ditutup
-/// (tombol "Buat ruangan publik" saat daftar kosong).
+/// Namamu diisi di bagian atas (memakai [nameCtrl] milik lobi) dan dipakai
+/// kedua tab. [onJoin] yang menjalankan permintaan gabung. Bila berhasil,
+/// halaman menutup sendiri dan lobi menampilkan ruangannya. [onCreate]
+/// dipanggil setelah halaman ditutup (tombol "Buat ruangan publik" saat
+/// daftar kosong). [initialTab]: 0 = Pakai Kode, 1 = Ruangan Publik.
 class PublicRoomsPage extends StatefulWidget {
   final LobbyRepository repo;
   final TextEditingController nameCtrl;
+  final TextEditingController codeCtrl;
   final JoinRoom onJoin;
   final VoidCallback onCreate;
+  final int initialTab;
 
   const PublicRoomsPage({
     super.key,
     required this.repo,
     required this.nameCtrl,
+    required this.codeCtrl,
     required this.onJoin,
     required this.onCreate,
+    this.initialTab = 0,
   });
 
   @override
@@ -75,6 +81,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
   _Sort _sort = _Sort.newest;
   String _query = '';
   Timer? _timer;
+  late int _tab = widget.initialTab.clamp(0, 1).toInt();
 
   @override
   void initState() {
@@ -119,18 +126,41 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
     }
   }
 
-  Future<void> _join(_Room r) async {
+  /// true bila nama masih kosong (kolom nama disorot dan diberi fokus).
+  bool _needName() {
+    if (widget.nameCtrl.text.trim().isNotEmpty) return false;
+    setState(() => _nameMissing = true);
+    if (_scroll.hasClients) {
+      _scroll.animateTo(0,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    }
+    _nameFocus.requestFocus();
+    return true;
+  }
+
+  /// Tab "Pakai Kode": gabung dengan kode yang diketik.
+  Future<void> _joinByCode() async {
     if (_joiningCode != null) return;
-    if (widget.nameCtrl.text.trim().isEmpty) {
-      setState(() => _nameMissing = true);
-      if (_scroll.hasClients) {
-        _scroll.animateTo(0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut);
-      }
-      _nameFocus.requestFocus();
+    if (_needName()) return;
+    final code = widget.codeCtrl.text.trim();
+    if (code.isEmpty) return _toast('Isi kode ruangan dulu');
+    setState(() {
+      _joiningCode = code;
+      _nameMissing = false;
+    });
+    final err = await widget.onJoin(code);
+    if (!mounted) return;
+    if (err == null) {
+      Navigator.of(context).pop();
       return;
     }
+    setState(() => _joiningCode = null);
+    _toast(err);
+  }
+
+  Future<void> _join(_Room r) async {
+    if (_joiningCode != null) return;
+    if (_needName()) return;
     setState(() {
       _joiningCode = r.code;
       _nameMissing = false;
@@ -192,7 +222,9 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
                   child: Column(
                     children: [
                       _topBar(rooms?.length),
-                      Expanded(child: _content(rooms)),
+                      _sharedTop(),
+                      Expanded(
+                          child: _tab == 0 ? _codeTab() : _content(rooms)),
                     ],
                   ),
                 ),
@@ -205,7 +237,9 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
   }
 
   Widget _topBar(int? count) {
-    final sub = count == null
+    final sub = _tab == 0
+        ? 'Masukkan kode dari temanmu'
+        : count == null
         ? 'Memuat daftar...'
         : count == 0
         ? 'Belum ada ruangan yang dibuka'
@@ -221,14 +255,14 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
             color: EmbunColors.gold,
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           ),
-          const GameIcon('persona', size: 38),
+          const GameIcon('joinroom', size: 38),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Ruangan Publik',
+                  'Gabung Ruangan',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -248,7 +282,9 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
           SizedBox(
             width: 48,
             height: 48,
-            child: _refreshing
+            child: _tab == 0
+                ? null
+                : _refreshing
                 ? const Center(
               child: SizedBox(
                 width: 22,
@@ -284,7 +320,6 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: Column(
                 children: [
-                  _namePanel(),
                   if (_loadError != null)
                     NoticeStrip(
                       icon: 'alert',
@@ -330,6 +365,121 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
   }
 
   // ============================ bagian atas daftar ============================
+
+  /// Bagian yang dipakai kedua tab: kolom nama dan pemilih tab.
+  Widget _sharedTop() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+    child: Column(
+      children: [
+        _namePanel(),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _tabButton(
+                  label: 'Pakai Kode', icon: 'roomcode', index: 0),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _tabButton(
+                  label: 'Ruangan Publik', icon: 'persona', index: 1),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _tabButton(
+      {required String label, required String icon, required int index}) {
+    final on = _tab == index;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: _joiningCode != null ? null : () => setState(() => _tab = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: on
+              ? EmbunColors.leaf.withValues(alpha: 0.22)
+              : Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: on
+                ? EmbunColors.gold
+                : EmbunColors.goldDim.withValues(alpha: 0.4),
+            width: on ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GameIcon(icon, size: 26),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: on ? FontWeight.bold : FontWeight.w500,
+                  color: on ? EmbunColors.gold : EmbunColors.cream,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Tab "Pakai Kode".
+  Widget _codeTab() => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        child: OrnatePanel(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: widget.codeCtrl,
+                textCapitalization: TextCapitalization.characters,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _joinByCode(),
+                decoration: const InputDecoration(
+                  labelText: 'Kode ruangan',
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: GameIcon('roomcode', size: 30),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              EmbunButton(
+                label: _joiningCode != null ? 'Masuk...' : 'Gabung',
+                icon: _joiningCode != null ? 'wait' : 'joinroom',
+                expand: true,
+                onPressed: _joiningCode != null ? null : _joinByCode,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Belum punya kode? Buka tab Ruangan Publik untuk melihat '
+                    'ruangan yang sedang menunggu pemain.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11.5, color: Colors.white54),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _namePanel() => OrnatePanel(
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),

@@ -199,18 +199,27 @@ String? cardBackPath({bool dark = false}) => AssetCatalog.I.file(
     punggungDir, dark ? 'punggungantagonis' : 'punggungprotagonis');
 
 /// Punggung kartu beli/item, terpisah dari punggung kartu karakter: item warga
-/// hijau (peti), item antagonis merah (peti), serangan malam ungu (bulan).
+/// hijau (peti), item antagonis merah (peti), serangan malam ungu (bulan),
+/// kartu lanjutan Rekayasa merah (DNA) dan Regenerasi hijau (DNA).
 /// Kartu yang terlihat pemain lain WAJIB memakai bentuk tanpa argumen
 /// (punggung warga): merah/ungu membocorkan peran dan kartu samaran. Bila
 /// berkasnya belum ada, jatuh ke punggung kartu karakter.
-String? itemBackPath(
-    {bool dark = false, bool night = false, bool day = false}) =>
+String? itemBackPath({
+  bool dark = false,
+  bool night = false,
+  bool day = false,
+  bool advanced = false, // kartu lanjutan / poin (Rekayasa atau Regenerasi)
+}) =>
     AssetCatalog.I.file(
         punggungDir,
         night
             ? 'punggungitemmalam'
             : day
             ? 'punggungitemsiang'
+            : advanced
+            ? (dark
+            ? 'punggungitemantarekayasa'
+            : 'punggungitemproregenerasi')
             : dark
             ? 'punggungitemantagonis'
             : 'punggungitemprotagonis') ??
@@ -218,11 +227,14 @@ String? itemBackPath(
 
 /// Punggung item menurut definisinya (`side`, `kind`). Hanya untuk kartu milik
 /// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
-/// ungu, item antagonis merah, item warga hijau.
+/// ungu, kartu lanjutan/poin antagonis (Rekayasa) merah-DNA, kartu
+/// lanjutan/poin warga (Regenerasi) hijau-DNA, item antagonis merah, item
+/// warga hijau.
 String? itemBackFor(Map<String, dynamic>? def) => itemBackPath(
     dark: def?['side'] == 'antagonis',
     night: def?['kind'] == 'malam',
-    day: def?['kind'] == 'siang');
+    day: def?['kind'] == 'siang',
+    advanced: def?['kind'] == 'lanjutan' || def?['kind'] == 'poin');
 
 /// Punggung kartu kemampuan warga.
 String? abilityBackPath() =>

@@ -10,6 +10,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/ability_panel.dart';
 import '../table/card_tile.dart';
+import '../table/flip_card.dart';
 
 /// Panduan layar penuh dengan tiga tab: Cara Bermain, Karakter, Kartu Item.
 /// Dibuka dari menu lobi maupun dari menu di dalam permainan.
@@ -481,15 +482,18 @@ class _Grid extends StatelessWidget {
                 width: w,
                 // Kartu muncul membal, bergelombang per baris dan kolom.
                 child: start + j < count
-                    ? _Reveal(
-                  dy: 24,
-                  scaleFrom: 0.82,
-                  curve: Curves.easeOutBack,
-                  duration: const Duration(milliseconds: 700),
-                  delay: Duration(
-                      milliseconds:
-                      min(60 * (start ~/ cols) + 55 * j, 700)),
-                  child: item(start + j, w),
+                    ? _GridOrder(
+                  order: j,
+                  child: _Reveal(
+                    dy: 24,
+                    scaleFrom: 0.82,
+                    curve: Curves.easeOutBack,
+                    duration: const Duration(milliseconds: 700),
+                    delay: Duration(
+                        milliseconds:
+                        min(60 * (start ~/ cols) + 55 * j, 700)),
+                    child: item(start + j, w),
+                  ),
                 )
                     : null,
               ),
@@ -516,6 +520,91 @@ Widget _caption(String text, Color color) => SizedBox(
     ),
   ),
 );
+
+/// Urutan kolom sebuah sel di [_Grid]; dipakai [_GuideFlip] supaya kartu satu
+/// baris berbalik bergiliran (kiri ke kanan), bukan serentak.
+class _GridOrder extends InheritedWidget {
+  final int order;
+  const _GridOrder({required this.order, required super.child});
+
+  static int of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_GridOrder>()?.order ?? 0;
+
+  @override
+  bool updateShouldNotify(_GridOrder old) => old.order != order;
+}
+
+/// Kartu di Guide: tampil sebagai PUNGGUNG dulu, lalu berbalik menjadi muka.
+/// Baru berbalik saat kartunya benar-benar terlihat di layar (bukan baris
+/// yang masih jauh di bawah, dan bukan tab yang belum dibuka), supaya
+/// animasinya tidak terbuang sebelum dilihat. Setelah selesai, [front]
+/// dikembalikan apa adanya, jadi ketukannya tetap berfungsi.
+class _GuideFlip extends StatefulWidget {
+  final double width;
+  final double height;
+  final String? backPath;
+  final bool dark;
+  final Color glow;
+  final Widget front;
+  const _GuideFlip({
+    required this.width,
+    required this.height,
+    required this.front,
+    this.backPath,
+    this.dark = false,
+    this.glow = const Color(0xFFFFD866),
+  });
+
+  @override
+  State<_GuideFlip> createState() => _GuideFlipState();
+}
+
+class _GuideFlipState extends State<_GuideFlip> {
+  bool _revealed = false;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cek berkala: tahan bila scroll atau pergantian tab terjadi setelah
+    // kartu dibuat. Berhenti sendiri begitu kartu terlihat.
+    _poll = Timer.periodic(const Duration(milliseconds: 200), (_) => _check());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  void _check() {
+    if (_revealed || !mounted) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return;
+    final size = MediaQuery.sizeOf(context);
+    final o = box.localToGlobal(Offset.zero);
+    final seen = o.dy < size.height - 40 &&
+        o.dy + box.size.height > 0 &&
+        o.dx < size.width &&
+        o.dx + box.size.width > 0;
+    if (!seen) return;
+    _poll?.cancel();
+    setState(() => _revealed = true);
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FlipCard(
+    index: _GridOrder.of(context),
+    width: widget.width,
+    height: widget.height,
+    revealed: _revealed,
+    dark: widget.dark,
+    glow: widget.glow,
+    backPath: widget.backPath,
+    front: widget.front,
+  );
+}
 
 // ====================================================================
 // Tab penanda buku
@@ -1293,16 +1382,24 @@ class _CharactersTabState extends State<_CharactersTab>
                 )
               else
                 _Grid(
+                  key: ValueKey('char-$faction'),
                   count: list.length,
                   minCell: 108,
                   item: (i, w) => GestureDetector(
                     onTap: () => _previewCharacter(context, list[i], dark: dark),
                     child: Column(
                       children: [
-                        CardArt(
-                          path: list[i].path,
+                        _GuideFlip(
                           width: w,
-                          glow: dark ? EmbunColors.mist : null,
+                          height: w * cardAspectFor(list[i].path),
+                          backPath: cardBackPath(dark: dark),
+                          dark: dark,
+                          glow: dark ? EmbunColors.mist : EmbunColors.leaf,
+                          front: CardArt(
+                            path: list[i].path,
+                            width: w,
+                            glow: dark ? EmbunColors.mist : null,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         _caption(list[i].label,
@@ -1438,13 +1535,26 @@ class _ItemsTabState extends State<_ItemsTab>
     final base = d['purchasable'] == false;
     return Column(
       children: [
-        CardTile(
-          def: d,
-          fallbackName: '${d['id']}',
+        _GuideFlip(
           width: w,
-          showCost: true,
-          badge: base ? 'Dasar' : null,
-          onTap: () => showCardPreview(context, d, defs: defs),
+          height: w * cardAspectForDef(d),
+          // Punggung menurut jenis kartu: warga hijau, antagonis merah,
+          // malam ungu, siang kuning, Rekayasa/Regenerasi bergambar DNA.
+          backPath: itemBackFor(d),
+          dark: dark,
+          glow: dark
+              ? EmbunColors.mist
+              : d['kind'] == 'siang'
+              ? EmbunColors.gold
+              : EmbunColors.leaf,
+          front: CardTile(
+            def: d,
+            fallbackName: '${d['id']}',
+            width: w,
+            showCost: true,
+            badge: base ? 'Dasar' : null,
+            onTap: () => showCardPreview(context, d, defs: defs),
+          ),
         ),
         const SizedBox(height: 8),
         _caption('${d['name']}', dark ? EmbunColors.mist : EmbunColors.cream),
@@ -1737,7 +1847,13 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
       onTap: () => _info(d),
       child: Column(
         children: [
-          AbilityCardView(def: d, width: w),
+          _GuideFlip(
+            width: w,
+            height: w * kTallAspect,
+            backPath: abilityBackPath(),
+            glow: accent,
+            front: AbilityCardView(def: d, width: w),
+          ),
           const SizedBox(height: 8),
           _caption('${d['name']}', accent),
         ],

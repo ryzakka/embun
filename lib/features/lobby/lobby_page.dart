@@ -56,7 +56,6 @@ class _LobbyPageState extends State<LobbyPage>
   final Set<String> _seenSlots = {};
 
   late _Stage _stage;
-  bool _joinMode = false;
   bool _createPublic = false;
   int _unreadNews = 0;
   bool _booted = false;
@@ -137,12 +136,11 @@ class _LobbyPageState extends State<LobbyPage>
     setState(() => _stage = _Stage.menu);
   }
 
-  void _openEntry(bool join) {
+  /// Layar isian untuk membuat ruangan. Bergabung punya layar sendiri
+  /// ([_openJoin]) dengan tab kode dan daftar publik.
+  void _openCreate() {
     HapticFeedback.selectionClick();
-    setState(() {
-      _joinMode = join;
-      _stage = _Stage.entry;
-    });
+    setState(() => _stage = _Stage.entry);
   }
 
   Future<void> _refreshNews() async {
@@ -166,9 +164,10 @@ class _LobbyPageState extends State<LobbyPage>
     if (mounted) _refreshNews();
   }
 
-  /// Daftar ruangan publik (layar penuh). Nama diisi dan gabung dilakukan di
-  /// dalam layar itu; bila berhasil, layar menutup dan ruangan tampil di sini.
-  void _openPublicList() {
+  /// Gabung Ruangan (layar penuh) dengan dua tab: "Pakai Kode" dan "Ruangan
+  /// Publik". Nama diisi dan gabung dilakukan di dalam layar itu; bila
+  /// berhasil, layar menutup dan ruangan tampil di sini.
+  void _openJoin() {
     HapticFeedback.selectionClick();
     Sfx.I.playAny(Snd.winds);
     Navigator.of(context).push(
@@ -176,10 +175,11 @@ class _LobbyPageState extends State<LobbyPage>
         PublicRoomsPage(
           repo: repo,
           nameCtrl: nameCtrl,
-          onJoin: _joinPublic,
+          codeCtrl: codeCtrl,
+          onJoin: _joinRoom,
           onCreate: () {
             setState(() => _createPublic = true);
-            _openEntry(false);
+            _openCreate();
           },
         ),
         style: ClothStyle.daunHayu,
@@ -188,7 +188,7 @@ class _LobbyPageState extends State<LobbyPage>
   }
 
   /// Null bila berhasil bergabung; kalau gagal, pesan galatnya.
-  Future<String?> _joinPublic(String code) async {
+  Future<String?> _joinRoom(String code) async {
     try {
       final id =
       await repo.joinGame(code, nameCtrl.text, randomProtagonist());
@@ -475,6 +475,83 @@ class _LobbyPageState extends State<LobbyPage>
     );
   }
 
+  /// Lonceng Pengumuman di pojok kanan atas; bertitik angka bila ada kabar
+  /// yang belum dibaca.
+  Widget _newsBell() => Badge(
+    isLabelVisible: _unreadNews > 0,
+    label: Text(_unreadNews >= 99 ? '99+' : '$_unreadNews'),
+    alignment: const AlignmentDirectional(-6, 6),
+    child: IconButton(
+      tooltip: 'Pengumuman',
+      onPressed: _openNews,
+      color: _unreadNews > 0 ? EmbunColors.gold : EmbunColors.cream,
+      iconSize: 28,
+      icon: Icon(_unreadNews > 0
+          ? Icons.notifications_active_rounded
+          : Icons.notifications_none_rounded),
+    ),
+  );
+
+  /// Pengaturan: Suara dan Efek Visual dalam satu dialog.
+  void _openSettings() {
+    HapticFeedback.selectionClick();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: OrnatePanel(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(icon: 'info', title: 'Pengaturan'),
+                const SizedBox(height: 8),
+                ValueListenableBuilder<bool>(
+                  valueListenable: Sfx.I.muted,
+                  builder: (_, muted, _) => SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: const GameIcon('announcement', size: 32),
+                    value: !muted,
+                    onChanged: (v) => Sfx.I.muted.value = !v,
+                    title: const Text('Suara'),
+                    subtitle: const Text('Musik dan efek suara',
+                        style: TextStyle(fontSize: 11.5, color: Colors.white60)),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: ShaderFx.enabled,
+                  builder: (_, on, _) => SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: const GameIcon('show', size: 32),
+                    value: on,
+                    onChanged: (v) => ShaderFx.enabled.value = v,
+                    title: const Text('Efek Visual'),
+                    subtitle: const Text(
+                        'Matikan bila perangkat terasa berat',
+                        style: TextStyle(fontSize: 11.5, color: Colors.white60)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                EmbunButton(
+                  label: 'Tutup',
+                  icon: 'silang',
+                  kind: EmbunButtonKind.secondary,
+                  height: 46,
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Nomor versi kecil di pojok menu; diketuk membuka Pengumuman.
   Widget _versionFooter() => Positioned(
     bottom: 8,
@@ -501,61 +578,41 @@ class _LobbyPageState extends State<LobbyPage>
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 720;
       final items = <Widget>[
+        // Dua aksi utama dibuat lebih besar.
         _MenuTile(
             index: 0,
             icon: 'roomcreate',
             label: 'Buat Ruangan',
+            scale: 1.15,
             center: !wide,
-            onTap: () => _openEntry(false)),
+            onTap: _openCreate),
         _MenuTile(
             index: 1,
             icon: 'joinroom',
             label: 'Gabung Ruangan',
+            scale: 1.15,
             center: !wide,
-            onTap: () => _openEntry(true)),
+            onTap: _openJoin),
         _MenuTile(
             index: 2,
-            icon: 'persona',
-            label: 'Ruangan Publik',
-            center: !wide,
-            onTap: _openPublicList),
-        _MenuTile(
-            index: 3,
             icon: 'info',
             label: 'Panduan',
             center: !wide,
             onTap: _openGuide),
         _MenuTile(
-            index: 4,
-            icon: 'logorhistory',
-            label: 'Pengumuman',
-            badge: _unreadNews,
+            index: 3,
+            icon: '',
+            materialIcon: Icons.settings_rounded,
+            label: 'Pengaturan',
             center: !wide,
-            onTap: _openNews),
+            onTap: _openSettings),
         _MenuTile(
-            index: 5,
+            index: 4,
             icon: 'plus',
             label: 'Permainan Lainnya',
+            scale: 0.82,
             center: !wide,
             onTap: () => showMoreGames(context)),
-        ValueListenableBuilder<bool>(
-          valueListenable: Sfx.I.muted,
-          builder: (_, m, _) => _MenuTile(
-              index: 6,
-              icon: 'announcement',
-              label: m ? 'Suara: Mati' : 'Suara: Nyala',
-              center: !wide,
-              onTap: () => Sfx.I.muted.value = !m),
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: ShaderFx.enabled,
-          builder: (_, on, _) => _MenuTile(
-              index: 7,
-              icon: 'show',
-              label: on ? 'Efek Visual: Nyala' : 'Efek Visual: Mati',
-              center: !wide,
-              onTap: () => ShaderFx.enabled.value = !on),
-        ),
       ];
       final menuCol = Column(
         mainAxisSize: MainAxisSize.min,
@@ -621,6 +678,7 @@ class _LobbyPageState extends State<LobbyPage>
                   child: _backButton(
                           () => setState(() => _stage = _Stage.title)),
                 ),
+                Positioned(top: 4, right: 8, child: _newsBell()),
                 _versionFooter(),
                 if (wide)
                   Positioned.fill(
@@ -681,7 +739,6 @@ class _LobbyPageState extends State<LobbyPage>
       _Glass(padding: const EdgeInsets.all(20), child: child);
 
   Widget _entry() {
-    final join = _joinMode;
     return SingleChildScrollView(
       child: _panel(
         Column(
@@ -692,10 +749,10 @@ class _LobbyPageState extends State<LobbyPage>
                 _backButton(busy
                     ? () {}
                     : () => setState(() => _stage = _Stage.menu)),
-                Expanded(
+                const Expanded(
                   child: SectionHeader(
-                    icon: join ? 'joinroom' : 'roomcreate',
-                    title: join ? 'Gabung Ruangan' : 'Buat Ruangan',
+                    icon: 'roomcreate',
+                    title: 'Buat Ruangan',
                   ),
                 ),
               ],
@@ -720,63 +777,27 @@ class _LobbyPageState extends State<LobbyPage>
                 ),
               ),
             ),
-            if (join) ...[
-              const SizedBox(height: 6),
-              TextField(
-                controller: codeCtrl,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Kode ruangan',
-                  prefixIcon: Padding(
-                    padding: EdgeInsets.all(6),
-                    child: GameIcon('roomcode', size: 30),
-                  ),
-                ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _createPublic,
+              onChanged: busy ? null : (v) => setState(() => _createPublic = v),
+              title: const Text('Ruangan publik'),
+              subtitle: const Text(
+                'Tampil di daftar supaya orang lain bisa bergabung. '
+                    'Matikan untuk ruangan privat (hanya lewat kode).',
+                style: TextStyle(fontSize: 11.5, color: Colors.white60),
               ),
-            ],
-            if (!join)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _createPublic,
-                onChanged:
-                busy ? null : (v) => setState(() => _createPublic = v),
-                title: const Text('Ruangan publik'),
-                subtitle: const Text(
-                  'Tampil di daftar supaya orang lain bisa bergabung. '
-                      'Matikan untuk ruangan privat (hanya lewat kode).',
-                  style: TextStyle(fontSize: 11.5, color: Colors.white60),
-                ),
-              ),
+            ),
             const SizedBox(height: 14),
             EmbunButton(
-              label: join ? 'Gabung' : 'Buat Ruangan',
-              icon: join ? 'joinroom' : 'roomcreate',
+              label: 'Buat Ruangan',
+              icon: 'roomcreate',
               expand: true,
               onPressed: busy
                   ? null
-                  : join
-                  ? () {
-                if (codeCtrl.text.trim().isEmpty) {
-                  return _toast('Isi kode ruangan dulu');
-                }
-                _run((card) => repo.joinGame(
-                    codeCtrl.text.trim(), nameCtrl.text, card));
-              }
-                  : () => _run((card) => repo.createGame(
-                  nameCtrl.text, card,
+                  : () => _run((card) => repo.createGame(nameCtrl.text, card,
                   isPublic: _createPublic)),
             ),
-            if (join) ...[
-              const SizedBox(height: 8),
-              EmbunButton(
-                label: 'Cari ruangan publik',
-                icon: 'persona',
-                kind: EmbunButtonKind.secondary,
-                expand: true,
-                height: 46,
-                onPressed: busy ? null : _openPublicList,
-              ),
-            ],
           ],
         ),
       ),
@@ -1531,6 +1552,12 @@ class _MenuTile extends StatefulWidget {
   final bool center;
   final int badge;
   final VoidCallback onTap;
+
+  /// Skala ikon dan teks: 1,15 untuk aksi utama, 0,82 untuk butir kecil.
+  final double scale;
+
+  /// Ikon Material; bila diisi dipakai menggantikan ikon gambar [icon].
+  final IconData? materialIcon;
   const _MenuTile({
     required this.index,
     required this.icon,
@@ -1538,6 +1565,8 @@ class _MenuTile extends StatefulWidget {
     required this.onTap,
     this.center = false,
     this.badge = 0,
+    this.scale = 1.0,
+    this.materialIcon,
   });
 
   @override
@@ -1597,12 +1626,19 @@ class _MenuTileState extends State<_MenuTile> {
                         : null,
                   ),
                 ),
-                GameIcon(widget.icon, size: 34),
+                widget.materialIcon != null
+                    ? SizedBox(
+                  width: 34 * widget.scale,
+                  height: 34 * widget.scale,
+                  child: Icon(widget.materialIcon,
+                      size: 28 * widget.scale, color: EmbunColors.gold),
+                )
+                    : GameIcon(widget.icon, size: 34 * widget.scale),
                 const SizedBox(width: 12),
                 AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 160),
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 22 * widget.scale,
                     letterSpacing: 1.2,
                     fontWeight: _on ? FontWeight.bold : FontWeight.w500,
                     color: _on ? EmbunColors.gold : EmbunColors.cream,
