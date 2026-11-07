@@ -13,12 +13,13 @@ class LobbyRepository {
   }
 
   Future<String> createGame(String name, String card,
-      {bool isPublic = false}) async {
+      {bool isPublic = false, int cycles = 4}) async {
     await ensureSignedIn();
     return await _db.rpc('create_game', params: {
       'p_name': name,
       'p_card': card,
       'p_public': isPublic,
+      'p_cycles': cycles,
     }) as String;
   }
 

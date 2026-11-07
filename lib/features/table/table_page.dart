@@ -1412,6 +1412,9 @@ class _TablePageState extends State<TablePage> {
                       Text('$day',
                           style: const TextStyle(
                               fontSize: 64, fontWeight: FontWeight.bold)),
+                      Text('dari ${(game?['max_day'] as int?) ?? 12}',
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.white54)),
                       Text(
                         day % cycle == 0
                             ? 'Malam persembahan'

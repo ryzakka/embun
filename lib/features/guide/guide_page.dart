@@ -1018,12 +1018,12 @@ class _HowToTab extends StatelessWidget {
   Widget _wins() {
     final good = _winCard('Warga menang', 'helaidaun', EmbunColors.leaf, const [
       'Daun Hayu mencapai **30**.',
-      'Hari ke-12 berakhir dengan daun **minimal 20**.',
+      'Hari terakhir berakhir dengan daun **di atas batas** (12 hari: **20**).',
       'Si Terbisik **tertangkap**.',
     ]);
     final bad = _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
       'Daun Hayu **habis**.',
-      'Hari ke-12 berakhir dengan daun **di bawah 20**.',
+      'Hari terakhir berakhir dengan daun **di bawah batas**.',
       'Desa **tinggal dua orang**.',
     ]);
     return LayoutBuilder(builder: (context, c) {
@@ -1080,7 +1080,8 @@ class _HowToTab extends StatelessWidget {
           icon: 'hari',
           title: 'Satu siklus (3 hari)',
           children: [
-            _para('12 hari = 4 siklus. Tiap siklus: **2 hari biasa** lalu '
+            _para('Host memilih lama sesi: 6, 12 (bawaan), 18, atau 24 hari. '
+                'Batas daun untuk menang: **12 / 20 / 24 / 26**. Tiap siklus: **2 hari biasa** lalu '
                 '**1 malam persembahan**.'),
             const SizedBox(height: 4),
             _step(
@@ -1092,7 +1093,7 @@ class _HowToTab extends StatelessWidget {
                     '"Akhiri hari" bila selesai.'),
             _step(
                 2,
-                'Malam persembahan (hari 3, 6, 9, 12)',
+                'Malam persembahan (hari 3, 6, 9, 12, dst.)',
                 'Persembahkan **1 atau 2 kartu** ke Hayu, tanpa nama '
                     'pemilik. Si Terbisik **wajib menyertakan Roti Surplus** '
                     'sebagai samaran.'),

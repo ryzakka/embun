@@ -58,6 +58,7 @@ class _LobbyPageState extends State<LobbyPage>
 
   late _Stage _stage;
   bool _createPublic = false;
+  int _createCycles = 4;
   int _unreadNews = 0;
   bool _booted = false;
   bool _tutorialNew = false;
@@ -813,6 +814,34 @@ class _LobbyPageState extends State<LobbyPage>
                 style: TextStyle(fontSize: 11.5, color: Colors.white60),
               ),
             ),
+            const SizedBox(height: 6),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Lama permainan',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final c in const [2, 4, 6, 8])
+                  ChoiceChip(
+                    label: Text('${c * 3} hari'),
+                    selected: _createCycles == c,
+                    onSelected:
+                    busy ? null : (_) => setState(() => _createCycles = c),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Menang bila daun Hayu minimal '
+                  '${const {2: 12, 4: 20, 6: 24, 8: 26}[_createCycles]} '
+                  'di akhir hari ke-${_createCycles * 3}, atau mencapai 30 '
+                  'lebih cepat. ${_createCycles == 4 ? '(Bawaan)' : ''}',
+              style: const TextStyle(fontSize: 11.5, color: Colors.white60),
+            ),
             const SizedBox(height: 14),
             EmbunButton(
               label: 'Buat Ruangan',
@@ -821,7 +850,7 @@ class _LobbyPageState extends State<LobbyPage>
               onPressed: busy
                   ? null
                   : () => _run((card) => repo.createGame(nameCtrl.text, card,
-                  isPublic: _createPublic)),
+                  isPublic: _createPublic, cycles: _createCycles)),
             ),
           ],
         ),
