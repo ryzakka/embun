@@ -509,7 +509,7 @@ class _LobbyPageState extends State<LobbyPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SectionHeader(icon: 'info', title: 'Pengaturan'),
+                const SectionHeader(icon: 'settings', title: 'Pengaturan'),
                 const SizedBox(height: 8),
                 ValueListenableBuilder<bool>(
                   valueListenable: Sfx.I.muted,
@@ -601,8 +601,7 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: _openGuide),
         _MenuTile(
             index: 3,
-            icon: '',
-            materialIcon: Icons.settings_rounded,
+            icon: 'settings',
             label: 'Pengaturan',
             center: !wide,
             onTap: _openSettings),
