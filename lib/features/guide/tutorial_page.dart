@@ -101,7 +101,7 @@ class _TutorialPageState extends State<TutorialPage>
       'Hayu, pohon desa, harus tumbuh sampai **$kLeavesMax daun**. '
           'Warga menjaganya. **Si Terbisik** ingin menghabiskan semua daunnya.',
       EmbunColors.leaf,
-      (p) => const _TreeCompare(),
+          (p) => const _TreeCompare(),
     ),
     _Step(
       'Peran',
@@ -109,7 +109,7 @@ class _TutorialPageState extends State<TutorialPage>
           'harus menemukannya lewat musyawarah dan voting. '
           'Pemain $kMinPlayers sampai $kMaxPlayers orang.',
       EmbunColors.gold,
-      (p) => _CardRow(cards: [
+          (p) => _CardRow(cards: [
         _C(cardBackPath(), 'Warga', glow: EmbunColors.leaf),
         _C(cardBackPath(dark: true), 'Si Terbisik', glow: EmbunColors.blood),
       ]),
@@ -120,7 +120,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**satu kartu sehari**. Kartu bisa ditukar dan embun bisa diberikan '
           'ke pemain lain.',
       EmbunColors.gold,
-      (p) => const _MarketDemo(),
+          (p) => const _MarketDemo(),
     ),
     _Step(
       'Kartu hijau dan merah',
@@ -129,7 +129,7 @@ class _TutorialPageState extends State<TutorialPage>
           'mencuri embun, atau membungkam pemain. Keduanya **dipersembahkan** '
           'ke Hayu.',
       EmbunColors.blood,
-      (p) => _CardRow(cards: [
+          (p) => _CardRow(cards: [
         _C(_art('persembahan', 'warga', 'daunembun'), '+1 daun',
             glow: EmbunColors.leaf),
         _C(_art('persembahan', 'warga', 'kayupagar'), '+3 perlindungan',
@@ -145,7 +145,7 @@ class _TutorialPageState extends State<TutorialPage>
       'Sebagian warga mendapat **kemampuan khusus** di awal permainan. '
           'Tidak dibeli. Ada yang sekali pakai, ada yang bekerja diam-diam.',
       _kBlue,
-      (p) => const _AbilityDemo(),
+          (p) => const _AbilityDemo(),
     ),
     _Step(
       'Kartu ungu: serangan malam',
@@ -153,7 +153,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**saat malam tiba**. Desa hanya tahu ada serangan, bukan '
           'sasarannya.',
       EmbunColors.mist,
-      (p) => _CardRow(cards: [
+          (p) => _CardRow(cards: [
         _C(itemBackPath(night: true), 'Punggung ungu', glow: EmbunColors.mist),
         _C(_art('malam', 'antagonis', 'pompaembun'), 'curi embun'),
         _C(_art('malam', 'antagonis', 'kerikilpanas'), 'bakar kartu'),
@@ -165,7 +165,7 @@ class _TutorialPageState extends State<TutorialPage>
           'perisai, cermin, nyawa, embun, atau panah. Busur Terakhir '
           'berbahaya: kalau meleset, kamu yang terkena.',
       EmbunColors.gold,
-      (p) => _CardRow(cards: [
+          (p) => _CardRow(cards: [
         _C(_art('siang', 'warga', 'perisaituduhan'), 'Perisai Tuduhan'),
         _C(_art('siang', 'warga', 'cerminkecil'), 'Cermin Kecil'),
         _C(_art('siang', 'warga', 'busurterakhir'), 'Busur Terakhir'),
@@ -178,7 +178,7 @@ class _TutorialPageState extends State<TutorialPage>
           'Rekayasa + Poin DNA. Poin tingkat 1, 2, dan 3 mengaktifkan '
           '1, 2, atau 3 kartu.',
       EmbunColors.cream,
-      (p) => _FuseDemo(pulse: p),
+          (p) => _FuseDemo(pulse: p),
     ),
     _Step(
       'Persembahan',
@@ -186,7 +186,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**1 sampai $kOfferingMax kartu** ke Hayu. Semua efek dibuka '
           'bersamaan: daun naik atau turun.',
       EmbunColors.leaf,
-      (p) => _OfferDemo(pulse: p),
+          (p) => _OfferDemo(pulse: p),
     ),
     _Step(
       'Voting',
@@ -195,14 +195,14 @@ class _TutorialPageState extends State<TutorialPage>
           'kedua **keluar dari desa**. Setiap pemain punya $kStrikesMax nyawa. '
           'Waktu memilih $kVoteSeconds detik.',
       EmbunColors.blood,
-      (p) => const _RingDemo(),
+          (p) => const _RingDemo(),
     ),
     _Step(
       'Malam',
       'Saat malam, Si Terbisik melancarkan serangan. Warga hanya mendengar '
           'bahwa **ada serangan**, lalu pagi tiba. Selamat bermain!',
       EmbunColors.mist,
-      (p) => _CardRow(cards: [
+          (p) => _CardRow(cards: [
         _C(_art('malam', 'antagonis', 'karungcurianmalam'), 'dalam gelap',
             glow: EmbunColors.mist),
         _C(_art('malam', 'antagonis', 'cerminkhayal'), 'tanpa saksi'),
@@ -243,15 +243,15 @@ class _TutorialPageState extends State<TutorialPage>
                     child: Center(
                       child: last
                           ? EmbunButton(
-                              label: 'Mulai bermain',
-                              expand: true,
-                              onPressed: () => Navigator.of(context).maybePop(),
-                            )
+                        label: 'Mulai bermain',
+                        expand: true,
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      )
                           : const Text(
-                              'Geser untuk lanjut',
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.white38),
-                            ),
+                        'Geser atau tekan panah',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.white38),
+                      ),
                     ),
                   ),
                 ),
@@ -299,11 +299,34 @@ class _TutorialPageState extends State<TutorialPage>
     ),
   );
 
+  void _go(int delta) {
+    final to = (_page + delta).clamp(0, _steps.length - 1);
+    if (to == _page) return;
+    _pc.animateToPage(
+      to,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// Panah kecil kiri/kanan di kiri dan kanan penanda halaman.
+  Widget _arrow(IconData icon, String tip, int delta, bool on) => IconButton(
+    tooltip: tip,
+    onPressed: on ? () => _go(delta) : null,
+    visualDensity: VisualDensity.compact,
+    iconSize: 26,
+    color: EmbunColors.gold,
+    disabledColor: Colors.white12,
+    icon: Icon(icon),
+  );
+
   Widget _dots() => Padding(
-    padding: const EdgeInsets.only(top: 6),
+    padding: const EdgeInsets.only(top: 4),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        _arrow(Icons.chevron_left_rounded, 'Sebelumnya', -1, _page > 0),
+        const SizedBox(width: 6),
         for (var i = 0; i < _steps.length; i++)
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
@@ -317,6 +340,9 @@ class _TutorialPageState extends State<TutorialPage>
                   : Colors.white.withValues(alpha: 0.25),
             ),
           ),
+        const SizedBox(width: 6),
+        _arrow(Icons.chevron_right_rounded, 'Berikutnya', 1,
+            _page < _steps.length - 1),
       ],
     ),
   );
