@@ -35,17 +35,17 @@ class Snd {
 
   /// Narasi tutorial, satu per halaman (urut sama dengan TutorialPage).
   static const tutor = [
-    Snd('tutor-01-tujuan.mp3', 1.0),
-    Snd('tutor-02-peran.mp3', 1.0),
-    Snd('tutor-03-hari.mp3', 1.0),
-    Snd('tutor-04-hijau-merah.mp3', 1.0),
-    Snd('tutor-05-biru.mp3', 1.0),
-    Snd('tutor-06-ungu.mp3', 1.0),
-    Snd('tutor-07-kuning.mp3', 1.0),
-    Snd('tutor-08-lanjutan.mp3', 1.0),
-    Snd('tutor-09-persembahan.mp3', 1.0),
-    Snd('tutor-10-voting.mp3', 1.0),
-    Snd('tutor-11-malam.mp3', 1.0),
+    Snd('1.selamatdatang.mp3', 1.0),
+    Snd('2.peranwarga.mp3', 1.0),
+    Snd('3.embun.mp3', 1.0),
+    Snd('4.pagiberbelanja.mp3', 1.0),
+    Snd('5.kartukombinasi.mp3', 1.0),
+    Snd('6.informasikartupalsu.mp3', 1.0),
+    Snd('7.seranganmalam.mp3', 1.0),
+    Snd('8.malampersembahan.mp3', 1.0),
+    Snd('9.musyawarah.mp3', 1.0),
+    Snd('10.nyawa.mp3', 1.0),
+    Snd('11.akhirkemenangan.mp3', 1.0),
   ];
 
   static const winds = [swingWind1, swingWind2, swingWind3];

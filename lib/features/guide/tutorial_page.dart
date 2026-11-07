@@ -95,96 +95,95 @@ class _TutorialPageState extends State<TutorialPage>
     _speak(_page);
   }
 
+  /// Urutan dan isi halaman mengikuti narasi suara (Snd.tutor, 11 berkas).
   List<_Step> _buildSteps() => [
+    // 1. selamatdatang
     _Step(
-      'Tujuan',
-      'Hayu, pohon desa, harus tumbuh sampai **$kLeavesMax daun**. '
-          'Warga menjaganya. **Si Terbisik** ingin menghabiskan semua daunnya.',
+      'Selamat datang',
+      'Selamat datang di desa **Hayu**. Di antara warga ada seorang '
+          'penyusup, **Si Terbisik**. Tugas kalian: **lindungi Hayu**, '
+          'kumpulkan **daun**, dan temukan siapa dia. Jangan mudah '
+          'percaya pada siapa pun.',
       EmbunColors.leaf,
           (p) => const _TreeCompare(),
     ),
+    // 2. peranwarga
     _Step(
       'Peran',
-      'Satu pemain adalah **Si Terbisik**, dan hanya ia yang tahu. Warga '
-          'harus menemukannya lewat musyawarah dan voting. '
-          'Pemain $kMinPlayers sampai $kMaxPlayers orang.',
+      'Tiap pemain punya peran rahasia. **Warga** bekerja sama menjaga '
+          'Hayu, sedangkan **Si Terbisik** menyusup dan menggagalkannya. '
+          'Jangan sampai lawan tahu siapa dirimu. Pemain $kMinPlayers '
+          'sampai $kMaxPlayers orang.',
       EmbunColors.gold,
           (p) => _CardRow(cards: [
         _C(cardBackPath(), 'Warga', glow: EmbunColors.leaf),
         _C(cardBackPath(dark: true), 'Si Terbisik', glow: EmbunColors.blood),
       ]),
     ),
+    // 3. embun
     _Step(
-      'Hari dan belanja',
-      'Tiap pagi **embunmu bertambah**. Belanjalah di pasar pribadimu, '
-          '**satu kartu sehari**. Kartu bisa ditukar dan embun bisa diberikan '
-          'ke pemain lain.',
+      'Embun',
+      'Tiap pagi **embunmu bertambah** sesuai tingkat produksimu, dan di '
+          'pagi pertama setiap siklus ada **tambahan 5 embun**. Embun '
+          'dipakai untuk berbelanja dan bisa diberikan ke pemain lain.',
+      EmbunColors.gold,
+          (p) => _EmbunDemo(pulse: p),
+    ),
+    // 4. pagiberbelanja
+    _Step(
+      'Pagi berbelanja',
+      'Di hari biasa belilah **satu kartu** dari empat pilihan di Pasar '
+          'Pagi. Kamu juga bisa **bertukar kartu**, **mengirim isyarat**, '
+          'dan **mengobrol**. Bila semua siap, **akhiri hari**.',
       EmbunColors.gold,
           (p) => const _MarketDemo(),
     ),
+    // 5. kartukombinasi
     _Step(
-      'Kartu hijau dan merah',
-      'Kartu **hijau** milik warga: menambah daun, perlindungan, atau alat '
-          'periksa. Kartu **merah** milik Si Terbisik: mengurangi daun, '
-          'mencuri embun, atau membungkam pemain. Keduanya **dipersembahkan** '
-          'ke Hayu.',
-      EmbunColors.blood,
-          (p) => _CardRow(cards: [
-        _C(_art('persembahan', 'warga', 'daunembun'), '+1 daun',
-            glow: EmbunColors.leaf),
-        _C(_art('persembahan', 'warga', 'kayupagar'), '+3 perlindungan',
-            glow: EmbunColors.leaf),
-        _C(_art('persembahan', 'antagonis', 'gergaji-manual'), '-2 daun',
-            glow: EmbunColors.blood),
-        _C(_art('persembahan', 'antagonis', 'racun-sekop'), 'curi embun',
-            glow: EmbunColors.blood),
-      ]),
-    ),
-    _Step(
-      'Kartu biru: kemampuan',
-      'Sebagian warga mendapat **kemampuan khusus** di awal permainan. '
-          'Tidak dibeli. Ada yang sekali pakai, ada yang bekerja diam-diam.',
-      _kBlue,
-          (p) => const _AbilityDemo(),
-    ),
-    _Step(
-      'Kartu ungu: serangan malam',
-      'Khusus **Si Terbisik**. Disiapkan di hari biasa, dilancarkan '
-          '**saat malam tiba**. Desa hanya tahu ada serangan, bukan '
-          'sasarannya.',
-      EmbunColors.mist,
-          (p) => _CardRow(cards: [
-        _C(itemBackPath(night: true), 'Punggung ungu', glow: EmbunColors.mist),
-        _C(_art('malam', 'antagonis', 'pompaembun'), 'curi embun'),
-        _C(_art('malam', 'antagonis', 'kerikilpanas'), 'bakar kartu'),
-      ]),
-    ),
-    _Step(
-      'Kartu kuning',
-      'Milik warga. Dipakai di Meja pada hari biasa, **bukan dipersembahkan**: '
-          'perisai, cermin, nyawa, embun, atau panah. Busur Terakhir '
-          'berbahaya: kalau meleset, kamu yang terkena.',
-      EmbunColors.gold,
-          (p) => _CardRow(cards: [
-        _C(_art('siang', 'warga', 'perisaituduhan'), 'Perisai Tuduhan'),
-        _C(_art('siang', 'warga', 'cerminkecil'), 'Cermin Kecil'),
-        _C(_art('siang', 'warga', 'busurterakhir'), 'Busur Terakhir'),
-      ]),
-    ),
-    _Step(
-      'Kartu lanjutan',
-      'Kartu lanjutan dan kartu poin dijual di **Pasar Riset**. Kartu '
-          'lanjutan harus **digabung** dengan kartu poin dulu di tab Gabung. Warga: Regenerasi + Poin Regenerasi. Si Terbisik: '
-          'Rekayasa + Poin DNA. Poin tingkat 1, 2, dan 3 mengaktifkan '
-          '1, 2, atau 3 kartu.',
+      'Kartu kombinasi',
+      'Kartu lanjutan harus **digabung** dengan kartu poin di tab Gabung '
+          'pada hari biasa, lalu tekan **Tempatkan**. Warga: Regenerasi + '
+          'Poin Regenerasi. Si Terbisik: Rekayasa + Poin DNA. Kartu poin '
+          'dan lanjutan dijual di **Pasar Riset**. Hanya kartu yang sudah '
+          '**aktif** yang bisa dipersembahkan.',
       EmbunColors.cream,
           (p) => _FuseDemo(pulse: p),
     ),
+    // 6. informasikartupalsu
     _Step(
-      'Persembahan',
-      'Tiap **$kCycleDays hari** ada malam persembahan. Serahkan '
-          '**1 sampai $kOfferingMax kartu** ke Hayu. Semua efek dibuka '
-          'bersamaan: daun naik atau turun.',
+      'Informasi palsu',
+      'Sebagian kartu memeriksa pemain lain **secara pribadi**, dan '
+          'hasilnya hanya kamu yang lihat. Tapi **Topeng**, **Cermin '
+          'Khayal**, dan **Boneka Sawah** bisa memalsukan hasil itu. '
+          'Jangan percaya begitu saja.',
+      _kBlue,
+          (p) => _InspectDemo(pulse: p),
+    ),
+    // 7. seranganmalam
+    _Step(
+      'Serangan malam',
+      'Saat malam, **Si Terbisik** bisa menyerang. Warga hanya tahu bahwa '
+          '**ada serangan**, bukan siapa sasarannya. **Kartu perlindungan** '
+          'membantu, tetapi hanya berlaku pada malam itu.',
+      EmbunColors.mist,
+          (p) => Column(children: [
+        const _CycleStrip(active: 1),
+        const SizedBox(height: 16),
+        _CardRow(cards: [
+          _C(itemBackPath(night: true), 'Serangan', glow: EmbunColors.mist),
+          _C(_art('malam', 'antagonis', 'kerikilpanas'), 'bakar kartu'),
+          _C(_art('persembahan', 'warga', 'kayupagar'), 'perlindungan',
+              glow: EmbunColors.leaf),
+        ]),
+      ]),
+    ),
+    // 8. malampersembahan
+    _Step(
+      'Malam persembahan',
+      'Tiap **$kCycleDays hari** tiba malam persembahan. Setiap pemain '
+          'mempersembahkan **1 atau $kOfferingMax kartu** secara anonim; '
+          'desa hanya tahu **jumlahnya**. Si Terbisik **wajib menyertakan '
+          'Roti Surplus** sebagai kedok.',
       EmbunColors.leaf,
           (p) => Column(children: [
         const _CycleStrip(active: 2),
@@ -192,12 +191,12 @@ class _TutorialPageState extends State<TutorialPage>
         _OfferDemo(pulse: p),
       ]),
     ),
+    // 9. musyawarah
     _Step(
-      'Voting',
-      'Di musyawarah, pilih siapa yang kamu curigai. Yang mendapat '
-          '**suara mayoritas** dituduh: tuduhan pertama **dikurung**, yang '
-          'kedua **keluar dari desa**. Setiap pemain punya $kStrikesMax nyawa. '
-          'Waktu memilih $kVoteSeconds detik.',
+      'Musyawarah',
+      'Bicarakan kecurigaanmu, bagikan informasi, lalu **voting**. '
+          'Tuduhan sah bila suara yang mendukung **lebih dari separuh** '
+          'pemain yang tersisa. Waktu memilih $kVoteSeconds detik.',
       EmbunColors.blood,
           (p) => const Column(children: [
         _CycleStrip(active: 4),
@@ -205,19 +204,29 @@ class _TutorialPageState extends State<TutorialPage>
         _RingDemo(),
       ]),
     ),
+    // 10. nyawa
     _Step(
-      'Malam',
-      'Saat malam, Si Terbisik melancarkan serangan. Warga hanya mendengar '
-          'bahwa **ada serangan**, lalu pagi tiba. Selamat bermain!',
-      EmbunColors.mist,
+      'Nyawa',
+      'Tiap pemain punya **$kStrikesMax nyawa**. Tuduhan pertama: '
+          '**dikurung** sampai musyawarah berikutnya (tak bisa membeli atau '
+          'menawar tukar). Tuduhan kedua: bila ia **Si Terbisik**, warga '
+          'menang; bila warga, ia **keluar dari desa**. Bila pemain tersisa '
+          'kurang dari 3, **Si Terbisik menang**.',
+      EmbunColors.blood,
+          (p) => _LivesDemo(pulse: p),
+    ),
+    // 11. akhirkemenangan
+    _Step(
+      'Kemenangan',
+      'Warga menang seketika bila Hayu mencapai **$kLeavesMax daun**. '
+          'Jika hari terakhir tiba (bawaan 12 hari), warga menang dengan '
+          'daun **minimal 20**; kurang dari itu **Si Terbisik menang**. '
+          'Lama sesi dan batasnya dipilih host.',
+      EmbunColors.leaf,
           (p) => Column(children: [
-        const _CycleStrip(active: 1),
+        _WinGauge(pulse: p),
         const SizedBox(height: 16),
-        _CardRow(cards: [
-          _C(_art('malam', 'antagonis', 'karungcurianmalam'), 'dalam gelap',
-              glow: EmbunColors.mist),
-          _C(_art('malam', 'antagonis', 'cerminkhayal'), 'tanpa saksi'),
-        ]),
+        const _TreeCompare(),
       ]),
     ),
   ];
@@ -371,8 +380,17 @@ class _TutorialPageState extends State<TutorialPage>
     ),
   );
 
-  static String _chapter(int i) =>
-      i < 2 ? 'DASAR' : (i == 2 ? 'GILIRAN' : (i < 8 ? 'KARTU' : 'PUTARAN'));
+  static String _chapter(int i) => i < 2
+      ? 'DASAR'
+      : i < 4
+      ? 'GILIRAN'
+      : i < 6
+      ? 'KARTU'
+      : i < 8
+      ? 'MALAM'
+      : i < 10
+      ? 'SIDANG'
+      : 'AKHIR';
 
   Widget _pageOf(_Step s, int i) => LayoutBuilder(
     builder: (context, c) => SingleChildScrollView(
@@ -688,27 +706,16 @@ class _MarketDemo extends StatelessWidget {
         _C(_art('persembahan', 'warga', 'kayupagar'), '6 embun'),
         _C(_art('sekali_pakai', 'warga', 'lenteralawas'), '4 embun'),
       ]),
-    ],
-  );
-}
-
-class _AbilityDemo extends StatelessWidget {
-  const _AbilityDemo();
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      CardArt(path: abilityBackPath(), width: 96, glow: _kBlue),
       const SizedBox(height: 14),
       const Wrap(
         alignment: WrapAlignment.center,
         spacing: 8,
         runSpacing: 8,
         children: [
-          _Chip('Jangan Bohong', _kBlue),
-          _Chip('Kunci Segel', _kBlue),
-          _Chip('Patuhilah Padaku', _kBlue),
-          _Chip('Kebangkitan Arwah', _kBlue),
+          _Chip('1 kartu / hari', EmbunColors.gold),
+          _Chip('Tukar kartu', EmbunColors.leaf),
+          _Chip('Isyarat', _kBlue),
+          _Chip('Akhiri hari', EmbunColors.cream),
         ],
       ),
     ],
@@ -771,6 +778,306 @@ class _FuseDemo extends StatelessWidget {
       );
     });
   }
+}
+
+class _EmbunDemo extends StatelessWidget {
+  final Animation<double> pulse;
+  const _EmbunDemo({required this.pulse});
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: pulse,
+    builder: (context, _) {
+      final v = 8 + 3 * pulse.value;
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < 3; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Opacity(
+                    opacity:
+                    (0.35 + 0.65 * ((pulse.value * 3 - i).clamp(0.0, 1.0)))
+                        .toDouble(),
+                    child: Transform.translate(
+                      offset: Offset(0, -6 * pulse.value * (i + 1) / 3),
+                      child: const GameIcon('bulirembun', size: 34),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('Embunmu: ${v.round()}',
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: EmbunColors.gold)),
+          const SizedBox(height: 12),
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Chip('Bertambah tiap pagi', EmbunColors.gold),
+              _Chip('+5 di pagi pertama siklus', EmbunColors.leaf),
+            ],
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Pemeriksaan: hasil asli lawan hasil yang dipalsukan.
+class _InspectDemo extends StatelessWidget {
+  final Animation<double> pulse;
+  const _InspectDemo({required this.pulse});
+
+  Widget _side(String caption, String chip, Color col, Color? glow,
+      {required bool masked}) =>
+      Column(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CardArt(path: cardBackPath(), width: 72, glow: glow),
+              Positioned(
+                right: -10,
+                top: -10,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.7),
+                    border: Border.all(color: col, width: 1.5),
+                  ),
+                  child: Icon(
+                      masked
+                          ? Icons.theater_comedy_rounded
+                          : Icons.search_rounded,
+                      size: 17,
+                      color: col),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(caption,
+              style: const TextStyle(fontSize: 11.5, color: Colors.white60)),
+          const SizedBox(height: 4),
+          _Chip(chip, col),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _side('Hasil asli', 'Mencurigakan', EmbunColors.blood,
+              EmbunColors.blood.withValues(alpha: 0.5),
+              masked: false),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 30, 14, 0),
+            child: AnimatedBuilder(
+              animation: pulse,
+              builder: (context, _) => Icon(Icons.arrow_forward_rounded,
+                  size: 28,
+                  color: EmbunColors.gold
+                      .withValues(alpha: 0.5 + 0.5 * pulse.value)),
+            ),
+          ),
+          _side('Yang kamu lihat', 'Tampak bersih', EmbunColors.leaf, null,
+              masked: true),
+        ],
+      ),
+      const SizedBox(height: 16),
+      const Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _Chip('Topeng', EmbunColors.mist),
+          _Chip('Cermin Khayal', EmbunColors.mist),
+          _Chip('Boneka Sawah', EmbunColors.mist),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Dua nyawa: kurungan lalu keluar.
+class _LivesDemo extends StatelessWidget {
+  final Animation<double> pulse;
+  const _LivesDemo({required this.pulse});
+
+  Widget _hearts(int left, {bool blink = false}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (var i = 0; i < kStrikesMax; i++)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Icon(
+            i < left ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            size: 30,
+            color: i < left
+                ? EmbunColors.blood
+                : (blink && i == left
+                ? EmbunColors.blood
+                .withValues(alpha: 0.35 + 0.65 * pulse.value)
+                : Colors.white30),
+          ),
+        ),
+    ],
+  );
+
+  Widget _stage(Widget top, String title, String sub, Color col) => Expanded(
+    child: Column(
+      children: [
+        SizedBox(
+            height: 38,
+            child: Center(
+                child: FittedBox(fit: BoxFit.scaleDown, child: top))),
+        const SizedBox(height: 8),
+        Text(title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 12.5, fontWeight: FontWeight.w800, color: col)),
+        const SizedBox(height: 2),
+        Text(sub,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 11, height: 1.25, color: Colors.white60)),
+      ],
+    ),
+  );
+
+  Widget _arrow() => const Padding(
+    padding: EdgeInsets.only(top: 9),
+    child: Icon(Icons.chevron_right_rounded, color: Colors.white30),
+  );
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: pulse,
+    builder: (context, _) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _stage(_hearts(kStrikesMax), 'Awal', '$kStrikesMax nyawa',
+            EmbunColors.cream),
+        _arrow(),
+        _stage(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _hearts(kStrikesMax - 1, blink: true),
+                const SizedBox(width: 6),
+                const GameIcon('lock', size: 26),
+              ],
+            ),
+            'Tuduhan 1',
+            'Dikurung sampai musyawarah berikutnya',
+            EmbunColors.gold),
+        _arrow(),
+        _stage(_hearts(0), 'Tuduhan 2',
+            'Si Terbisik tertangkap, atau warga keluar dari desa',
+            EmbunColors.blood),
+      ],
+    ),
+  );
+}
+
+/// Takaran daun 0..30 dengan batas menang di 20 dan puncak di 30.
+class _WinGauge extends StatelessWidget {
+  final Animation<double> pulse;
+  const _WinGauge({required this.pulse});
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: pulse,
+    builder: (context, _) {
+      final v = 17 + 6 * pulse.value;
+      return LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        final x20 = w * 20 / kLeavesMax;
+        return Column(
+          children: [
+            Text('Daun Hayu: ${v.round()} / $kLeavesMax',
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: EmbunColors.leaf)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: (v / kLeavesMax).clamp(0.0, 1.0).toDouble(),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: v >= 20 ? EmbunColors.leaf : EmbunColors.gold,
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: x20 - 1,
+                    top: -3,
+                    child: Container(
+                        width: 2, height: 20, color: EmbunColors.gold),
+                  ),
+                  Positioned(
+                    left: x20 - 44,
+                    top: 20,
+                    width: 88,
+                    child: const Text('20: menang di akhir',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 10.5, color: EmbunColors.gold)),
+                  ),
+                  const Positioned(
+                    right: 0,
+                    top: 20,
+                    child: Text('30: menang langsung',
+                        style: TextStyle(
+                            fontSize: 10.5, color: EmbunColors.leaf)),
+                  ),
+                  const Positioned(
+                    left: 0,
+                    top: 20,
+                    child: Text('0: kalah',
+                        style: TextStyle(
+                            fontSize: 10.5, color: EmbunColors.blood)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      });
+    },
+  );
 }
 
 class _OfferDemo extends StatelessWidget {
