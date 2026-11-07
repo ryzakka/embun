@@ -263,6 +263,14 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   _Ring? _ringMemo;
   Size? _ringSize;
 
+  // Kunci area kartu: dipakai menghitung posisi layar kartu untuk shader,
+  // kamera, dan sorotan fokus.
+  final GlobalKey _stageKey = GlobalKey();
+  // Hantaman shader di kartu sasaran tiap suara mendarat.
+  late final AnimationController _hitFx = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 640));
+  int _hitTarget = -1;
+
   @override
   void initState() {
     super.initState();
@@ -303,6 +311,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _flash.dispose();
     _strike.dispose();
     _tap.dispose();
+    _hitFx.dispose();
     _enter.dispose();
     _vc.dispose();
     _loop.dispose();
@@ -344,7 +353,11 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   void _onStrikeTick() {
     if (_hit || _stage < 2 || _strike.value < _kHitAt) return;
     _hit = true;
-    if (_i < _votes.length) _applyCount(_votes[_i]);
+    if (_i < _votes.length) {
+      _applyCount(_votes[_i]);
+      _hitTarget = _indexOf(_votes[_i]['target_id'] as String);
+      _hitFx.forward(from: 0);
+    }
     _tap.forward(from: 0);
     HapticFeedback.mediumImpact();
     Sfx.I.play(Snd.clickTung, owner: this, tag: 'hit', replace: true);
@@ -370,6 +383,9 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     }
     if (t >= 0.54 && _fired.add(2)) _slam(flash: false);
     if (t >= 0.60 && _fired.add(3)) _slam();
+    // Gema setelah hantaman: debar menjalar saat lingkaran segel terbentuk.
+    if (t >= 0.70 && _fired.add(4)) HapticFeedback.mediumImpact();
+    if (t >= 0.78 && _fired.add(5)) HapticFeedback.lightImpact();
   }
 
   Future<void> _play() async {
@@ -473,9 +489,11 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
       _beat.repeat(period: const Duration(milliseconds: 2400));
       HapticFeedback.lightImpact();
     }
+    // Vonis yang menjatuhkan seseorang diberi napas lebih panjang (4,6 dtk):
+    // fokus menyempit, spanduk menghantam, kamera mendekat, segel terbentuk.
+    _vc.duration = Duration(milliseconds: won ? 4600 : 3400);
     _vc.forward(from: 0);
-    // Linimasa vonis 3,4 detik, lalu jeda baca.
-    if (!await _w(won ? 3400 + 2300 : 3400 + 1500)) return;
+    if (!await _w(won ? 4600 + 2000 : 3400 + 1500)) return;
     _finish();
   }
 
@@ -519,6 +537,34 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
 
   String _targetName(Map<String, dynamic> v) => '${v['target_name']}';
   String _voterName(Map<String, dynamic> v) => '${v['voter_name']}';
+
+  /// Titik asal area kartu di layar (null-aman: 0,0 bila belum terpasang).
+  Offset _stageOrigin() {
+    final ro = _stageKey.currentContext?.findRenderObject();
+    if (ro is RenderBox && ro.attached && ro.hasSize) {
+      try {
+        return ro.localToGlobal(Offset.zero);
+      } catch (_) {}
+    }
+    return Offset.zero;
+  }
+
+  /// Posisi layar kartu pemain ke-[k], atau null bila lingkaran belum ada.
+  Offset? _screenPosOf(int k) {
+    final ring = _ringMemo;
+    if (ring == null || k < 0 || k >= ring.pos.length) return null;
+    return _stageOrigin() + ring.at(k);
+  }
+
+  /// Posisi layar kartu yang dituduh (sedikit tertarik ke tengah lingkaran).
+  Offset? _winnerScreen() {
+    final wid = _winnerId;
+    final ring = _ringMemo;
+    if (wid == null || ring == null) return null;
+    final k = _indexOf(wid);
+    if (k < 0 || k >= ring.pos.length) return null;
+    return _stageOrigin() + Offset.lerp(ring.pos[k], ring.center, 0.12)!;
+  }
 
   _Ring _ringFor(Size s) {
     if (_ringMemo != null && _ringSize == s) return _ringMemo!;
@@ -564,16 +610,47 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
               );
             },
             child: SafeArea(
-              child: Column(
-                children: [
-                  _top(),
-                  Expanded(child: _stageArea()),
-                  _caption(),
-                  const SizedBox(height: 10),
-                ],
+              // Kamera: berdebar saat hening, mendekat ke yang dituduh saat
+              // vonis. Selalu dibungkus Transform supaya pohon widget tetap.
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_vc, _beat]),
+                builder: (context, child) {
+                  var scale = 1.0;
+                  var al = Alignment.center;
+                  if (_phase == 3 && _winnerId != null) {
+                    scale = 1 +
+                        0.12 *
+                            Curves.easeInOutCubic
+                                .transform(_seg(_vc.value, 0.40, 1.0));
+                    final wp = _winnerScreen();
+                    final sz = MediaQuery.of(context).size;
+                    if (wp != null && sz.width > 0 && sz.height > 0) {
+                      al = Alignment(
+                        (wp.dx / sz.width * 2 - 1).clamp(-1.0, 1.0).toDouble(),
+                        (wp.dy / sz.height * 2 - 1).clamp(-1.0, 1.0).toDouble(),
+                      );
+                    }
+                  } else if (_phase == 2) {
+                    scale = 1 + 0.014 * _thump(_beat.value);
+                  }
+                  return Transform.scale(
+                      scale: scale, alignment: al, child: child);
+                },
+                child: Column(
+                  children: [
+                    _top(),
+                    Expanded(
+                      child: KeyedSubtree(
+                          key: _stageKey, child: _stageArea()),
+                    ),
+                    _caption(),
+                    const SizedBox(height: 10),
+                  ],
+                ),
               ),
             ),
           ),
+          if (won) _focus(),
           if (won) _embers(),
           if (_banner) _majorityBanner(),
           AnimatedBuilder(
@@ -602,9 +679,25 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     return IgnorePointer(
       child: RepaintBoundary(
         child: AnimatedBuilder(
-          animation: Listenable.merge([_loop, _beat, _shake, _vc]),
+          animation: Listenable.merge([_loop, _beat, _shake, _vc, _hitFx]),
           builder: (context, _) {
             final won = _winnerId != null;
+            final scr = MediaQuery.of(context).size;
+            // Hantaman vonis berpusat di kartu yang dituduh; selain itu di
+            // tengah layar.
+            var center = Offset(scr.width * 0.5, scr.height * 0.42);
+            final wp = _phase == 3 ? _winnerScreen() : null;
+            if (wp != null) center = wp;
+            // Hantaman satu suara berpusat di kartu sasarannya.
+            var hit = 0.0;
+            var hitPos = center;
+            if (_hitFx.isAnimating && _phase == 1) {
+              final hp = _screenPosOf(_hitTarget);
+              if (hp != null) {
+                hit = _hitFx.value;
+                hitPos = hp;
+              }
+            }
             final heat = _heatOf(_lead);
             final double tension = switch (_phase) {
               0 => 0.25,
@@ -628,7 +721,9 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
                 slam: _shake.isAnimating ? _shake.value : 0.0,
                 verdict: verdict.toDouble(),
                 calm: calm.toDouble(),
-                centerFrac: const Offset(0.5, 0.42),
+                center: center,
+                hit: hit,
+                hitPos: hitPos,
                 hot: EmbunColors.blood,
                 cool: _teal,
               ),
@@ -689,6 +784,35 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
                   Colors.transparent,
                 ],
               ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Fokus: layar menggelap dan lubang cahaya menyempit ke kartu yang dituduh,
+  /// seperti sorot panggung yang mengunci.
+  Widget _focus() {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _vc,
+        builder: (context, _) {
+          final a = Curves.easeOut.transform(_seg(_vc.value, 0.36, 0.58));
+          final wp = _winnerScreen();
+          if (a <= 0.01 || wp == null) return const SizedBox.shrink();
+          final sz = MediaQuery.of(context).size;
+          final big = math.max(sz.width, sz.height) * 1.1;
+          final small = (_ringMemo?.cardH ?? 150) * 2.7;
+          // Debar kecil pada lubang cahaya setelah terkunci.
+          final pulse = 1 + 0.03 * math.sin(_vc.value * 2 * math.pi * 5) *
+              _seg(_vc.value, 0.6, 1.0);
+          return CustomPaint(
+            size: Size.infinite,
+            painter: _FocusPainter(
+              center: wp,
+              radius: (big + (small - big) * a) * pulse,
+              alpha: 0.66 * a,
             ),
           );
         },
@@ -944,6 +1068,20 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
         }
 
         final children = <Widget>[
+          // Segel penghakiman di belakang kartu yang dituduh.
+          if (widx >= 0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _SigilPainter(
+                    center: winnerPos(),
+                    radius: ring.cardH * 0.80,
+                    t: _seg(vt, 0.44, 0.80),
+                    spin: vt,
+                  ),
+                ),
+              ),
+            ),
           for (final k in order) buildCard(k),
 
           // Kartu Kabut (Fitnah): muncul di tengah lingkaran.
@@ -1264,12 +1402,35 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
                         ),
                         const SizedBox(height: 10),
                       ],
-                      const Text('MAYORITAS',
-                          style: TextStyle(
-                              fontSize: 30,
-                              letterSpacing: 6,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white)),
+                      // Huruf terbelah warna (cyan / magenta) lalu menyatu.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 1.0, end: 0.0),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, k, _) {
+                          Widget word(Color c, double dx) => Transform.translate(
+                            offset: Offset(dx, 0),
+                            child: Text('MAYORITAS',
+                                style: TextStyle(
+                                    fontSize: 30,
+                                    letterSpacing: 6,
+                                    fontWeight: FontWeight.w900,
+                                    color: c)),
+                          );
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Opacity(
+                                  opacity: _a(0.85 * k),
+                                  child: word(const Color(0xFF00E5FF), -18 * k)),
+                              Opacity(
+                                  opacity: _a(0.85 * k),
+                                  child: word(const Color(0xFFFF2D6F), 18 * k)),
+                              word(Colors.white, 0),
+                            ],
+                          );
+                        },
+                      ),
                       if (p != null)
                         Text(p.id == widget.myId ? 'Kamu' : p.name,
                             style: const TextStyle(
@@ -1298,7 +1459,9 @@ class _VoteFxPainter extends CustomPainter {
   final double slam;
   final double verdict;
   final double calm;
-  final Offset centerFrac;
+  final Offset center; // piksel layar
+  final double hit; // 0..1, 0 = tak aktif
+  final Offset hitPos; // piksel layar
   final Color hot;
   final Color cool;
 
@@ -1310,7 +1473,9 @@ class _VoteFxPainter extends CustomPainter {
     required this.slam,
     required this.verdict,
     required this.calm,
-    required this.centerFrac,
+    required this.center,
+    required this.hit,
+    required this.hitPos,
     required this.hot,
     required this.cool,
   });
@@ -1324,8 +1489,8 @@ class _VoteFxPainter extends CustomPainter {
       ..setFloat(3, heat)
       ..setFloat(4, beat)
       ..setFloat(5, slam)
-      ..setFloat(6, size.width * centerFrac.dx)
-      ..setFloat(7, size.height * centerFrac.dy)
+      ..setFloat(6, center.dx)
+      ..setFloat(7, center.dy)
       ..setFloat(8, verdict)
       ..setFloat(9, calm)
       ..setFloat(10, hot.r)
@@ -1333,7 +1498,10 @@ class _VoteFxPainter extends CustomPainter {
       ..setFloat(12, hot.b)
       ..setFloat(13, cool.r)
       ..setFloat(14, cool.g)
-      ..setFloat(15, cool.b);
+      ..setFloat(15, cool.b)
+      ..setFloat(16, hit)
+      ..setFloat(17, hitPos.dx)
+      ..setFloat(18, hitPos.dy);
     canvas.drawRect(
       Offset.zero & size,
       Paint()
@@ -1347,6 +1515,123 @@ class _VoteFxPainter extends CustomPainter {
   bool shouldRepaint(covariant _VoteFxPainter old) => true;
 }
 
+/// Menggelapkan layar kecuali lubang cahaya bulat di [center] (sorot panggung).
+class _FocusPainter extends CustomPainter {
+  final Offset center;
+  final double radius;
+  final double alpha;
+  const _FocusPainter(
+      {required this.center, required this.radius, required this.alpha});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (alpha <= 0.005 || radius <= 1) return;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          center,
+          radius,
+          [
+            const Color(0x00000000),
+            const Color(0x00000000),
+            Colors.black.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+          ],
+          const [0.0, 0.34, 1.0],
+        ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FocusPainter old) =>
+      old.center != center || old.radius != radius || old.alpha != alpha;
+}
+
+/// Segel penghakiman: lingkaran ganda bergerigi dan dua segitiga yang berputar
+/// berlawanan, menyala merah di belakang kartu yang dituduh.
+class _SigilPainter extends CustomPainter {
+  final Offset center;
+  final double radius;
+  final double t; // 0..1 kemunculan
+  final double spin; // kemajuan vonis 0..1, memutar segel
+  const _SigilPainter({
+    required this.center,
+    required this.radius,
+    required this.t,
+    required this.spin,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (t <= 0.01) return;
+    final e = Curves.easeOutBack.transform(t.clamp(0.0, 1.0).toDouble());
+    final r = radius * (0.55 + 0.45 * e);
+    final a = (t * 1.6).clamp(0.0, 1.0).toDouble();
+    const red = EmbunColors.blood;
+
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..color = red.withValues(alpha: 0.40 * a)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..color = red.withValues(alpha: 0.80 * a);
+    final thin = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = red.withValues(alpha: 0.55 * a);
+
+    canvas.drawCircle(center, r, glow);
+    canvas.drawCircle(center, r, line);
+    canvas.drawCircle(center, r * 0.84, thin);
+    canvas.drawCircle(center, r * 1.10, thin);
+
+    // Gerigi di cincin luar, berputar pelan.
+    const n = 56;
+    final tick = Paint()
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..color = red.withValues(alpha: 0.75 * a);
+    for (var i = 0; i < n; i++) {
+      final ang = i * 2 * math.pi / n + spin * 1.4;
+      final len = i % 4 == 0 ? 11.0 : 5.0;
+      final d = Offset(math.cos(ang), math.sin(ang));
+      canvas.drawLine(center + d * (r * 1.10), center + d * (r * 1.10 + len), tick);
+    }
+
+    // Dua segitiga berlawanan arah (bintang enam).
+    for (var k = 0; k < 2; k++) {
+      final rot = (k == 0 ? -1.7 : 1.7) * spin + k * math.pi / 3;
+      final path = Path();
+      for (var v = 0; v < 3; v++) {
+        final ang = rot - math.pi / 2 + v * 2 * math.pi / 3;
+        final pt = center + Offset(math.cos(ang), math.sin(ang)) * (r * 0.84);
+        if (v == 0) {
+          path.moveTo(pt.dx, pt.dy);
+        } else {
+          path.lineTo(pt.dx, pt.dy);
+        }
+      }
+      path.close();
+      canvas.drawPath(path, thin);
+    }
+
+    // Titik-titik kecil pada cincin dalam.
+    final dot = Paint()..color = red.withValues(alpha: 0.9 * a);
+    for (var i = 0; i < 12; i++) {
+      final ang = i * 2 * math.pi / 12 - spin * 2.2;
+      canvas.drawCircle(
+          center + Offset(math.cos(ang), math.sin(ang)) * (r * 0.84), 1.8, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SigilPainter old) =>
+      old.t != t || old.spin != spin || old.center != center || old.radius != radius;
+}
+
 /// Bara merah dan jingga yang melayang naik, berulang selama hasil tampil.
 class _EmberPainter extends CustomPainter {
   final double env; // 0..1 kemunculan
@@ -1357,7 +1642,7 @@ class _EmberPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (env <= 0) return;
     final p = Paint();
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 48; i++) {
       final u = (loop * (0.6 + 0.8 * _rnd(i, 1)) + _rnd(i, 2)) % 1.0;
       final x = size.width * _rnd(i, 3) + math.sin(u * 6 + i) * 14;
       final y = size.height * (1.02 - 0.95 * u);

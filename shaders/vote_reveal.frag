@@ -13,6 +13,12 @@
 // Urutan indeks float di Dart:
 //  0,1 uSize | 2 uTime | 3 uHeat | 4 uBeat | 5 uSlam | 6,7 uCenter
 //  8 uVerdict | 9 uCalm | 10-12 uHot | 13-15 uCool
+//  16 uHit | 17,18 uHitPos
+// Lapis tambahan:
+//  2b. suara mendarat: gelombang kejut kecil + percikan di kartu sasaran
+//      (uHit = kemajuan 0..1, 0 = tak aktif, uHitPos = piksel);
+//  hantaman vonis kini berpusat di kartu yang dituduh (uCenter) dan cincin
+//  kejutnya berpendar pelangi (tiap kanal warna melaju sedikit berbeda).
 uniform vec2 uSize;
 uniform float uTime;
 uniform float uHeat;
@@ -23,6 +29,8 @@ uniform float uVerdict;
 uniform float uCalm;
 uniform vec3 uHot;
 uniform vec3 uCool;
+uniform float uHit;
+uniform vec2 uHitPos;
 
 out vec4 fragColor;
 
@@ -105,7 +113,12 @@ void main() {
     float fall = exp(-R * 2.2) * (1.0 - smoothstep(0.55, 0.95, R));
     float core = exp(-R * R * 14.0);
     vec3 beam = mix(vec3(1.0, 0.88, 0.80), hot, 0.45);
-    acc += beam * vd * (0.16 * shaft + 0.10 * rays * fall + 0.12 * core);
+    acc += beam * vd * (0.16 * shaft + 0.17 * rays * fall + 0.14 * core);
+    // halo berdenyut mengelilingi yang dituduh
+    float hh1 = (R - 0.20) / 0.016;
+    float hh2 = (R - 0.31) / 0.010;
+    float halo = exp(-hh1 * hh1) + 0.5 * exp(-hh2 * hh2);
+    acc += mix(hot, beam, 0.3) * vd * halo * (0.10 + 0.22 * beat);
   }
 
   // ---- 2. hantaman: gelombang kejut, kilat inti, garis memancar ----
@@ -114,8 +127,8 @@ void main() {
     float inv = 1.0 - s;
     float R1 = s * 1.35;
     float w1 = 0.018 + 0.05 * s;
-    float e1 = (R - R1) / w1;
-    float ring1 = exp(-e1 * e1) * pow(inv, 1.4);
+    vec3 e1 = (vec3(R) - R1 * vec3(1.0, 1.04, 1.08)) / w1;
+    vec3 ring1 = exp(-e1 * e1) * pow(inv, 1.4);
     float s2 = max(s - 0.12, 0.0);
     float R2 = s2 * 1.2;
     float w2 = 0.016 + 0.045 * s2;
@@ -127,8 +140,28 @@ void main() {
                  * exp(-R * 3.4) * pow(inv, 2.2);
     vec3 white = vec3(1.0, 0.92, 0.86);
     vec3 shock = mix(hot, white, 0.45);
-    acc += shock * (0.55 * ring1 + 0.32 * ring2)
-         + white * (0.55 * flashCore + 0.30 * spikes);
+    acc += shock * (0.32 * ring2)
+         + ring1 * vec3(1.0, 0.94, 0.90) * 0.62
+         + white * (0.60 * flashCore + 0.34 * spikes);
+  }
+
+  // ---- 2b. suara mendarat di kartu sasaran ----
+  float hs = uHit;
+  if (hs > 0.001 && hs < 0.999) {
+    vec2 hd = frag - uHitPos;
+    float HR = length(hd) / uSize.y;
+    float hinv = 1.0 - hs;
+    float hw = 0.012 + 0.03 * hs;
+    float he = (HR - hs * 0.42) / hw;
+    float hring = exp(-he * he) * pow(hinv, 1.5);
+    float hflash = exp(-HR * HR * 70.0) * pow(hinv, 3.0);
+    float hang = atan(hd.y, hd.x);
+    float hseed = hash21(vec2(floor(hang * 2.0), 3.0));
+    float hspark = pow(clamp(abs(sin(hang * 9.0 + hseed * 6.2832)), 0.0, 1.0), 12.0)
+                 * exp(-HR * 7.0) * pow(hinv, 2.0);
+    vec3 hwhite = vec3(1.0, 0.92, 0.86);
+    acc += mix(hot, hwhite, 0.4) * (0.50 * hring + 0.25 * hspark)
+         + hwhite * 0.40 * hflash;
   }
 
   // ---- 4. tanpa mayoritas: kabut dingin dan butir melayang ----
