@@ -16,6 +16,7 @@ import '../common/cloth_transition.dart';
 import '../common/shader_fx.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
+import '../guide/tutorial_page.dart';
 import 'more_games_sheet.dart';
 import 'announcements_page.dart';
 import 'public_rooms_page.dart';
@@ -59,6 +60,7 @@ class _LobbyPageState extends State<LobbyPage>
   bool _createPublic = false;
   int _unreadNews = 0;
   bool _booted = false;
+  bool _tutorialNew = false;
 
   // Jam berkelanjutan untuk latar bergerak, kunang-kunang, dan melayang.
   late final AnimationController _t = AnimationController(
@@ -84,6 +86,9 @@ class _LobbyPageState extends State<LobbyPage>
     try {
       await repo.ensureSignedIn();
       unawaited(_refreshNews());
+      unawaited(TutorialPage.isNew().then((v) {
+        if (mounted && v != _tutorialNew) setState(() => _tutorialNew = v);
+      }));
       final g = await repo.activeGame();
       if (!mounted) return;
       if (g != null) {
@@ -475,6 +480,19 @@ class _LobbyPageState extends State<LobbyPage>
     );
   }
 
+  /// Tutorial singkat (halaman geser dengan narasi). Lencana "Baru" hilang
+  /// setelah dibuka sekali.
+  void _openTutorial() {
+    Sfx.I.playAny(Snd.winds);
+    if (_tutorialNew) setState(() => _tutorialNew = false);
+    Navigator.of(context).push(
+      ClothTransition.route<void>(
+        const TutorialPage(),
+        style: ClothStyle.selendangBata,
+      ),
+    );
+  }
+
   /// Lonceng Pengumuman di pojok kanan atas; bertitik angka bila ada kabar
   /// yang belum dibaca.
   Widget _newsBell() => Badge(
@@ -602,12 +620,20 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: _openGuide),
         _MenuTile(
             index: 3,
+            icon: 'info',
+            label: 'Tutorial',
+            materialIcon: Icons.school_rounded,
+            badge: _tutorialNew ? 1 : 0,
+            center: !wide,
+            onTap: _openTutorial),
+        _MenuTile(
+            index: 4,
             icon: 'settings',
             label: 'Pengaturan',
             center: !wide,
             onTap: _openSettings),
         _MenuTile(
-            index: 4,
+            index: 5,
             icon: 'plus',
             label: 'Permainan Lainnya',
             scale: 0.82,

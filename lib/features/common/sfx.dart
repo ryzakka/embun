@@ -33,6 +33,21 @@ class Snd {
   // ---- narasi ----
   static const narasiProlog = Snd('prolog-narasibicara.mp3', 1.0);
 
+  /// Narasi tutorial, satu per halaman (urut sama dengan TutorialPage).
+  static const tutor = [
+    Snd('tutor-01-tujuan.mp3', 1.0),
+    Snd('tutor-02-peran.mp3', 1.0),
+    Snd('tutor-03-hari.mp3', 1.0),
+    Snd('tutor-04-hijau-merah.mp3', 1.0),
+    Snd('tutor-05-biru.mp3', 1.0),
+    Snd('tutor-06-ungu.mp3', 1.0),
+    Snd('tutor-07-kuning.mp3', 1.0),
+    Snd('tutor-08-lanjutan.mp3', 1.0),
+    Snd('tutor-09-persembahan.mp3', 1.0),
+    Snd('tutor-10-voting.mp3', 1.0),
+    Snd('tutor-11-malam.mp3', 1.0),
+  ];
+
   static const winds = [swingWind1, swingWind2, swingWind3];
   static const fires = [swingFire1, swingFire2];
   static const timers = [timer1, timer2];
