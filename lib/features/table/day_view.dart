@@ -1668,6 +1668,7 @@ class _DayViewState extends State<DayView>
   /// Petak kosong / terisi untuk satu kartu. Ketuk petak terisi untuk
   /// mengosongkannya lagi.
   Widget _fuseSlot({
+    required int step,
     required String label,
     required String? cardId,
     required double w,
@@ -1676,27 +1677,44 @@ class _DayViewState extends State<DayView>
   }) {
     final h = w * 9 / 7;
     if (cardId == null) {
-      return Container(
-        width: w,
-        height: h,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.28),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: EmbunColors.goldDim.withValues(alpha: 0.55), width: 1.4),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Opacity(opacity: 0.5, child: const GameIcon('plus', size: 34)),
-            const SizedBox(height: 6),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
-          ],
-        ),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: w,
+            height: h,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: RadialGradient(colors: [
+                Colors.white.withValues(alpha: 0.07),
+                Colors.black.withValues(alpha: 0.35),
+              ]),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: EmbunColors.goldDim.withValues(alpha: 0.6),
+                  width: 1.4),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _stepBadge(step, false),
+                const SizedBox(height: 8),
+                Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70)),
+                const SizedBox(height: 2),
+                const Text('Pilih di bawah',
+                    style: TextStyle(fontSize: 10, color: Colors.white38)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(' ', style: TextStyle(fontSize: 10)),
+        ],
       );
     }
     return Column(
@@ -1717,42 +1735,126 @@ class _DayViewState extends State<DayView>
     );
   }
 
+  Widget _stepBadge(int n, bool done) => Container(
+    width: 24,
+    height: 24,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: done
+          ? EmbunColors.gold
+          : Colors.black.withValues(alpha: 0.4),
+      border: Border.all(
+          color: done ? EmbunColors.gold : EmbunColors.goldDim, width: 1.2),
+    ),
+    child: done
+        ? const Icon(Icons.check_rounded, size: 15, color: Colors.black87)
+        : Text('$n',
+        style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: EmbunColors.gold)),
+  );
+
+  /// Tiga langkah: lanjutan, syarat, tempatkan. Yang selesai bercentang.
+  Widget _fuseSteps(bool hasAdv, bool hasPoin) {
+    Widget item(int n, String t, bool done) => Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _stepBadge(n, done),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(t,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: done ? EmbunColors.gold : Colors.white60)),
+          ),
+        ],
+      ),
+    );
+    return Row(
+      children: [
+        item(1, 'Lanjutan', hasAdv),
+        item(2, 'Syarat', hasPoin),
+        item(3, 'Tempatkan', false),
+      ],
+    );
+  }
+
   Widget _fuseTray(String title, String? icon, List<(String, int)> items,
       String? picked, _Grid g, ValueChanged<String?> onPick,
-      {required bool faded}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _section(title, icon: icon),
-        if (items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-                faded
-                    ? 'Belum ada kartu lanjutan yang perlu diaktifkan.'
-                    : 'Belum ada $_poinName. Belilah di Toko.',
-                style: const TextStyle(fontSize: 12, color: Colors.white60)),
-          )
-        else
-          Wrap(
-            spacing: g.gap,
-            runSpacing: g.gap,
+      {required bool faded, required String hint}) {
+    final total = items.fold<int>(0, (a, e) => a + e.$2);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: _glassDeco(radius: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              for (final it in items)
-                CardTile(
-                  key: ValueKey('fuse-${it.$1}'),
-                  def: widget.defs[it.$1],
-                  fallbackName: it.$1,
-                  width: g.w,
-                  count: it.$2,
-                  selected: picked == it.$1,
-                  faded: faded,
-                  onTap: () => onPick(picked == it.$1 ? null : it.$1),
+              if (icon != null) ...[
+                GameIcon(icon, size: 24),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: Text('$total',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
-        const SizedBox(height: 14),
-      ],
+          const SizedBox(height: 2),
+          Text(hint,
+              style: const TextStyle(fontSize: 11, color: Colors.white54)),
+          const SizedBox(height: 10),
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                  faded
+                      ? 'Belum ada kartu lanjutan yang perlu diaktifkan.'
+                      : 'Belum ada $_poinName. Belilah di Toko atau Pasar Riset.',
+                  style:
+                  const TextStyle(fontSize: 12, color: Colors.white60)),
+            )
+          else
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: g.gap,
+              runSpacing: g.gap,
+              children: [
+                for (final it in items)
+                  CardTile(
+                    key: ValueKey('fuse-${it.$1}'),
+                    def: widget.defs[it.$1],
+                    fallbackName: it.$1,
+                    width: g.w,
+                    count: it.$2,
+                    selected: picked == it.$1,
+                    faded: faded,
+                    dim: picked != null && picked != it.$1,
+                    onTap: () => onPick(picked == it.$1 ? null : it.$1),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -1765,71 +1867,148 @@ class _DayViewState extends State<DayView>
     final poin = poinOk ? _fusePoin : null;
     if (c.adv.isEmpty && c.poin.isEmpty) {
       return _empty('plus', 'Belum ada yang bisa digabung',
-          'Beli kartu lanjutan dan $_poinName di Toko, lalu gabungkan di sini.');
+          'Beli kartu lanjutan dan $_poinName di Toko atau Pasar Riset, '
+              'lalu gabungkan di sini.');
     }
     final ready = adv != null && poin != null;
     return LayoutBuilder(builder: (context, box) {
-      final g = _mejaGrid(box.maxWidth, minW);
-      final slotW = min(130.0, (box.maxWidth - 56) / 2);
+      final g = _mejaGrid(box.maxWidth - 24, minW);
+      final slotW = min(130.0, (box.maxWidth - 96) / 2);
+      final advName = adv == null ? null : _cardName(adv);
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-                'Pilih satu kartu lanjutan dan satu kartu syarat, lalu '
-                    'tempatkan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.white70)),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: _glassDeco(radius: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+            AnimatedBuilder(
+              animation: _t,
+              builder: (context, child) {
+                final glow = ready ? _pulse : 0.0;
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        EmbunColors.panelHi.withValues(alpha: 0.75),
+                        Colors.black.withValues(alpha: 0.55),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Color.lerp(
+                          _accent.withValues(alpha: 0.4),
+                          EmbunColors.gold,
+                          ready ? 0.5 + 0.5 * glow : 0)!,
+                      width: ready ? 1.6 : 1,
+                    ),
+                    boxShadow: ready
+                        ? [
+                      BoxShadow(
+                        color: EmbunColors.gold
+                            .withValues(alpha: 0.12 + 0.22 * glow),
+                        blurRadius: 12 + 12 * glow,
+                      ),
+                    ]
+                        : null,
+                  ),
+                  child: child,
+                );
+              },
+              child: Column(
                 children: [
-                  _fuseSlot(
-                    label: 'Kartu lanjutan',
-                    cardId: adv,
-                    w: slotW,
-                    faded: poin == null,
-                    onClear: () => setState(() => _fuseAdv = null),
+                  _fuseSteps(adv != null, poin != null),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fuseSlot(
+                        step: 1,
+                        label: 'Kartu lanjutan',
+                        cardId: adv,
+                        w: slotW,
+                        faded: poin == null,
+                        onClear: () => setState(() => _fuseAdv = null),
+                      ),
+                      SizedBox(
+                        height: slotW * 9 / 7,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Center(
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withValues(alpha: 0.45),
+                                border: Border.all(
+                                    color: EmbunColors.gold
+                                        .withValues(alpha: ready ? 1 : 0.5)),
+                              ),
+                              child: const Text('+',
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: EmbunColors.gold)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      _fuseSlot(
+                        step: 2,
+                        label: 'Kartu syarat',
+                        cardId: poin,
+                        w: slotW,
+                        faded: false,
+                        onClear: () => setState(() => _fusePoin = null),
+                      ),
+                    ],
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('+',
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: EmbunColors.gold)),
+                  const SizedBox(height: 6),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      ready
+                          ? '$advName siap diaktifkan.'
+                          : adv == null && poin == null
+                          ? 'Pilih satu kartu lanjutan dan satu kartu syarat.'
+                          : adv == null
+                          ? 'Tinggal pilih kartu lanjutan.'
+                          : 'Tinggal pilih kartu syarat.',
+                      key: ValueKey('$ready$adv$poin'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color:
+                          ready ? EmbunColors.gold : Colors.white70),
+                    ),
                   ),
-                  _fuseSlot(
-                    label: 'Kartu syarat',
-                    cardId: poin,
-                    w: slotW,
-                    faded: false,
-                    onClear: () => setState(() => _fusePoin = null),
+                  const SizedBox(height: 12),
+                  EmbunButton(
+                    label: ready ? 'Tempatkan' : 'Pilih kedua kartu',
+                    icon: 'plus',
+                    expand: true,
+                    height: 48,
+                    kind: ready
+                        ? EmbunButtonKind.primary
+                        : EmbunButtonKind.secondary,
+                    onPressed: ready && !busy ? _doFuse : null,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-            EmbunButton(
-              label: ready ? 'Tempatkan' : 'Pilih kedua kartu',
-              icon: 'plus',
-              expand: true,
-              height: 48,
-              kind: ready ? EmbunButtonKind.primary : EmbunButtonKind.secondary,
-              onPressed: ready && !busy ? _doFuse : null,
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _fuseTray('Kartu lanjutan', 'plus', c.adv, adv, g,
                     (id) => setState(() => _fuseAdv = id),
-                faded: true),
+                faded: true,
+                hint: 'Belum aktif. Butuh satu kartu syarat.'),
             _fuseTray('Kartu syarat', 'bulirembun', c.poin, poin, g,
                     (id) => setState(() => _fusePoin = id),
-                faded: false),
+                faded: false,
+                hint: 'Dipakai untuk mengaktifkan kartu lanjutan.'),
           ],
         ),
       );

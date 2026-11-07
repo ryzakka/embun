@@ -173,8 +173,8 @@ class _TutorialPageState extends State<TutorialPage>
     ),
     _Step(
       'Kartu lanjutan',
-      'Kartu lanjutan harus **digabung** dengan kartu poin dulu di tab '
-          'Gabung. Warga: Regenerasi + Poin Regenerasi. Si Terbisik: '
+      'Kartu lanjutan dan kartu poin dijual di **Pasar Riset**. Kartu '
+          'lanjutan harus **digabung** dengan kartu poin dulu di tab Gabung. Warga: Regenerasi + Poin Regenerasi. Si Terbisik: '
           'Rekayasa + Poin DNA. Poin tingkat 1, 2, dan 3 mengaktifkan '
           '1, 2, atau 3 kartu.',
       EmbunColors.cream,
@@ -186,7 +186,11 @@ class _TutorialPageState extends State<TutorialPage>
           '**1 sampai $kOfferingMax kartu** ke Hayu. Semua efek dibuka '
           'bersamaan: daun naik atau turun.',
       EmbunColors.leaf,
-          (p) => _OfferDemo(pulse: p),
+          (p) => Column(children: [
+        const _CycleStrip(active: 2),
+        const SizedBox(height: 16),
+        _OfferDemo(pulse: p),
+      ]),
     ),
     _Step(
       'Voting',
@@ -195,17 +199,25 @@ class _TutorialPageState extends State<TutorialPage>
           'kedua **keluar dari desa**. Setiap pemain punya $kStrikesMax nyawa. '
           'Waktu memilih $kVoteSeconds detik.',
       EmbunColors.blood,
-          (p) => const _RingDemo(),
+          (p) => const Column(children: [
+        _CycleStrip(active: 4),
+        SizedBox(height: 12),
+        _RingDemo(),
+      ]),
     ),
     _Step(
       'Malam',
       'Saat malam, Si Terbisik melancarkan serangan. Warga hanya mendengar '
           'bahwa **ada serangan**, lalu pagi tiba. Selamat bermain!',
       EmbunColors.mist,
-          (p) => _CardRow(cards: [
-        _C(_art('malam', 'antagonis', 'karungcurianmalam'), 'dalam gelap',
-            glow: EmbunColors.mist),
-        _C(_art('malam', 'antagonis', 'cerminkhayal'), 'tanpa saksi'),
+          (p) => Column(children: [
+        const _CycleStrip(active: 1),
+        const SizedBox(height: 16),
+        _CardRow(cards: [
+          _C(_art('malam', 'antagonis', 'karungcurianmalam'), 'dalam gelap',
+              glow: EmbunColors.mist),
+          _C(_art('malam', 'antagonis', 'cerminkhayal'), 'tanpa saksi'),
+        ]),
       ]),
     ),
   ];
@@ -218,7 +230,18 @@ class _TutorialPageState extends State<TutorialPage>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Backdrop(path: landscapePath(30), dim: 0.9),
+          Backdrop(
+              path: sceneryPath('balkon-siang') ?? landscapePath(30),
+              dim: 0.5),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x66000000), Color(0x22000000), Color(0x99000000)],
+              ),
+            ),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -236,21 +259,35 @@ class _TutorialPageState extends State<TutorialPage>
                   ),
                 ),
                 _dots(),
-                SizedBox(
-                  height: 64,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(
-                      child: last
-                          ? EmbunButton(
-                        label: 'Mulai bermain',
-                        expand: true,
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      )
-                          : const Text(
-                        'Geser atau tekan panah',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.white38),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            child: EmbunButton(
+                              label: 'Kembali',
+                              kind: EmbunButtonKind.secondary,
+                              height: 50,
+                              expand: true,
+                              onPressed: _page > 0 ? () => _go(-1) : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: EmbunButton(
+                              label: last ? 'Mulai bermain' : 'Lanjut',
+                              height: 50,
+                              expand: true,
+                              onPressed: last
+                                  ? () => Navigator.of(context).maybePop()
+                                  : () => _go(1),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -312,24 +349,11 @@ class _TutorialPageState extends State<TutorialPage>
     );
   }
 
-  /// Panah kecil kiri/kanan di kiri dan kanan penanda halaman.
-  Widget _arrow(IconData icon, String tip, int delta, bool on) => IconButton(
-    tooltip: tip,
-    onPressed: on ? () => _go(delta) : null,
-    visualDensity: VisualDensity.compact,
-    iconSize: 26,
-    color: EmbunColors.gold,
-    disabledColor: Colors.white12,
-    icon: Icon(icon),
-  );
-
   Widget _dots() => Padding(
     padding: const EdgeInsets.only(top: 4),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _arrow(Icons.chevron_left_rounded, 'Sebelumnya', -1, _page > 0),
-        const SizedBox(width: 6),
         for (var i = 0; i < _steps.length; i++)
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
@@ -343,42 +367,73 @@ class _TutorialPageState extends State<TutorialPage>
                   : Colors.white.withValues(alpha: 0.25),
             ),
           ),
-        const SizedBox(width: 6),
-        _arrow(Icons.chevron_right_rounded, 'Berikutnya', 1,
-            _page < _steps.length - 1),
       ],
     ),
   );
 
+  static String _chapter(int i) =>
+      i < 2 ? 'DASAR' : (i == 2 ? 'GILIRAN' : (i < 8 ? 'KARTU' : 'PUTARAN'));
+
   Widget _pageOf(_Step s, int i) => LayoutBuilder(
     builder: (context, c) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(22, 6, 22, 6),
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: math.max(0.0, c.maxHeight - 12)),
+        constraints: BoxConstraints(minHeight: math.max(0.0, c.maxHeight - 16)),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '${i + 1} / ${_steps.length}',
-                  style: const TextStyle(fontSize: 12, color: Colors.white38),
+                // 1. penanda posisi
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(14),
+                    border:
+                    Border.all(color: s.accent.withValues(alpha: 0.6)),
+                  ),
+                  child: Text(
+                    '${_chapter(i)}  ·  ${i + 1} / ${_steps.length}',
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        letterSpacing: 1.6,
+                        fontWeight: FontWeight.w700,
+                        color: s.accent),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
+                // 2. judul
                 Text(
                   s.title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 26,
+                    fontSize: 30,
                     fontWeight: FontWeight.w900,
                     color: s.accent,
+                    shadows: const [
+                      Shadow(color: Colors.black, blurRadius: 14),
+                      Shadow(color: Colors.black, blurRadius: 3),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                s.visual(_pulse),
-                const SizedBox(height: 20),
-                _rich(s.body, s.accent),
+                const SizedBox(height: 14),
+                // 3. gambar
+                _stage(s.accent, s.visual(_pulse)),
+                const SizedBox(height: 14),
+                // 4. penjelasan
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: _rich(s.body, s.accent),
+                ),
               ],
             ),
           ),
@@ -387,12 +442,34 @@ class _TutorialPageState extends State<TutorialPage>
     ),
   );
 
+  /// Panggung gambar: panel kaca berbingkai aksen dengan pendar lembut.
+  Widget _stage(Color accent, Widget child) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.black.withValues(alpha: 0.58),
+          accent.withValues(alpha: 0.14),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.4),
+      boxShadow: [
+        BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 24),
+      ],
+    ),
+    child: child,
+  );
+
   /// Teks dengan **tebal** berwarna aksen.
   Widget _rich(String s, Color accent) {
     final parts = s.split('**');
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.white70),
+        style: const TextStyle(fontSize: 15.5, height: 1.5, color: Colors.white),
         children: [
           for (var i = 0; i < parts.length; i++)
             TextSpan(
@@ -403,7 +480,7 @@ class _TutorialPageState extends State<TutorialPage>
             ),
         ],
       ),
-      textAlign: TextAlign.center,
+      textAlign: TextAlign.left,
     );
   }
 }
@@ -482,6 +559,76 @@ class _Chip extends StatelessWidget {
 }
 
 // ------------------------- gambar per halaman -------------------------
+
+/// Alur satu siklus; [active] menandai tahap yang sedang dijelaskan.
+class _CycleStrip extends StatelessWidget {
+  final int active;
+  const _CycleStrip({required this.active});
+
+  static const _items = [
+    ('hari', 'Hari'),
+    ('', 'Malam'),
+    ('helaidaun', 'Persembahan'),
+    ('discuss', 'Musyawarah'),
+    ('vote', 'Voting'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (var i = 0; i < _items.length; i++) ...[
+        Expanded(
+          child: Column(
+            children: [
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: i == active ? 1 : 0.45,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.4),
+                    border: Border.all(
+                      color: i == active
+                          ? EmbunColors.gold
+                          : Colors.white24,
+                      width: i == active ? 2 : 1,
+                    ),
+                  ),
+                  child: _items[i].$1.isEmpty
+                      ? const Icon(Icons.nightlight_round,
+                      size: 24, color: EmbunColors.mist)
+                      : GameIcon(_items[i].$1, size: 28),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(_items[i].$2,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight:
+                      i == active ? FontWeight.w800 : FontWeight.w500,
+                      color:
+                      i == active ? EmbunColors.gold : Colors.white54)),
+            ],
+          ),
+        ),
+        if (i < _items.length - 1)
+          const Padding(
+            padding: EdgeInsets.only(top: 11),
+            child: Icon(Icons.chevron_right_rounded,
+                size: 16, color: Colors.white30),
+          ),
+      ],
+    ],
+  );
+}
 
 class _TreeCompare extends StatelessWidget {
   const _TreeCompare();

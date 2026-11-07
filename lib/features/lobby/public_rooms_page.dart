@@ -327,6 +327,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
                       accent: EmbunColors.blood,
                     ),
                   if (rooms.length > 4) _controls(rooms.length, visible.length),
+                  if (rooms.isNotEmpty) _listHeader(visible.length),
                 ],
               ),
             ),
@@ -337,7 +338,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
             SliverFillRemaining(hasScrollBody: false, child: _noMatch())
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               sliver: SliverGrid.builder(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 460,
@@ -371,8 +372,6 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
     child: Column(
       children: [
-        _namePanel(),
-        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -382,16 +381,24 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
             const SizedBox(width: 8),
             Expanded(
               child: _tabButton(
-                  label: 'Ruangan Publik', icon: 'persona', index: 1),
+                  label: 'Ruangan Publik',
+                  icon: 'persona',
+                  index: 1,
+                  badge: (_rooms?.length ?? 0) > 0 ? _rooms!.length : null),
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        _namePanel(),
       ],
     ),
   );
 
   Widget _tabButton(
-      {required String label, required String icon, required int index}) {
+      {required String label,
+        required String icon,
+        required int index,
+        int? badge}) {
     final on = _tab == index;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -429,6 +436,22 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
                 ),
               ),
             ),
+            if (badge != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                  color: EmbunColors.leaf.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('$badge',
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
+              ),
+            ],
           ],
         ),
       ),
@@ -451,9 +474,17 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
                 controller: widget.codeCtrl,
                 textCapitalization: TextCapitalization.characters,
                 textInputAction: TextInputAction.done,
+                textAlign: TextAlign.center,
+                maxLength: 8,
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 6,
+                    color: EmbunColors.gold),
                 onSubmitted: (_) => _joinByCode(),
                 decoration: const InputDecoration(
                   labelText: 'Kode ruangan',
+                  counterText: '',
                   prefixIcon: Padding(
                     padding: EdgeInsets.all(6),
                     child: GameIcon('roomcode', size: 30),
@@ -469,8 +500,8 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
               ),
               const SizedBox(height: 12),
               const Text(
-                'Belum punya kode? Buka tab Ruangan Publik untuk melihat '
-                    'ruangan yang sedang menunggu pemain.',
+                'Kode terdiri dari 5 huruf dan dibagikan oleh host ruangan. '
+                    'Belum punya? Lihat tab Ruangan Publik.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11.5, color: Colors.white54),
               ),
@@ -481,8 +512,17 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
     ),
   );
 
-  Widget _namePanel() => OrnatePanel(
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+  Widget _namePanel() => Container(
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.32),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(
+        color: _nameMissing
+            ? EmbunColors.blood
+            : EmbunColors.goldDim.withValues(alpha: 0.4),
+      ),
+    ),
     child: TextField(
       controller: widget.nameCtrl,
       focusNode: _nameFocus,
@@ -492,12 +532,14 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
         if (_nameMissing) setState(() => _nameMissing = false);
       },
       decoration: InputDecoration(
-        labelText: 'Namamu',
+        labelText: 'Bergabung sebagai',
+        hintText: 'Namamu',
         counterText: '',
+        isDense: true,
         errorText: _nameMissing ? 'Isi namamu dulu untuk bergabung' : null,
         prefixIcon: const Padding(
           padding: EdgeInsets.all(6),
-          child: GameIcon('identity', size: 30),
+          child: GameIcon('identity', size: 28),
         ),
       ),
     ),
@@ -547,6 +589,28 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
               Text('$shown dari $total',
                   style: const TextStyle(fontSize: 12, color: Colors.white54)),
           ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _listHeader(int shown) => Padding(
+    padding: const EdgeInsets.fromLTRB(2, 14, 2, 0),
+    child: Row(
+      children: [
+        const Text('Menunggu pemain',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: EmbunColors.cream)),
+        const SizedBox(width: 8),
+        Text('$shown ruangan',
+            style: const TextStyle(fontSize: 12, color: Colors.white54)),
+        const Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(left: 10),
+            child: Divider(height: 1, color: Colors.white12),
+          ),
         ),
       ],
     ),
@@ -636,7 +700,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${r.code}  ·  ${_ageText(age)}',
+                  'Kode ${r.code}  ·  ${_ageText(age)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

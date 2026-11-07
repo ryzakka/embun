@@ -165,10 +165,211 @@ class _DiscussionViewState extends State<DiscussionView> {
     );
   }
 
+  bool _notesOpen = true;
+
+  /// Catatan sesi: petunjuk desa, bisikan pribadi, dan siapa mempersembahkan
+  /// berapa kartu. Satu panel yang bisa dilipat supaya obrolan tetap lega.
+  Widget _notesPanel() {
+    final clues = _clues;
+    final n = clues.length + mySecrets.length + (counts.isEmpty ? 0 : 1);
+    if (n == 0) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _notesOpen = !_notesOpen),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              child: Row(
+                children: [
+                  const GameIcon('info', size: 22),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Catatan untuk musyawarah',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                  Text('$n',
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.white54)),
+                  Icon(
+                      _notesOpen
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: Colors.white60),
+                ],
+              ),
+            ),
+          ),
+          if (_notesOpen)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 190),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final c in clues)
+                      NoticeStrip(
+                          icon: 'announcement',
+                          text: c,
+                          accent: Colors.lightBlueAccent),
+                    for (final s in mySecrets)
+                      NoticeStrip(
+                          icon: 'info',
+                          text: s['message'] as String,
+                          accent: EmbunColors.gold),
+                    if (counts.isNotEmpty) _offeringChips(),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _offeringChips() => Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Persembahan semalam',
+            style: TextStyle(fontSize: 11, color: Colors.white54)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final p in widget.players)
+              if (counts[p['user_id']] != null)
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: counts[p['user_id']]! >= 2
+                          ? EmbunColors.gold
+                          : EmbunColors.goldDim.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    '${_nameOf(p['user_id'] as String)} · '
+                        '${counts[p['user_id']]} kartu',
+                    style: const TextStyle(fontSize: 11.5),
+                  ),
+                ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _chatArea() => Container(
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.28),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.white10),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: StreamBuilder<List<Map<String, dynamic>>>(
+      stream: chatStream,
+      builder: (context, s) {
+        final msgs = sortChat((s.data ?? [])
+            .where((m) => m['day'] == widget.day)
+            .toList())
+            .reversed
+            .toList();
+        if (msgs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.forum_outlined, size: 34, color: Colors.white24),
+                  SizedBox(height: 8),
+                  Text('Belum ada yang bicara',
+                      style: TextStyle(color: Colors.white54)),
+                  SizedBox(height: 2),
+                  Text('Mulailah dengan menyebut siapa yang kamu curigai.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11.5, color: Colors.white38)),
+                ],
+              ),
+            ),
+          );
+        }
+        return ListView.builder(
+          reverse: true,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          itemCount: msgs.length,
+          itemBuilder: (_, i) {
+            final m = msgs[i];
+            final mine = m['user_id'] == widget.repo.myId;
+            // Pesan lebih lama ada di indeks berikutnya (daftar terbalik).
+            final older = i + 1 < msgs.length ? msgs[i + 1] : null;
+            final head = older == null || older['user_id'] != m['user_id'];
+            return Align(
+              alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+              child: Container(
+                margin: EdgeInsets.only(top: head ? 10 : 2),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                constraints: const BoxConstraints(maxWidth: 360),
+                decoration: BoxDecoration(
+                  color: mine
+                      ? const Color(0xFF1F4A38)
+                      : const Color(0xFF1B2523),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(!mine && head ? 4 : 14),
+                    topRight: Radius.circular(mine && head ? 4 : 14),
+                    bottomLeft: const Radius.circular(14),
+                    bottomRight: const Radius.circular(14),
+                  ),
+                  border: Border.all(
+                    color: mine
+                        ? EmbunColors.gold.withValues(alpha: 0.4)
+                        : Colors.white12,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (head && !mine)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(m['name'] as String,
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: EmbunColors.gold)),
+                      ),
+                    Text(m['body'] as String),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
           icon: 'discuss',
@@ -187,112 +388,16 @@ class _DiscussionViewState extends State<DiscussionView> {
             ],
           ),
         ),
-        for (final c in _clues)
-          NoticeStrip(
-              icon: 'announcement', text: c, accent: Colors.lightBlueAccent),
-        if (counts.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(right: 6),
-                  child: GameIcon('donations', size: 30),
-                ),
-                for (final p in widget.players)
-                  if (counts[p['user_id']] != null)
-                    Container(
-                      alignment: Alignment.center,
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: counts[p['user_id']]! >= 2
-                              ? EmbunColors.gold
-                              : EmbunColors.goldDim.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Text(
-                        '${_nameOf(p['user_id'] as String)} '
-                            '${counts[p['user_id']]} kartu',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
-              ],
-            ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(2, 2, 2, 0),
+          child: Text(
+            'Ada pengkhianat di antara kalian. Siapa yang mencurigakan?',
+            style: TextStyle(fontSize: 12, color: Colors.white60),
           ),
-        ],
-        for (final s in mySecrets)
-          NoticeStrip(
-              icon: 'info', text: s['message'] as String, accent: EmbunColors.gold),
-        const SizedBox(height: 6),
-        const Text(
-          'Ada pengkhianat di antara kalian. Siapa yang mencurigakan?',
-          style: TextStyle(fontSize: 12, color: Colors.white60),
         ),
+        _notesPanel(),
         const SizedBox(height: 8),
-        Expanded(
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: chatStream,
-            builder: (context, s) {
-              final msgs = sortChat((s.data ?? [])
-                  .where((m) => m['day'] == widget.day)
-                  .toList())
-                  .reversed
-                  .toList();
-              if (msgs.isEmpty) {
-                return const Center(
-                    child: Text('Belum ada yang bicara...',
-                        style: TextStyle(color: Colors.white38)));
-              }
-              return ListView.builder(
-                reverse: true,
-                itemCount: msgs.length,
-                itemBuilder: (_, i) {
-                  final m = msgs[i];
-                  final mine = m['user_id'] == widget.repo.myId;
-                  return Align(
-                    alignment:
-                    mine ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 3),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      constraints: const BoxConstraints(maxWidth: 360),
-                      decoration: BoxDecoration(
-                        color: mine
-                            ? const Color(0xFF1F4A38)
-                            : const Color(0xFF1B2523),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: mine
-                              ? EmbunColors.gold.withValues(alpha: 0.4)
-                              : Colors.white12,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(m['name'] as String,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: mine
-                                      ? EmbunColors.gold
-                                      : EmbunColors.goldDim)),
-                          Text(m['body'] as String),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _chatArea()),
         const SizedBox(height: 8),
         if (widget.readOnly)
           const Padding(
@@ -304,25 +409,38 @@ class _DiscussionViewState extends State<DiscussionView> {
             ),
           )
         else ...[
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: ctrl,
-                  maxLength: 200,
-                  onSubmitted: (_) => _send(),
-                  decoration: const InputDecoration(
-                    hintText: 'Tulis sesuatu...',
-                    counterText: '',
-                    isDense: true,
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 2, 4, 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                  color: EmbunColors.goldDim.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: ctrl,
+                    maxLength: 200,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _send(),
+                    decoration: const InputDecoration(
+                      hintText: 'Tulis sesuatu...',
+                      counterText: '',
+                      isDense: true,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              MedallionButton(icon: 'kirim', size: 44, onTap: _send),
-            ],
+                MedallionButton(icon: 'kirim', size: 42, onTap: _send),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           EmbunButton(
             label: widget.iAmReady
                 ? 'Menunggu... ${widget.readyCount}/${widget.total} siap'
