@@ -6,41 +6,29 @@ import '../common/ornate.dart';
 
 // =====================================================================
 // Format isi pengumuman (kolom `body` di tabel `announcements`).
+// Sengaja sederhana; satu baris = satu elemen:
 //
-// Satu baris = satu elemen. Yang dikenali:
+//   # Judul bagian              judul kecil untuk mengelompokkan
+//   - butir                     butir (awali 2 spasi = butir anak)
+//   - [baru] butir              lencana pada butir: [baru] [ubah] [perbaikan]
+//   [penting] teks              kotak sorot untuk satu hal yang wajib dibaca
+//   **tebal**                   penekanan di dalam kalimat
+//   [teks](https://...)         tautan di dalam kalimat (URL polos juga jadi tautan)
+//   Unduh APK: https://...      baris tersendiri = kartu tautan
+//   https://...                 baris tersendiri = kartu tautan
 //
-//   # Judul bagian              judul besar (## dan ### = anak judul)
-//   - butir   * butir   • butir butir biasa (awali 2 spasi = butir anak)
-//   + teks                      butir berlencana BARU
-//   ~ teks                      butir berlencana UBAH
-//   ! teks                      butir berlencana PENTING
-//   - [perbaikan] teks          lencana: [baru] [ubah] [perbaikan] [penting]
-//                               [hapus] pada butir mana pun
-//   1. langkah                  daftar bernomor
-//   > kutipan                   kutipan
-//   [info] teks                 kotak sorot: [info] [tips] [awas] [penting] [baru]
-//   ---                         garis pemisah
-//   Unduh APK: https://...      kartu tautan (label: tautan)
-//   https://...                 kartu tautan (tautan saja, satu baris)
-//   [Label](https://...)        kartu tautan (satu baris)
+// Tautan .apk/.aab/.zip/.exe dst., rilis GitHub, Drive, dan sejenisnya tampil
+// sebagai kartu UNDUH; Play Store / App Store sebagai kartu TOKO.
 //
-// Di dalam kalimat: **tebal**  *miring*  `kode`  ==sorot==
-//                   [teks](https://...)  dan tautan polos https://...
-//
-// Tautan berakhiran .apk/.aab/.zip/.exe dst., rilis GitHub, Drive, MediaFire,
-// dan sejenisnya tampil sebagai kartu UNDUH; Play Store / App Store sebagai
-// kartu TOKO; lainnya kartu TAUTAN biasa.
-//
-// Baris lanjutan (tanpa penanda) tepat di bawah sebuah butir digabung ke butir
-// itu, dan "\n" yang terketik literal di Table Editor Supabase dianggap baris
-// baru, sehingga isi lama tetap rapi.
+// Baris tanpa penanda tepat di bawah sebuah butir digabung ke butir itu, dan
+// "\n" yang terketik literal di Table Editor Supabase dianggap baris baru.
 // =====================================================================
 
 enum LinkKind { download, store, web }
 
 class LinkInfo {
   final LinkKind kind;
-  final String badge; // mis. APK, ZIP, TOKO; kosong untuk tautan biasa
+  final String badge; // mis. APK, ZIP; kosong untuk selain unduhan
   final String host;
   const LinkInfo(this.kind, this.badge, this.host);
 }
@@ -70,14 +58,14 @@ LinkInfo classifyLink(String url) {
   }
   for (final s in _storeHosts) {
     if (host == s || host.endsWith('.$s')) {
-      return LinkInfo(LinkKind.store, 'TOKO', host);
+      return LinkInfo(LinkKind.store, '', host);
     }
   }
   if (host.contains('github.com') && path.contains('/releases')) {
-    return LinkInfo(LinkKind.download, 'RILIS', host);
+    return LinkInfo(LinkKind.download, '', host);
   }
   for (final d in _dlHosts) {
-    if (host.contains(d)) return LinkInfo(LinkKind.download, 'BERKAS', host);
+    if (host.contains(d)) return LinkInfo(LinkKind.download, '', host);
   }
   return LinkInfo(LinkKind.web, '', host);
 }
@@ -92,8 +80,8 @@ final _urlRe = RegExp(r'https?://[^\s<>\]\)"]+');
 
 String _stripTrailing(String u) => u.replaceFirst(RegExp(r'[.,;:!?]+$'), '');
 
-/// Tautan unduhan pertama di [body] (kartu UNDUH lebih diutamakan daripada
-/// TOKO); null bila tak ada.
+/// Tautan unduhan pertama di [body] (UNDUH lebih diutamakan daripada TOKO);
+/// null bila tak ada.
 DownloadLink? findDownloadLink(String body) {
   final text = body.replaceAll(r'\n', '\n');
   DownloadLink? store;
@@ -126,31 +114,21 @@ Future<void> openAnnouncementLink(BuildContext context, String url) async {
 
 // ------------------------------ parser ------------------------------
 
-enum _K { heading, sub, bullet, numbered, quote, callout, divider, para, link, spacer }
+enum _K { heading, bullet, callout, link, para, spacer }
 
 class _Block {
   final _K k;
   String text;
-  final String tag; // baru, ubah, ... (kosong = tanpa)
+  final String tag; // baru, ubah, perbaikan (kosong = tanpa)
   final int level; // 0 / 1 untuk butir
-  final int n; // nomor untuk daftar bernomor
   final String url;
   _Block(this.k,
-      {this.text = '', this.tag = '', this.level = 0, this.n = 0, this.url = ''});
+      {this.text = '', this.tag = '', this.level = 0, this.url = ''});
 }
 
-final _tagRe = RegExp(
-    r'^\[(baru|ubah|perbaikan|fix|penting|hapus|info|tips|awas|peringatan)\]\s*',
-    caseSensitive: false);
-
-String _normTag(String t) {
-  final s = t.toLowerCase();
-  if (s == 'fix') return 'perbaikan';
-  if (s == 'peringatan') return 'awas';
-  return s;
-}
-
-bool _isList(_Block? b) => b != null && (b.k == _K.bullet || b.k == _K.numbered);
+final _bulletTagRe =
+RegExp(r'^\[(baru|ubah|perbaikan|fix)\]\s*', caseSensitive: false);
+final _importantRe = RegExp(r'^\[penting\]\s*', caseSensitive: false);
 
 List<_Block> _parse(String raw) {
   final lines = raw
@@ -160,11 +138,8 @@ List<_Block> _parse(String raw) {
       .split('\n');
   final out = <_Block>[];
 
-  final dividerRe = RegExp(r'^([-*_])\1{2,}$');
-  final headRe = RegExp(r'^(#{1,3})\s+(.+)$');
-  final quoteRe = RegExp(r'^>\s?(.*)$');
-  final numRe = RegExp(r'^(\s*)(\d{1,2})[.)]\s+(.+)$');
-  final bulletRe = RegExp(r'^(\s*)([-*•+~!])\s+(.+)$');
+  final headRe = RegExp(r'^#{1,3}\s+(.+)$');
+  final bulletRe = RegExp(r'^(\s*)([-*•])\s+(.+)$');
   final linkLabelRe = RegExp(r'^(?:([^:\n]{1,40}?)\s*:\s+)?(https?://\S+)$');
   final linkMdRe = RegExp(r'^\[([^\]]+)\]\((https?://[^\s)]+)\)$');
 
@@ -174,52 +149,32 @@ List<_Block> _parse(String raw) {
       if (out.isNotEmpty && out.last.k != _K.spacer) out.add(_Block(_K.spacer));
       continue;
     }
-    if (dividerRe.hasMatch(t)) {
-      out.add(_Block(_K.divider));
-      continue;
-    }
     var m = headRe.firstMatch(t);
     if (m != null) {
-      out.add(_Block(m.group(1)!.length == 1 ? _K.heading : _K.sub,
-          text: m.group(2)!.trim()));
-      continue;
-    }
-    m = quoteRe.firstMatch(t);
-    if (m != null) {
-      out.add(_Block(_K.quote, text: m.group(1)!.trim()));
-      continue;
-    }
-    m = numRe.firstMatch(line);
-    if (m != null) {
-      out.add(_Block(_K.numbered,
-          text: m.group(3)!.trim(),
-          n: int.tryParse(m.group(2)!) ?? 1,
-          level: m.group(1)!.length >= 2 ? 1 : 0));
+      out.add(_Block(_K.heading, text: m.group(1)!.trim()));
       continue;
     }
     m = bulletRe.firstMatch(line);
     if (m != null) {
       var content = m.group(3)!.trim();
-      var tag = switch (m.group(2)) {
-        '+' => 'baru',
-        '~' => 'ubah',
-        '!' => 'penting',
-        _ => '',
-      };
-      final tm = _tagRe.firstMatch(content);
+      var tag = '';
+      final tm = _bulletTagRe.firstMatch(content);
       if (tm != null) {
-        tag = _normTag(tm.group(1)!);
+        tag = tm.group(1)!.toLowerCase();
+        if (tag == 'fix') tag = 'perbaikan';
         content = content.substring(tm.end);
       }
       out.add(_Block(_K.bullet,
           text: content,
           tag: tag,
-          level: (m.group(1)!.length >= 2 || m.group(1)!.contains('\t')) ? 1 : 0));
+          level:
+          (m.group(1)!.length >= 2 || m.group(1)!.contains('\t')) ? 1 : 0));
       continue;
     }
     m = linkMdRe.firstMatch(t);
     if (m != null) {
-      out.add(_Block(_K.link, text: m.group(1)!.trim(), url: _stripTrailing(m.group(2)!)));
+      out.add(_Block(_K.link,
+          text: m.group(1)!.trim(), url: _stripTrailing(m.group(2)!)));
       continue;
     }
     m = linkLabelRe.firstMatch(t);
@@ -228,14 +183,13 @@ List<_Block> _parse(String raw) {
           text: (m.group(1) ?? '').trim(), url: _stripTrailing(m.group(2)!)));
       continue;
     }
-    final tm = _tagRe.firstMatch(t);
-    if (tm != null) {
-      out.add(_Block(_K.callout,
-          text: t.substring(tm.end).trim(), tag: _normTag(tm.group(1)!)));
+    final im = _importantRe.firstMatch(t);
+    if (im != null) {
+      out.add(_Block(_K.callout, text: t.substring(im.end).trim()));
       continue;
     }
     // Baris lanjutan tepat di bawah butir: gabung ke butir itu.
-    if (out.isNotEmpty && _isList(out.last)) {
+    if (out.isNotEmpty && out.last.k == _K.bullet) {
       out.last.text = '${out.last.text} $t';
       continue;
     }
@@ -250,49 +204,33 @@ List<_Block> _parse(String raw) {
       final prev = tidy.isEmpty ? null : tidy.last;
       final next = i + 1 < out.length ? out[i + 1] : null;
       if (prev == null || next == null) continue;
-      if (_isList(prev) && _isList(next)) continue;
+      if (prev.k == _K.bullet && next.k == _K.bullet) continue;
     }
     tidy.add(b);
   }
   return tidy;
 }
 
-// ------------------------------ inline ------------------------------
+// ------------------------------ tampilan ------------------------------
 
 final _inlineRe = RegExp(
   r'\*\*(.+?)\*\*' // 1 tebal
-  r'|`([^`]+)`' // 2 kode
-  r'|==(.+?)==' // 3 sorot
-  r'|\[([^\]]+)\]\((https?://[^\s)]+)\)' // 4,5 tautan bertulisan
-  r'|(https?://[^\s<>\]\)"]+)' // 6 tautan polos
-  r'|(?<![\w*])\*(?!\s)([^*]+?)(?<!\s)\*(?![\w*])', // 7 miring
+  r'|\[([^\]]+)\]\((https?://[^\s)]+)\)' // 2,3 tautan bertulisan
+  r'|(https?://[^\s<>\]\)"]+)', // 4 tautan polos
 );
 
 const _linkColor = Color(0xFF8FD3FF);
 const _blue = Color(0xFF6CB6FF);
-const _base = TextStyle(fontSize: 13.5, height: 1.45, color: Colors.white70);
+const _body = TextStyle(fontSize: 14, height: 1.5, color: Color(0xDDFFFFFF));
+const _bodySub = TextStyle(fontSize: 13, height: 1.45, color: Colors.white60);
 
-class _TagStyle {
-  final String label;
-  final Color color;
-  final IconData icon;
-  const _TagStyle(this.label, this.color, this.icon);
-}
-
-_TagStyle _tagStyle(String tag) => switch (tag) {
-  'baru' => const _TagStyle('BARU', EmbunColors.leaf, Icons.auto_awesome_rounded),
-  'ubah' => const _TagStyle('UBAH', EmbunColors.gold, Icons.tune_rounded),
-  'perbaikan' => const _TagStyle('PERBAIKAN', _blue, Icons.build_rounded),
-  'penting' =>
-  const _TagStyle('PENTING', EmbunColors.blood, Icons.priority_high_rounded),
-  'hapus' => const _TagStyle('DIHAPUS', EmbunColors.mist, Icons.delete_outline_rounded),
-  'info' => const _TagStyle('INFO', _blue, Icons.info_outline_rounded),
-  'tips' => const _TagStyle('TIPS', EmbunColors.leaf, Icons.lightbulb_outline_rounded),
-  'awas' => const _TagStyle('AWAS', EmbunColors.blood, Icons.warning_amber_rounded),
-  _ => const _TagStyle('', EmbunColors.gold, Icons.circle),
+(String, Color) _tagLook(String tag) => switch (tag) {
+  'baru' => ('BARU', EmbunColors.leaf),
+  'ubah' => ('UBAH', EmbunColors.gold),
+  _ => ('PERBAIKAN', _blue),
 };
 
-/// Isi entri pengumuman dengan format kaya (lihat penjelasan di atas berkas).
+/// Isi entri pengumuman (lihat penjelasan format di atas berkas).
 class AnnouncementBody extends StatefulWidget {
   final String text;
   final Color accent;
@@ -332,58 +270,34 @@ class _AnnouncementBodyState extends State<AnnouncementBody> {
     style: style.copyWith(
       color: _linkColor,
       decoration: TextDecoration.underline,
-      decorationColor: _linkColor.withValues(alpha: 0.55),
+      decorationColor: _linkColor.withValues(alpha: 0.5),
     ),
     recognizer: _tap(url),
   );
 
-  List<InlineSpan> _spans(String s, TextStyle style, int depth) {
+  List<InlineSpan> _spans(String s, TextStyle style) {
     final out = <InlineSpan>[];
     var pos = 0;
     for (final m in _inlineRe.allMatches(s)) {
       if (m.start > pos) out.add(TextSpan(text: s.substring(pos, m.start)));
       pos = m.end;
       if (m.group(1) != null) {
-        final bold = style.copyWith(
-            fontWeight: FontWeight.w800, color: EmbunColors.cream);
         out.add(TextSpan(
-          style: bold,
-          children:
-          depth < 2 ? _spans(m.group(1)!, bold, depth + 1) : [TextSpan(text: m.group(1))],
+          text: m.group(1),
+          style: style.copyWith(
+              fontWeight: FontWeight.w800, color: EmbunColors.cream),
         ));
       } else if (m.group(2) != null) {
-        out.add(TextSpan(
-          text: ' ${m.group(2)} ',
-          style: style.copyWith(
-            fontFamily: 'monospace',
-            fontSize: (style.fontSize ?? 13.5) - 0.5,
-            color: EmbunColors.gold,
-            backgroundColor: Colors.black.withValues(alpha: 0.35),
-          ),
-        ));
-      } else if (m.group(3) != null) {
-        out.add(TextSpan(
-          text: m.group(3),
-          style: style.copyWith(
-            color: EmbunColors.cream,
-            backgroundColor: widget.accent.withValues(alpha: 0.28),
-          ),
-        ));
+        out.add(_linkSpan(m.group(2)!, _stripTrailing(m.group(3)!), style));
       } else if (m.group(4) != null) {
-        out.add(_linkSpan(m.group(4)!, _stripTrailing(m.group(5)!), style));
-      } else if (m.group(6) != null) {
-        final raw = m.group(6)!;
+        final raw = m.group(4)!;
         final url = _stripTrailing(raw);
-        final trail = raw.substring(url.length);
         var shown = url.replaceFirst(RegExp(r'^https?://(www\.)?'), '');
-        if (shown.length > 46) shown = '${shown.substring(0, 45)}…';
+        if (shown.length > 44) shown = '${shown.substring(0, 43)}…';
         out.add(_linkSpan(shown, url, style));
-        if (trail.isNotEmpty) out.add(TextSpan(text: trail));
-      } else if (m.group(7) != null) {
-        out.add(TextSpan(
-          text: m.group(7),
-          style: style.copyWith(fontStyle: FontStyle.italic),
-        ));
+        if (raw.length > url.length) {
+          out.add(TextSpan(text: raw.substring(url.length)));
+        }
       }
     }
     if (pos < s.length) out.add(TextSpan(text: s.substring(pos)));
@@ -391,204 +305,100 @@ class _AnnouncementBodyState extends State<AnnouncementBody> {
   }
 
   Widget _rich(String t, TextStyle s) =>
-      Text.rich(TextSpan(style: s, children: _spans(t, s, 0)));
+      Text.rich(TextSpan(style: s, children: _spans(t, s)));
 
-  Widget _chip(_TagStyle ts) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    decoration: BoxDecoration(
-      color: ts.color.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: ts.color.withValues(alpha: 0.7)),
-    ),
-    child: Text(
-      ts.label,
-      style: TextStyle(
-        fontSize: 9.5,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.7,
-        color: ts.color,
+  Widget _tagChip(String tag) {
+    final (label, color) = _tagLook(tag);
+    return Container(
+      margin: const EdgeInsets.only(right: 8, top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(5),
       ),
-    ),
-  );
-
-  /// Kotak dengan garis tebal di kiri (kutipan dan kotak sorot).
-  Widget _barBox({required Color color, required Widget child, double fill = 0.12}) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: ColoredBox(
-            color: color.withValues(alpha: fill),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(width: 3, color: color),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
-                      child: child,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+          color: color,
         ),
-      );
+      ),
+    );
+  }
 
-  Widget _block(_Block b) {
+  Widget _block(_Block b, bool first) {
     final accent = widget.accent;
     switch (b.k) {
       case _K.spacer:
-        return const SizedBox(height: 8);
-      case _K.divider:
-        return Container(
-          height: 1,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              accent.withValues(alpha: 0),
-              accent.withValues(alpha: 0.65),
-              accent.withValues(alpha: 0),
-            ]),
-          ),
-        );
+        return const SizedBox(height: 6);
       case _K.heading:
         return Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 5),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 3,
-                height: 17,
-                decoration: BoxDecoration(
-                    color: accent, borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: _rich(
-                  b.text,
-                  const TextStyle(
-                    fontSize: 16,
-                    height: 1.3,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                    color: EmbunColors.gold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      case _K.sub:
-        return Padding(
-          padding: const EdgeInsets.only(top: 5, bottom: 3),
+          padding: EdgeInsets.only(top: first ? 0 : 12, bottom: 6),
           child: _rich(
             b.text,
-            const TextStyle(
-              fontSize: 14,
-              height: 1.35,
+            TextStyle(
+              fontSize: 14.5,
+              height: 1.3,
               fontWeight: FontWeight.w800,
-              color: EmbunColors.cream,
+              letterSpacing: 0.2,
+              color: accent,
             ),
           ),
         );
       case _K.bullet:
-        final ts = b.tag.isEmpty ? null : _tagStyle(b.tag);
+        final sub = b.level > 0;
         return Padding(
-          padding: EdgeInsets.only(bottom: 5, left: b.level * 16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (ts != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, right: 8),
-                  child: _chip(ts),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, right: 10),
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: b.level == 0 ? accent : Colors.transparent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: accent, width: 1),
-                    ),
-                  ),
-                ),
-              Expanded(child: _rich(b.text, _base)),
-            ],
-          ),
-        );
-      case _K.numbered:
-        return Padding(
-          padding: EdgeInsets.only(bottom: 6, left: b.level * 16.0),
+          padding: EdgeInsets.only(bottom: sub ? 4 : 6, left: sub ? 18.0 : 2.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 20,
-                height: 20,
-                margin: const EdgeInsets.only(right: 10, top: 1),
-                alignment: Alignment.center,
+                width: sub ? 4 : 5,
+                height: sub ? 4 : 5,
+                margin: EdgeInsets.only(top: sub ? 8.5 : 9, right: 10),
                 decoration: BoxDecoration(
+                  color: sub ? Colors.white38 : accent.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
-                  color: accent.withValues(alpha: 0.18),
-                  border: Border.all(color: accent.withValues(alpha: 0.8)),
                 ),
-                child: Text('${b.n}',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: accent)),
               ),
-              Expanded(child: _rich(b.text, _base)),
+              if (b.tag.isNotEmpty) _tagChip(b.tag),
+              Expanded(child: _rich(b.text, sub ? _bodySub : _body)),
             ],
-          ),
-        );
-      case _K.quote:
-        return _barBox(
-          color: Colors.white54,
-          fill: 0.07,
-          child: _rich(
-            b.text,
-            _base.copyWith(fontStyle: FontStyle.italic, color: Colors.white60),
           ),
         );
       case _K.callout:
-        final ts = _tagStyle(b.tag);
-        return _barBox(
-          color: ts.color,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 1, right: 9),
-                child: Icon(ts.icon, size: 18, color: ts.color),
-              ),
-              Expanded(
-                child: b.text.isEmpty
-                    ? Text(ts.label,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: ts.color))
-                    : _rich(b.text, _base.copyWith(color: Colors.white)),
-              ),
-            ],
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 9, 12, 9),
+            decoration: BoxDecoration(
+              color: EmbunColors.gold.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2, right: 8),
+                  child: Icon(Icons.priority_high_rounded,
+                      size: 17, color: EmbunColors.gold),
+                ),
+                Expanded(
+                  child: _rich(b.text, _body.copyWith(color: EmbunColors.cream)),
+                ),
+              ],
+            ),
           ),
         );
       case _K.link:
-        return _LinkCard(
-            url: b.url, label: b.text.isEmpty ? null : b.text);
+        return _LinkCard(url: b.url, label: b.text.isEmpty ? null : b.text);
       case _K.para:
         return Padding(
           padding: const EdgeInsets.only(bottom: 4),
-          child: _rich(b.text, _base),
+          child: _rich(b.text, _body),
         );
     }
   }
@@ -602,7 +412,9 @@ class _AnnouncementBodyState extends State<AnnouncementBody> {
     _recs.clear();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [for (final b in _blocks) _block(b)],
+      children: [
+        for (var i = 0; i < _blocks.length; i++) _block(_blocks[i], i == 0),
+      ],
     );
   }
 }
@@ -629,112 +441,87 @@ class _LinkCard extends StatelessWidget {
       LinkKind.web =>
       (EmbunColors.gold, Icons.open_in_new_rounded, 'Buka tautan', 'Buka'),
     };
+    final sub = [
+      if (info.badge.isNotEmpty) info.badge,
+      info.host,
+    ].where((e) => e.isNotEmpty).join('  ·  ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [c.withValues(alpha: 0.24), c.withValues(alpha: 0.06)],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: c.withValues(alpha: 0.75)),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => openAnnouncementLink(context, url),
-            onLongPress: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              await Clipboard.setData(ClipboardData(text: url));
-              messenger.showSnackBar(
-                  const SnackBar(content: Text('Tautan disalin.')));
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: c.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(ic, color: c, size: 26),
+        color: c.withValues(alpha: 0.10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: c.withValues(alpha: 0.45)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => openAnnouncementLink(context, url),
+          onLongPress: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            await Clipboard.setData(ClipboardData(text: url));
+            messenger
+                .showSnackBar(const SnackBar(content: Text('Tautan disalin.')));
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: c.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label ?? def,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w800,
-                            color: EmbunColors.cream,
+                  child: Icon(ic, color: c, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label ?? def,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: EmbunColors.cream,
+                        ),
+                      ),
+                      if (sub.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            sub,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 11.5, color: Colors.white54),
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            if (info.badge.isNotEmpty) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: c.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Text(info.badge,
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.6,
-                                        color: c)),
-                              ),
-                              const SizedBox(width: 7),
-                            ],
-                            Flexible(
-                              child: Text(
-                                info.host,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 11.5, color: Colors.white54),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: c,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    cta,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0B1A12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: c,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(ic, size: 17, color: const Color(0xFF0B1A12)),
-                        const SizedBox(width: 4),
-                        Text(cta,
-                            style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0B1A12))),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
