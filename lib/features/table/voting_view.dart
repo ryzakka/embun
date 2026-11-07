@@ -369,6 +369,11 @@ class _VotingViewState extends State<VotingView>
     );
   }
 
+  /// Daftar tersangka sebagai kartu karakter utuh (2:3), tersusun di tengah.
+  /// Jumlah kolom dan lebar kartu dihitung dari RUANG YANG DIBERIKAN induk:
+  /// dicari susunan terbesar yang semua kartunya muat tanpa menggulir. Bila
+  /// pemain terlalu banyak untuk ukuran kartu yang masih terbaca, kartu
+  /// dijaga di ukuran nyaman dan daftar digulir (kartu tak pernah terpotong).
   Widget _suspects(List<Map<String, dynamic>> others, bool compact) {
     if (others.isEmpty) {
       return const Center(
@@ -377,54 +382,102 @@ class _VotingViewState extends State<VotingView>
       );
     }
     return LayoutBuilder(builder: (context, c) {
-      // Tinggi kartu tetap (bukan rasio) supaya isi tidak pernah meluap;
-      // daftar yang tidak muat digulir, kartu tidak pernah terpotong.
-      final maxExtent = c.maxWidth < 420 ? 150.0 : 190.0;
-      return GridView.builder(
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
-        physics: const AlwaysScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: maxExtent,
-          mainAxisExtent: compact ? 108.0 : 132.0,
-          mainAxisSpacing: compact ? 8 : 12,
-          crossAxisSpacing: compact ? 8 : 12,
-        ),
-        itemCount: others.length,
-        itemBuilder: (_, i) {
-          final p = others[i];
-          final id = p['user_id'] as String;
-          final sel = target == id;
-          final slot = math.min(i, 7);
-          final opacity = busy && !sel
-              ? 0.45
-              : (target != null && !sel ? 0.7 : 1.0);
-          return AnimatedBuilder(
-            animation: _intro,
-            builder: (context, child) {
-              final t = Curves.easeOutBack.transform(_seg(
-                  _intro.value, 0.50 + 0.03 * slot, 0.78 + 0.03 * slot));
-              return Opacity(
-                opacity: t.clamp(0.0, 1.0).toDouble(),
-                child: Transform.translate(
-                  offset: Offset(0, 46 * (1 - t)),
-                  child: Transform.rotate(
-                    angle: (i.isEven ? -0.07 : 0.07) * (1 - t),
-                    child: child,
-                  ),
+      const hPad = 8.0;
+      final vPad = compact ? 8.0 : 12.0;
+      final gap = compact ? 8.0 : 12.0;
+      final availW = math.max(c.maxWidth - hPad * 2, 60.0);
+      final availH = math.max(c.maxHeight - vPad * 2, 60.0);
+      final n = others.length;
+      // Batas kartu yang masih nyaman dibaca / disentuh.
+      const minW = 74.0;
+      final maxW = c.maxWidth < 420 ? 128.0 : (c.maxWidth < 800 ? 150.0 : 168.0);
+
+      double widthFor(int cols) => math.min(
+          (availW - (cols - 1) * gap) / cols, maxW);
+
+      // 1) Susunan terbesar yang seluruhnya muat tanpa menggulir.
+      var cols = 0;
+      var cardW = 0.0;
+      for (var k = 1; k <= n; k++) {
+        final w = widthFor(k);
+        if (w < minW) break;
+        final rows = (n / k).ceil();
+        final total = rows * w * kProtagonistAspect + (rows - 1) * gap;
+        if (total <= availH) {
+          cols = k;
+          cardW = w;
+          break;
+        }
+      }
+      // 2) Tak muat: pakai lebar kartu nyaman (~104) dan biarkan menggulir.
+      if (cols == 0) {
+        cols = math.max(1, ((availW + gap) / (104 + gap)).floor());
+        cols = math.min(cols, n);
+        cardW = math.max(widthFor(cols), math.min(minW, availW));
+      }
+      cardW = cardW.floorToDouble();
+      final cardH = cardW * kProtagonistAspect;
+
+      final items = <Widget>[
+        for (var i = 0; i < n; i++)
+              () {
+            final p = others[i];
+            final id = p['user_id'] as String;
+            final sel = target == id;
+            final slot = math.min(i, 7);
+            final opacity = busy && !sel
+                ? 0.45
+                : (target != null && !sel ? 0.7 : 1.0);
+            return SizedBox(
+              width: cardW,
+              height: cardH,
+              child: AnimatedBuilder(
+                animation: _intro,
+                builder: (context, child) {
+                  final t = Curves.easeOutBack.transform(_seg(
+                      _intro.value, 0.50 + 0.03 * slot, 0.78 + 0.03 * slot));
+                  return Opacity(
+                    opacity: t.clamp(0.0, 1.0).toDouble(),
+                    child: Transform.translate(
+                      offset: Offset(0, 46 * (1 - t)),
+                      child: Transform.rotate(
+                        angle: (i.isEven ? -0.07 : 0.07) * (1 - t),
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+                child: _SuspectCard(
+                  player: p,
+                  width: cardW,
+                  selected: sel,
+                  opacity: opacity,
+                  enabled: !busy,
+                  jailed: isJailed(p, widget.day),
+                  pulse: _pulse,
+                  onTap: () => _select(id),
                 ),
-              );
-            },
-            child: _SuspectCard(
-              player: p,
-              selected: sel,
-              opacity: opacity,
-              enabled: !busy,
-              jailed: isJailed(p, widget.day),
-              pulse: _pulse,
-              onTap: () => _select(id),
+              ),
+            );
+          }(),
+      ];
+
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+        child: ConstrainedBox(
+          // Muat tanpa gulir: kartu berada di tengah ruang yang tersedia.
+          constraints: BoxConstraints(minHeight: availH),
+          child: Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              runAlignment: WrapAlignment.center,
+              spacing: gap,
+              runSpacing: gap,
+              children: items,
             ),
-          );
-        },
+          ),
+        ),
       );
     });
   }
@@ -587,11 +640,13 @@ class _VotingViewState extends State<VotingView>
   }
 }
 
-/// Kartu tersangka: potret di tengah, cincin dan cahaya merah berdenyut saat
-/// dipilih, pemain lain meredup selagi ada yang dipilih. Isi dibungkus
-/// FittedBox sehingga mengecil (bukan meluap) pada font besar / layar sempit.
+/// Kartu tersangka: kartu karakter 2:3 utuh dengan pelat nama dan nyawa di
+/// bagian bawah. Dipilih = bingkai dan cahaya merah berdenyut, tanda bahaya;
+/// pemain lain meredup selagi ada yang dipilih. Semua ukuran isi mengikuti
+/// [width], jadi kartu kecil di ponsel sempit tetap rapi dan tak meluap.
 class _SuspectCard extends StatelessWidget {
   final Map<String, dynamic> player;
+  final double width;
   final bool selected;
   final double opacity;
   final bool enabled;
@@ -601,6 +656,7 @@ class _SuspectCard extends StatelessWidget {
 
   const _SuspectCard({
     required this.player,
+    required this.width,
     required this.selected,
     required this.opacity,
     required this.enabled,
@@ -613,7 +669,12 @@ class _SuspectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = player['name'] as String;
     final card = player['character_card'] as String;
-    const radius = 18.0;
+    final lives = livesLeft(player);
+    const radius = 12.0;
+    final nameSize = (width * 0.13).clamp(11.0, 15.0).toDouble();
+    final heartSize = (width * 0.12).clamp(11.0, 16.0).toDouble();
+    final dangerSize = (width * 0.24).clamp(20.0, 34.0).toDouble();
+    final pad = (width * 0.06).clamp(5.0, 9.0).toDouble();
 
     return Semantics(
       button: true,
@@ -624,119 +685,140 @@ class _SuspectCard extends StatelessWidget {
         duration: const Duration(milliseconds: 250),
         opacity: opacity,
         child: AnimatedScale(
-          scale: selected ? 1.04 : 1,
+          scale: selected ? 1.05 : 1,
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutBack,
           child: AnimatedBuilder(
             animation: pulse,
             builder: (context, child) {
-              final glow = selected ? 0.30 + 0.30 * pulse.value : 0.0;
+              final glow = selected ? 0.35 + 0.35 * pulse.value : 0.0;
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      (selected ? EmbunColors.blood : Colors.white)
-                          .withValues(alpha: selected ? 0.22 : 0.06),
-                      Colors.black.withValues(alpha: 0.45),
-                    ],
-                  ),
                   borderRadius: BorderRadius.circular(radius),
                   border: Border.all(
                     color: selected
                         ? EmbunColors.blood
-                        : EmbunColors.goldDim.withValues(alpha: 0.4),
-                    width: selected ? 2.5 : 1.5,
+                        : EmbunColors.goldDim.withValues(alpha: 0.5),
+                    width: selected ? 3 : 1.5,
                   ),
                   boxShadow: [
                     if (selected)
                       BoxShadow(
                         color: EmbunColors.blood.withValues(alpha: glow),
-                        blurRadius: 14 + 12 * pulse.value,
-                        spreadRadius: 1.5,
-                      ),
+                        blurRadius: 16 + 14 * pulse.value,
+                        spreadRadius: 2,
+                      )
+                    else
+                      const BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 3)),
                   ],
                 ),
                 child: child,
               );
             },
-            child: Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(radius),
-                onTap: enabled ? onTap : null,
-                child: LayoutBuilder(builder: (context, c) {
-                  final avatar = (c.maxHeight * (jailed ? 0.34 : 0.40))
-                      .clamp(34.0, 60.0)
-                      .toDouble();
-                  final inner = math.max(c.maxWidth - 14, 40.0);
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Center(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: SizedBox(
-                                width: inner,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    PlayerAvatar(
-                                      path: protagonistPath(card),
-                                      size: avatar,
-                                      ring: selected
-                                          ? EmbunColors.blood
-                                          : EmbunColors.goldDim,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 14.5,
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
-                                        color: selected
-                                            ? Colors.white
-                                            : Colors.white70,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    LivesRow(lives: livesLeft(player), size: 14),
-                                    if (jailed) ...[
-                                      const SizedBox(height: 4),
-                                      const StatusTag(
-                                          text: 'Dikurung',
-                                          color: EmbunColors.blood,
-                                          icon: Icons.lock_rounded),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius - 1),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  GameImage(
+                    path: protagonistPath(card),
+                    alignment: Alignment.topCenter,
+                    cacheWidth: (width * 2.5).round(),
+                  ),
+                  // Pudar gelap di bawah supaya nama selalu terbaca.
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: FractionallySizedBox(
+                      heightFactor: 0.46,
+                      widthFactor: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.88),
+                            ],
                           ),
                         ),
                       ),
-                      Positioned(
-                        top: 3,
-                        right: 3,
-                        child: AnimatedScale(
-                          scale: selected ? 1 : 0,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.elasticOut,
-                          child: const GameIcon('danger', size: 26),
+                    ),
+                  ),
+                  // Semburat merah saat dipilih.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    color: EmbunColors.blood
+                        .withValues(alpha: selected ? 0.20 : 0.0),
+                  ),
+                  Positioned(
+                    left: pad,
+                    right: pad,
+                    bottom: pad * 0.8,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: nameSize,
+                            height: 1.15,
+                            fontWeight:
+                            selected ? FontWeight.w900 : FontWeight.w700,
+                            color: Colors.white,
+                            shadows: const [
+                              Shadow(color: Colors.black, blurRadius: 4),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: width * 0.02),
+                        LivesRow(lives: lives, size: heartSize),
+                      ],
+                    ),
+                  ),
+                  if (jailed)
+                    Positioned(
+                      left: pad * 0.7,
+                      top: pad * 0.7,
+                      right: pad * 0.7,
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.topLeft,
+                          child: const StatusTag(
+                              text: 'Dikurung',
+                              color: EmbunColors.blood,
+                              icon: Icons.lock_rounded),
                         ),
                       ),
-                    ],
-                  );
-                }),
+                    ),
+                  Positioned(
+                    top: 3,
+                    right: 3,
+                    child: AnimatedScale(
+                      scale: selected ? 1 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.elasticOut,
+                      child: GameIcon('danger', size: dangerSize),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        onTap: enabled ? onTap : null,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

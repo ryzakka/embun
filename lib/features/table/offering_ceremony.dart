@@ -31,6 +31,19 @@ Offset _bz(Offset p0, Offset c, Offset p1, double e) {
       a * p0.dx + b * c.dx + d * p1.dx, a * p0.dy + b * c.dy + d * p1.dy);
 }
 
+/// Palet pendaran khusus kartu lanjutan (kind 'lanjutan'), berbeda dari kartu
+/// baik (emas) dan kartu jahat (ungu): Regenerasi hijau-aqua, Rekayasa merah
+/// tua. Keduanya bertema DNA, seperti punggung kartunya.
+class _AdvPal {
+  final Color core, accent, spark, dim;
+  const _AdvPal(this.core, this.accent, this.spark, this.dim);
+}
+
+const _regenPal = _AdvPal(
+    Color(0xFF3DDC84), Color(0xFF7DF9E0), Color(0xFFD6FFE9), Color(0xFF0B2A1C));
+const _rekayasaPal = _AdvPal(
+    Color(0xFFFF3B4E), Color(0xFFFF8A5C), Color(0xFFFFD0C8), Color(0xFF30090F));
+
 /// Gambar pohon menurut jumlah daun: pohon0 (rimbun) ... pohon9 (mati);
 /// 30 daun (sempurna) memakai pohon0-sakura.
 String? _treeFor(int leaves) {
@@ -182,6 +195,13 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
   bool _isBad(int i) => widget.defs[_cards[i]]?['side'] == 'antagonis';
 
+  /// Palet kartu lanjutan ke-i; null untuk kartu biasa.
+  _AdvPal? _advPal(int i) {
+    final d = widget.defs[_cards[i]];
+    if (d?['kind'] != 'lanjutan') return null;
+    return d?['side'] == 'antagonis' ? _rekayasaPal : _regenPal;
+  }
+
   @override
   void dispose() {
     _ctl?.dispose();
@@ -280,7 +300,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             goodP = math.max(goodP, amp);
             dy -= math.sin(p * math.pi) * 5 * (1 - p);
           }
-          impacts.add(_Impact(k, p, b));
+          impacts.add(_Impact(k, p, b, _advPal(k)));
         }
 
         final shown = (t / _per).floor().clamp(-1, n - 1).toInt() + 1;
@@ -308,12 +328,15 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         Widget? flying;
         Widget? plate;
         Widget? holdGlow;
+        Widget? advFx;
         final ghosts = <Widget>[];
         final u = _local(cur) / _per;
         if (u >= 0 && u < 0.86) {
           final id = _cards[cur];
           final bad = _isBad(cur);
-          final glow = bad ? EmbunColors.mist : const Color(0xFFFFD866);
+          final pal = _advPal(cur);
+          final glow = pal?.core ??
+              (bad ? EmbunColors.mist : const Color(0xFFFFD866));
           final dir = cur.isEven ? 1.0 : -1.0;
           final a = Curves.easeOutCubic.transform(_seg(u, 0, 0.26));
           final f = Curves.easeInOut.transform(_seg(u, 0.26, 0.46));
@@ -335,8 +358,9 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
           double spinAt(double thv) => thv * 3.5 * math.pi * dir;
 
-          // Cahaya di sekitar kartu saat ditampakkan.
-          if (hover > 0) {
+          // Cahaya di sekitar kartu saat ditampakkan (kartu lanjutan punya
+          // pendaran sendiri di bawah: halo berdenyut, untai DNA, jejak).
+          if (hover > 0 && pal == null) {
             holdGlow = Positioned(
               left: mid.dx - cardH * 0.9,
               top: mid.dy - cardH * 0.9,
@@ -386,8 +410,42 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             h: cardH,
             glow: glow,
             back: _back(cardW, cardH),
-            front: _front(id, cardW, cardH, glow),
+            front: _front(id, cardW, cardH, glow,
+                pal: pal, pulse: 0.5 + 0.5 * math.sin(ms / 1000 * 7)),
           );
+
+          // Pendaran khusus kartu lanjutan. Mulai setelah kartu berbalik
+          // (u >= 0.40), jadi tidak membocorkan jenis kartu dari punggungnya.
+          if (pal != null) {
+            final vis = _smooth(_seg(u, 0.40, 0.50)) * (1 - 0.35 * th);
+            if (vis > 0.01) {
+              final trail = <(Offset, double)>[];
+              if (th > 0) {
+                for (var k = 1; k <= 6; k++) {
+                  final thk = Curves.easeInCubic.transform(
+                      (thRaw - k * 0.05).clamp(0.0, 1.0).toDouble());
+                  if (thk <= 0) continue;
+                  trail.add((posAt(thk), scaleAt(thk)));
+                }
+              }
+              advFx = Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _AdvFxPainter(
+                      center: posAt(th),
+                      scale: scaleAt(th),
+                      cardW: cardW,
+                      cardH: cardH,
+                      sec: ms / 1000,
+                      vis: vis,
+                      trail: trail,
+                      pal: pal,
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
 
           final pt = _smooth(_seg(u, 0.30, 0.40)) *
               (1 - _smooth(_seg(u, 0.58, 0.66)));
@@ -401,7 +459,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                   opacity: pt,
                   child: Transform.translate(
                     offset: Offset(0, (1 - pt) * 10),
-                    child: _plate(id, bad),
+                    child: _plate(id, bad, pal),
                   ),
                 ),
               ),
@@ -477,6 +535,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
               ),
             ),
             if (holdGlow != null) holdGlow,
+            if (advFx != null) advFx,
             ...ghosts,
             if (flying != null) flying,
             if (plate != null) plate,
@@ -576,7 +635,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   Widget _pip(int i, int cur, double sec) {
     final landed = _local(i) / _per >= 0.86;
     final bad = _isBad(i);
-    final col = bad ? EmbunColors.mist : EmbunColors.gold;
+    final col =
+        _advPal(i)?.core ?? (bad ? EmbunColors.mist : EmbunColors.gold);
     final isCur = i == cur && !landed;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -602,9 +662,9 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   }
 
   /// Papan nama kartu yang sedang ditampakkan (tanpa nama pemilik).
-  Widget _plate(String id, bool bad) {
+  Widget _plate(String id, bool bad, _AdvPal? pal) {
     final def = widget.defs[id];
-    final accent = bad ? EmbunColors.mist : EmbunColors.gold;
+    final accent = pal?.core ?? (bad ? EmbunColors.mist : EmbunColors.gold);
     final name = (def?['name'] as String?) ?? id;
     final kind = kindLabel[def?['kind']] ?? '';
     return Container(
@@ -704,7 +764,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   /// Bingkai terbang ([h]) seragam supaya bentuk kartu tidak membocorkan
   /// sisinya sebelum berbalik. Muka kartu baru memakai tingginya sendiri
   /// (2:3 untuk antagonis) dan meluber simetris dari bingkai.
-  Widget _front(String id, double w, double h, Color glow) {
+  Widget _front(String id, double w, double h, Color glow,
+      {_AdvPal? pal, double pulse = 0}) {
     final fh = w * cardAspectForDef(widget.defs[id]);
     return OverflowBox(
       minWidth: w,
@@ -718,6 +779,12 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(color: glow.withValues(alpha: 0.7), blurRadius: 26),
+            // Kartu lanjutan: lapis kedua yang berdenyut.
+            if (pal != null)
+              BoxShadow(
+                  color: pal.accent.withValues(alpha: 0.30 + 0.30 * pulse),
+                  blurRadius: 44 + 16 * pulse,
+                  spreadRadius: 2 + 3 * pulse),
           ],
         ),
         child: CardTile(
@@ -734,7 +801,108 @@ class _Impact {
   final int k; // nomor kartu (benih acak)
   final double p; // 0..1
   final bool bad;
-  const _Impact(this.k, this.p, this.bad);
+  final _AdvPal? pal; // kartu lanjutan: warna ledakan ikut palet
+  const _Impact(this.k, this.p, this.bad, [this.pal]);
+}
+
+/// Pendaran kartu lanjutan yang sedang ditampakkan dan dilempar: halo
+/// berdenyut, untai DNA (heliks ganda) yang berputar di sekeliling kartu, dan
+/// jejak cahaya mengikuti lemparan. Warna menurut [pal] (Regenerasi hijau-aqua,
+/// Rekayasa merah tua).
+class _AdvFxPainter extends CustomPainter {
+  final Offset center;
+  final double scale, cardW, cardH, sec, vis;
+  final List<(Offset, double)> trail;
+  final _AdvPal pal;
+  const _AdvFxPainter({
+    required this.center,
+    required this.scale,
+    required this.cardW,
+    required this.cardH,
+    required this.sec,
+    required this.vis,
+    required this.trail,
+    required this.pal,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final v = vis.clamp(0.0, 1.0).toDouble();
+
+    // Jejak cahaya mengikuti lemparan.
+    for (var i = 0; i < trail.length; i++) {
+      final (p, s) = trail[i];
+      final fall = 1 - i / trail.length;
+      canvas.drawCircle(
+        p,
+        cardW * 0.55 * s,
+        Paint()
+          ..color = pal.core.withValues(alpha: 0.30 * fall * v)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+      );
+    }
+
+    // Halo berdenyut.
+    final pulse = 0.5 + 0.5 * math.sin(sec * 7);
+    final hr = cardH * 0.95 * scale * (1 + 0.06 * pulse);
+    canvas.drawCircle(
+      center,
+      hr,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            pal.accent.withValues(alpha: 0.30 * v * (0.8 + 0.2 * pulse)),
+            pal.core.withValues(alpha: 0.22 * v),
+            pal.core.withValues(alpha: 0),
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: hr)),
+    );
+
+    // Untai DNA: dua heliks berlawanan fase mengitari kartu.
+    final halfH = cardH * 0.62 * scale;
+    final amp = cardW * 0.58 * scale;
+    const n = 16;
+    final pts = <List<(Offset, double)>>[[], []];
+    for (var st = 0; st < 2; st++) {
+      for (var i = 0; i < n; i++) {
+        final f = i / (n - 1);
+        final y = (f * 2 - 1) * halfH;
+        final ph = f * math.pi * 2.6 - sec * 3.2 + st * math.pi;
+        pts[st].add((
+        center + Offset(math.sin(ph) * amp, y),
+        math.cos(ph) * 0.5 + 0.5, // 1 = di depan, 0 = di belakang
+        ));
+      }
+    }
+    final rung = Paint()
+      ..strokeWidth = 1.2 * scale.clamp(0.4, 1.4)
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < n; i++) {
+      final f = i / (n - 1);
+      final edge = math.min(1.0, math.min(f * 5, (1 - f) * 5));
+      if (i % 3 == 1) {
+        rung.color = pal.spark.withValues(alpha: 0.28 * v * edge);
+        canvas.drawLine(pts[0][i].$1, pts[1][i].$1, rung);
+      }
+      for (var st = 0; st < 2; st++) {
+        final (pos, depth) = pts[st][i];
+        final sz = (2.0 + 1.8 * depth) * scale.clamp(0.4, 1.4);
+        final al = (0.30 + 0.70 * depth) * v * edge;
+        canvas.drawCircle(
+            pos, sz * 2.6, Paint()..color = pal.core.withValues(alpha: 0.20 * al));
+        canvas.drawCircle(
+            pos,
+            sz,
+            Paint()
+              ..color = Color.lerp(pal.accent, Colors.white, 0.45)!
+                  .withValues(alpha: 0.95 * al));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AdvFxPainter old) => true;
 }
 
 /// Aura Hayu yang tumbuh tiap kartu mendarat, kabut tipis, dan butiran
@@ -847,10 +1015,14 @@ class _ImpactPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final im in impacts) {
+      final pal = im.pal;
       final bad = im.bad || dark;
-      final a = bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866);
-      final b = bad ? const Color(0xFF6A3FA0) : const Color(0xFF9DF0B8);
-      final spark = bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A);
+      final a = pal?.core ??
+          (bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866));
+      final b = pal?.accent ??
+          (bad ? const Color(0xFF6A3FA0) : const Color(0xFF9DF0B8));
+      final spark = pal?.spark ??
+          (bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A));
       final p = im.p;
       final fade = (1 - p).clamp(0.0, 1.0).toDouble();
       final ease = Curves.easeOutCubic.transform(p);
@@ -960,7 +1132,8 @@ class _ImpactPainter extends CustomPainter {
               radius: 0.9,
               colors: [
                 Colors.transparent,
-                const Color(0xFF1A1030).withValues(alpha: 0.6 * fade),
+                (pal?.dim ?? const Color(0xFF1A1030))
+                    .withValues(alpha: 0.6 * fade),
               ],
               stops: const [0.35, 1.0],
             ).createShader(rect),
@@ -971,7 +1144,8 @@ class _ImpactPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeWidth = 2.5
-          ..color = const Color(0xFFE6D6FF).withValues(alpha: fade);
+          ..color = (pal?.spark ?? const Color(0xFFE6D6FF))
+              .withValues(alpha: fade);
         for (var k = 0; k < 8; k++) {
           final ang = rnd.nextDouble() * 2 * math.pi;
           final len = (radius * 0.7 + rnd.nextDouble() * radius * 1.1) * ease;

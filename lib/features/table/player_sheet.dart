@@ -5,6 +5,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import 'card_tile.dart' show CardTile, kindLabel;
 import 'emote_panel.dart' show kEmotes;
 import 'player_status.dart';
 
@@ -85,6 +86,7 @@ class _PlayerSheet extends StatefulWidget {
 class _PlayerSheetState extends State<_PlayerSheet> {
   bool busy = false;
   bool tradeOpen = false;
+  String? _pickCard; // card_id yang dipilih untuk ditawarkan
   String? err;
 
   String get _uid => widget.player['user_id'] as String;
@@ -113,9 +115,6 @@ class _PlayerSheetState extends State<_PlayerSheet> {
       if (mounted) setState(() => busy = false);
     }
   }
-
-  String _cardName(Map<String, dynamic> h) =>
-      (widget.defs[h['card_id']]?['name'] as String?) ?? h['card_id'] as String;
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +156,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
             width: 44,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: EmbunColors.goldDim.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -225,73 +224,89 @@ class _PlayerSheetState extends State<_PlayerSheet> {
 
   Widget _header(String card, bool short) {
     final avatar = short ? 46.0 : 64.0;
-    return Row(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: EmbunColors.gold.withValues(alpha: 0.4),
-                blurRadius: 18,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: PlayerAvatar(
-            path: protagonistPath(card),
-            size: avatar,
-            ring: EmbunColors.gold,
-            // Subur bila nyawa penuh dan bebas; layu bila nyawa berkurang,
-            // dikurung, atau sudah keluar.
-            wreath: (!isOut(widget.player) &&
-                !_targetJailed &&
-                livesLeft(widget.player) >= kMaxStrikes)
-                ? 'subur'
-                : 'layu',
-          ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            EmbunColors.gold.withValues(alpha: 0.13),
+            Colors.transparent,
+          ],
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: short ? 20 : 24,
-                  fontWeight: FontWeight.w800,
-                  color: EmbunColors.gold,
-                  letterSpacing: 0.4,
+        border:
+        Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: EmbunColors.gold.withValues(alpha: 0.4),
+                  blurRadius: 18,
+                  spreadRadius: 1,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  LivesRow(lives: livesLeft(widget.player), size: 16),
-                  if (_targetJailed)
-                    const StatusTag(
-                        text: 'Dikurung',
-                        color: EmbunColors.blood,
-                        icon: Icons.lock_rounded,
-                        fontSize: 11),
-                ],
-              ),
-            ],
+              ],
+            ),
+            child: PlayerAvatar(
+              path: protagonistPath(card),
+              size: avatar,
+              ring: EmbunColors.gold,
+              // Subur bila nyawa penuh dan bebas; layu bila nyawa berkurang,
+              // dikurung, atau sudah keluar.
+              wreath: (!isOut(widget.player) &&
+                  !_targetJailed &&
+                  livesLeft(widget.player) >= kMaxStrikes)
+                  ? 'subur'
+                  : 'layu',
+            ),
           ),
-        ),
-        // Tombol tutup eksplisit: berguna di desktop yang tak bisa menyeret.
-        IconButton(
-          tooltip: 'Tutup',
-          icon: const Icon(Icons.close_rounded, color: Colors.white54),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: short ? 20 : 24,
+                    fontWeight: FontWeight.w800,
+                    color: EmbunColors.gold,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    LivesRow(lives: livesLeft(widget.player), size: 16),
+                    if (_targetJailed)
+                      const StatusTag(
+                          text: 'Dikurung',
+                          color: EmbunColors.blood,
+                          icon: Icons.lock_rounded,
+                          fontSize: 11),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Tombol tutup eksplisit: berguna di desktop yang tak bisa menyeret.
+          IconButton(
+            tooltip: 'Tutup',
+            icon: const Icon(Icons.close_rounded, color: Colors.white54),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -382,7 +397,32 @@ class _PlayerSheetState extends State<_PlayerSheet> {
     );
   }
 
+  Widget _countChip(String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.4),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.5)),
+    ),
+    child: Text(text,
+        style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: EmbunColors.gold)),
+  );
+
   Widget _trade(List<Map<String, dynamic>> tradable) {
+    // Kartu sama ditumpuk (xN); yang ditawarkan satu per satu.
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final h in tradable) {
+      groups.putIfAbsent(h['card_id'] as String, () => []).add(h);
+    }
+    final ids = groups.keys.toList();
+    final picked = _pickCard != null && groups.containsKey(_pickCard)
+        ? _pickCard
+        : null;
+    final pickedDef = picked == null ? null : widget.defs[picked];
+
     return _Panel(
       child: AnimatedSize(
         duration: const Duration(milliseconds: 240),
@@ -391,16 +431,42 @@ class _PlayerSheetState extends State<_PlayerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            EmbunButton(
-              label: tradeOpen ? 'Tutup daftar kartu' : 'Tukar kartu',
-              icon: 'barter',
-              kind: EmbunButtonKind.secondary,
-              expand: true,
-              onPressed:
-              busy ? null : () => setState(() => tradeOpen = !tradeOpen),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: busy
+                  ? null
+                  : () => setState(() {
+                tradeOpen = !tradeOpen;
+                if (!tradeOpen) _pickCard = null;
+              }),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const GameIcon('barter', size: 30),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text('Tukar kartu',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                              color: EmbunColors.gold)),
+                    ),
+                    _countChip('${tradable.length} kartu'),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: tradeOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: const Icon(Icons.expand_more_rounded,
+                          color: EmbunColors.gold),
+                    ),
+                  ],
+                ),
+              ),
             ),
             if (tradeOpen) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Text(
                 tradable.isEmpty
                     ? 'Tidak ada kartu yang bisa ditukar.'
@@ -412,24 +478,130 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                 style: const TextStyle(
                     fontSize: 12, height: 1.35, color: Colors.white60),
               ),
-              const SizedBox(height: 8),
-              for (final h in tradable)
-                _CardTile(
-                  name: _cardName(h),
-                  description:
-                  (widget.defs[h['card_id']]?['description'] as String?) ??
-                      '',
-                  onTap: busy
-                      ? null
-                      : () => _run(
-                        () async {
-                      await widget.repo.proposeTrade(
-                          widget.gameId, _uid, h['id'] as String);
-                      widget.onOfferCard?.call(_uid, h);
+              if (tradable.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Center(child: GameIcon('mydeck2', size: 56)),
+                )
+              else ...[
+                // Deretan kartu bergambar, digeser ke samping.
+                SizedBox(
+                  height: 100 * 1.5 + 26,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
+                    itemCount: ids.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (_, i) {
+                      final id = ids[i];
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: CardTile(
+                          def: widget.defs[id],
+                          fallbackName: id,
+                          width: 100,
+                          selected: id == picked,
+                          dim: picked != null && id != picked,
+                          count: groups[id]!.length,
+                          onTap: busy
+                              ? null
+                              : () => setState(() =>
+                          _pickCard = id == picked ? null : id),
+                        ),
+                      );
                     },
-                    closeWith: 'Tawaran dikirim ke $_name',
                   ),
                 ),
+                Text(
+                  picked == null
+                      ? 'Ketuk kartu untuk memilih. Tahan untuk memperbesar.'
+                      : 'Ketuk lagi untuk membatalkan pilihan.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, color: Colors.white38),
+                ),
+                // Ringkasan kartu terpilih + konfirmasi.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: picked == null
+                      ? const SizedBox(width: double.infinity)
+                      : Container(
+                    key: ValueKey(picked),
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          EmbunColors.gold.withValues(alpha: 0.14),
+                          Colors.black.withValues(alpha: 0.25),
+                        ],
+                      ),
+                      border: Border.all(
+                          color: EmbunColors.gold.withValues(alpha: 0.55)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                (pickedDef?['name'] as String?) ?? picked,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: EmbunColors.gold),
+                              ),
+                            ),
+                            if (kindLabel[pickedDef?['kind']] != null)
+                              _countChip(kindLabel[pickedDef?['kind']]!),
+                          ],
+                        ),
+                        if (((pickedDef?['description'] as String?) ?? '')
+                            .isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            pickedDef!['description'] as String,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: Colors.white70),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        EmbunButton(
+                          label: _targetJailed
+                              ? 'Berikan ke $_name'
+                              : 'Tawarkan ke $_name',
+                          icon: 'kirim',
+                          expand: true,
+                          onPressed: busy
+                              ? null
+                              : () {
+                            final h = groups[picked]!.first;
+                            _run(
+                                  () async {
+                                await widget.repo.proposeTrade(
+                                    widget.gameId,
+                                    _uid,
+                                    h['id'] as String);
+                                widget.onOfferCard?.call(_uid, h);
+                              },
+                              closeWith: _targetJailed
+                                  ? 'Kartu diberikan ke $_name'
+                                  : 'Tawaran dikirim ke $_name',
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -470,9 +642,16 @@ class _Panel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.28),
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.black.withValues(alpha: 0.36),
+          Colors.black.withValues(alpha: 0.22),
+        ],
+      ),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.28)),
+      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.32)),
     ),
     child: child,
   );
@@ -498,62 +677,6 @@ class _EmoteTile extends StatelessWidget {
           height: 48,
           child: Center(
             child: Text(emoji, style: const TextStyle(fontSize: 26)),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-/// Satu kartu yang bisa ditawarkan dalam tukar kartu.
-class _CardTile extends StatelessWidget {
-  final String name;
-  final String description;
-  final VoidCallback? onTap;
-  const _CardTile({
-    required this.name,
-    required this.description,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Opacity(
-      opacity: onTap == null ? 0.5 : 1,
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w700)),
-                      if (description.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(description,
-                            style: const TextStyle(
-                                fontSize: 11.5,
-                                height: 1.3,
-                                color: Colors.white60)),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: EmbunColors.gold),
-              ],
-            ),
           ),
         ),
       ),

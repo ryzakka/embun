@@ -28,8 +28,9 @@ double _thump(double u) {
 /// pembacaan vonis:
 ///
 ///  * pembukaan: layar gelap berdenyut, debar haptic makin rapat;
-///  * satu per satu kartu yang memilih muncul, hitungan di papan naik, dan
-///    papan memerah pada pemain yang mendekati mayoritas;
+///  * satu per satu kartu yang memilih muncul lalu melesatkan petir ke kartu
+///    sasaran (sabetan, kilat, "+1"), hitungan di papan naik, dan papan
+///    memerah pada pemain yang mendekati mayoritas;
 ///  * saat sebuah kartu tinggal SATU suara dari mayoritas, irama melambat,
 ///    tepi layar berdenyut dan muncul "butuh 1 suara lagi...";
 ///  * suara penentu menghantam: layar bergetar, berkilat putih, spanduk
@@ -105,6 +106,15 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
   late final AnimationController _vc = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 3400));
   final Set<int> _fired = {};
+  // Serangan satu suara: kumpul tenaga, petir meluncur, hantaman (lihat
+  // _StrikePainter). Durasinya diatur per suara menurut ketegangan.
+  late final AnimationController _strike = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 560));
+  // Sentakan kecil seluruh layar tiap suara mendarat.
+  late final AnimationController _tap = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 260));
+  bool _hit = false; // hantaman suara ini sudah terjadi
+  bool _hitDecisive = false; // suara ini yang menentukan mayoritas
   // Jam pelan untuk gerak kabut shader (tidak ikut berubah periode seperti _beat).
   late final AnimationController _loop = AnimationController(
       vsync: this, duration: const Duration(seconds: 120));
@@ -148,6 +158,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _fx = FxShaders.make(FxShaders.voteReveal);
     if (_fx != null) _loop.repeat();
     _vc.addListener(_onVerdictTick);
+    _strike.addListener(_onStrikeTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _play());
   }
 
@@ -157,6 +168,8 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
     _beat.dispose();
     _shake.dispose();
     _flash.dispose();
+    _strike.dispose();
+    _tap.dispose();
     _vc.dispose();
     _loop.dispose();
     _fx?.dispose();
@@ -190,6 +203,20 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
       Sfx.I.play(Snd.slashPedang, owner: this, tag: 'slam', replace: true);
     }
     HapticFeedback.heavyImpact();
+  }
+
+  /// Tepat saat petir mengenai kartu sasaran: sentakan, haptic, dan suara.
+  /// Suara penentu memakai hantaman penuh (getar + kilat putih).
+  void _onStrikeTick() {
+    if (_hit || _stage < 2 || _strike.value < _kHitAt) return;
+    _hit = true;
+    if (_hitDecisive) {
+      _slam();
+    } else {
+      _tap.forward(from: 0);
+      HapticFeedback.mediumImpact();
+      Sfx.I.play(Snd.clickTung, owner: this, tag: 'hit', replace: true);
+    }
   }
 
   void _onVerdictTick() {
@@ -226,6 +253,9 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
           ? 0.62
           : (_near ? 1.7 : (tense ? 1.3 : 1.0));
 
+      _strike.value = 0;
+      _hit = false;
+      _hitDecisive = false;
       setState(() {
         _i = i;
         _stage = 1; // pemilih muncul
@@ -233,8 +263,22 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
       if (_near) HapticFeedback.lightImpact();
       if (!await _w((470 * m).round())) return;
 
-      setState(() => _stage = 2); // panah + sasaran
-      if (!await _w((430 * m).round())) return;
+      // Serangan: kumpul tenaga, petir meluncur, hantaman. Suara penentu
+      // ditahan lebih lama supaya debarnya terasa.
+      final decisiveHit = _majorityId == null &&
+          ((_counts[tid] ?? 0) + _weightOf(v)) * 2 > _total;
+      _hitDecisive = decisiveHit;
+      final strikeMs = (560 * m * (decisiveHit ? 1.7 : 1.0)).round();
+      _strike.duration = Duration(milliseconds: strikeMs);
+      setState(() => _stage = 2); // sasaran muncul + petir melesat
+      _strike.forward(from: 0);
+      Sfx.I.play(
+        [Snd.swingWind1, Snd.swingWind2, Snd.swingWind3][i % 3],
+        owner: this,
+        tag: 'wind',
+        replace: true,
+      );
+      if (!await _w(strikeMs)) return;
 
       setState(() {
         _stage = 3; // terhitung
@@ -251,7 +295,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
           _banner = true;
         });
         _beat.repeat(period: const Duration(milliseconds: 900));
-        _slam();
+        // Hantaman penentu sudah dijatuhkan _onStrikeTick saat petir kena.
         if (!await _w(170)) return;
         HapticFeedback.heavyImpact();
         if (!await _w(1500)) return;
@@ -266,7 +310,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
           }
         }
       }
-      if (!await _w((560 * m).round())) return;
+      if (!await _w((440 * m).round())) return;
     }
 
     setState(() {
@@ -365,13 +409,17 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
           if (won) _spotlight(),
           _vignette(),
           AnimatedBuilder(
-            animation: _shake,
+            animation: Listenable.merge([_shake, _tap]),
             builder: (context, child) {
               final k = _shake.value;
               final amp = _shake.isAnimating ? (1 - k) : 0.0;
+              final kt = _tap.value;
+              final ta = _tap.isAnimating ? (1 - kt) : 0.0;
               return Transform.translate(
                 offset: Offset(
-                    math.sin(k * 52) * 10 * amp, math.sin(k * 41 + 1.3) * 7 * amp),
+                    math.sin(k * 52) * 10 * amp + math.sin(kt * 70) * 3.2 * ta,
+                    math.sin(k * 41 + 1.3) * 7 * amp +
+                        math.sin(kt * 55 + 0.7) * 2.4 * ta),
                 child: child,
               );
             },
@@ -636,144 +684,220 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
 
   // ---------- satu suara ----------
 
+  /// Satu suara dibuka sebagai "serangan": kartu pemilih menarik diri dan
+  /// mengumpulkan tenaga, lalu melesatkan petir ke kartu sasaran. Sasaran
+  /// terhantam (sabetan, kilat, cincin kejut, serpihan, "+1") dan terpental.
+  /// Benang tipis tetap menghubungkan keduanya sebagai jejak siapa memilih
+  /// siapa. Suara penentu lebih lama menahan napas dan menghantam dobel.
   Widget _voteStage(double cardW) {
     if (_stage == 0 || _i >= _votes.length) return const SizedBox.shrink();
     final v = _votes[_i];
     final voterMine = v['voter_id'] == widget.myId;
     final targetMine = v['target_id'] == widget.myId;
     final showTarget = _stage >= 2;
+    final isFog = v['voter_id'] == _kFogId;
+    final weight = _weightOf(v);
+    final cardH = cardW * kProtagonistAspect;
+    final gap = cardW * 1.0;
+    final accent = isFog
+        ? EmbunColors.mist
+        : (weight >= 2 ? EmbunColors.gold : EmbunColors.blood);
+    final intense = _near || _hitDecisive;
+
+    final voter = _VoteCard(
+      name: _voterName(v),
+      card: v['voter_card'] as String?,
+      // Patuhilah Padaku: kartu palu hakim yang masuk, bukan kartu
+      // karakter pemilih.
+      artPath: isFog
+          ? AssetCatalog.I.file(kartuMalamDir, 'pindaisalah')
+          : (weight >= 2 ? AssetCatalog.I.file(kemampuanDir, 'kemampuan6') : null),
+      width: cardW,
+      tag: isFog
+          ? 'Fitnah'
+          : (weight >= 2
+          ? (voterMine ? 'Suaramu x2' : 'Palu x2')
+          : (voterMine ? 'Suaramu' : null)),
+      glow: isFog
+          ? EmbunColors.mist
+          : (weight >= 2
+          ? EmbunColors.gold
+          : (voterMine ? EmbunColors.gold : EmbunColors.leaf)),
+      ring: voterMine,
+    );
+    final target = _VoteCard(
+      name: _targetName(v),
+      card: v['target_card'] as String?,
+      width: cardW,
+      tag: targetMine ? 'Kamu' : null,
+      glow: EmbunColors.blood,
+      ring: targetMine,
+    );
 
     return Column(
       key: ValueKey('vote$_i'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 360),
-              curve: Curves.easeOutCubic,
-              builder: (_, t, child) => Opacity(
-                opacity: t,
-                child: Transform.translate(
-                    offset: Offset(-48 * (1 - t), 0), child: child),
-              ),
-              child: _VoteCard(
-                name: _voterName(v),
-                card: v['voter_card'] as String?,
-                // Patuhilah Padaku: kartu palu hakim yang masuk, bukan
-                // kartu karakter pemilih.
-                artPath: v['voter_id'] == _kFogId
-                    ? AssetCatalog.I.file(kartuMalamDir, 'pindaisalah')
-                    : (_weightOf(v) >= 2
-                    ? AssetCatalog.I.file(kemampuanDir, 'kemampuan6')
-                    : null),
-                width: cardW,
-                tag: v['voter_id'] == _kFogId
-                    ? 'Fitnah'
-                    : (_weightOf(v) >= 2
-                    ? (voterMine ? 'Suaramu x2' : 'Palu x2')
-                    : (voterMine ? 'Suaramu' : null)),
-                glow: v['voter_id'] == _kFogId
-                    ? EmbunColors.mist
-                    : (_weightOf(v) >= 2
-                    ? EmbunColors.gold
-                    : (voterMine ? EmbunColors.gold : EmbunColors.leaf)),
-                ring: voterMine,
-              ),
-            ),
-            SizedBox(
-              width: cardW * 0.62,
-              height: cardW * kProtagonistAspect + 22,
-              child: showTarget
-                  ? TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 300),
-                builder: (_, t, child) => Opacity(
-                    opacity: t,
-                    child: Transform.scale(scale: 0.6 + 0.4 * t, child: child)),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 22),
-                  child: Center(
-                    child: Icon(Icons.arrow_forward_rounded,
-                        size: cardW * 0.4, color: EmbunColors.blood),
-                  ),
-                ),
-              )
-                  : null,
-            ),
-            SizedBox(
-              width: cardW + 24,
-              child: showTarget
-                  ? TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 380),
-                curve: Curves.easeOutBack,
-                builder: (_, t, child) {
-                  final tc = t.clamp(0.0, 1.0).toDouble();
-                  return Stack(
-                    alignment: Alignment.topCenter,
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Cincin kejut saat sasaran menerima suara.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(painter: _HitRingPainter(t: tc)),
+        AnimatedBuilder(
+          animation: _strike,
+          builder: (context, _) {
+            final t = showTarget ? _strike.value : 0.0;
+
+            // Pemilih: menarik diri (kumpul tenaga), menerjang, lalu mengendur.
+            final charge = Curves.easeOut.transform(_seg(t, 0, 0.22));
+            final lunge = Curves.easeOutCubic.transform(_seg(t, 0.22, 0.32));
+            final settle = Curves.easeOutCubic.transform(_seg(t, 0.32, 0.80));
+            final vdx = (-12 * charge) * (1 - lunge) + 9 * lunge * (1 - settle);
+            final vscale = 1 + 0.06 * charge * (1 - lunge);
+
+            // Sasaran: meluncur masuk, gemetar menjelang kena, lalu terpental.
+            final appear = Curves.easeOutCubic.transform(_seg(t, 0, 0.20));
+            final pre = _seg(t, 0.40, _kHitAt);
+            final post = _seg(t, _kHitAt, 1.0);
+            final recoil = post > 0
+                ? math.sin(post * math.pi * 3.2) * math.exp(-post * 3.2)
+                : 0.0;
+            final tdx = (1 - appear) * 54 +
+                pre * math.sin(t * 110) * 1.8 +
+                recoil * 18;
+            final tscale =
+                (0.78 + 0.22 * appear) * (1 - 0.06 * math.max(0.0, recoil));
+            final trot = recoil * 0.06 + (1 - appear) * 0.08;
+
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 520),
+                      curve: Curves.easeOutBack,
+                      builder: (_, e, child) => Opacity(
+                        opacity: e.clamp(0.0, 1.0).toDouble(),
+                        child: Transform.translate(
+                          offset: Offset(-70 * (1 - e), 0),
+                          child: Transform.rotate(
+                            angle: -0.06 * (1 - e),
+                            child: Transform.scale(
+                                scale: 0.8 + 0.2 * e, child: child),
+                          ),
                         ),
                       ),
-                      Opacity(
-                        opacity: tc,
-                        child: Transform.translate(
-                          offset: Offset(math.sin(tc * 36) * 5 * (1 - tc), 0),
+                      child: Transform.translate(
+                        offset: Offset(vdx, 0),
+                        child: Transform.scale(scale: vscale, child: voter),
+                      ),
+                    ),
+                    SizedBox(width: gap),
+                    SizedBox(
+                      width: cardW + 24,
+                      child: showTarget
+                          ? Transform.translate(
+                        offset: Offset(tdx, 0),
+                        child: Transform.rotate(
+                          angle: trot,
                           child: Transform.scale(
-                              scale: 0.55 + 0.45 * t, child: child),
+                            scale: tscale,
+                            child: Opacity(
+                              opacity: appear,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  target,
+                                  // Kilat putih dan bingkai menyala
+                                  // tepat saat terkena.
+                                  if (post > 0 && post < 0.95)
+                                    Positioned(
+                                      left: 12,
+                                      top: 22,
+                                      width: cardW,
+                                      height: cardH,
+                                      child: IgnorePointer(
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                                alpha: 0.6 *
+                                                    (1 - _seg(post, 0, 0.35))),
+                                            borderRadius:
+                                            BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: accent.withValues(
+                                                  alpha: 0.9 *
+                                                      (1 - _seg(post, 0, 0.9))),
+                                              width: 2.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                          : null,
+                    ),
+                  ],
+                ),
+                if (showTarget)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _StrikePainter(
+                          t: t,
+                          cardW: cardW,
+                          cardH: cardH,
+                          accent: accent,
+                          intense: intense,
+                          decisive: _hitDecisive,
+                          weight: weight,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        AnimatedBuilder(
+          animation: _strike,
+          builder: (context, _) {
+            final a = showTarget ? _seg(_strike.value, 0.55, 0.78) : 0.0;
+            return Opacity(
+              opacity: a,
+              child: Transform.translate(
+                offset: Offset(0, 10 * (1 - a)),
+                child: Text.rich(
+                  TextSpan(
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
+                    children: [
+                      TextSpan(
+                        text: voterMine ? 'Kamu' : _voterName(v),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: voterMine ? EmbunColors.gold : Colors.white,
+                        ),
+                      ),
+                      const TextSpan(text: '  memilih  '),
+                      TextSpan(
+                        text: targetMine ? 'kamu' : _targetName(v),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.blood,
                         ),
                       ),
                     ],
-                  );
-                },
-                child: _VoteCard(
-                  name: _targetName(v),
-                  card: v['target_card'] as String?,
-                  width: cardW,
-                  tag: targetMine ? 'Kamu' : null,
-                  glow: EmbunColors.blood,
-                  ring: targetMine,
-                ),
-              )
-                  : null,
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        AnimatedOpacity(
-          opacity: showTarget ? 1 : 0,
-          duration: const Duration(milliseconds: 250),
-          child: Text.rich(
-            TextSpan(
-              style: const TextStyle(fontSize: 16, color: Colors.white70),
-              children: [
-                TextSpan(
-                  text: voterMine ? 'Kamu' : _voterName(v),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: voterMine ? EmbunColors.gold : Colors.white,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const TextSpan(text: '  memilih  '),
-                TextSpan(
-                  text: targetMine ? 'kamu' : _targetName(v),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: EmbunColors.blood,
-                  ),
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-          ),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -1168,27 +1292,261 @@ class _VoteFxPainter extends CustomPainter {
   bool shouldRepaint(covariant _VoteFxPainter old) => true;
 }
 
-/// Cincin kejut yang melebar dari kartu sasaran saat menerima suara.
-class _HitRingPainter extends CustomPainter {
-  final double t; // 0..1
-  const _HitRingPainter({required this.t});
+/// Saat (0..1 pada [_strike]) sasaran terkena petir.
+const _kHitAt = 0.62;
+
+double _a(double v) => v.clamp(0.0, 1.0).toDouble();
+
+/// Serangan satu suara dari kartu pemilih (kiri) ke kartu sasaran (kanan):
+/// orb tenaga berkumpul, petir meluncur makin cepat meninggalkan ekor komet,
+/// lalu sabetan, cincin kejut, serpihan, dan angka "+N" saat kena. Benang
+/// tipis tertinggal sebagai jejak suara.
+///
+/// [t] = 0..1: 0-0.22 mengumpulkan tenaga, 0.22-0.62 meluncur, 0.62-1 hantaman.
+class _StrikePainter extends CustomPainter {
+  final double t;
+  final double cardW;
+  final double cardH;
+  final Color accent;
+  final bool intense;
+  final bool decisive;
+  final int weight;
+
+  const _StrikePainter({
+    required this.t,
+    required this.cardW,
+    required this.cardH,
+    required this.accent,
+    required this.intense,
+    required this.decisive,
+    required this.weight,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (t <= 0 || t >= 1) return;
-    final e = Curves.easeOutCubic.transform(t);
-    canvas.drawCircle(
-      size.center(Offset.zero),
-      size.shortestSide * (0.30 + 0.55 * e),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.2 * (1 - t) + 0.6
-        ..color = EmbunColors.blood.withValues(alpha: 0.75 * (1 - t)),
-    );
+    final slot = cardW + 24;
+    final cardLeft = size.width - slot / 2 - cardW / 2;
+    final x0 = slot / 2 + cardW / 2 + 2; // sisi kanan kartu pemilih
+    final x1 = cardLeft - 2; // sisi kiri kartu sasaran
+    final cy = 22 + cardH / 2;
+    final len = x1 - x0;
+    if (len < 8 || t <= 0) return;
+
+    final charge = _seg(t, 0, 0.22);
+    final fireU = _seg(t, 0.22, _kHitAt);
+    final hitV = _seg(t, _kHitAt, 1.0);
+    final hx = x0 + len * Curves.easeInCubic.transform(fireU);
+    final core = intense ? const Color(0xFFFFE9A8) : Colors.white;
+    final bw = intense ? 7.0 : 5.0;
+    final seed = (t * 45).floor();
+    const blur = MaskFilter.blur(BlurStyle.normal, 10);
+
+    // 1. Orb tenaga di tepi kartu pemilih.
+    final orbA = t < 0.22 ? charge : 1 - _seg(t, 0.22, 0.42);
+    if (orbA > 0.01) {
+      final r = (4 + 11 * charge) * (1 + 0.18 * math.sin(t * 70));
+      canvas.drawCircle(
+        Offset(x0, cy),
+        r * 2.4,
+        Paint()
+          ..color = accent.withValues(alpha: _a(0.45 * orbA))
+          ..maskFilter = blur,
+      );
+      canvas.drawCircle(
+          Offset(x0, cy), r, Paint()..color = core.withValues(alpha: _a(orbA)));
+      if (t < 0.22) {
+        // Percikan tersedot masuk ke orb.
+        final sp = Paint();
+        for (var k = 0; k < 10; k++) {
+          final ang = k * math.pi * 2 / 10 + _rnd(k, 5) * 0.6;
+          final dist = (1 - charge) * (22 + 20 * _rnd(k, 6)) + 5;
+          sp.color = accent.withValues(alpha: _a(0.4 + 0.6 * charge));
+          canvas.drawCircle(
+            Offset(x0 + math.cos(ang) * dist, cy + math.sin(ang) * dist * 0.8),
+            1.5,
+            sp,
+          );
+        }
+      }
+    }
+
+    // 2. Petir bergerigi yang meluruskan diri menjadi benang jejak.
+    if (fireU > 0) {
+      final amp = 7.0 * (1 - hitV);
+      const n = 16;
+      final path = Path()..moveTo(x0, cy);
+      for (var k = 1; k <= n; k++) {
+        final px = x0 + (hx - x0) * k / n;
+        final off = k == n
+            ? 0.0
+            : (_rnd(k, seed) - 0.5) * 2 * amp * math.sin(math.pi * k / n);
+        path.lineTo(px, cy + off);
+      }
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..color = accent.withValues(alpha: 0.22)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+      );
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..strokeJoin = StrokeJoin.round
+          ..color = accent.withValues(alpha: 0.5),
+      );
+
+      // 3. Komet: ekor meruncing, kepala putih, percikan di belakang.
+      final cometA = 1 - _seg(t, _kHitAt, 0.78);
+      if (cometA > 0.01) {
+        final cl = math.min(hx - x0, 110.0);
+        if (cl > 2) {
+          final tri = Path()
+            ..moveTo(hx - cl, cy)
+            ..lineTo(hx - cl * 0.1, cy - bw)
+            ..lineTo(hx + 4, cy)
+            ..lineTo(hx - cl * 0.1, cy + bw)
+            ..close();
+          final shader = LinearGradient(colors: [
+            accent.withValues(alpha: 0),
+            accent.withValues(alpha: _a(0.85 * cometA)),
+            core.withValues(alpha: _a(cometA)),
+          ]).createShader(Rect.fromLTRB(hx - cl, cy - bw, hx, cy + bw));
+          canvas.drawPath(
+              tri,
+              Paint()
+                ..shader = shader
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+          canvas.drawPath(tri, Paint()..shader = shader);
+        }
+        canvas.drawCircle(
+          Offset(hx, cy),
+          bw * 3,
+          Paint()
+            ..color = accent.withValues(alpha: _a(0.5 * cometA))
+            ..maskFilter = blur,
+        );
+        canvas.drawCircle(Offset(hx, cy), bw * 0.9,
+            Paint()..color = core.withValues(alpha: _a(cometA)));
+        final sp = Paint();
+        for (var k = 0; k < 6; k++) {
+          final sx = hx - 14 * (k + 1) - _rnd(k, seed + 1) * 10;
+          if (sx < x0) continue;
+          sp.color = (k.isEven ? core : accent)
+              .withValues(alpha: _a(0.7 * (1 - k / 6) * cometA));
+          canvas.drawCircle(
+              Offset(sx, cy + (_rnd(k, seed + 3) - 0.5) * 18), 1.7, sp);
+        }
+      }
+    }
+
+    // 4. Hantaman di kartu sasaran.
+    if (hitV > 0) {
+      final hitP = Offset(cardLeft, cy);
+
+      // Sabetan diagonal (dua sabetan bersilang bila suara penentu).
+      void slash(bool mirror, double a, double b) {
+        final s = Curves.easeOut.transform(_seg(hitV, a, a + 0.30));
+        final fade = 1 - _seg(hitV, a + 0.30, b);
+        if (s <= 0 || fade <= 0) return;
+        final top = 22.0 - 6;
+        final bot = 22.0 + cardH + 6;
+        final p0 = Offset(mirror ? cardLeft - 10 : cardLeft + cardW + 10, top);
+        final p1 = Offset(mirror ? cardLeft + cardW + 10 : cardLeft - 10, bot);
+        final end = Offset.lerp(p0, p1, s)!;
+        canvas.drawLine(
+          p0,
+          end,
+          Paint()
+            ..strokeWidth = 8
+            ..strokeCap = StrokeCap.round
+            ..color = accent.withValues(alpha: _a(0.6 * fade))
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        );
+        canvas.drawLine(
+          p0,
+          end,
+          Paint()
+            ..strokeWidth = 2.4
+            ..strokeCap = StrokeCap.round
+            ..color = Colors.white.withValues(alpha: _a(0.95 * fade)),
+        );
+      }
+
+      slash(false, 0.0, 0.85);
+      if (decisive) slash(true, 0.10, 0.95);
+
+      // Cincin kejut dari tengah kartu sasaran.
+      final ring = Curves.easeOutCubic.transform(hitV);
+      canvas.drawCircle(
+        Offset(cardLeft + cardW / 2, cy),
+        cardW * 0.35 + cardW * (decisive ? 1.2 : 0.9) * ring,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.5 * (1 - hitV) + 0.6
+          ..color = accent.withValues(alpha: _a(0.8 * (1 - hitV))),
+      );
+
+      // Serpihan memercik ke arah pemilih dan sekitarnya.
+      final nShard = decisive ? 24 : 16;
+      final shard = Paint()
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      final se = Curves.easeOutCubic.transform(hitV);
+      for (var k = 0; k < nShard; k++) {
+        final ang = math.pi + (_rnd(k, 7) - 0.5) * math.pi * 1.7;
+        final dist = (18 + 52 * _rnd(k, 8)) * se;
+        final dir = Offset(math.cos(ang), math.sin(ang));
+        shard.color = (k.isEven ? Colors.white : accent)
+            .withValues(alpha: _a(math.pow(1 - hitV, 1.2).toDouble()));
+        canvas.drawLine(hitP + dir * (dist * 0.55), hitP + dir * dist, shard);
+      }
+
+      // Angka "+N" melayang naik dari kartu sasaran.
+      final u = _seg(hitV, 0.05, 1.0);
+      final a = _seg(u, 0, 0.15) * (1 - _seg(u, 0.65, 1.0));
+      if (a > 0.01) {
+        final fs = (cardW * 0.30).clamp(22.0, 40.0).toDouble();
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '+$weight',
+            style: TextStyle(
+              fontSize: fs,
+              fontWeight: FontWeight.w900,
+              color: core.withValues(alpha: _a(a)),
+              shadows: [
+                Shadow(color: accent.withValues(alpha: _a(a)), blurRadius: 14),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final sc = 0.6 + 0.6 * Curves.easeOutBack.transform(_seg(u, 0, 0.3));
+        final c = Offset(cardLeft + cardW / 2,
+            22 + cardH * 0.32 - 26 * Curves.easeOutCubic.transform(u));
+        canvas
+          ..save()
+          ..translate(c.dx, c.dy)
+          ..scale(sc);
+        tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+        canvas.restore();
+        tp.dispose();
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _HitRingPainter old) => old.t != t;
+  bool shouldRepaint(covariant _StrikePainter old) =>
+      old.t != t ||
+          old.cardW != cardW ||
+          old.cardH != cardH ||
+          old.accent != accent ||
+          old.intense != intense ||
+          old.decisive != decisive ||
+          old.weight != weight;
 }
 
 /// Gelombang kejut dua lapis saat yang dituduh mendarat.
