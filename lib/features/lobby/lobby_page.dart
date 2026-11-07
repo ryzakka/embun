@@ -484,11 +484,12 @@ class _LobbyPageState extends State<LobbyPage>
     child: IconButton(
       tooltip: 'Pengumuman',
       onPressed: _openNews,
-      color: _unreadNews > 0 ? EmbunColors.gold : EmbunColors.cream,
-      iconSize: 28,
-      icon: Icon(_unreadNews > 0
-          ? Icons.notifications_active_rounded
-          : Icons.notifications_none_rounded),
+      padding: const EdgeInsets.all(4),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      icon: Opacity(
+        opacity: _unreadNews > 0 ? 1.0 : 0.85,
+        child: const GameIcon('notification', size: 44),
+      ),
     ),
   );
 
@@ -588,7 +589,7 @@ class _LobbyPageState extends State<LobbyPage>
             onTap: _openCreate),
         _MenuTile(
             index: 1,
-            icon: 'joinroom',
+            icon: 'jointoroom',
             label: 'Gabung Ruangan',
             scale: 1.15,
             center: !wide,

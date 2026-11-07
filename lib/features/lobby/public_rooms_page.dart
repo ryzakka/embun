@@ -255,7 +255,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
             color: EmbunColors.gold,
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           ),
-          const GameIcon('joinroom', size: 38),
+          const GameIcon('jointoroom', size: 38),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
