@@ -8,6 +8,7 @@ import '../../data/errors.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/player_status.dart';
+import 'announcement_body.dart';
 
 enum _Filter { all, pengumuman, pembaruan }
 
@@ -95,6 +96,44 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       if (best == null || AppInfo.compare(v, best) > 0) best = v;
     }
     return best;
+  }
+
+  /// Banner versi baru. Bila entri pembaruannya memuat tautan unduhan, ada
+  /// tombol "Unduh" langsung di sini.
+  Widget _updateBanner(List<Map<String, dynamic>> items, String v) {
+    DownloadLink? dl;
+    for (final m in items) {
+      if (m['kind'] != 'pembaruan') continue;
+      if (((m['version'] as String?) ?? '').trim() != v) continue;
+      dl = findDownloadLink((m['body'] as String?) ?? '');
+      if (dl != null) break;
+    }
+    final link = dl;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          NoticeStrip(
+            icon: 'info',
+            text: 'Versi V$v sudah tersedia (versimu ${AppInfo.tag}). '
+                '${link != null ? 'Unduh pembaruannya di bawah ini.' : 'Muat ulang halaman atau perbarui aplikasimu.'}',
+            accent: EmbunColors.gold,
+          ),
+          if (link != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: EmbunButton(
+                label: 'Unduh V$v',
+                kind: EmbunButtonKind.primary,
+                expand: true,
+                height: 46,
+                onPressed: () => openAnnouncementLink(context, link.url),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   String _date(String? iso) {
@@ -210,17 +249,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               ),
             ),
           if (_newerVersion(items) case final v?)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: NoticeStrip(
-                  icon: 'info',
-                  text: 'Versi V$v sudah tersedia (versimu ${AppInfo.tag}). '
-                      'Muat ulang halaman atau perbarui aplikasimu.',
-                  accent: EmbunColors.gold,
-                ),
-              ),
-            ),
+            SliverToBoxAdapter(child: _updateBanner(items, v)),
           if (items.length >= 3)
             SliverToBoxAdapter(
               child: Padding(
@@ -301,6 +330,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     final version = ((m['version'] as String?) ?? '').trim();
     final hasBody = body.isNotEmpty;
     final open = hasBody && (_manual[id] ?? (unread || pinned || index == 0));
+    // Pembaruan: tampil beda bila memuat tautan unduhan / versinya lebih baru.
+    final dl = isUpdate ? findDownloadLink(body) : null;
+    final newer = isUpdate && version.isNotEmpty && AppInfo.isNewer(version);
 
     final meta = [
       isUpdate ? 'Pembaruan' : 'Pengumuman',
@@ -309,15 +341,38 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       _date(m['published_at'] as String?),
     ].where((e) => e.isNotEmpty).join('  ·  ');
 
+    // Lencana tambahan khusus pembaruan (maksimal satu).
+    final StatusTag? tagUpdate = newer
+        ? const StatusTag(
+        text: 'Versi baru',
+        color: EmbunColors.gold,
+        icon: Icons.new_releases_rounded)
+        : (dl != null
+        ? StatusTag(
+        text: dl.info.kind == LinkKind.store ? 'Toko' : 'Unduhan',
+        color: EmbunColors.leaf,
+        icon: dl.info.kind == LinkKind.store
+            ? Icons.storefront_rounded
+            : Icons.download_rounded)
+        : (isUpdate && version.isNotEmpty && AppInfo.isCurrent(version)
+        ? const StatusTag(
+        text: 'Terpasang',
+        color: EmbunColors.leaf,
+        icon: Icons.check_circle_outline_rounded)
+        : null));
+
     final card = Material(
-      color: Colors.black.withValues(alpha: 0.36),
+      color: isUpdate
+          ? Color.alphaBlend(accent.withValues(alpha: newer ? 0.10 : 0.05),
+          Colors.black.withValues(alpha: 0.36))
+          : Colors.black.withValues(alpha: 0.36),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: unread
+          color: (unread || newer)
               ? accent.withValues(alpha: 0.85)
               : EmbunColors.goldDim.withValues(alpha: 0.5),
-          width: unread ? 1.5 : 1,
+          width: (unread || newer) ? 1.5 : 1,
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -366,6 +421,19 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                     ),
                 ],
               ),
+              // Versi baru dengan tautan unduhan: tombol langsung terlihat
+              // walau kartu sedang tertutup.
+              if (newer && dl != null && !open)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: EmbunButton(
+                    label: 'Unduh V$version',
+                    kind: EmbunButtonKind.primary,
+                    expand: true,
+                    height: 44,
+                    onPressed: () => openAnnouncementLink(context, dl.url),
+                  ),
+                ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOut,
@@ -386,7 +454,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                           ]),
                         ),
                       ),
-                      _Body(text: body, accent: accent),
+                      AnnouncementBody(text: body, accent: accent),
                     ],
                   ),
                 )
@@ -404,20 +472,30 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         clipBehavior: Clip.none,
         children: [
           card,
-          if (pinned || unread)
+          if (pinned || unread || tagUpdate != null)
             Positioned(
               top: -8,
-              right: 16,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (pinned)
-                    const StatusTag(
-                        text: 'Disematkan', color: EmbunColors.gold),
-                  if (pinned && unread) const SizedBox(width: 6),
-                  if (unread)
-                    const StatusTag(text: 'Baru', color: EmbunColors.leaf),
-                ],
+              left: 12,
+              right: 12,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (pinned)
+                        const StatusTag(
+                            text: 'Disematkan', color: EmbunColors.gold),
+                      if (pinned && (unread || tagUpdate != null))
+                        const SizedBox(width: 6),
+                      if (unread)
+                        const StatusTag(text: 'Baru', color: EmbunColors.leaf),
+                      if (unread && tagUpdate != null) const SizedBox(width: 6),
+                      if (tagUpdate != null) tagUpdate,
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
@@ -490,58 +568,4 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       onPressed: _refreshing ? null : _load,
     ),
   );
-}
-
-/// Isi entri: baris berawalan "- " menjadi butir, baris kosong menjadi jarak,
-/// sisanya paragraf biasa.
-class _Body extends StatelessWidget {
-  final String text;
-  final Color accent;
-  const _Body({required this.text, required this.accent});
-
-  static const _style =
-  TextStyle(fontSize: 13.5, height: 1.45, color: Colors.white70);
-
-  @override
-  Widget build(BuildContext context) {
-    // Toleran: "\n" yang terketik literal (mis. dari Table Editor Supabase)
-    // juga dianggap baris baru.
-    final lines = text
-        .replaceAll('\r\n', '\n')
-        .replaceAll(r'\n', '\n')
-        .split('\n');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final raw in lines)
-          if (raw.trim().isEmpty)
-            const SizedBox(height: 8)
-          else if (raw.trimLeft().startsWith('- '))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, right: 10),
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration:
-                      BoxDecoration(color: accent, shape: BoxShape.circle),
-                    ),
-                  ),
-                  Expanded(
-                      child: Text(raw.trimLeft().substring(2), style: _style)),
-                ],
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(raw.trim(), style: _style),
-            ),
-      ],
-    );
-  }
 }

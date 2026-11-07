@@ -1,8 +1,8 @@
-name: embun
-description: "A new Flutter project."
+name: Embun
+description: "Menjaga Hayu Menjauhkan si Terbisik."
 publish_to: 'none'
 
-version: 2.7.14+1
+version: 2.7.17+1
 
 environment:
   sdk: ^3.10.8
@@ -25,6 +25,14 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/logo/ikonapp-transparent.webp"
+  adaptive_icon_background: "#FFFFFF" # Ganti warna hex ini jika ingin latar belakang selain putih
+  adaptive_icon_foreground: "assets/logo/ikonapp-transparent.webp"
 
 flutter:
   uses-material-design: true
