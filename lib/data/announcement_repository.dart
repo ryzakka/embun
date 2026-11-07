@@ -19,6 +19,18 @@ class AnnouncementRepository {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  /// Entri "pembaruan" terbaru yang punya nomor versi (untuk penanda versi
+  /// baru di lobi). Dibandingkan dengan AppInfo.version oleh pemanggil.
+  Future<List<Map<String, dynamic>>> updates() async {
+    final rows = await _db
+        .from('announcements')
+        .select('id, title, body, version')
+        .eq('kind', 'pembaruan')
+        .order('id', ascending: false)
+        .limit(20);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   /// id terbesar yang pernah dilihat; null bila perangkat ini belum pernah
   /// membukanya (pemasangan baru).
   Future<int?> lastSeen() async {
