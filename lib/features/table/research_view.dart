@@ -4,7 +4,6 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'card_tile.dart';
-import 'player_status.dart';
 
 /// Pasar Riset: fase singkat di awal tiap hari biasa. Hanya menjual kartu
 /// poin dan kartu lanjutan, dengan harga lebih mahal dari Pasar Pagi. Stok
@@ -116,80 +115,181 @@ class _ResearchViewState extends State<ResearchView> {
   Widget build(BuildContext context) {
     final accent = widget.dark ? EmbunColors.mist : EmbunColors.gold;
     return LayoutBuilder(builder: (context, box) {
-      final cols = box.maxWidth >= 640 ? 4 : (box.maxWidth >= 420 ? 3 : 2);
-      final tile = ((box.maxWidth - 24 - (cols - 1) * 10) / cols)
+      final inner = box.maxWidth - 24;
+      final cols = inner >= 620 ? 4 : (inner >= 400 ? 3 : 2);
+      final tile = ((inner - 24 - (cols - 1) * 12) / cols)
           .clamp(96.0, 150.0)
           .toDouble();
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-        child: Column(
-          children: [
-            Text('Pasar Riset',
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold, color: accent)),
-            const SizedBox(height: 4),
-            const Text(
-              'Kartu poin dan lanjutan dijual di sini, +20% dari harga biasa. '
-                  'Tekan tahan kartu untuk melihat detailnya.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.white70),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                StatusTag(
-                    text: 'Embun ${widget.balance.floor()}', color: accent),
-                StatusTag(
-                    text: 'Jatah riset $_left/$_limit',
-                    color: _left > 0 ? EmbunColors.leaf : Colors.white38),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (widget.jailed)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: Text('Kamu sedang dikurung dan tidak bisa berbelanja.',
-                    style: TextStyle(color: EmbunColors.blood)),
-              ),
-            if (_error != null)
-              Text(_error!, style: const TextStyle(color: EmbunColors.blood))
-            else if (!_loaded)
-              const Padding(
-                  padding: EdgeInsets.all(24), child: EmbunLoading())
-            else if (_items.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Belum ada kartu riset yang dijual.',
-                      style: TextStyle(color: Colors.white60)),
-                )
-              else
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 12,
+      return Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
                   children: [
-                    for (final it in _items) _tile(it, tile),
+                    _header(accent),
+                    const SizedBox(height: 12),
+                    if (widget.jailed)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: Text(
+                            'Kamu sedang dikurung dan tidak bisa berbelanja.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: EmbunColors.blood)),
+                      ),
+                    if (_error != null)
+                      Text(_error!,
+                          style: const TextStyle(color: EmbunColors.blood))
+                    else if (!_loaded)
+                      const Padding(
+                          padding: EdgeInsets.all(24), child: EmbunLoading())
+                    else if (_items.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('Belum ada kartu riset yang dijual.',
+                              style: TextStyle(color: Colors.white60)),
+                        )
+                      else
+                        ..._sections(tile, accent),
                   ],
                 ),
-            const SizedBox(height: 18),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: EmbunButton(
-                label: widget.iAmReady
-                    ? 'Menunggu ${widget.readyCount}/${widget.total}'
-                    : 'Selesai riset',
-                expand: true,
-                onPressed: (widget.iAmReady || _busy) ? null : _finish,
               ),
             ),
-          ],
-        ),
+          ),
+          _footer(),
+        ],
       );
     });
   }
+
+  Widget _header(Color accent) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: accent.withValues(alpha: 0.5)),
+    ),
+    child: Column(
+      children: [
+        Text('Pasar Riset',
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: accent)),
+        const SizedBox(height: 2),
+        const Text(
+          'Kartu poin dan lanjutan, +20% dari harga biasa.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12.5, color: Colors.white70),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+                child: _stat('Embunmu', '${widget.balance.floor()}',
+                    accent)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _stat(
+                    'Jatah riset',
+                    '$_left / $_limit',
+                    _left > 0 ? EmbunColors.leaf : Colors.white38)),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _stat(String label, String value, Color c) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Column(
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Colors.white60)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: c)),
+      ],
+    ),
+  );
+
+  List<Widget> _sections(double tile, Color accent) {
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final it in _items) {
+      final k = (widget.defs[it['card_id']]?['kind'] as String?) ?? 'poin';
+      groups.putIfAbsent(k, () => []).add(it);
+    }
+    const titles = {
+      'poin': 'Kartu poin',
+      'lanjutan': 'Kartu lanjutan',
+    };
+    const hints = {
+      'poin': 'Bahan untuk mengisi kartu lanjutan.',
+      'lanjutan': 'Perlu digabung dengan kartu poin sebelum bisa dipakai.',
+    };
+    final out = <Widget>[];
+    for (final k in const ['poin', 'lanjutan']) {
+      final list = groups[k];
+      if (list == null || list.isEmpty) continue;
+      out.add(Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12, color: Colors.white60),
+              children: [
+                TextSpan(
+                    text: titles[k],
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: accent)),
+                TextSpan(text: '   ${hints[k]}'),
+              ],
+            ),
+          ),
+        ),
+      ));
+      out.add(Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 14,
+        children: [for (final it in list) _tile(it, tile)],
+      ));
+      out.add(const SizedBox(height: 14));
+    }
+    return out;
+  }
+
+  Widget _footer() => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.55),
+      border: Border(
+          top: BorderSide(
+              color: EmbunColors.goldDim.withValues(alpha: 0.5))),
+    ),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: EmbunButton(
+          label: widget.iAmReady
+              ? 'Menunggu ${widget.readyCount}/${widget.total}'
+              : 'Selesai riset',
+          expand: true,
+          onPressed: (widget.iAmReady || _busy) ? null : _finish,
+        ),
+      ),
+    ),
+  );
 
   Widget _tile(Map<String, dynamic> it, double w) {
     final id = it['card_id'] as String;
