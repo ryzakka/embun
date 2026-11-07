@@ -212,77 +212,50 @@ class _LobbyPageState extends State<LobbyPage>
     }
   }
 
-  /// Kartu pembaruan di depan menu: versi baru, tombol unduh (atau lihat
-  /// catatan bila tak ada tautan), dan tombol tutup untuk sesi ini.
-  Widget _updateCard() {
+  /// Pembaruan di depan menu, bergaya butir menu lain (ikon + teks, tanpa
+  /// kotak): "Unduh Vx" dengan penanda, keterangan versi, dan "Nanti saja".
+  Widget _updateEntry(bool center) {
     final u = _update!;
-    return AnimatedBuilder(
-      animation: _t,
-      builder: (context, child) {
-        final pulse = 0.5 + 0.5 * sin(_t.value * 120 * 1.6);
-        return Container(
-          width: 300,
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              EmbunColors.gold.withValues(alpha: 0.20),
-              Colors.black.withValues(alpha: 0.55),
-            ]),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: EmbunColors.gold.withValues(alpha: 0.6 + 0.3 * pulse),
-                width: 1.4),
-            boxShadow: [
-              BoxShadow(
-                  color: EmbunColors.gold.withValues(alpha: 0.10 + 0.18 * pulse),
-                  blurRadius: 14 + 8 * pulse),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: Row(
+    final cross = center ? CrossAxisAlignment.center : CrossAxisAlignment.start;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: cross,
         children: [
-          const Icon(Icons.system_update_rounded,
-              color: EmbunColors.gold, size: 30),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          _MenuTile(
+            index: 0,
+            icon: 'announcement',
+            label: u.url != null ? 'Unduh V${u.version}' : 'Pembaruan V${u.version}',
+            badge: 1,
+            center: center,
+            onTap: _openUpdate,
+          ),
+          Padding(
+            padding: EdgeInsets.only(left: center ? 0 : 70),
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Versi V${u.version} tersedia',
+                Text('Versi baru · versimu ${AppInfo.tag}',
                     style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.gold)),
-                Text('Versimu ${AppInfo.tag}',
-                    style: const TextStyle(
-                        fontSize: 11.5, color: Colors.white60)),
+                        fontSize: 11.5,
+                        letterSpacing: 0.4,
+                        color: Colors.white60)),
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: () => setState(() => _updateHidden = true),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                    child: Text('Nanti saja',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Colors.white38,
+                            color: Colors.white54)),
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            height: 38,
-            child: FilledButton(
-              onPressed: _openUpdate,
-              style: FilledButton.styleFrom(
-                backgroundColor: EmbunColors.gold,
-                foregroundColor: Colors.black87,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-              ),
-              child: Text(u.url != null ? 'Unduh' : 'Lihat',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Nanti saja',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => setState(() => _updateHidden = true),
-            icon: const Icon(Icons.close_rounded,
-                size: 18, color: Colors.white54),
           ),
         ],
       ),
@@ -603,39 +576,17 @@ class _LobbyPageState extends State<LobbyPage>
                                 const SizedBox(height: 16),
                                 Opacity(
                                   opacity: bt,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(20),
-                                    onTap: _openUpdate,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 7),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.5),
-                                        borderRadius:
-                                        BorderRadius.circular(20),
-                                        border: Border.all(
-                                            color: EmbunColors.gold
-                                                .withValues(alpha: 0.7)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                              Icons.system_update_rounded,
-                                              size: 16,
-                                              color: EmbunColors.gold),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'V${_update!.version} tersedia · '
-                                                '${_update!.url != null ? 'Unduh' : 'Lihat'}',
-                                            style: const TextStyle(
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.w700,
-                                                color: EmbunColors.gold),
-                                          ),
-                                        ],
-                                      ),
+                                  child: SizedBox(
+                                    width: 240,
+                                    child: EmbunButton(
+                                      label: _update!.url != null
+                                          ? 'Unduh V${_update!.version}'
+                                          : 'Pembaruan V${_update!.version}',
+                                      icon: 'announcement',
+                                      kind: EmbunButtonKind.secondary,
+                                      height: 44,
+                                      expand: true,
+                                      onPressed: _openUpdate,
                                     ),
                                   ),
                                 ),
@@ -793,7 +744,7 @@ class _LobbyPageState extends State<LobbyPage>
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 720;
       final items = <Widget>[
-        if (_showUpdate) _updateCard(),
+        if (_showUpdate) _updateEntry(!wide),
         // Dua aksi utama dibuat lebih besar.
         _MenuTile(
             index: 0,
