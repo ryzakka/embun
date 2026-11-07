@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "a2c3dbbb61a268cb6f56ce4c6ac2e3ce",
-"assets/AssetManifest.bin.json": "3f06229c7382706d44c080ec1fd93fed",
+const RESOURCES = {"assets/AssetManifest.bin": "41463f14c3692637e101150572a70cdf",
+"assets/AssetManifest.bin.json": "7f594b60a436275ccf5c878f34716f75",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/anyaman-gelap.webp": "5322aff6e036276cb3e8960a77599f9b",
 "assets/assets/bentang/anyaman-rusak.webp": "21b76bbe9458a9952369cf8d1b451492",
@@ -303,7 +303,9 @@ const RESOURCES = {"assets/AssetManifest.bin": "a2c3dbbb61a268cb6f56ce4c6ac2e3ce
 "assets/assets/kartu/ItemProRegenerasi/gen-soilmoistureprobe.webp": "47ed2fc7d8d078bb037f2c45cfdc47ac",
 "assets/assets/kartu/punggungkartu/punggungantagonis.webp": "57ae2dd4ccd557b2d68ac186d35c0b64",
 "assets/assets/kartu/punggungkartu/punggungitemantagonis.webp": "57ae2dd4ccd557b2d68ac186d35c0b64",
+"assets/assets/kartu/punggungkartu/punggungitemantarekayasa.webp": "ac269383a3d7650a90d038cd124f7657",
 "assets/assets/kartu/punggungkartu/punggungitemmalam.webp": "2659aa582be21e8258cb5d82bee3f467",
+"assets/assets/kartu/punggungkartu/punggungitemproregenerasi.webp": "3b28a8d58cde369b0f8b29b8fc8c85e0",
 "assets/assets/kartu/punggungkartu/punggungitemprotagonis.webp": "7555a7bdf6be05249e900ff75c411d31",
 "assets/assets/kartu/punggungkartu/punggungitemsiang.webp": "46a095fec4f2eb35fe858a9abd96ed51",
 "assets/assets/kartu/punggungkartu/punggungkemampuan.webp": "0a22373396e9fa2434e01c359b90adf7",
@@ -377,7 +379,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "a2c3dbbb61a268cb6f56ce4c6ac2e3ce
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "0f7d511ee1c744ec60854ed406367d29",
+"flutter_bootstrap.js": "77f64aaf185b9ce96ce0ed1124dfc5d3",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
