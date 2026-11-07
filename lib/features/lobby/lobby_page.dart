@@ -20,6 +20,7 @@ import '../guide/tutorial_page.dart';
 import 'more_games_sheet.dart';
 import 'announcements_page.dart';
 import 'public_rooms_page.dart';
+import 'title_intro.dart';
 import '../table/chat_sheet.dart';
 import '../table/table_page.dart';
 
@@ -63,6 +64,10 @@ class _LobbyPageState extends State<LobbyPage>
   bool _booted = false;
   bool _tutorialNew = false;
 
+  // Naskah pembukaan layar judul (0..1): Hayu pulih, lalu logo dan tombol.
+  late final AnimationController _intro = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 8500));
+
   // Jam berkelanjutan untuk latar bergerak, kunang-kunang, dan melayang.
   late final AnimationController _t = AnimationController(
       vsync: this, duration: const Duration(seconds: 120))
@@ -72,12 +77,18 @@ class _LobbyPageState extends State<LobbyPage>
   void initState() {
     super.initState();
     _stage = widget.startAtMenu ? _Stage.menu : _Stage.title;
+    if (widget.startAtMenu) {
+      _intro.value = 1;
+    } else {
+      _intro.forward();
+    }
     _boot();
   }
 
   @override
   void dispose() {
     _t.dispose();
+    _intro.dispose();
     nameCtrl.dispose();
     codeCtrl.dispose();
     super.dispose();
@@ -284,9 +295,23 @@ class _LobbyPageState extends State<LobbyPage>
     ),
   );
 
-  /// Latar bentang yang bergerak pelan (zoom dan geser), dengan kunang-kunang
-  /// dan, di layar judul, berkas cahaya hangat dari atas.
-  Widget _background(String stem, bool title) => AnimatedBuilder(
+  /// Layar judul memakai pembukaan sinematik ([TitleIntroBackdrop]); layar
+  /// lain memakai latar bentang yang bergerak pelan.
+  Widget _background(String stem, bool title) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 900),
+    layoutBuilder: (current, previous) => Stack(
+      fit: StackFit.expand,
+      children: [...previous, if (current != null) current],
+    ),
+    child: title
+        ? TitleIntroBackdrop(
+        key: const ValueKey('title-bg'), progress: _intro, clock: _t)
+        : KeyedSubtree(
+        key: const ValueKey('plain-bg'), child: _plainBackground(stem)),
+  );
+
+  /// Latar bentang yang bergerak pelan (zoom dan geser) dengan kunang-kunang.
+  Widget _plainBackground(String stem) => AnimatedBuilder(
     animation: _t,
     builder: (context, _) {
       final time = _t.value * 120;
@@ -304,7 +329,7 @@ class _LobbyPageState extends State<LobbyPage>
           ),
           IgnorePointer(
             child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: title ? 1.0 : 0.0),
+              tween: Tween<double>(end: 0.0),
               duration: const Duration(milliseconds: 900),
               builder: (_, beam, __) => CustomPaint(
                 painter: _Fx(time: time, beam: beam),
@@ -323,14 +348,23 @@ class _LobbyPageState extends State<LobbyPage>
       final logoH = min(c.maxHeight * 0.5, 420.0).toDouble();
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _booted ? _start : null,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 3400),
-          builder: (context, t, _) {
-            final lt = _smooth(_seg(t, 0.0, 0.5));
-            final st = _smooth(_seg(t, 0.42, 0.7));
-            final bt = _smooth(_seg(t, 0.62, 0.9));
+        // Ketukan pertama melewati pembukaan, ketukan berikutnya memulai.
+        onTap: () {
+          if (_intro.value < 0.9) {
+            _intro.animateTo(1,
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOut);
+          } else if (_booted) {
+            _start();
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _intro,
+          builder: (context, _) {
+            final t = _intro.value;
+            final lt = _smooth(_seg(t, 0.62, 0.86));
+            final st = _smooth(_seg(t, 0.80, 0.94));
+            final bt = _smooth(_seg(t, 0.90, 1.0));
             return Stack(
               fit: StackFit.expand,
               children: [

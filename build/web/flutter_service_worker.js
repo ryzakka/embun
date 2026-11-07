@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "d13fa797587e48b6640218d3a8c43bd3",
-"assets/AssetManifest.bin.json": "4312a9fc67dfab27cff53615af4c39b1",
+const RESOURCES = {"assets/AssetManifest.bin": "7726f65085314f828d6bc0aaf6a11159",
+"assets/AssetManifest.bin.json": "a5203353d762b1055f0687fa43b5c8bd",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/anyaman-gelap.webp": "5322aff6e036276cb3e8960a77599f9b",
 "assets/assets/bentang/anyaman-rusak.webp": "21b76bbe9458a9952369cf8d1b451492",
@@ -329,6 +329,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "d13fa797587e48b6640218d3a8c43bd3
 "assets/assets/logo/logo-linguistichegemony.webp": "eef27a634cb64fedc8a9573c9e9131d4",
 "assets/assets/logo/logo-sampahnya.webp": "a82df3f853771fae4cf80299ade0c53b",
 "assets/assets/logo/logoteks-transparent.webp": "9849ae3fe81df3c6374be589eb4ec3af",
+"assets/assets/pohon/DRAFTpohongerak0.mp4": "65ef12026946455360bc6b736105fac6",
 "assets/assets/pohon/pohon0-sakura.webp": "b3fed012e7b6b106f47d6facf2f9240b",
 "assets/assets/pohon/pohon0.webp": "b5e519b94b0697601945c4868d9278c0",
 "assets/assets/pohon/pohon1.webp": "6df79fd7be8f04befa3b6b91b9644a21",
@@ -340,7 +341,6 @@ const RESOURCES = {"assets/AssetManifest.bin": "d13fa797587e48b6640218d3a8c43bd3
 "assets/assets/pohon/pohon7.webp": "c5f523007df07bbf2cade5fb82abe55d",
 "assets/assets/pohon/pohon8.webp": "63e33815dc15a112d489e5733ee7c632",
 "assets/assets/pohon/pohon9.webp": "01455e4b8df0348610e57631081d21b3",
-"assets/assets/pohon/pohongerak0.mp4": "65ef12026946455360bc6b736105fac6",
 "assets/assets/sound/backsound01.mp3": "b32732d10a7bc3f82b3c684a1e91d063",
 "assets/assets/sound/buy.mp3": "48a6ccae7f4f7ec93e2090aeed6b3a24",
 "assets/assets/sound/clickbutton-tung.mp3": "338ceb9aa86a75c4573787299c29f0e3",
@@ -404,7 +404,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "d13fa797587e48b6640218d3a8c43bd3
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "0002ecaa8ae43b01e86d321ed95b1714",
+"flutter_bootstrap.js": "2d08624adb5f8dbbefb6242ef4184695",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -415,7 +415,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "d13fa797587e48b6640218d3a8c43bd3
 "icons/Icon-maskable-512.webp": "21d7710de6b473107c3376fe3a48a797",
 "index.html": "e8810c49a8158ad25b7df982a3df3ea5",
 "/": "e8810c49a8158ad25b7df982a3df3ea5",
-"main.dart.js": "013886b3689c7293db8ff17112863148",
+"main.dart.js": "1497ea47d7ad7f7476457534a2fa5041",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "version.json": "0027c1d613c5c157c36770d6df7a9ee4",
 "_headers": "37cb9ac50993ed26a84190a1031c15c3"};
