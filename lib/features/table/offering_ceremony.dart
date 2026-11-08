@@ -80,7 +80,9 @@ class OfferingCeremony extends StatefulWidget {
   final int fallbackLeaves;
   final Map<String, Map<String, dynamic>> defs;
   final bool dark;
-  final VoidCallback onDone;
+  /// [covered] true bila adegan berjalan sampai selesai DAN menampilkan hasil
+  /// tiap kartu; layar nilai lalu hanya menampilkan sisa efek (kabut, dsb.).
+  final void Function(bool covered) onDone;
 
   const OfferingCeremony({
     super.key,
@@ -109,6 +111,11 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   final Set<int> _hapHit = {};
   bool _hapTail = false;
 
+  /// Efek per kartu (effect_log.card_seq) dan apakah adegan sampai selesai.
+  List<Map<String, dynamic>> _fx = [];
+  bool _completed = false;
+  bool get _hasBound => _fx.any((r) => r['card_seq'] != null);
+
   static const _lead = 900; // jeda awal (ms): pohon muncul dari gelap
   static const _tail = 1800; // jeda akhir (ms): Hayu menimbang
 
@@ -135,16 +142,25 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       _finish();
       return;
     }
+    List<Map<String, dynamic>> fx = [];
+    try {
+      fx = await widget.repo.effects(widget.gameId, widget.day);
+    } catch (_) {}
+    if (!mounted) return;
     _per = cards.length <= 6 ? 2400 : 1800;
     final total = _lead + cards.length * _per + _tail;
     final c = AnimationController(
         vsync: this, duration: Duration(milliseconds: total));
     c.addListener(_onTick);
     c.addStatusListener((s) {
-      if (s == AnimationStatus.completed) _finish();
+      if (s == AnimationStatus.completed) {
+        _completed = true;
+        _finish();
+      }
     });
     setState(() {
       _cards = cards;
+      _fx = fx;
       _leaves = before ?? widget.fallbackLeaves;
       _ctl = c;
       _loaded = true;
@@ -155,7 +171,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   void _finish() {
     if (_done) return;
     _done = true;
-    if (mounted) widget.onDone();
+    if (mounted) widget.onDone(_completed && _hasBound);
   }
 
   /// Waktu lokal kartu ke-i dalam ms sejak kartu itu mulai.
@@ -539,6 +555,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             ...ghosts,
             if (flying != null) flying,
             if (plate != null) plate,
+            ..._fxOverlay(context, ms),
             // judul
             Positioned(
               left: 0,
@@ -630,6 +647,135 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         );
       },
     );
+  }
+
+  // ------------------------------------------------ hasil tiap kartu
+
+  /// Perubahan daun pada satu efek: hanya yang tertulis "+N daun" / "-N daun".
+  int _leafDelta(Map<String, dynamic> r) {
+    final m = RegExp(r'([+\-−–])\s*(\d+)\s*daun').firstMatch('${r['label'] ?? ''}');
+    if (m == null) return 0;
+    final v = int.parse(m.group(2)!);
+    return m.group(1) == '+' ? v : -v;
+  }
+
+  List<Map<String, dynamic>> _rowsOf(int i) =>
+      [for (final r in _fx) if (r['card_seq'] == i + 1) r];
+
+  /// Hitungan daun hidup di atas layar + label hasil kartu yang baru mendarat.
+  List<Widget> _fxOverlay(BuildContext context, double ms) {
+    if (!_hasBound) return const [];
+    final n = _cards.length;
+    var lv = _leaves;
+    var last = -1;
+    for (var i = 0; i < n; i++) {
+      if (_local(i) / _per >= 0.86) {
+        last = i;
+        for (final r in _rowsOf(i)) {
+          lv += _leafDelta(r);
+        }
+      }
+    }
+    lv = lv.clamp(0, 30).toInt();
+    final rows = last < 0 ? const <Map<String, dynamic>>[] : _rowsOf(last);
+    final lu = last < 0 ? 0.0 : _local(last) / _per;
+    final a = last < 0 ? 0.0 : _smooth(_seg(lu, 0.86, 1.0));
+    final fresh = last < 0 ? 0.0 : 1 - _seg(lu, 0.86, 1.25);
+    var ds = 0;
+    for (final r in rows) {
+      ds += _leafDelta(r);
+    }
+    final flash = ds > 0
+        ? EmbunColors.leaf
+        : ds < 0
+        ? EmbunColors.blood
+        : EmbunColors.gold;
+    final top = MediaQuery.paddingOf(context).top;
+    final hudA = _smooth(_seg(ms, 600, 1300));
+
+    return [
+      Positioned(
+        left: 0,
+        right: 0,
+        top: top + 34,
+        child: IgnorePointer(
+          child: Opacity(
+            opacity: hudA,
+            child: Center(
+              child: Transform.scale(
+                scale: 1 + 0.18 * fresh,
+                child: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                        color: Color.lerp(
+                            EmbunColors.goldDim, flash, fresh)!,
+                        width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const GameIcon('helaidaun', size: 22),
+                      const SizedBox(width: 6),
+                      Text('$lv',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color.lerp(
+                                  EmbunColors.gold, flash, fresh))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      if (rows.isNotEmpty && a > 0.01)
+        Positioned(
+          left: 16,
+          right: 16,
+          top: top + 84,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: a,
+              child: Transform.translate(
+                offset: Offset(0, (1 - a) * 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final r in rows.take(4))
+                      Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.58),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: r['kind'] == 'bad'
+                                  ? EmbunColors.blood
+                                  : EmbunColors.leaf),
+                        ),
+                        child: Text('${r['label'] ?? ''}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: r['kind'] == 'bad'
+                                    ? EmbunColors.blood
+                                    : EmbunColors.leaf)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
   }
 
   Widget _pip(int i, int cur, double sec) {

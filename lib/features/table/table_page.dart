@@ -123,6 +123,7 @@ class _TablePageState extends State<TablePage> {
   bool _leaving = false;
   bool disguiseMode = false; // Mode samaran layar untuk Si Terbisik
   int? _ceremonyDay; // hari yang adegan pelemparan kartunya sudah selesai
+  bool _ceremonyCovered = false; // adegan itu sudah menampilkan hasil tiap kartu
 
   // Kain terhempas di pergantian fase (lihat ClothSweepLayer). Matikan salah
   // satunya dengan false bila tidak diinginkan.
@@ -1299,10 +1300,15 @@ class _TablePageState extends State<TablePage> {
         fallbackLeaves: leaves,
         defs: defs,
         dark: showAsAntag,
-        onDone: () {
+        onDone: (covered) {
           if (!mounted) return;
           void toEffects() {
-            if (mounted) setState(() => _ceremonyDay = day);
+            if (mounted) {
+              setState(() {
+                _ceremonyDay = day;
+                _ceremonyCovered = covered;
+              });
+            }
           }
 
           final played = _clothAfterCeremony &&
@@ -1322,6 +1328,7 @@ class _TablePageState extends State<TablePage> {
         children: [
           EffectsView(
             key: ValueKey('fx$day'),
+            skipBound: _ceremonyCovered,
             repo: repo,
             gameId: widget.gameId,
             day: day,

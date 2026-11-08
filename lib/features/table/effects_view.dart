@@ -67,6 +67,11 @@ class EffectsView extends StatefulWidget {
   final int total;
   final Future<void> Function() onContinue;
 
+  /// Efek yang sudah ditampilkan di adegan pelemparan kartu (card_seq terisi)
+  /// dilewati; layar ini hanya memutar sisanya (kabut, ulat, dsb.) lalu
+  /// perubahan akhir Hayu.
+  final bool skipBound;
+
   const EffectsView({
     super.key,
     required this.repo,
@@ -78,6 +83,7 @@ class EffectsView extends StatefulWidget {
     required this.readyCount,
     required this.total,
     required this.onContinue,
+    this.skipBound = false,
   });
 
   @override
@@ -152,19 +158,38 @@ class _EffectsViewState extends State<EffectsView>
 
   Future<void> _load() async {
     try {
-      final r = await widget.repo.effects(widget.gameId, widget.day);
+      final all = await widget.repo.effects(widget.gameId, widget.day);
       final before = await widget.repo.leavesBefore(widget.gameId);
       if (!mounted) return;
+      var r = all;
+      int? covered; // perubahan daun dari efek yang sudah tampil di adegan lempar
+      if (widget.skipBound) {
+        final bound = [for (final x in all) if (x['card_seq'] != null) x];
+        if (bound.isNotEmpty) {
+          r = [for (final x in all) if (x['card_seq'] == null) x];
+          covered = bound.fold<int>(0, (a, x) => a + _leafOnly(x));
+        }
+      }
       setState(() {
         rows = r;
         loaded = true;
         _before = before;
         // Hitungan awal dari server, bukan dari log (log tidak membawa angka).
         if (before != null) {
-          shown = before;
+          shown = (before + (covered ?? 0)).clamp(0, 30).toInt();
           imgLeaves = before;
         }
       });
+      if (r.isEmpty && covered != null && before != null &&
+          widget.finalLeaves != before) {
+        // Semua efek sudah terlihat di adegan lempar: tinggal Hayu berubah.
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (!mounted) return;
+          setState(() => shown = widget.finalLeaves);
+          _final.forward(from: 0);
+        });
+        return;
+      }
       if (r.isEmpty) {
         setState(() {
           shown = widget.finalLeaves;
@@ -208,6 +233,16 @@ class _EffectsViewState extends State<EffectsView>
     _final.dispose();
     _t.dispose();
     super.dispose();
+  }
+
+  /// Perubahan daun yang tertulis eksplisit ("+N daun" / "-N daun"); selain
+  /// itu 0 (mis. "+2 perlindungan" bukan daun).
+  int _leafOnly(Map<String, dynamic> row) {
+    final m = RegExp(r'([+\-−–])\s*(\d+)\s*daun')
+        .firstMatch((row['label'] as String?) ?? '');
+    if (m == null) return 0;
+    final n = int.parse(m.group(2)!);
+    return m.group(1) == '+' ? n : -n;
   }
 
   /// Perubahan daun yang tertulis pada satu efek.

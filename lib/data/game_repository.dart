@@ -75,15 +75,27 @@ class GameRepository {
       });
 
   Future<List<Map<String, dynamic>>> effects(String gameId, int day) async {
-    final rows = await _db
-        .from('effect_log')
     // Kolom delta/leaves_after sengaja tidak diminta (dan dicabut hak
     // bacanya di server): akan membocorkan efek Topeng Warga.
-        .select('id, game_id, day, seq, kind, label')
-        .eq('game_id', gameId)
-        .eq('day', day)
-        .order('seq');
-    return List<Map<String, dynamic>>.from(rows);
+    // card_seq = nomor kartu (urutan lempar) yang menghasilkan efek; kolomnya
+    // baru, jadi bila belum ada di server, ulangi tanpa kolom itu.
+    try {
+      final rows = await _db
+          .from('effect_log')
+          .select('id, game_id, day, seq, kind, label, card_seq')
+          .eq('game_id', gameId)
+          .eq('day', day)
+          .order('seq');
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (_) {
+      final rows = await _db
+          .from('effect_log')
+          .select('id, game_id, day, seq, kind, label')
+          .eq('game_id', gameId)
+          .eq('day', day)
+          .order('seq');
+      return List<Map<String, dynamic>>.from(rows);
+    }
   }
 
   /// Jumlah daun sebelum efek hari ini diterapkan (awal hitungan animasi).
