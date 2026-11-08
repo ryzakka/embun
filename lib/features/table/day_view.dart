@@ -48,7 +48,7 @@ class _Grid {
   final double w;
   final double gap;
   const _Grid(this.cols, this.w, this.gap);
-  double get h => w * 9 / 7;
+  double get h => w * kTallAspect;
 }
 
 /// Grid kartu Meja berdasarkan lebar yang tersedia.
@@ -1675,7 +1675,7 @@ class _DayViewState extends State<DayView>
     required VoidCallback onClear,
     required bool faded,
   }) {
-    final h = w * 9 / 7;
+    final h = w * kTallAspect;
     if (cardId == null) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -1933,7 +1933,7 @@ class _DayViewState extends State<DayView>
                         onClear: () => setState(() => _fuseAdv = null),
                       ),
                       SizedBox(
-                        height: slotW * 9 / 7,
+                        height: slotW * kTallAspect,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Center(

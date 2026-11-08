@@ -1142,7 +1142,7 @@ class _FuseDemo extends StatelessWidget {
 
   Widget _slot(double w, Widget? child, {bool on = false}) => Container(
     width: w,
-    height: w * 9 / 7,
+    height: w * kTallAspect,
     alignment: Alignment.center,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),

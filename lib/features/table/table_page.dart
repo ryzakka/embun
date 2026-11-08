@@ -1559,6 +1559,8 @@ class _TablePageState extends State<TablePage> {
         total: alive.length,
         onSubmitted: _refreshHand,
         out: iAmOut,
+        deadline: deadline,
+        winLeaves: (g['win_leaves'] as int?) ?? 20,
       );
     } else if (iAmOut) {
       body = _spectatorBody();

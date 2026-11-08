@@ -243,7 +243,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   Widget _stage(BoxConstraints box) {
     final W = box.maxWidth, H = box.maxHeight;
     final cardH = (H * 0.30).clamp(110.0, 230.0).toDouble();
-    final cardW = cardH * 7 / 9;
+    final cardW = cardH / kTallAspect;
     final target = Offset(W / 2, H * 0.50);
     final mid = Offset(W / 2, H * 0.64);
     final start = Offset(W / 2, H + cardH * 0.7);

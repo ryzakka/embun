@@ -351,45 +351,19 @@ String? abilityArtPath(Map<String, dynamic>? def) {
   return AssetCatalog.I.file(kemampuanDir, stem);
 }
 
-/// Rasio tinggi : lebar.
+/// Rasio tinggi : lebar. SEMUA kartu (karakter, item warga/antagonis, malam,
+/// siang, poin, lanjutan, kemampuan, dan punggungnya) berukuran 2:3.
 const kTallAspect = 1.5; // 2:3
-const kItemAspect = 9 / 7; // item protagonis/warga (ukuran lama)
+const kItemAspect = kTallAspect; // dulu 9/7; kini sama untuk semua kartu
 const kProtagonistAspect = kTallAspect; // dipakai _FaceCrop dan layar lain
 const kAntagonisAspect = kTallAspect;
 
-/// 2:3: karakter, item antagonis (merah), kartu malam (ungu, di
-/// powernight), kemampuan (biru), dan punggungnya. Item protagonis tetap lama.
-double cardAspectFor(String? path) {
-  if (path == null) return kTallAspect;
-  // Akhiran '/' agar ItemAnta tidak ikut mencocokkan ItemAntaNight, dst.
-  if (path.startsWith('$protagonisDir/') ||
-      path.startsWith('$antagonisDir/') ||
-      path.startsWith('$kartuAntagDir/') ||
-      path.startsWith('$kartuMalamDir/') ||
-      path.startsWith('$kartuSiangDir/') ||
-      path.startsWith('$kartuRekayasaDir/') ||
-      path.startsWith('$kartuRegenerasiDir/') ||
-      path.startsWith('$kemampuanDir/')) {
-    return kTallAspect;
-  }
-  if (path.startsWith(punggungDir)) {
-    // Satu-satunya punggung yang belum 2:3.
-    return path.contains('punggungitemprotagonis') ? kItemAspect : kTallAspect;
-  }
-  return kItemAspect; // powerpro (item warga) dan lainnya
-}
+/// Rasio satu-satunya untuk semua kartu. Parameter dipertahankan agar
+/// pemanggil lama tidak perlu diubah.
+double cardAspectFor(String? path) => kTallAspect;
 
-/// Untuk kartu item/malam menurut definisinya (dipakai CardTile).
-double cardAspectForDef(Map<String, dynamic>? def) {
-  if (def == null) return kItemAspect;
-  return (def['side'] == 'antagonis' ||
-      def['kind'] == 'malam' ||
-      def['kind'] == 'siang' ||
-      def['kind'] == 'lanjutan' ||
-      def['kind'] == 'poin')
-      ? kTallAspect
-      : kItemAspect;
-}
+/// Sama untuk semua jenis kartu (lihat [cardAspectFor]).
+double cardAspectForDef(Map<String, dynamic>? def) => kTallAspect;
 
 /// Nama karakter dari nama berkas. Nama berkas = <pekerjaan><jenis>, mis.
 /// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
