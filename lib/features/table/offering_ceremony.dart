@@ -14,6 +14,8 @@ double _seg(double u, double a, double b) =>
 
 double _smooth(double x) => x * x * (3 - 2 * x);
 
+double _lerp(double a, double b, double t) => a + (b - a) * t;
+
 List<double> _sat(double s) {
   final inv = 1 - s;
   final r = 0.2126 * inv, g = 0.7152 * inv, b = 0.0722 * inv;
@@ -84,6 +86,9 @@ class OfferingCeremony extends StatefulWidget {
   /// tiap kartu; layar nilai lalu hanya menampilkan sisa efek (kabut, dsb.).
   final void Function(bool covered) onDone;
 
+  /// Batas daun untuk menang (menentukan garis pada bilah hitungan).
+  final int winLeaves;
+
   const OfferingCeremony({
     super.key,
     required this.repo,
@@ -92,6 +97,7 @@ class OfferingCeremony extends StatefulWidget {
     required this.fallbackLeaves,
     required this.defs,
     required this.onDone,
+    this.winLeaves = 20,
     this.dark = false,
   });
 
@@ -308,7 +314,11 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           if (p <= 0 || p >= 1) continue;
           final amp = math.sin(p * math.pi) * (1 - p);
           final b = _isBad(k);
-          if (b) {
+          final blk = _isBlocked(k);
+          if (blk) {
+            // Ditahan: dentang kecil, tanpa guncangan hebat.
+            dx += math.sin(p * 90) * 5 * (1 - p) * (1 - p);
+          } else if (b) {
             badP = math.max(badP, amp);
             dx += math.sin(p * 70) * 14 * (1 - p) * (1 - p);
             dy += math.cos(p * 55) * 6 * (1 - p) * (1 - p);
@@ -316,7 +326,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             goodP = math.max(goodP, amp);
             dy -= math.sin(p * math.pi) * 5 * (1 - p);
           }
-          impacts.add(_Impact(k, p, b, _advPal(k)));
+          impacts.add(_Impact(k, p, b, _advPal(k), blk));
         }
 
         final shown = (t / _per).floor().clamp(-1, n - 1).toInt() + 1;
@@ -341,6 +351,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         );
 
         // ---- kartu yang sedang beraksi ----
+        var thFx = 0.0;
+        var thBad = false;
         Widget? flying;
         Widget? plate;
         Widget? holdGlow;
@@ -358,6 +370,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           final f = Curves.easeInOut.transform(_seg(u, 0.26, 0.46));
           final thRaw = _seg(u, 0.64, 0.86);
           final th = Curves.easeInCubic.transform(thRaw);
+          thFx = thRaw;
+          thBad = bad;
           final hover = _seg(u, 0.40, 0.50) * (1 - _seg(u, 0.62, 0.66));
           final ctrl = Offset(W / 2 - dir * W * 0.30,
               (mid.dy + target.dy) / 2 - H * 0.12);
@@ -493,6 +507,21 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             (1 - _smooth(_seg(tail, 0.82, 1.0)));
         final dots = '.' * (1 + ((ms / 350).floor() % 3));
 
+        // Kilatan layar sesaat saat kartu menghantam.
+        var flashA = 0.0;
+        var flashCol = const Color(0xFFFFF0B0);
+        for (final im in impacts) {
+          final f = (1 - im.p / 0.14).clamp(0.0, 1.0).toDouble();
+          if (f <= 0) continue;
+          final a = f * (im.blocked ? 0.26 : (im.bad ? 0.30 : 0.38));
+          if (a > flashA) {
+            flashA = a;
+            flashCol = im.blocked
+                ? const Color(0xFFBDF2FF)
+                : (im.bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFF0B0));
+          }
+        }
+
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -550,12 +579,27 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                 ),
               ),
             ),
+            if (flashA > 0.01)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(color: flashCol.withValues(alpha: flashA)),
+                ),
+              ),
             if (holdGlow != null) holdGlow,
             if (advFx != null) advFx,
+            if (thFx > 0.15)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter:
+                    _SpeedPainter(center: target, th: thFx, bad: thBad),
+                  ),
+                ),
+              ),
             ...ghosts,
             if (flying != null) flying,
             if (plate != null) plate,
-            ..._fxOverlay(context, ms),
+            ..._fxOverlay(context, ms, W, H, target),
             // judul
             Positioned(
               left: 0,
@@ -662,71 +706,209 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   List<Map<String, dynamic>> _rowsOf(int i) =>
       [for (final r in _fx) if (r['card_seq'] == i + 1) r];
 
-  /// Hitungan daun hidup di atas layar + label hasil kartu yang baru mendarat.
-  List<Widget> _fxOverlay(BuildContext context, double ms) {
-    if (!_hasBound) return const [];
-    final n = _cards.length;
-    var lv = _leaves;
-    var last = -1;
-    for (var i = 0; i < n; i++) {
-      if (_local(i) / _per >= 0.86) {
-        last = i;
-        for (final r in _rowsOf(i)) {
-          lv += _leafDelta(r);
-        }
+  /// Peristiwa efek tiap kartu yang baru mendarat (waktu [u] dalam satuan kartu).
+  /// Dipakai untuk kubah perlindungan, orb daun, dan angka raksasa.
+  bool _isBlocked(int k) {
+    for (final r in _rowsOf(k)) {
+      final l = '${r['label'] ?? ''}'.toLowerCase();
+      if (l.contains('menahan') || l.contains('dibatalkan')) return true;
+    }
+    return false;
+  }
+
+  bool _isShield(int k) {
+    for (final r in _rowsOf(k)) {
+      if (RegExp(r'\+\s*\d+\s*perlindungan', caseSensitive: false)
+          .hasMatch('${r['label'] ?? ''}')) {
+        return true;
       }
     }
-    lv = lv.clamp(0, 30).toInt();
+    return false;
+  }
+
+  int _dsOf(int k) {
+    var d = 0;
+    for (final r in _rowsOf(k)) {
+      d += _leafDelta(r);
+    }
+    return d;
+  }
+
+  /// Hitungan daun (bilah 30 segmen), angka raksasa saat mendarat, orb daun
+  /// yang terbang ke hitungan, kubah perlindungan, dan label hasil.
+  List<Widget> _fxOverlay(
+      BuildContext context, double ms, double W, double H, Offset target) {
+    if (!_hasBound) return const [];
+    final n = _cards.length;
+    final top = MediaQuery.paddingOf(context).top;
+    final hudW = math.min(W * 0.86, 320.0);
+    final hudTop = top + 30;
+    final hudNum = Offset(W / 2, hudTop + 21);
+
+    // Hitungan: tiap kartu menambah/mengurangi selagi orbnya tiba (u 1.10-1.32).
+    var lvF = _leaves.toDouble();
+    var last = -1;
+    final events = <_Pt>[];
+    for (var i = 0; i < n; i++) {
+      final u = _local(i) / _per;
+      if (u < 0.86) continue;
+      last = i;
+      final di = _dsOf(i);
+      lvF += di * Curves.easeOutCubic.transform(_seg(u, 1.10, 1.32));
+      if (u < 1.8) {
+        events.add(_Pt(i, u, di, _isShield(i), _isBlocked(i)));
+      }
+    }
+    lvF = lvF.clamp(0.0, 30.0).toDouble();
+    final lv = lvF.round();
     final rows = last < 0 ? const <Map<String, dynamic>>[] : _rowsOf(last);
     final lu = last < 0 ? 0.0 : _local(last) / _per;
-    final a = last < 0 ? 0.0 : _smooth(_seg(lu, 0.86, 1.0));
-    final fresh = last < 0 ? 0.0 : 1 - _seg(lu, 0.86, 1.25);
-    var ds = 0;
-    for (final r in rows) {
-      ds += _leafDelta(r);
-    }
+    final ds = last < 0 ? 0 : _dsOf(last);
+    final blocked = last >= 0 && _isBlocked(last);
+
+    final chipA = last < 0 ? 0.0 : _smooth(_seg(lu, 0.88, 1.0));
+    final pulse = last < 0 ? 0.0 : math.sin(_seg(lu, 1.10, 1.45) * math.pi);
     final flash = ds > 0
         ? EmbunColors.leaf
         : ds < 0
         ? EmbunColors.blood
         : EmbunColors.gold;
-    final top = MediaQuery.paddingOf(context).top;
     final hudA = _smooth(_seg(ms, 600, 1300));
+    final shake = ds < 0
+        ? math.sin(_seg(lu, 1.10, 1.45) * 60) * 5 * pulse
+        : 0.0;
+
+    // Angka raksasa / kata "DITAHAN" di titik hantam.
+    Widget? big;
+    if (last >= 0 && (ds != 0 || blocked)) {
+      final inA = _smooth(_seg(lu, 0.86, 0.95));
+      final outA = 1 - _smooth(_seg(lu, 1.12, 1.30));
+      final op = inA * outA;
+      if (op > 0.01) {
+        final sc = _lerp(0.4, 1.0, Curves.easeOutBack.transform(_seg(lu, 0.86, 1.02)));
+        final rise = 70 * Curves.easeOut.transform(_seg(lu, 0.86, 1.25));
+        final bad = ds < 0;
+        final txt = ds != 0 ? '${ds > 0 ? '+' : '−'}${ds.abs()}' : 'DITAHAN';
+        final col = ds > 0
+            ? const Color(0xFFFFF0B0)
+            : ds < 0
+            ? const Color(0xFFF4DDFF)
+            : const Color(0xFFD8F8FF);
+        final glow = ds > 0
+            ? EmbunColors.leaf
+            : ds < 0
+            ? EmbunColors.blood
+            : const Color(0xFF6FE3FF);
+        big = Positioned(
+          left: 0,
+          right: 0,
+          top: target.dy - 54 - rise,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: op.clamp(0.0, 1.0).toDouble(),
+              child: Transform.scale(
+                scale: sc,
+                child: Center(
+                  child: Text(
+                    txt,
+                    style: TextStyle(
+                      fontSize: ds != 0 ? 78 : 40,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: ds == 0 ? FontStyle.italic : FontStyle.normal,
+                      letterSpacing: ds == 0 ? 4 : 0,
+                      height: 1,
+                      color: col,
+                      shadows: [
+                        Shadow(color: glow, blurRadius: 28),
+                        Shadow(color: glow.withValues(alpha: 0.8), blurRadius: 60),
+                        Shadow(
+                            color: Colors.black.withValues(alpha: bad ? 0.9 : 0.6),
+                            blurRadius: 6),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
 
     return [
+      Positioned.fill(
+        child: IgnorePointer(
+          child: CustomPaint(
+            painter: _PointFxPainter(
+              events: events,
+              target: target,
+              hud: hudNum,
+              radius: math.min(W, H) * 0.34,
+            ),
+          ),
+        ),
+      ),
+      if (big != null) big,
+      // hitungan daun: angka + bilah 30 segmen
       Positioned(
         left: 0,
         right: 0,
-        top: top + 34,
+        top: hudTop,
         child: IgnorePointer(
           child: Opacity(
             opacity: hudA,
             child: Center(
-              child: Transform.scale(
-                scale: 1 + 0.18 * fresh,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                        color: Color.lerp(
-                            EmbunColors.goldDim, flash, fresh)!,
-                        width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const GameIcon('helaidaun', size: 22),
-                      const SizedBox(width: 6),
-                      Text('$lv',
-                          style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Color.lerp(
-                                  EmbunColors.gold, flash, fresh))),
-                    ],
+              child: Transform.translate(
+                offset: Offset(shake, 0),
+                child: Transform.scale(
+                  scale: 1 + 0.14 * pulse,
+                  child: Container(
+                    width: hudW,
+                    padding: const EdgeInsets.fromLTRB(12, 5, 12, 7),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                          color: Color.lerp(EmbunColors.goldDim, flash, pulse)!,
+                          width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                            color: flash.withValues(alpha: 0.5 * pulse),
+                            blurRadius: 24),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text('$lv',
+                                style: TextStyle(
+                                    fontSize: 26,
+                                    height: 1,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color.lerp(
+                                        EmbunColors.gold, flash, pulse))),
+                            const SizedBox(width: 4),
+                            const Text('/ 30 daun',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.white54)),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        SizedBox(
+                          height: 9,
+                          width: double.infinity,
+                          child: CustomPaint(
+                            painter: _LeafBarPainter(
+                                lit: lvF, win: widget.winLeaves, flash: flash, pulse: pulse),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -734,26 +916,27 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           ),
         ),
       ),
-      if (rows.isNotEmpty && a > 0.01)
+      // label hasil kartu yang baru mendarat
+      if (rows.isNotEmpty && chipA > 0.01)
         Positioned(
           left: 16,
           right: 16,
-          top: top + 84,
+          top: hudTop + 66,
           child: IgnorePointer(
             child: Opacity(
-              opacity: a,
+              opacity: chipA,
               child: Transform.translate(
-                offset: Offset(0, (1 - a) * 12),
+                offset: Offset(0, (1 - chipA) * 12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final r in rows.take(4))
+                    for (final r in rows.take(3))
                       Container(
-                        margin: const EdgeInsets.only(top: 6),
+                        margin: const EdgeInsets.only(top: 5),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                            horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.58),
+                          color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                               color: r['kind'] == 'bad'
@@ -763,7 +946,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                         child: Text('${r['label'] ?? ''}',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: r['kind'] == 'bad'
                                     ? EmbunColors.blood
@@ -948,7 +1131,8 @@ class _Impact {
   final double p; // 0..1
   final bool bad;
   final _AdvPal? pal; // kartu lanjutan: warna ledakan ikut palet
-  const _Impact(this.k, this.p, this.bad, [this.pal]);
+  final bool blocked; // serangan ditahan perlindungan: hantaman cyan, tanpa retak
+  const _Impact(this.k, this.p, this.bad, [this.pal, this.blocked = false]);
 }
 
 /// Pendaran kartu lanjutan yang sedang ditampakkan dan dilempar: halo
@@ -1163,11 +1347,17 @@ class _ImpactPainter extends CustomPainter {
     for (final im in impacts) {
       final pal = im.pal;
       final bad = im.bad || dark;
-      final a = pal?.core ??
+      final a = im.blocked
+          ? const Color(0xFF6FE3FF)
+          : pal?.core ??
           (bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866));
-      final b = pal?.accent ??
+      final b = im.blocked
+          ? const Color(0xFFBDF2FF)
+          : pal?.accent ??
           (bad ? const Color(0xFF6A3FA0) : const Color(0xFF9DF0B8));
-      final spark = pal?.spark ??
+      final spark = im.blocked
+          ? Colors.white
+          : pal?.spark ??
           (bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A));
       final p = im.p;
       final fade = (1 - p).clamp(0.0, 1.0).toDouble();
@@ -1220,7 +1410,9 @@ class _ImpactPainter extends CustomPainter {
         );
       }
 
-      if (!bad) {
+      if (im.blocked) {
+        // Ditahan: kubah perlindungan digambar terpisah, tanpa retak/daun.
+      } else if (!bad) {
         // Sinar emas yang menyebar.
         final rayLen = radius * (0.6 + 1.0 * ease);
         for (var j = 0; j < 10; j++) {
@@ -1341,4 +1533,297 @@ class _ImpactPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ImpactPainter old) => true;
+}
+
+/// Satu kartu yang baru mendarat: [u] = waktu dalam satuan kartu (0.86 = hantam).
+class _Pt {
+  final int k;
+  final double u;
+  final int ds;
+  final bool shield, blocked;
+  const _Pt(this.k, this.u, this.ds, this.shield, this.blocked);
+}
+
+/// Garis kecepatan yang menyempit ke titik hantam saat kartu dilempar.
+class _SpeedPainter extends CustomPainter {
+  final Offset center;
+  final double th; // 0..1 kemajuan lemparan
+  final bool bad;
+  const _SpeedPainter(
+      {required this.center, required this.th, required this.bad});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final far = size.longestSide * 0.75;
+    final col = bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE9A0);
+    final k = Curves.easeIn.transform(th.clamp(0.0, 1.0).toDouble());
+    for (var j = 0; j < 30; j++) {
+      final h = math.sin(j * 12.9898) * 43758.5453;
+      final r = h - h.floorToDouble();
+      final ang = j / 30 * 2 * math.pi + r * 0.2;
+      final dir = Offset(math.cos(ang), math.sin(ang));
+      final r0 = far * (1 - 0.78 * k) * (0.7 + 0.3 * r);
+      final len = far * 0.16 * k * (0.5 + r);
+      canvas.drawLine(
+        center + dir * r0,
+        center + dir * (r0 + len),
+        Paint()
+          ..strokeWidth = 1.2 + 1.6 * r
+          ..strokeCap = StrokeCap.round
+          ..color = col.withValues(alpha: 0.38 * k * (0.4 + 0.6 * r)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeedPainter old) => true;
+}
+
+/// Bilah 30 segmen: tiap segmen satu daun. Segmen terang = daun Hayu; garis
+/// putih = batas menang.
+class _LeafBarPainter extends CustomPainter {
+  final double lit; // 0..30 (pecahan = sedang berubah)
+  final int win;
+  final Color flash;
+  final double pulse;
+  const _LeafBarPainter(
+      {required this.lit,
+        required this.win,
+        required this.flash,
+        required this.pulse});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const n = 30;
+    const gap = 2.0;
+    final w = (size.width - gap * (n - 1)) / n;
+    for (var i = 0; i < n; i++) {
+      final x = i * (w + gap);
+      final f = (lit - i).clamp(0.0, 1.0).toDouble();
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, 0, w, size.height), const Radius.circular(2));
+      canvas.drawRRect(rr, Paint()..color = Colors.white.withValues(alpha: 0.12));
+      if (f > 0) {
+        final base = (i + 1) >= win ? EmbunColors.leaf : EmbunColors.gold;
+        final near = ((lit - i).abs() < 1.6) ? pulse : 0.0;
+        canvas.drawRRect(
+          rr,
+          Paint()
+            ..color = Color.lerp(base, flash, near * 0.8)!
+                .withValues(alpha: 0.35 + 0.65 * f),
+        );
+        if (near > 0.2) {
+          canvas.drawRRect(
+            rr,
+            Paint()
+              ..color = flash.withValues(alpha: 0.5 * near)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+          );
+        }
+      }
+    }
+    final wx = (win.clamp(1, n) * (w + gap)) - gap / 2 - 0.5;
+    canvas.drawRect(Rect.fromLTWH(wx - 0.5, -3, 1.5, size.height + 6),
+        Paint()..color = Colors.white70);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LeafBarPainter old) => true;
+}
+
+/// Kubah perlindungan (kisi heksagon + cincin) dan orb daun yang terbang dari
+/// Hayu ke hitungan: emas-hijau bila menambah, ungu-merah bila mengurangi dan
+/// pecah menjadi serpihan saat tiba.
+class _PointFxPainter extends CustomPainter {
+  final List<_Pt> events;
+  final Offset target, hud;
+  final double radius;
+  const _PointFxPainter({
+    required this.events,
+    required this.target,
+    required this.hud,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const cy = Color(0xFF6FE3FF);
+    for (final e in events) {
+      // ---------- kubah perlindungan ----------
+      if (e.shield || e.blocked) {
+        final q = ((e.u - 0.80) / 0.80).clamp(0.0, 1.0).toDouble();
+        final flare = math.sin(q * math.pi);
+        final strong = e.blocked ? 1.0 : 0.7;
+        final r = radius * (0.92 + 0.14 * Curves.easeOut.transform(q));
+        final rect = Rect.fromCircle(center: target, radius: r);
+        canvas.drawCircle(
+          target,
+          r,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              cy.withValues(alpha: 0),
+              cy.withValues(alpha: 0.05 * flare * strong),
+              cy.withValues(alpha: 0.34 * flare * strong),
+            ], stops: const [0.0, 0.62, 1.0])
+                .createShader(rect),
+        );
+        // kisi heksagon di dalam kubah
+        canvas.save();
+        canvas.clipPath(Path()..addOval(rect));
+        const hs = 24.0;
+        final hp = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1
+          ..color = cy.withValues(alpha: 0.30 * flare * strong);
+        for (var row = -8; row <= 8; row++) {
+          for (var col = -8; col <= 8; col++) {
+            final cx = target.dx + col * hs * 1.732 + (row.isOdd ? hs * 0.866 : 0);
+            final cyy = target.dy + row * hs * 1.5;
+            if ((Offset(cx, cyy) - target).distance > r + hs) continue;
+            final path = Path();
+            for (var v = 0; v < 6; v++) {
+              final a = math.pi / 6 + v * math.pi / 3;
+              final px = cx + math.cos(a) * hs * 0.92;
+              final py = cyy + math.sin(a) * hs * 0.92;
+              v == 0 ? path.moveTo(px, py) : path.lineTo(px, py);
+            }
+            path.close();
+            canvas.drawPath(path, hp);
+          }
+        }
+        canvas.restore();
+        // cincin tepi
+        canvas.drawCircle(
+          target,
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.2
+            ..color = Colors.white.withValues(alpha: 0.75 * flare * strong),
+        );
+        canvas.drawCircle(
+          target,
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 9
+            ..color = cy.withValues(alpha: 0.35 * flare * strong)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+        if (e.blocked) {
+          // serangan terpental di titik tepi kubah
+          final ang = (e.k * 2.399) % (2 * math.pi);
+          final hit = target + Offset(math.cos(ang), math.sin(ang)) * r;
+          final pb = ((e.u - 0.86) / 0.45).clamp(0.0, 1.0).toDouble();
+          final fade = 1 - pb;
+          canvas.drawCircle(
+            hit,
+            10 + 46 * Curves.easeOut.transform(pb),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3 * fade + 0.5
+              ..color = Colors.white.withValues(alpha: 0.9 * fade),
+          );
+          for (var j = 0; j < 12; j++) {
+            final a = j / 12 * 2 * math.pi + e.k;
+            final d0 = 8 + 50 * Curves.easeOut.transform(pb);
+            final dir = Offset(math.cos(a), math.sin(a));
+            canvas.drawLine(
+              hit + dir * d0,
+              hit + dir * (d0 + 12 * fade),
+              Paint()
+                ..strokeWidth = 2
+                ..strokeCap = StrokeCap.round
+                ..color = cy.withValues(alpha: fade),
+            );
+          }
+        }
+      }
+
+      // ---------- orb daun menuju hitungan ----------
+      if (e.ds != 0) {
+        final good = e.ds > 0;
+        final cnt = e.ds.abs().clamp(1, 7).toInt();
+        final core = good ? const Color(0xFFFFF0B0) : const Color(0xFFF1D6FF);
+        final halo = good ? EmbunColors.leaf : EmbunColors.blood;
+        final mid = Offset.lerp(target, hud, 0.5)!;
+        for (var j = 0; j < cnt; j++) {
+          final delay = j * 0.05;
+          final side = j.isEven ? 1.0 : -1.0;
+          final ctrl = mid + Offset(side * (60 + 22 * j), 10.0 * j);
+          final qr = (e.u - (0.92 + delay)) / 0.38;
+          if (qr > 0 && qr < 1) {
+            // jejak
+            for (var s = 5; s >= 1; s--) {
+              final qs = (qr - s * 0.045).clamp(0.0, 1.0).toDouble();
+              if (qs <= 0) continue;
+              final pp = _bez(target, ctrl, hud, Curves.easeInOut.transform(qs));
+              canvas.drawCircle(
+                pp,
+                (5.5 - s * 0.6) * (1 - 0.3 * qs),
+                Paint()
+                  ..color = halo.withValues(alpha: 0.34 * (1 - s / 6))
+                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+              );
+            }
+            final pos = _bez(target, ctrl, hud, Curves.easeInOut.transform(qr));
+            final sz = 6.5 + 2 * math.sin(qr * math.pi);
+            canvas.drawCircle(
+              pos,
+              sz * 2.6,
+              Paint()
+                ..color = halo.withValues(alpha: 0.45)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+            );
+            // daun kecil berputar
+            canvas.save();
+            canvas.translate(pos.dx, pos.dy);
+            canvas.rotate(qr * 9 + j);
+            final leaf = Path()
+              ..moveTo(0, -sz)
+              ..quadraticBezierTo(sz * 0.8, -sz * 0.2, 0, sz)
+              ..quadraticBezierTo(-sz * 0.8, -sz * 0.2, 0, -sz);
+            canvas.drawPath(leaf, Paint()..color = core);
+            canvas.restore();
+          }
+          // tiba di hitungan
+          final qa = (e.u - (1.30 + delay)) / 0.20;
+          if (qa > 0 && qa < 1) {
+            final f = 1 - qa;
+            canvas.drawCircle(
+              hud,
+              10 + 34 * Curves.easeOut.transform(qa),
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2.5 * f + 0.5
+                ..color = halo.withValues(alpha: 0.85 * f),
+            );
+            if (!good) {
+              for (var s = 0; s < 6; s++) {
+                final a = s / 6 * 2 * math.pi + j;
+                final d0 = 8 + 30 * Curves.easeOut.transform(qa);
+                canvas.drawLine(
+                  hud + Offset(math.cos(a), math.sin(a)) * d0,
+                  hud + Offset(math.cos(a), math.sin(a)) * (d0 + 8 * f),
+                  Paint()
+                    ..strokeWidth = 2
+                    ..strokeCap = StrokeCap.round
+                    ..color = const Color(0xFF2A1745).withValues(alpha: f),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  static Offset _bez(Offset a, Offset c, Offset b, double t) {
+    final u = 1 - t;
+    return Offset(u * u * a.dx + 2 * u * t * c.dx + t * t * b.dx,
+        u * u * a.dy + 2 * u * t * c.dy + t * t * b.dy);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PointFxPainter old) => true;
 }

@@ -1300,6 +1300,7 @@ class _TablePageState extends State<TablePage> {
         fallbackLeaves: leaves,
         defs: defs,
         dark: showAsAntag,
+        winLeaves: (g['win_leaves'] as int?) ?? 20,
         onDone: (covered) {
           if (!mounted) return;
           void toEffects() {
