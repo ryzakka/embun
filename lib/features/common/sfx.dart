@@ -37,15 +37,17 @@ class Snd {
   static const tutor = [
     Snd('1.selamatdatang.mp3', 1.0),
     Snd('2.peranwarga.mp3', 1.0),
-    Snd('3.embun.mp3', 1.0),
-    Snd('4.pagiberbelanja.mp3', 1.0),
-    Snd('5.kartukombinasi.mp3', 1.0),
-    Snd('6.informasikartupalsu.mp3', 1.0),
-    Snd('7.seranganmalam.mp3', 1.0),
-    Snd('8.malampersembahan.mp3', 1.0),
-    Snd('9.musyawarah.mp3', 1.0),
-    Snd('10.nyawa.mp3', 1.0),
-    Snd('11.akhirkemenangan.mp3', 1.0),
+    Snd('3.satusiklus.mp3', 1.0),
+    Snd('4.embun.mp3', 1.0),
+    Snd('5.pagiberbelanja.mp3', 1.0),
+    Snd('6.pasarriset.mp3', 1.0),
+    Snd('7.kartukombinasi.mp3', 1.0),
+    Snd('8.informasikartupalsu.mp3', 1.0),
+    Snd('9.seranganmalam.mp3', 1.0),
+    Snd('10.malampersembahan.mp3', 1.0),
+    Snd('11.musyawarah.mp3', 1.0),
+    Snd('12.nyawa.mp3', 1.0),
+    Snd('13.akhirkemenangan.mp3', 1.0),
   ];
 
   static const winds = [swingWind1, swingWind2, swingWind3];
