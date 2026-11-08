@@ -48,6 +48,30 @@ class _Round {
   int get total => right + wrong + none;
 }
 
+class _Day {
+  final int day;
+  final List<(String, String)> offers; // (pemain, kartu)
+  final List<(String, String)> buys; // (pemain, kartu)
+  final String? top; // paling banyak dituding; null = seri / tanpa sidang
+  final int topN, voters;
+  final bool caught;
+  const _Day({
+    required this.day,
+    required this.offers,
+    required this.buys,
+    required this.top,
+    required this.topN,
+    required this.voters,
+    required this.caught,
+  });
+}
+
+class _Acc {
+  final String uid;
+  final int right, total;
+  const _Acc(this.uid, this.right, this.total);
+}
+
 class _Stats {
   final String? antagId;
   final int offerCards, buys, votes, goodOffers, badOffers;
@@ -55,6 +79,9 @@ class _Stats {
   final List<_Round> rounds;
   final List<MapEntry<String, int>> topCards;
   final List<_Award> awards;
+  final List<_Day> chron;
+  final List<_Acc> acc;
+  final int spent;
   const _Stats({
     required this.antagId,
     required this.offerCards,
@@ -67,6 +94,9 @@ class _Stats {
     required this.rounds,
     required this.topCards,
     required this.awards,
+    required this.chron,
+    required this.acc,
+    required this.spent,
   });
 }
 
@@ -74,13 +104,14 @@ const _pageTitles = [
   'Akhir Kisah',
   'Barisan Akhir',
   'Dalam Angka',
+  'Kronik Desa',
   'Sidang Desa',
   'Cahaya & Kabut',
   'Gelar Para Pemain',
   'Siapa Mereka Sebenarnya',
 ];
-const _pageMs = [6200, 5600, 3000, 3400, 3600, 4400, 2400];
-const _lastPage = 6;
+const _pageMs = [6200, 5600, 3400, 5200, 3600, 3600, 4400, 2400];
+const _lastPage = 7;
 
 const _endReasonText = {
   'daun_penuh': 'Daun Hayu kembali penuh.',
@@ -98,10 +129,11 @@ const _endReasonText = {
 ///  1 Barisan Akhir  kartu semua pemain muncul per fraksi: pemenang ala juara,
 ///                   yang kalah ala runtuh (lihat [_pFaction])
 ///  2 Dalam Angka    hari bertahan, persembahan, pembelian, suara (hitung naik)
-///  3 Sidang Desa    batang suara tiap voting: tepat / keliru / abstain
-///  4 Cahaya & Kabut tarik tambang kartu persembahan + kartu terbanyak
-///  5 Gelar          penghargaan yang dihitung dari catatan permainan
-///  6 Para Pemain    peran asli, nyawa, tombol catatan lengkap & pulang
+///  3 Kronik Desa    garis waktu hari demi hari: persembahan, pembelian, sidang
+///  4 Sidang Desa    batang suara tiap voting + ketepatan tiap pemain
+///  5 Cahaya & Kabut tarik tambang kartu persembahan + kartu terbanyak
+///  6 Gelar          penghargaan yang dihitung dari catatan permainan
+///  7 Para Pemain    peran asli, nyawa, tombol catatan lengkap & pulang
 ///
 /// Geser ke kiri/kanan atau pakai tombol bawah. "Lewati" langsung ke bab akhir.
 /// Semua statistik dihitung dari data game_recap + rahasia yang terbuka di
@@ -215,7 +247,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     if (!mounted) return;
     setState(() => _stats = _compute());
     // Statistik baru tiba saat pemain sudah di bab statistik: putar ulang.
-    if (_page >= 1 && _page <= 5) {
+    if (_page >= 1 && _page <= 6) {
       _hap.clear();
       _pa.forward(from: 0);
     }
@@ -267,6 +299,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     final buyBy = <String, int>{};
     final costBy = <String, int>{};
     final rightBy = <String, int>{};
+    final noneBy = <String, int>{};
+    final tally = <int, Map<String, int>>{};
+    final voteN = <int, int>{};
     final wrongBy = <String, int>{};
     final recvBy = <String, int>{};
     final freq = <String, int>{};
@@ -298,12 +333,18 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       final uid = v['user_id'] as String;
       final d = v['day'] as int;
       final t = v['target_id'] as String?;
-      if (t != null) recvBy[t] = (recvBy[t] ?? 0) + 1;
+      if (t != null) {
+        recvBy[t] = (recvBy[t] ?? 0) + 1;
+        final m = tally.putIfAbsent(d, () => {});
+        m[t] = (m[t] ?? 0) + 1;
+      }
+      voteN[d] = (voteN[d] ?? 0) + 1;
       if (antagId == null || uid == antagId) continue;
       final a = byDay.putIfAbsent(d, () => [0, 0, 0]);
       wargaVotes++;
       if (t == null) {
         a[2]++;
+        noneBy[uid] = (noneBy[uid] ?? 0) + 1;
       } else if (t == antagId) {
         a[0]++;
         right++;
@@ -373,6 +414,78 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           '${badBy[antagId]} kartu kabut dipersembahkan'));
     }
 
+    // Kronik: peristiwa tiap hari, urut dari hari pertama.
+    final dayKeys = <int>{
+      for (final o in offs) o['day'] as int,
+      for (final b in buys) b['day'] as int,
+      ...tally.keys,
+      ...voteN.keys,
+    }.toList()
+      ..sort();
+    final chron = <_Day>[];
+    for (final d in dayKeys) {
+      String? topId;
+      var topN = 0;
+      var tie = false;
+      for (final e in (tally[d] ?? const <String, int>{}).entries) {
+        if (e.value > topN) {
+          topN = e.value;
+          topId = e.key;
+          tie = false;
+        } else if (e.value == topN) {
+          tie = true;
+        }
+      }
+      chron.add(_Day(
+        day: d,
+        offers: [
+          for (final o in offs)
+            if (o['day'] == d) (o['user_id'] as String, o['card_id'] as String)
+        ],
+        buys: [
+          for (final b in buys)
+            if (b['day'] == d) (b['user_id'] as String, b['card_id'] as String)
+        ],
+        top: tie ? null : topId,
+        topN: topN,
+        voters: voteN[d] ?? 0,
+        caught: !tie && topId != null && topId == antagId,
+      ));
+    }
+
+    // Ketepatan suara tiap warga, yang terbaik di atas.
+    final acc = <_Acc>[
+      for (final uid in order)
+        if (uid != antagId)
+          if ((rightBy[uid] ?? 0) + (wrongBy[uid] ?? 0) + (noneBy[uid] ?? 0) > 0)
+            _Acc(uid, rightBy[uid] ?? 0,
+                (rightBy[uid] ?? 0) + (wrongBy[uid] ?? 0) + (noneBy[uid] ?? 0)),
+    ]..sort((a, b) {
+      final pa = a.right / a.total, pb = b.right / b.total;
+      return pb != pa ? pb.compareTo(pa) : b.right.compareTo(a.right);
+    });
+
+    // Penghargaan tambahan.
+    for (final a in acc) {
+      if (a.right >= 2 && a.right == a.total) {
+        awards.add(_Award('Tak Pernah Meleset', Icons.gps_fixed_rounded,
+            EmbunColors.cream, a.uid, '${a.right} dari ${a.total} suara tepat'));
+        break;
+      }
+    }
+    final hesitant = top(noneBy, min: 2);
+    if (hesitant != null) {
+      awards.add(_Award('Paling Ragu', Icons.hourglass_empty_rounded,
+          Colors.white70, hesitant, '${noneBy[hesitant]}× memilih tak memilih'));
+    }
+    if (antagId != null) {
+      final escaped = chron.where((x) => x.voters > 0 && !x.caught).length;
+      if (escaped > 0) {
+        awards.add(_Award('Bayang Lolos', Icons.blur_on_rounded,
+            EmbunColors.mist, antagId, 'Lolos dari tudingan terbanyak $escaped sidang'));
+      }
+    }
+
     final topCards = freq.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -388,6 +501,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       rounds: rounds,
       topCards: topCards.take(3).toList(),
       awards: awards,
+      chron: chron,
+      acc: acc,
+      spent: costBy.values.fold<int>(0, (a, b) => a + b),
     );
   }
 
@@ -517,6 +633,17 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   Widget _outcomeChip() {
     if (!_iKnow) return const SizedBox.shrink();
     final c = _iWon ? EmbunColors.gold : EmbunColors.blood;
+    // Cap bergambar bila asetnya ada (assets/ikon/menang & kalah).
+    final stamp = _iWon ? 'menang' : 'kalah';
+    if (ikonPath(stamp) != null) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: Transform.rotate(
+          angle: -0.05,
+          child: GameIcon(stamp, width: 84, height: 30),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -581,26 +708,44 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
-                  size: 40, color: c),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  word,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                    height: 1.1,
-                    color: won ? EmbunColors.cream : Colors.white,
-                    shadows: [
-                      Shadow(color: c.withValues(alpha: 0.9), blurRadius: 20),
-                    ],
+              if (ikonPath(won ? 'akhir-menang' : 'akhir-kalah') != null) ...[
+                // Papan hasil bergambar; tanpa peran dikenal, sebut pemenangnya.
+                GameIcon(won ? 'akhir-menang' : 'akhir-kalah',
+                    width: 210, height: 100),
+                if (!know)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(word,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                            color: won ? EmbunColors.cream : Colors.white)),
+                  ),
+              ] else ...[
+                Icon(
+                    won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+                    size: 40,
+                    color: c),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    word,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
+                      height: 1.1,
+                      color: won ? EmbunColors.cream : Colors.white,
+                      shadows: [
+                        Shadow(color: c.withValues(alpha: 0.9), blurRadius: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
               if (sub.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(sub,
@@ -685,8 +830,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           content = switch (_page) {
             1 => _pFaction(t),
             2 => _p1(t),
-            3 => _p2(t),
-            4 => _p3(t),
+            3 => _pKronik(t),
+            4 => _p2(t),
+            5 => _p3(t),
             _ => _p4(t),
           };
         }
@@ -1301,7 +1447,195 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           const SizedBox(width: 12),
           Expanded(child: _tile('vote', 'suara diberikan', s.votes, t, 0.42)),
         ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+              child: _tile('bulirhitam', 'kartu kabut', s.badOffers, t, 0.56)),
+          const SizedBox(width: 12),
+          Expanded(
+              child: _tile('bulirembun', 'embun terpakai', s.spent, t, 0.70)),
+        ]),
       ],
+    );
+  }
+
+  // ------------------------------------------------------------ kronik
+
+  Widget _pKronik(double t) {
+    final s = _stats!;
+    if (s.chron.isEmpty) {
+      return const Text('Belum ada peristiwa yang tercatat.',
+          textAlign: TextAlign.center, style: TextStyle(color: Colors.white60));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < s.chron.length; i++)
+          _up(
+            t,
+            math.min(i, 9) * 0.07,
+            math.min(i, 9) * 0.07 + 0.28,
+            _dayCard(s.chron[i], i == s.chron.length - 1),
+            dy: 20,
+          ),
+      ],
+    );
+  }
+
+  /// Satu baris peristiwa: ikon kecil + kalimat dengan nama kartu berwarna.
+  Widget _eventLine(String icon, List<InlineSpan> spans) => Padding(
+    padding: const EdgeInsets.only(top: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GameIcon(icon, size: 18),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text.rich(
+            TextSpan(children: spans),
+            style: const TextStyle(
+                fontSize: 12.5, height: 1.3, color: Colors.white70),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// "Budi: Kartu A, Kartu B" dikelompokkan per pemain.
+  List<Widget> _grouped(
+      String icon, String verb, List<(String, String)> items, bool sided) {
+    final by = <String, List<String>>{};
+    for (final (uid, cid) in items) {
+      by.putIfAbsent(uid, () => []).add(cid);
+    }
+    return [
+      for (final e in by.entries)
+        _eventLine(icon, [
+          TextSpan(
+              text: _nameOf(e.key),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, color: Colors.white)),
+          TextSpan(text: ' $verb '),
+          for (var i = 0; i < e.value.length; i++) ...[
+            if (i > 0) const TextSpan(text: ', '),
+            TextSpan(
+              text: _cardName(e.value[i]),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: sided && widget.defs[e.value[i]]?['side'] == 'antagonis'
+                    ? EmbunColors.mist
+                    : EmbunColors.gold,
+              ),
+            ),
+          ],
+        ]),
+    ];
+  }
+
+  Widget _dayCard(_Day d, bool last) {
+    final Color node;
+    String? verdict;
+    if (d.voters == 0) {
+      node = EmbunColors.goldDim;
+    } else if (d.top == null) {
+      node = Colors.white54;
+      verdict = 'Seri';
+    } else if (d.caught) {
+      node = EmbunColors.leaf;
+      verdict = 'Si Terbisik tertangkap';
+    } else {
+      node = EmbunColors.blood;
+      verdict = 'Salah tuding';
+    }
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 26,
+            child: Column(
+              children: [
+                const SizedBox(height: 14),
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: node,
+                    boxShadow: [
+                      BoxShadow(
+                          color: node.withValues(alpha: 0.6), blurRadius: 10)
+                    ],
+                  ),
+                ),
+                if (!last)
+                  Expanded(
+                    child: Container(
+                        width: 2, color: EmbunColors.goldDim.withValues(alpha: 0.45)),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: node.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Hari ${d.day}',
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: EmbunColors.gold)),
+                      const Spacer(),
+                      if (verdict != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: node.withValues(alpha: 0.18),
+                            border: Border.all(color: node),
+                          ),
+                          child: Text(verdict,
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: node)),
+                        ),
+                    ],
+                  ),
+                  ..._grouped('donations', 'mempersembahkan', d.offers, true),
+                  ..._grouped('bulirembun', 'membeli', d.buys, false),
+                  if (d.voters > 0)
+                    _eventLine('vote', [
+                      if (d.top == null)
+                        const TextSpan(text: 'Sidang berakhir seri.')
+                      else ...[
+                        const TextSpan(text: 'Sidang: '),
+                        TextSpan(
+                            text: _nameOf(d.top!),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                        TextSpan(
+                            text: ' dituding ${d.topN} dari ${d.voters} suara'),
+                      ],
+                    ]),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1390,7 +1724,60 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             ],
           ),
         ),
+        if (s.acc.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _up(
+            t,
+            0.7,
+            0.95,
+            Column(
+              children: [
+                const Text('KETEPATAN TIAP WARGA',
+                    style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.6,
+                        fontWeight: FontWeight.w700,
+                        color: EmbunColors.goldDim)),
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [for (final a in s.acc) _accChip(a)],
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _accChip(_Acc a) {
+    final good = a.right * 2 >= a.total;
+    final c = good ? EmbunColors.leaf : Colors.white54;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PlayerAvatar(
+              path: protagonistPath(_cardOf(a.uid) ?? 'default'),
+              size: 24,
+              ring: c),
+          const SizedBox(width: 6),
+          Text(_nameOf(a.uid), style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 6),
+          Text('${a.right}/${a.total}',
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w800, color: c)),
+        ],
+      ),
     );
   }
 

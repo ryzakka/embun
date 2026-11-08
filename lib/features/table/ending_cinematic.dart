@@ -682,6 +682,20 @@ class _EndingCinematicState extends State<EndingCinematic>
   Widget _myOutcome({bool small = false}) {
     final won = _myWon ?? _win;
     final c = won ? EmbunColors.gold : EmbunColors.blood;
+    final stamp = won ? 'menang' : 'kalah';
+    if (ikonPath(stamp) != null) {
+      // Cap bergambar (assets/ikon/menang & kalah) dengan pendar tipis.
+      final w = small ? 130.0 : 190.0;
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(color: c.withValues(alpha: 0.35), blurRadius: 26),
+          ],
+        ),
+        child: GameIcon(stamp, width: w, height: w / 2.8),
+      );
+    }
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: small ? 14 : 18, vertical: small ? 6 : 9),

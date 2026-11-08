@@ -209,230 +209,145 @@ class _OfferingViewState extends State<OfferingView>
     ],
   );
 
-  /// Takaran daun Hayu 0..30 dengan penanda batas menang, plus kabut malam.
+  /// Takaran daun Hayu 0..30 dengan penanda batas menang. Satu baris, tanpa kotak.
   Widget _gauge() {
     final v = (widget.leaves / kLeavesMax).clamp(0.0, 1.0).toDouble();
     final w = (widget.winLeaves / kLeavesMax).clamp(0.0, 1.0).toDouble();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const GameIcon('helaidaun', size: 26),
-              const SizedBox(width: 6),
-              Text('${widget.leaves} daun',
-                  style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: EmbunColors.gold)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: LayoutBuilder(builder: (context, c) {
-                  return SizedBox(
-                    height: 14,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          top: 2,
-                          child: Container(
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: Colors.white12,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: v,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: widget.leaves >= widget.winLeaves
-                                      ? EmbunColors.leaf
-                                      : EmbunColors.gold,
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const GameIcon('helaidaun', size: 24),
+            const SizedBox(width: 6),
+            Text('${widget.leaves}',
+                style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: EmbunColors.gold)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: LayoutBuilder(builder: (context, c) {
+                return SizedBox(
+                  height: 12,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 2,
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: v,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: widget.leaves >= widget.winLeaves
+                                    ? EmbunColors.leaf
+                                    : EmbunColors.gold,
+                                borderRadius: BorderRadius.circular(4),
                               ),
                             ),
                           ),
                         ),
-                        Positioned(
-                          left: c.maxWidth * w - 1,
-                          top: 0,
-                          child: Container(
-                              width: 2,
-                              height: 14,
-                              color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(width: 8),
-              Text('menang ≥ ${widget.winLeaves}',
-                  style: const TextStyle(fontSize: 10.5, color: Colors.white60)),
-            ],
-          ),
-          if (_fog != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                children: [
-                  const GameIcon('bulirhitam', size: 18),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text('Kabut malam ini: -$_fog daun',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: EmbunColors.mist, fontSize: 11.5)),
+                      ),
+                      Positioned(
+                        left: c.maxWidth * w - 1,
+                        top: 0,
+                        child: Container(
+                            width: 2, height: 12, color: Colors.white70),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              }),
             ),
-        ],
-      ),
+            const SizedBox(width: 8),
+            Text('${widget.winLeaves}',
+                style: const TextStyle(fontSize: 12, color: Colors.white60)),
+          ],
+        ),
+        if (_fog != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('Kabut malam ini: -$_fog daun',
+                style: const TextStyle(color: EmbunColors.mist, fontSize: 11.5)),
+          ),
+      ],
     );
   }
 
-  /// Dua petak nampan di kiri dan keterangan kartu di kanan.
-  Widget _altar() {
+  /// Keterangan kartu yang disentuh: satu panel berukuran tetap.
+  Widget _info() {
     final picked = <Map<String, dynamic>>[
       for (final h in widget.hand)
         if (sel.contains(h['id'])) h
     ];
-    // Roti Surplus (wajib) selalu di petak pertama.
-    picked.sort((a, b) {
-      final sa = a['id'] == _samaranId && widget.isAntag ? 0 : 1;
-      final sb = b['id'] == _samaranId && widget.isAntag ? 0 : 1;
-      return sa - sb;
-    });
     final focus = _handById(_focus) ?? (picked.isEmpty ? null : picked.last);
-
-    Widget slot(int i) {
-      final h = i < picked.length ? picked[i] : null;
-      const w = 48.0;
-      final locked = h != null && widget.isAntag && h['id'] == _samaranId;
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
-        child: h == null
-            ? Container(
-          key: ValueKey('empty$i'),
-          width: w,
-          height: w * kTallAspect,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.black.withValues(alpha: 0.3),
-            border: Border.all(
-                color: EmbunColors.goldDim.withValues(alpha: 0.55)),
-          ),
-          child: Text('${i + 1}',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: EmbunColors.goldDim.withValues(alpha: 0.8))),
-        )
-            : Stack(
-          key: ValueKey('slot${h['id']}'),
-          clipBehavior: Clip.none,
-          children: [
-            CardTile(
-              def: widget.defs[h['card_id']],
-              fallbackName: '${h['card_id']}',
-              width: w,
-              selected: true,
-              onTap: locked ? null : () => _toggle(h['id'] as String),
-            ),
-            if (locked)
-              const Positioned(
-                  right: -4, bottom: -4, child: GameIcon('lock', size: 20)),
-          ],
-        ),
-      );
-    }
-
     final d = focus == null ? null : widget.defs[focus['card_id']];
-    final locked = focus != null &&
-        widget.isAntag &&
-        focus['id'] == _samaranId;
-    return SizedBox(
-      height: 48 * kTallAspect,
-      child: Row(
+    final locked =
+        focus != null && widget.isAntag && focus['id'] == _samaranId;
+    return Container(
+      height: 84,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
+      ),
+      child: d == null
+          ? Center(
+        child: Text(
+            widget.isAntag
+                ? 'Roti Surplus wajib disertakan sebagai kedok.'
+                : 'Pilih 1-2 kartu untuk dipersembahkan kepada Hayu. '
+                'Sentuh kartu untuk melihat efeknya.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 12.5, height: 1.3, color: Colors.white60)),
+      )
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          slot(0),
-          const SizedBox(width: 8),
-          slot(1),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.38),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: EmbunColors.goldDim.withValues(alpha: 0.4)),
+          Row(
+            children: [
+              Flexible(
+                child: Text('${d['name'] ?? ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: EmbunColors.gold)),
               ),
-              child: d == null
-                  ? const Center(
-                child: Text(
-                    'Sentuh sebuah kartu untuk melihat efeknya.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.white60)),
-              )
-                  : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text('${d['name'] ?? ''}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: EmbunColors.gold)),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                          locked
-                              ? 'Wajib · kedok'
-                              : (kindLabel[d['kind']] ?? ''),
-                          style: const TextStyle(
-                              fontSize: 10.5, color: Colors.white54)),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Flexible(
-                    child: Text('${d['description'] ?? ''}',
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11.5,
-                            height: 1.25,
-                            color: Colors.white70)),
-                  ),
-                ],
-              ),
-            ),
+              const SizedBox(width: 8),
+              Text(locked ? 'Wajib · kedok' : (kindLabel[d['kind']] ?? ''),
+                  style:
+                  const TextStyle(fontSize: 11, color: Colors.white54)),
+            ],
           ),
+          const SizedBox(height: 3),
+          Text('${d['description'] ?? ''}',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontSize: 12, height: 1.3, color: Colors.white70)),
         ],
       ),
     );
   }
 
-  /// Kipas kartu di atas alas ayakan rotan.
-  Widget _fanArea() {
+  /// Kartu tersusun rata satu baris dengan jarak; bila terlalu banyak, bisa
+  /// digeser ke samping. Kartu terpilih terangkat dan bertepi emas.
+  Widget _cards() {
     final p = sceneryPath('ayakanrotan-temaram');
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -440,19 +355,17 @@ class _OfferingViewState extends State<OfferingView>
         fit: StackFit.expand,
         children: [
           if (p != null) ...[
-            Opacity(opacity: 0.55, child: GameImage(path: p, cacheWidth: 1000)),
-            ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+            Opacity(opacity: 0.45, child: GameImage(path: p, cacheWidth: 1000)),
+            ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
           ] else
             ColoredBox(color: Colors.black.withValues(alpha: 0.3)),
-          _fan(),
+          _cardRow(),
         ],
       ),
     );
   }
 
-  /// Kartu tersusun melengkung seperti kipas. Kartu terpilih terangkat sedikit,
-  /// bertanda "Terpilih", dan muncul di petak nampan di atas.
-  Widget _fan() {
+  Widget _cardRow() {
     final hand = widget.hand;
     if (hand.isEmpty) {
       return const Center(
@@ -465,69 +378,62 @@ class _OfferingViewState extends State<OfferingView>
       );
     }
     return LayoutBuilder(builder: (context, c) {
+      const gap = 10.0, lift = 14.0, side = 12.0;
       final n = hand.length;
-      var w = ((c.maxHeight - 34) / kTallAspect).clamp(60.0, 150.0).toDouble();
-      var step = w * 0.78;
-      final maxSpan = c.maxWidth - w - 8;
-      if (n > 1 && step * (n - 1) > maxSpan) {
-        step = math.max(maxSpan / (n - 1), 14.0);
-      }
-      if (n > 1 && step * (n - 1) > maxSpan) {
-        w = math.max(56.0, c.maxWidth / (1 + (n - 1) * 0.42) - 4);
-        step = (c.maxWidth - w - 8) / (n - 1);
-      }
-      final total = step * (n - 1) + w;
-      final left0 = (c.maxWidth - total) / 2;
-      final mid = (n - 1) / 2;
-
-      final order = List<int>.generate(n, (i) => i)
-        ..sort((a, b) {
-          final sa = sel.contains(hand[a]['id']) ? 1 : 0;
-          final sb = sel.contains(hand[b]['id']) ? 1 : 0;
-          return sa != sb ? sa - sb : a - b;
-        });
-
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          for (final i in order)
-            Builder(builder: (_) {
-              final hh = hand[i];
-              final id = hh['id'] as String;
-              final cardId = hh['card_id'] as String;
-              final ch = w * kTallAspect;
-              final picked = sel.contains(id);
-              final off = (i - mid);
-              final rot = n == 1
-                  ? 0.0
-                  : off * math.min(0.07, 0.34 / mid.clamp(1.0, 9.0));
-              final drop = off * off * (n > 5 ? 2.0 : 3.5);
-              final top = (c.maxHeight - ch) / 2 + 10 + drop - (picked ? 14 : 0);
-              return AnimatedPositioned(
-                key: ValueKey('fan$id'),
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                left: left0 + step * i,
-                top: top,
-                width: w,
-                height: ch,
-                child: AnimatedRotation(
-                  duration: const Duration(milliseconds: 200),
-                  turns: (picked ? 0 : rot) / (2 * math.pi),
-                  child: CardTile(
-                    def: widget.defs[cardId],
-                    fallbackName: cardId,
-                    width: w,
-                    selected: picked,
-                    tag: picked ? 'Terpilih' : null,
-                    onTap: () => _toggle(id),
-                  ),
-                ),
-              );
-            }),
-        ],
+      final byHeight = (c.maxHeight - lift - 8) / kTallAspect;
+      final byWidth = (c.maxWidth - side * 2 - gap * (n - 1)) / n;
+      // Muat satu baris bila lebar kartu tidak kurang dari 66; selain itu geser.
+      final w = math.min(byHeight, math.max(byWidth, 66.0))
+          .clamp(56.0, 130.0)
+          .toDouble();
+      return Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: side),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: c.maxWidth - side * 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                for (var i = 0; i < n; i++) ...[
+                  if (i > 0) const SizedBox(width: gap),
+                  _cardAt(hand[i], w, lift),
+                ],
+              ],
+            ),
+          ),
+        ),
       );
     });
+  }
+
+  Widget _cardAt(Map<String, dynamic> h, double w, double lift) {
+    final id = h['id'] as String;
+    final cardId = h['card_id'] as String;
+    final picked = sel.contains(id);
+    final locked = widget.isAntag && id == _samaranId;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(top: picked ? 0 : lift, bottom: picked ? lift : 0),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          CardTile(
+            def: widget.defs[cardId],
+            fallbackName: cardId,
+            width: w,
+            selected: picked,
+            tag: picked ? (locked ? 'Wajib' : 'Terpilih') : null,
+            onTap: () => _toggle(id),
+          ),
+          if (locked)
+            const Positioned(
+                right: -4, top: -4, child: GameIcon('lock', size: 22)),
+        ],
+      ),
+    );
   }
 
   /// Pilihan sasaran: deretan wajah pemain dengan cincin pilihan.
@@ -665,25 +571,17 @@ class _OfferingViewState extends State<OfferingView>
 
   Widget _statusPill() {
     final left = (widget.total - widget.readyCount).clamp(0, 99).toInt();
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const GameIcon('wait', size: 24),
-          const SizedBox(width: 8),
-          Text(
-              left == 0
-                  ? 'Semua sudah menyerahkan...'
-                  : 'Menunggu $left warga lagi  (${widget.readyCount}/${widget.total})',
-              style: const TextStyle(fontSize: 13.5, color: Colors.white70)),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const GameIcon('wait', size: 22),
+        const SizedBox(width: 8),
+        Text(
+            left == 0
+                ? 'Semua sudah menyerahkan...'
+                : 'Menunggu $left warga lagi  (${widget.readyCount}/${widget.total})',
+            style: const TextStyle(fontSize: 13, color: Colors.white70)),
+      ],
     );
   }
 
@@ -753,25 +651,17 @@ class _OfferingViewState extends State<OfferingView>
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _header(),
-      const SizedBox(height: 6),
+      const SizedBox(height: 8),
       _gauge(),
-      const SizedBox(height: 8),
-      Text(
-        widget.isAntag
-            ? 'Roti Surplus wajib disertakan sebagai kedok. Tambah 1 kartu lagi bila mau.'
-            : 'Pilih 1-2 kartu untuk dipersembahkan kepada Hayu.',
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white70, fontSize: 12),
-      ),
-      const SizedBox(height: 8),
-      _altar(),
-      const SizedBox(height: 8),
-      Expanded(child: _fanArea()),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
+      Expanded(child: _cards()),
+      const SizedBox(height: 10),
+      _info(),
       if (_needsTarget) ...[
+        const SizedBox(height: 10),
         _targets(others),
-        const SizedBox(height: 6),
       ],
+      const SizedBox(height: 10),
       EmbunButton(
         label: sel.isEmpty
             ? 'Pilih kartu dulu'
@@ -894,12 +784,12 @@ class _DriftPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final col = dark ? const Color(0xFFB07CE8) : const Color(0xFFFFE08A);
-    for (var i = 0; i < 26; i++) {
+    for (var i = 0; i < 12; i++) {
       final spd = 0.012 + 0.02 * _r(i, 1);
       final y = 1 - ((time * spd + _r(i, 2)) % 1.0);
       final x = _r(i, 3) + math.sin(time * 0.3 + i) * 0.02;
       final tw = 0.5 + 0.5 * math.sin(time * 0.9 + i * 1.7);
-      final a = (0.12 + 0.35 * _r(i, 4)) * (0.4 + 0.6 * tw);
+      final a = (0.10 + 0.25 * _r(i, 4)) * (0.4 + 0.6 * tw);
       canvas.drawCircle(
         Offset(x * size.width, y * size.height),
         1.1 + 2.2 * _r(i, 5),
