@@ -8,7 +8,13 @@ import '../common/sfx.dart';
 class Countdown extends StatefulWidget {
   final DateTime? deadline;
   final TextStyle? style;
-  const Countdown({super.key, required this.deadline, this.style});
+  final bool compact;
+  const Countdown({
+    super.key,
+    required this.deadline,
+    this.style,
+    this.compact = false,
+  });
 
   @override
   State<Countdown> createState() => _CountdownState();
@@ -80,7 +86,7 @@ class _CountdownState extends State<Countdown> {
     final urgent = left <= 10;
     final accent = urgent ? EmbunColors.blood : EmbunColors.gold;
     return Container(
-      padding: const EdgeInsets.fromLTRB(2, 2, 12, 2),
+      padding: EdgeInsets.fromLTRB(2, 2, widget.compact ? 6 : 12, 2),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(20),
@@ -89,8 +95,8 @@ class _CountdownState extends State<Countdown> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const GameIcon('timer', size: 28),
-          const SizedBox(width: 6),
+          GameIcon('timer', size: widget.compact ? 18 : 28),
+          SizedBox(width: widget.compact ? 3 : 6),
           Text(
             '$m:$s',
             style: (widget.style ?? const TextStyle())

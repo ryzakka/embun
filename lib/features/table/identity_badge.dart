@@ -43,17 +43,19 @@ class IdentityBadge extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PlayerAvatar(path: avatarPath, size: compact ? 40 : 50, ring: c),
-            const SizedBox(width: 9),
-            Flexible(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final size = (compact ? 40.0 : 50.0).clamp(0.0, box.maxWidth);
+            if (size == 0) return const SizedBox.shrink();
+            final avatar = PlayerAvatar(path: avatarPath, size: size, ring: c);
+            if (box.maxWidth < size + 54) return avatar;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                avatar,
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
@@ -62,41 +64,33 @@ class IdentityBadge extends StatelessWidget {
                         decoration:
                         BoxDecoration(color: c, shape: BoxShape.circle),
                       ),
-                      const SizedBox(width: 5),
                       Text(
-                        dark ? 'SI TERBISIK' : 'WARGA',
+                        characterName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: compact ? 15 : 17,
+                          height: 1.15,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: c,
+                          color: EmbunColors.cream,
                         ),
                       ),
+                      if (sub != null && sub.isNotEmpty)
+                        Text(
+                          sub,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.white70,
+                          ),
+                        ),
                     ],
                   ),
-                  Text(
-                    characterName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: compact ? 15 : 17,
-                      height: 1.15,
-                      fontWeight: FontWeight.w800,
-                      color: EmbunColors.cream,
-                    ),
-                  ),
-                  if (sub != null && sub.isNotEmpty)
-                    Text(
-                      sub,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 11.5, color: Colors.white70),
-                    ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

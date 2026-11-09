@@ -375,7 +375,9 @@ class CardTile extends StatelessWidget {
             width: width,
             height: h,
             transform: Matrix4.translationValues(0, selected ? -10 : 0, 0),
-            padding: path == null ? const EdgeInsets.all(10) : EdgeInsets.zero,
+            padding: path == null
+                ? EdgeInsets.all(width < 88 ? 5 : 10)
+                : EdgeInsets.zero,
             decoration: BoxDecoration(
               color: faded
                   ? const Color(0xFF1C1F1E)
@@ -526,31 +528,55 @@ class CardTile extends StatelessWidget {
     );
   }
 
-  /// Tampilan teks lama, dipakai bila gambar kartu belum ada.
-  Widget _textBody(bool bad, int cost) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(def?['name'] ?? fallbackName,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(kindLabel[def?['kind']] ?? '',
-            style: const TextStyle(fontSize: 11, color: Colors.white54)),
-        const SizedBox(height: 6),
-        Expanded(
-          child: Text(def?['description'] ?? '',
-              style: const TextStyle(fontSize: 12)),
-        ),
-        if (showCost)
-          Row(
-            children: [
-              GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 24),
-              const SizedBox(width: 4),
-              Text(badge ?? '$cost'),
-            ],
+  /// Cadangan saat definisi kartu belum memiliki ilustrasi.
+  Widget _textBody(bool bad, int cost) => LayoutBuilder(
+    builder: (context, box) => SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            def?['name'] ?? fallbackName,
+            maxLines: width < 88 ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: width < 88 ? 11 : 14,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-      ],
-    );
-  }
+          Text(
+            kindLabel[def?['kind']] ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 10, color: Colors.white70),
+          ),
+          if (box.maxHeight >= 100) ...[
+            const SizedBox(height: 4),
+            Text(
+              def?['description'] ?? '',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+          if (showCost)
+            Row(
+              children: [
+                GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 17),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    badge ?? '$cost',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Punggung kartu item: sama untuk semua kartu agar identitas penyerah tidak

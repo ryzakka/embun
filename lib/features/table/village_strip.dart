@@ -36,6 +36,9 @@ class VillageStrip extends StatefulWidget {
   /// Ponsel: avatar lebih kecil dan tanpa label status, supaya hemat tinggi.
   final bool compact;
 
+  /// Deretan pendek untuk permainan siang di layar mendatar.
+  final bool slim;
+
   /// Kunci global per avatar, supaya animasi pemberian tahu posisinya.
   final GlobalKey Function(String userId)? avatarKeyFor;
 
@@ -49,6 +52,7 @@ class VillageStrip extends StatefulWidget {
     required this.onTapPlayer,
     required this.onEmoteButton,
     this.compact = false,
+    this.slim = false,
     this.avatarKeyFor,
   });
 
@@ -148,8 +152,10 @@ class _VillageStripState extends State<VillageStrip> {
         child: Column(
           children: [
             SizedBox(
-              height: widget.compact ? 14 : 20,
-              child: live != null ? Center(child: _targetChip(live, now)) : null,
+              height: widget.slim ? 8 : (widget.compact ? 14 : 20),
+              child: live != null
+                  ? Center(child: _targetChip(live, now))
+                  : null,
             ),
             Stack(
               clipBehavior: Clip.none,
@@ -431,46 +437,57 @@ class _VillageStripState extends State<VillageStrip> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    return LayoutBuilder(builder: (context, box) {
-      // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
-      // bila tidak, deretan bisa digulir dengan lebar sel tetap.
-      final cp = widget.compact;
-      final gap = 6.0;
-      final minW = cp ? 46.0 : 56.0;
-      final maxW = cp ? 64.0 : 84.0;
-      final scrollW = cp ? 52.0 : 62.0;
-      final avail = box.maxWidth - (cp ? 50 : 56); // ruang tombol isyarat
-      final n = widget.players.length;
-      final fits = n > 0 && n * minW + (n - 1) * gap <= avail;
-      final cellW = fits
-          ? ((avail - (n - 1) * gap) / n).clamp(minW, maxW).toDouble()
-          : scrollW;
-      final avatar = (cellW * 0.62)
-          .clamp(cp ? 30.0 : 36.0, cp ? 40.0 : 52.0)
-          .toDouble();
-      final Widget list = fits
-          ? Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < n; i++) ...[
-            if (i > 0) SizedBox(width: gap),
-            _cell(widget.players[i], now, cellW, avatar),
-          ],
-        ],
-      )
-          : ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          for (final p in widget.players)
-            Padding(
-              padding: EdgeInsets.only(right: gap),
-              child: _cell(p, now, cellW, avatar),
-            ),
-        ],
-      );
-      return _strip(list, avatar + (cp ? 36 : 54));
-    });
+    return LayoutBuilder(
+      builder: (context, box) {
+        // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
+        // bila tidak, deretan bisa digulir dengan lebar sel tetap.
+        final cp = widget.compact;
+        final gap = 6.0;
+        final minW = cp ? 46.0 : 56.0;
+        final maxW = cp ? 64.0 : 84.0;
+        final scrollW = cp ? 52.0 : 62.0;
+        final avail = box.maxWidth - (cp ? 50 : 56); // ruang tombol isyarat
+        final n = widget.players.length;
+        final fits = n > 0 && n * minW + (n - 1) * gap <= avail;
+        final cellW = fits
+            ? ((avail - (n - 1) * gap) / n).clamp(minW, maxW).toDouble()
+            : scrollW;
+        final avatar = widget.slim
+            ? 28.0
+            : (cellW * 0.62)
+                  .clamp(cp ? 30.0 : 36.0, cp ? 40.0 : 52.0)
+                  .toDouble();
+        final Widget list = fits
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < n; i++) ...[
+                    if (i > 0) SizedBox(width: gap),
+                    _cell(widget.players[i], now, cellW, avatar),
+                  ],
+                ],
+              )
+            : ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final p in widget.players)
+                    Padding(
+                      padding: EdgeInsets.only(right: gap),
+                      child: _cell(p, now, cellW, avatar),
+                    ),
+                ],
+              );
+        final extra = (MediaQuery.textScalerOf(context).scale(10) - 10).clamp(
+          0.0,
+          24.0,
+        );
+        return _strip(
+          list,
+          avatar + (widget.slim ? 26 : (cp ? 36 : 54)) + extra * (cp ? 1 : 2),
+        );
+      },
+    );
   }
 
   Widget _strip(Widget list, double height) {
