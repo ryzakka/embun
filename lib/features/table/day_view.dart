@@ -571,9 +571,9 @@ class _DayViewState extends State<DayView>
   Color get _accent => widget.dark ? EmbunColors.mist : EmbunColors.gold;
 
   BoxDecoration _glassDeco({double radius = 16}) => BoxDecoration(
-    color: Colors.black.withValues(alpha: 0.5),
+    color: Colors.black.withValues(alpha: 0.4),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: _accent.withValues(alpha: 0.35)),
+    border: Border.all(color: _accent.withValues(alpha: 0.2)),
   );
 
   Widget _card(Widget child) => Container(
@@ -677,75 +677,50 @@ class _DayViewState extends State<DayView>
     return TweenAnimationBuilder<double>(
       key: ValueKey(text),
       tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1400),
-      builder: (context, t, _) {
-        final rise = Curves.easeOutCubic
-            .transform((t / 0.45).clamp(0.0, 1.0).toDouble());
-        final pop = Curves.elasticOut
-            .transform(((t - 0.15) / 0.6).clamp(0.0, 1.0).toDouble());
-        final sweep = ((t - 0.2) / 0.6).clamp(0.0, 1.0).toDouble();
-        final glow = (1 - t) * 0.55 + 0.1;
-        final mid = Color.lerp(const Color(0xFF332B10),
-            const Color(0xFF7A5E1A), sin(sweep * pi))!;
-        return Opacity(
-          opacity: _c(rise),
-          child: Transform.translate(
-            offset: Offset(0, (1 - rise) * -18),
-            child: Container(
-              width: double.infinity,
-              margin: EdgeInsets.only(bottom: compact ? 6 : 10),
-              padding: EdgeInsets.fromLTRB(
-                  compact ? 6 : 10, compact ? 3 : 6, compact ? 8 : 14, compact ? 3 : 6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF332B10),
-                    mid,
-                    const Color(0xFF332B10),
-                  ],
-                  stops: [_c(sweep - 0.25), sweep, _c(sweep + 0.25)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: EmbunColors.gold.withValues(alpha: 0.7)),
-                boxShadow: [
-                  BoxShadow(
-                    color: EmbunColors.gold.withValues(alpha: _c(glow * 0.6)),
-                    blurRadius: 8 + 16 * glow,
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Transform.rotate(
-                    angle: (1 - pop) * -1.2,
-                    child: Transform.scale(
-                      scale: (0.4 + 0.6 * pop).clamp(0.1, 1.6).toDouble(),
-                      child: GameIcon('announcement', size: compact ? 28 : 36),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOut,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+            offset: Offset(0, (1 - t) * -8), child: child),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: compact ? 6 : 10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            color: EmbunColors.gold.withValues(alpha: 0.12),
+            constraints: BoxConstraints(minHeight: compact ? 32 : 38),
+            child: Row(
+              children: [
+                Container(width: 3, height: compact ? 32 : 38, color: EmbunColors.gold),
+                const SizedBox(width: 9),
+                GameIcon('announcement', size: compact ? 22 : 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text('Kabar Pagi: $text',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: compact ? 12 : 13)),
+                        style: TextStyle(
+                            fontSize: compact ? 12 : 13,
+                            color: EmbunColors.cream)),
                   ),
-                  if (compact)
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _kabarHidden = true),
-                      child: const Padding(
-                        padding: EdgeInsets.fromLTRB(8, 6, 2, 6),
-                        child: GameIcon('x', size: 22),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _kabarHidden = true),
+                  child: const Padding(
+                    padding: EdgeInsets.fromLTRB(8, 6, 8, 6),
+                    child: Icon(Icons.close, size: 16, color: Colors.white54),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -1256,15 +1231,20 @@ class _DayViewState extends State<DayView>
                 children: [
                   GameIcon('store', size: wide ? 38 : 30),
                   const SizedBox(width: 8),
+                  Text('Pasar Pagi',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: wide ? 22 : 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: EmbunColors.gold)),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text('Pasar Pagi',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: wide ? 22 : 17,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                            color: EmbunColors.gold)),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _statusChips(),
+                    ),
                   ),
                   // Kabar Pagi yang sudah menyingkir bisa dibuka lagi.
                   if (_kabarHidden && _hasKabar) ...[
@@ -1282,11 +1262,7 @@ class _DayViewState extends State<DayView>
                   _balancePill(size: wide ? 32 : 26),
                 ],
               ),
-              if (!short) ...[
-                const SizedBox(height: 6),
-                _statusChips(),
-              ],
-              const SizedBox(height: 8),
+              SizedBox(height: short ? 6 : 10),
               Expanded(
                 child: wide
                     ? Row(
@@ -2513,20 +2489,16 @@ class _DayViewState extends State<DayView>
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: _glassDeco(radius: 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _endButton(height: 56),
-              if (widget.iAmReady) ...[
-                const SizedBox(height: 8),
-                _progress(),
-              ],
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _endButton(height: 56),
+            if (widget.iAmReady) ...[
+              const SizedBox(height: 8),
+              _progress(),
             ],
-          ),
+          ],
         ),
       ],
     );

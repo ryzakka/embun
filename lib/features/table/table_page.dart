@@ -1418,6 +1418,11 @@ class _TablePageState extends State<TablePage> {
     }
   }
 
+  Widget _sideDivider() => Container(
+      width: 56,
+      height: 1,
+      color: Colors.white.withValues(alpha: 0.14));
+
   Widget _sidebar(int day, int cycle, int leaves, int worms,
       DateTime? deadline, bool isHost) =>
       Container(
@@ -1447,12 +1452,24 @@ class _TablePageState extends State<TablePage> {
                         style: const TextStyle(
                             fontSize: 11, color: Colors.white70),
                       ),
-                      const SizedBox(height: 14),
-                      const GameIcon('helaidaun', size: 44),
-                      Text('$leaves', style: const TextStyle(fontSize: 28)),
-                      const Text('daun', style: TextStyle(fontSize: 12)),
+                      const SizedBox(height: 12),
+                      _sideDivider(),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const GameIcon('helaidaun', size: 34),
+                          const SizedBox(width: 6),
+                          Text('$leaves',
+                              style: const TextStyle(
+                                  fontSize: 26, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const Text('daun',
+                          style: TextStyle(fontSize: 11, color: Colors.white60)),
                       const SizedBox(height: 8),
                       PartsStrip(
+                        framed: false,
                         leaves: leaves,
                         winLeaves: (game?['win_leaves'] as int?) ?? 20,
                         akar: (game?['akar_c'] as String?) ?? 'biasa',
@@ -1473,7 +1490,9 @@ class _TablePageState extends State<TablePage> {
                                   fontSize: 11, color: Colors.purpleAccent)),
                         ),
                       ],
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
+                      _sideDivider(),
+                      const SizedBox(height: 12),
                       Countdown(
                         deadline: deadline,
                         style: const TextStyle(fontSize: 18),
@@ -1752,49 +1771,72 @@ class _TablePageState extends State<TablePage> {
           ? 'Dituduh mayoritas sekali lagi, Si Terbisik tertangkap dan warga menang.'
           : 'Dituduh mayoritas sekali lagi, kamu keluar dari desa.';
     }
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(10, compact ? 6 : 8, 12, compact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.75), width: 1.4),
+    return _noticeLine(
+      color: color,
+      compact: compact,
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: Text(sub),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Mengerti'))
+          ],
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          out
-              ? Icon(Icons.visibility_rounded, size: 26, color: color)
-              : jailed
-              ? const GameIcon('lock', size: 30)
-              : Icon(Icons.warning_amber_rounded, size: 26, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      leading: out
+          ? Icon(Icons.visibility_rounded, size: 20, color: color)
+          : jailed
+          ? const GameIcon('lock', size: 22)
+          : Icon(Icons.warning_amber_rounded, size: 20, color: color),
+      text: jailed ? '$title · tak bisa membeli' : title,
+      trailing: out ? null : LivesRow(lives: livesLeft(me), size: 16),
+    );
+  }
+
+  /// Baris pemberitahuan seragam: datar, satu baris, bilah warna di kiri.
+  /// Dipakai untuk status diri dan vonis supaya tidak ada kotak besar bertumpuk.
+  Widget _noticeLine({
+    required Color color,
+    required bool compact,
+    required Widget leading,
+    required String text,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Material(
+        color: color.withValues(alpha: 0.12),
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: compact ? 32 : 38,
+            child: Row(
               children: [
-                Text(title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: compact ? 12.5 : 14,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-                if (!compact || out)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(sub,
-                        style: const TextStyle(
-                            fontSize: 11.5,
-                            height: 1.3,
-                            color: Colors.white70)),
-                  ),
+                Container(width: 3, color: color),
+                const SizedBox(width: 9),
+                leading,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: compact ? 12 : 13,
+                          fontWeight: FontWeight.w700,
+                          color: color)),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 6),
+                  trailing,
+                ],
+                const SizedBox(width: 8),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          if (!out) LivesRow(lives: livesLeft(me), size: 18),
-        ],
+        ),
       ),
     );
   }
@@ -1828,77 +1870,43 @@ class _TablePageState extends State<TablePage> {
     ),
   );
 
-  /// Vonis hari sebelumnya: palu diketuk. Kartu membesar lalu menghantam
-  /// ke ukuran asli, kilat emas di titik ketukan, lalu bergetar mereda.
+  /// Vonis hari sebelumnya: satu baris datar, muncul memudar, bisa ditutup.
   Widget _verdictCard(String text, int day, {bool compact = false}) =>
       TweenAnimationBuilder<double>(
         key: ValueKey(text),
         tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 1300),
-        builder: (context, t, _) {
-          final slam =
-          Curves.easeOutBack.transform((t / 0.35).clamp(0.0, 1.0).toDouble());
-          final flash = (1 - (t - 0.35).abs() / 0.18).clamp(0.0, 1.0).toDouble();
-          final after = ((t - 0.35) / 0.65).clamp(0.0, 1.0).toDouble();
-          final dx = t > 0.35 ? sin(after * 60) * 6 * (1 - after) : 0.0;
-          return Opacity(
-            opacity: (t / 0.15).clamp(0.0, 1.0).toDouble(),
-            child: Transform.translate(
-              offset: Offset(dx, 0),
-              child: Transform.scale(
-                scale: 1.18 - 0.18 * slam,
-                child: Container(
-                  width: double.infinity,
-                  padding: compact
-                      ? const EdgeInsets.fromLTRB(10, 6, 4, 6)
-                      : const EdgeInsets.fromLTRB(14, 10, 6, 10),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.amber
-                            .withValues(alpha: 0.6 + 0.4 * flash)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.amber.withValues(alpha: 0.7 * flash),
-                        blurRadius: 24 * flash,
-                        spreadRadius: 2 * flash,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Transform.rotate(
-                        angle: -0.9 * (1 - slam),
-                        child: GameIcon('vote', size: compact ? 26 : 32),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          text,
-                          maxLines: compact ? 2 : 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: compact ? 12 : 13, height: 1.3),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Tutup',
-                        visualDensity: VisualDensity.compact,
-                        constraints:
-                        const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
-                        iconSize: 18,
-                        color: Colors.white54,
-                        onPressed: () => setState(() => _verdictHiddenDay = day),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOut,
+        builder: (context, t, child) => Opacity(
+          opacity: t,
+          child: Transform.translate(offset: Offset(0, (1 - t) * -8), child: child),
+        ),
+        child: _noticeLine(
+          color: Colors.amber,
+          compact: compact,
+          leading: const GameIcon('vote', size: 22),
+          text: text,
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Vonis'),
+              content: Text(text),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tutup'))
+              ],
             ),
-          );
-        },
+          ),
+          trailing: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _verdictHiddenDay = day),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close, size: 16, color: Colors.white54),
+            ),
+          ),
+        ),
       );
 
   /// Identitas pemain (peran + karakter). Mengikuti [showAsAntag], jadi mode

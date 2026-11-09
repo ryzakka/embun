@@ -59,6 +59,7 @@ class PartsStrip extends StatelessWidget {
   final bool compact;
   final int leaves;
   final int winLeaves;
+  final bool framed;
   const PartsStrip({
     super.key,
     required this.akar,
@@ -67,6 +68,7 @@ class PartsStrip extends StatelessWidget {
     this.compact = false,
     this.leaves = 0,
     this.winLeaves = 20,
+    this.framed = true,
   });
 
   static Color colorOf(String c) => switch (c) {
@@ -145,11 +147,13 @@ class PartsStrip extends StatelessWidget {
         padding: compact
             ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
             : const EdgeInsets.fromLTRB(8, 4, 6, 4),
-        decoration: BoxDecoration(
+        decoration: framed
+            ? BoxDecoration(
           color: Colors.black.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(compact ? 12 : 10),
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
+        )
+            : null,
         child: compact
             ? Row(mainAxisSize: MainAxisSize.min, children: items)
             : Column(mainAxisSize: MainAxisSize.min, children: items),
