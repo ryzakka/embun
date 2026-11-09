@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
@@ -373,11 +372,8 @@ class _DiscussionViewState extends State<DiscussionView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
-          icon: ikonPath('title-musyawarah') != null ? null : 'discuss',
-          title: ikonPath('title-musyawarah') != null ? '' : 'Musyawarah Senja',
-          leading: ikonPath('title-musyawarah') != null
-              ? const GameIcon('title-musyawarah', width: 190, height: 40)
-              : null,
+          icon: 'discuss',
+          title: 'Musyawarah Senja',
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

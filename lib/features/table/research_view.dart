@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
@@ -167,7 +166,7 @@ class _ResearchViewState extends State<ResearchView> {
 
   Widget _header(Color accent) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
       color: Colors.black.withValues(alpha: 0.45),
       borderRadius: BorderRadius.circular(14),
@@ -175,20 +174,16 @@ class _ResearchViewState extends State<ResearchView> {
     ),
     child: Column(
       children: [
-        ikonPath('title-pasarriset') != null
-            ? const GameIcon('title-pasarriset', width: 210, height: 48)
-            : Text('Pasar Riset',
+        Text('Pasar Riset',
             style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: accent)),
+                fontSize: 18, fontWeight: FontWeight.bold, color: accent)),
         const SizedBox(height: 2),
         const Text(
           'Kartu poin dan lanjutan, +20% dari harga biasa.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12.5, color: Colors.white70),
+          style: TextStyle(fontSize: 11.5, color: Colors.white70),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Row(
           children: [
             Expanded(
@@ -207,7 +202,7 @@ class _ResearchViewState extends State<ResearchView> {
   );
 
   Widget _stat(String label, String value, Color c) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: 4),
     decoration: BoxDecoration(
       color: Colors.white.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(10),
@@ -219,7 +214,7 @@ class _ResearchViewState extends State<ResearchView> {
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold, color: c)),
+                fontSize: 17, fontWeight: FontWeight.bold, color: c)),
       ],
     ),
   );

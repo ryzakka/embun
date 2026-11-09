@@ -39,6 +39,7 @@ import 'night_choice.dart';
 import 'my_info_sheet.dart';
 import 'player_sheet.dart';
 import 'parts_strip.dart';
+import 'phase_title.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
 import 'voting_view.dart';
@@ -1403,6 +1404,20 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
+  /// Judul pembuka fase (sekali per fase per hari).
+  Widget _withPhaseTitle(String phase, int day, Widget body) {
+    switch (phase) {
+      case 'discussion':
+        return PhaseTitle(
+            id: 'discussion-$day', icon: 'title-musyawarah', child: body);
+      case 'research':
+        return PhaseTitle(
+            id: 'research-$day', icon: 'title-pasarriset', child: body);
+      default:
+        return body;
+    }
+  }
+
   Widget _sidebar(int day, int cycle, int leaves, int worms,
       DateTime? deadline, bool isHost) =>
       Container(
@@ -1701,7 +1716,10 @@ class _TablePageState extends State<TablePage> {
           SizedBox(height: gap),
           // Selama adegan peralihan, isi hari ditahan supaya animasi Kabar Pagi
           // dan vonis baru diputar saat adegan selesai.
-          Expanded(child: _dayIntro == null ? body : const SizedBox.shrink()),
+          Expanded(
+              child: _dayIntro == null
+                  ? _withPhaseTitle(phase, day, body)
+                  : const SizedBox.shrink()),
         ],
       ),
     );

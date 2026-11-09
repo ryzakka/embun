@@ -94,20 +94,35 @@ class PartsStrip extends StatelessWidget {
       message: '${partName(part)}: $c',
       child: compact
           ? Padding(
-        padding: const EdgeInsets.only(right: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: PartBadge(part, c, size: 20),
       )
           : Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             PartBadge(part, c, size: 26),
-            const SizedBox(width: 5),
-            SizedBox(
-              width: 44,
-              child: Text(c,
-                  style: TextStyle(fontSize: 11, color: col)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(partName(part),
+                      maxLines: 1,
+                      style: const TextStyle(
+                          fontSize: 10.5,
+                          height: 1.1,
+                          color: Colors.white60)),
+                  Text(c,
+                      maxLines: 1,
+                      style: TextStyle(
+                          fontSize: 12,
+                          height: 1.15,
+                          fontWeight: FontWeight.w700,
+                          color: col)),
+                ],
+              ),
             ),
           ],
         ),
@@ -126,9 +141,19 @@ class PartsStrip extends StatelessWidget {
           tanah: tanah,
           leaves: leaves,
           winLeaves: winLeaves),
-      child: compact
-          ? Row(mainAxisSize: MainAxisSize.min, children: items)
-          : Column(mainAxisSize: MainAxisSize.min, children: items),
+      child: Container(
+        padding: compact
+            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+            : const EdgeInsets.fromLTRB(8, 4, 6, 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(compact ? 12 : 10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: compact
+            ? Row(mainAxisSize: MainAxisSize.min, children: items)
+            : Column(mainAxisSize: MainAxisSize.min, children: items),
+      ),
     );
   }
 }
