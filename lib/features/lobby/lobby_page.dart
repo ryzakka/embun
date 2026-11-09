@@ -1420,11 +1420,12 @@ class _LobbyPageState extends State<LobbyPage>
                         0.5 + 0.5 * sin(_t.value * 120 * 1.6 + index * 0.9);
                     return Transform.scale(
                       scale: 0.94 + 0.1 * w,
-                      child: Icon(Icons.person_add_alt_1_outlined,
-                          size: 30,
-                          color: Colors.white.withValues(
-                              alpha: (needed ? 0.16 : 0.08) +
-                                  (needed ? 0.26 : 0.1) * w)),
+                      child: Opacity(
+                        opacity: ((needed ? 0.25 : 0.12) +
+                            (needed ? 0.4 : 0.16) * w)
+                            .clamp(0.0, 1.0),
+                        child: const GameIcon('addmember', size: 34),
+                      ),
                     );
                   },
                 ),

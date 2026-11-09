@@ -7,6 +7,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import 'parts_strip.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -1054,7 +1055,23 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            GameIcon(bad ? 'poinmin1' : 'poinplus1', size: 46),
+                            Builder(builder: (_) {
+                              final lb = widget.row['label'] as String;
+                              final part = lb.contains('Akar')
+                                  ? 'akar'
+                                  : lb.contains('Batang')
+                                  ? 'batang'
+                                  : lb.contains('Tanah')
+                                  ? 'tanah'
+                                  : null;
+                              if (part == null) {
+                                return GameIcon(
+                                    bad ? 'poinmin1' : 'poinplus1',
+                                    size: 46);
+                              }
+                              return PartBadge(part, bad ? 'rusak' : 'subur',
+                                  size: 46);
+                            }),
                             const SizedBox(width: 6),
                             Text(widget.row['label'] as String,
                                 style: const TextStyle(

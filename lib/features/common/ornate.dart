@@ -193,12 +193,14 @@ class SectionHeader extends StatelessWidget {
   final String? icon;
   final String title;
   final Widget? trailing;
+  final Widget? leading; // pengganti judul teks (mis. gambar judul)
   final double iconSize;
   const SectionHeader({
     super.key,
     this.icon,
     required this.title,
     this.trailing,
+    this.leading,
     this.iconSize = 30,
   });
 
@@ -214,7 +216,9 @@ class SectionHeader extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Expanded(
-            child: Text(
+            child: leading != null
+                ? Align(alignment: Alignment.centerLeft, child: leading)
+                : Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

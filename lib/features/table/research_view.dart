@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
@@ -174,9 +175,13 @@ class _ResearchViewState extends State<ResearchView> {
     ),
     child: Column(
       children: [
-        Text('Pasar Riset',
+        ikonPath('title-pasarriset') != null
+            ? const GameIcon('title-pasarriset', width: 210, height: 48)
+            : Text('Pasar Riset',
             style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold, color: accent)),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: accent)),
         const SizedBox(height: 2),
         const Text(
           'Kartu poin dan lanjutan, +20% dari harga biasa.',

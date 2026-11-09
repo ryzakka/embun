@@ -38,6 +38,7 @@ import 'night_plan_dialog.dart';
 import 'night_choice.dart';
 import 'my_info_sheet.dart';
 import 'player_sheet.dart';
+import 'parts_strip.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
 import 'voting_view.dart';
@@ -1435,6 +1436,14 @@ class _TablePageState extends State<TablePage> {
                       const GameIcon('helaidaun', size: 44),
                       Text('$leaves', style: const TextStyle(fontSize: 28)),
                       const Text('daun', style: TextStyle(fontSize: 12)),
+                      const SizedBox(height: 8),
+                      PartsStrip(
+                        leaves: leaves,
+                        winLeaves: (game?['win_leaves'] as int?) ?? 20,
+                        akar: (game?['akar_c'] as String?) ?? 'biasa',
+                        batang: (game?['batang_c'] as String?) ?? 'biasa',
+                        tanah: (game?['tanah_c'] as String?) ?? 'biasa',
+                      ),
                       if (worms > 0) ...[
                         const SizedBox(height: 8),
                         Container(
@@ -2072,6 +2081,15 @@ class _TablePageState extends State<TablePage> {
                             const SizedBox(width: 3),
                             Text('$leaves',
                                 style: const TextStyle(fontSize: 12.5)),
+                            dot,
+                            PartsStrip(
+                              compact: true,
+                              leaves: leaves,
+                              winLeaves: (game?['win_leaves'] as int?) ?? 20,
+                              akar: (game?['akar_c'] as String?) ?? 'biasa',
+                              batang: (game?['batang_c'] as String?) ?? 'biasa',
+                              tanah: (game?['tanah_c'] as String?) ?? 'biasa',
+                            ),
                             if (worms > 0) ...[
                               dot,
                               Text('🐛 $worms',

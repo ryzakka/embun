@@ -1348,7 +1348,9 @@ class _DayViewState extends State<DayView>
         ? 'anyaman-rusak'
         : widget.dark
         ? 'anyaman-gelap'
-        : 'anyaman-temaram');
+        : (sceneryPath('kedai-kartuwarga') != null
+        ? 'kedai-kartuwarga'
+        : 'anyaman-temaram'));
     if (p == null) return child;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -1859,6 +1861,23 @@ class _DayViewState extends State<DayView>
   }
 
   Widget _gabungBody({double minW = 96}) {
+    final p = sceneryPath('anyaman-temarangabungkartu');
+    final inner = _gabungBodyInner(minW: minW);
+    if (p == null) return inner;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          OrientedImage(path: p, cacheWidth: 900),
+          ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
+          inner,
+        ],
+      ),
+    );
+  }
+
+  Widget _gabungBodyInner({double minW = 96}) {
     final c = _fuseCandidates();
     // Pilihan yang sudah tidak ada di tangan dilepas otomatis.
     final advOk = _fuseAdv != null && c.adv.any((e) => e.$1 == _fuseAdv);

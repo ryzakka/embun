@@ -215,6 +215,18 @@ class _TutorialPageState extends State<TutorialPage>
           (p) => const _LivesDemo(),
     ),
     _Step(
+      'Bagian Hayu',
+      'Selain daun, Hayu punya **Akar, Batang, dan Tanah** yang kondisinya '
+          'tampil di samping daun: **subur, biasa, layu, rusak**. '
+          'Akar memengaruhi **embun harian warga**, Batang memengaruhi '
+          '**perlindungan**, Tanah memengaruhi **kabut**. Kartu persembahan '
+          'bisa memulihkan atau merusaknya, dan kartu lanjutan terus '
+          'bekerja tiap malam persembahan. Angka aslinya tersembunyi, dan '
+          'perubahan baru terasa di malam persembahan berikutnya.',
+      EmbunColors.leaf,
+          (p) => const _WinDemo(),
+    ),
+    _Step(
       'Kemenangan',
       'Warga menang seketika bila Hayu mencapai **$kLeavesMax daun**. '
           'Bila hari terakhir tiba, daun harus **di atas batas**: sesi '
