@@ -20,6 +20,7 @@ import '../guide/tutorial_page.dart';
 import 'more_games_sheet.dart';
 import 'announcements_page.dart';
 import 'public_rooms_page.dart';
+import 'room_entry_view.dart';
 import 'title_intro.dart';
 import 'announcement_body.dart';
 import '../table/chat_sheet.dart';
@@ -137,14 +138,16 @@ class _LobbyPageState extends State<LobbyPage>
     }
   }
 
-  Future<void> _run(Future<String> Function(String card) action) async {
-    if (nameCtrl.text.trim().isEmpty) return _toast('Isi namamu dulu');
+  Future<void> _createRoom(String name) async {
+    if (busy) return;
     setState(() => busy = true);
     try {
-      final id = await action(randomProtagonist());
+      final id = await repo.createGame(
+        name, randomProtagonist(), isPublic: _createPublic, cycles: _createCycles,
+      );
       if (mounted) setState(() => gameId = id);
     } catch (e) {
-      _toast(errMsg(e));
+      if (mounted) _toast(errMsg(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -338,15 +341,24 @@ class _LobbyPageState extends State<LobbyPage>
         case _Stage.menu:
           screen = KeyedSubtree(key: const ValueKey('menu'), child: _menu());
         case _Stage.entry:
-          screen = KeyedSubtree(
-              key: const ValueKey('entry'), child: _framed(520, _entry()));
+          screen = CreateRoomView(
+            key: const ValueKey('entry'),
+            nameCtrl: nameCtrl,
+            isPublic: _createPublic,
+            cycles: _createCycles,
+            busy: busy,
+            onVisibilityChanged: (value) => setState(() => _createPublic = value),
+            onDurationChanged: (cycles) => setState(() => _createCycles = cycles),
+            onCreate: _createRoom,
+            onBack: () => setState(() => _stage = _Stage.menu),
+          );
       }
     }
 
     return PopScope(
       canPop: canPop,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
+        if (didPop || busy) return;
         setState(() => _stage =
         _stage == _Stage.entry ? _Stage.menu : _Stage.title);
       },
@@ -904,105 +916,6 @@ class _LobbyPageState extends State<LobbyPage>
         ],
       );
     });
-  }
-
-  // ====================== 3. ISIAN (nama / kode) ======================
-
-  Widget _panel(Widget child) =>
-      _Glass(padding: const EdgeInsets.all(20), child: child);
-
-  Widget _entry() {
-    return SingleChildScrollView(
-      child: _panel(
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                _backButton(busy
-                    ? () {}
-                    : () => setState(() => _stage = _Stage.menu)),
-                const Expanded(
-                  child: SectionHeader(
-                    icon: 'roomcreate',
-                    title: 'Buat Ruangan',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 84,
-              child: GameImage(
-                  path: logoPath('logoteks-transparent'),
-                  fit: BoxFit.contain,
-                  cacheWidth: 600),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: nameCtrl,
-              maxLength: 20,
-              decoration: const InputDecoration(
-                labelText: 'Namamu',
-                prefixIcon: Padding(
-                  padding: EdgeInsets.all(6),
-                  child: GameIcon('identity', size: 30),
-                ),
-              ),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _createPublic,
-              onChanged: busy ? null : (v) => setState(() => _createPublic = v),
-              title: const Text('Ruangan publik'),
-              subtitle: const Text(
-                'Tampil di daftar supaya orang lain bisa bergabung. '
-                    'Matikan untuk ruangan privat (hanya lewat kode).',
-                style: TextStyle(fontSize: 11.5, color: Colors.white60),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Lama permainan',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                for (final c in const [2, 4, 6, 8])
-                  ChoiceChip(
-                    label: Text('${c * 3} hari'),
-                    selected: _createCycles == c,
-                    onSelected:
-                    busy ? null : (_) => setState(() => _createCycles = c),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Menang bila daun Hayu minimal '
-                  '${const {2: 12, 4: 20, 6: 24, 8: 26}[_createCycles]} '
-                  'di akhir hari ke-${_createCycles * 3}, atau mencapai 30 '
-                  'lebih cepat. ${_createCycles == 4 ? '(Bawaan)' : ''}',
-              style: const TextStyle(fontSize: 11.5, color: Colors.white60),
-            ),
-            const SizedBox(height: 14),
-            EmbunButton(
-              label: 'Buat Ruangan',
-              icon: 'roomcreate',
-              expand: true,
-              onPressed: busy
-                  ? null
-                  : () => _run((card) => repo.createGame(nameCtrl.text, card,
-                  isPublic: _createPublic, cycles: _createCycles)),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   // ====================== RUANGAN (lobi) ======================
@@ -1955,15 +1868,14 @@ class _Fx extends CustomPainter {
   bool shouldRepaint(covariant _Fx old) => true;
 }
 
-/// Panel kaca gelap yang dipakai bersama oleh layar isian, ruangan, dan obrolan.
+/// Panel kaca gelap untuk ruangan dan obrolan.
 class _Glass extends StatelessWidget {
   final Widget child;
-  final EdgeInsets padding;
-  const _Glass({required this.child, this.padding = const EdgeInsets.all(16)});
+  const _Glass({required this.child});
 
   @override
   Widget build(BuildContext context) =>
-      OrnatePanel(padding: padding, child: child);
+      OrnatePanel(padding: const EdgeInsets.all(16), child: child);
 }
 
 /// Tata letak ruangan yang responsif:

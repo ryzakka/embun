@@ -1,43 +1,35 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
+import '../../data/game_rules.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
-import '../table/player_status.dart';
+import 'room_entry_view.dart';
 
-/// Bergabung ke ruangan [code]. Mengembalikan null bila berhasil, atau pesan
-/// galat yang siap ditampilkan.
+/// Mengembalikan null bila berhasil, atau pesan galat yang siap ditampilkan.
 typedef JoinRoom = Future<String?> Function(String code);
 
 enum _Sort { newest, busiest }
 
 class _Room {
-  final String code;
-  final String host;
-  final int players;
+  final String code, host;
+  final int players, ageS;
 
-  /// Umur ruangan (detik) pada saat daftar diambil, dihitung oleh server.
-  final int ageS;
   const _Room(this.code, this.host, this.players, this.ageS);
 
-  factory _Room.from(Map<String, dynamic> m) => _Room(
-    m['code'] as String,
-    m['host_name'] as String,
-    (m['players'] as num).toInt(),
-    (m['age_s'] as num).toInt(),
+  factory _Room.from(Map<String, dynamic> row) => _Room(
+    row['code'] as String,
+    row['host_name'] as String,
+    (row['players'] as num).toInt(),
+    (row['age_s'] as num).toInt(),
   );
 }
 
-/// Gabung Ruangan, layar penuh, dengan dua tab: "Pakai Kode" (kode dari
-/// teman) dan "Ruangan Publik" (daftar yang bisa langsung dimasuki).
-///
-/// Namamu diisi di bagian atas (memakai [nameCtrl] milik lobi) dan dipakai
-/// kedua tab. [onJoin] yang menjalankan permintaan gabung. Bila berhasil,
-/// halaman menutup sendiri dan lobi menampilkan ruangannya. [onCreate]
-/// dipanggil setelah halaman ditutup (tombol "Buat ruangan publik" saat
-/// daftar kosong). [initialTab]: 0 = Pakai Kode, 1 = Ruangan Publik.
+/// Satu nama dipakai untuk masuk lewat kode atau dari daftar ruangan publik.
 class PublicRoomsPage extends StatefulWidget {
   final LobbyRepository repo;
   final TextEditingController nameCtrl;
@@ -60,17 +52,11 @@ class PublicRoomsPage extends StatefulWidget {
   State<PublicRoomsPage> createState() => _PublicRoomsPageState();
 }
 
-class _PublicRoomsPageState extends State<PublicRoomsPage>
-    with SingleTickerProviderStateMixin {
-  static const _maxPlayers = 8;
+class _PublicRoomsPageState extends State<PublicRoomsPage> {
   static const _pollEvery = Duration(seconds: 8);
 
-  final _scroll = ScrollController();
   final _nameFocus = FocusNode();
   final _searchCtrl = TextEditingController();
-  late final AnimationController _pulse = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1200))
-    ..repeat(reverse: true);
 
   List<_Room>? _rooms;
   DateTime _fetchedAt = DateTime.now();
@@ -78,36 +64,42 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
   bool _refreshing = false;
   String? _joiningCode;
   bool _nameMissing = false;
+  bool _codeMissing = false;
   _Sort _sort = _Sort.newest;
-  String _query = '';
   Timer? _timer;
   late int _tab = widget.initialTab.clamp(0, 1).toInt();
+
+  bool get _isPublic => _tab == 1;
+  bool get _joining => _joiningCode != null;
+  String get _query => _searchCtrl.text;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    // RLS membatasi realtime `games` ke anggota, jadi daftar disegarkan berkala.
+    if (_isPublic) _load();
+    // Realtime games hanya terlihat oleh anggota ruangan.
     _timer = Timer.periodic(_pollEvery, (_) {
-      if (_joiningCode == null) _load(quiet: true);
+      if (_isPublic && !_joining) _load(quiet: true);
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _pulse.dispose();
-    _scroll.dispose();
     _nameFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _toast(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  void _selectTab(int tab) {
+    if (_joining || tab == _tab) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _tab = tab);
+    if (_isPublic) _load(quiet: _rooms != null);
+  }
 
   Future<void> _load({bool quiet = false}) async {
-    if (_refreshing) return;
+    if (_refreshing || _joining) return;
     setState(() => _refreshing = true);
     try {
       final raw = await widget.repo.publicGames();
@@ -119,67 +111,57 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
       });
     } catch (e) {
       if (!mounted) return;
-      // Penyegaran diam-diam yang gagal tidak mengganggu daftar yang ada.
       if (!quiet || _rooms == null) setState(() => _loadError = e);
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }
   }
 
-  /// true bila nama masih kosong (kolom nama disorot dan diberi fokus).
-  bool _needName() {
-    if (widget.nameCtrl.text.trim().isNotEmpty) return false;
-    setState(() => _nameMissing = true);
-    if (_scroll.hasClients) {
-      _scroll.animateTo(0,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  Future<void> _join(String code, {bool fromList = false}) async {
+    if (_joining) return;
+    if (widget.nameCtrl.text.trim().isEmpty) {
+      setState(() => _nameMissing = true);
+      _nameFocus.requestFocus();
+      if (_nameFocus.context case final field?) {
+        unawaited(
+          Scrollable.ensureVisible(
+            field,
+            duration: const Duration(milliseconds: 200),
+          ),
+        );
+      }
+      return;
     }
-    _nameFocus.requestFocus();
-    return true;
-  }
-
-  /// Tab "Pakai Kode": gabung dengan kode yang diketik.
-  Future<void> _joinByCode() async {
-    if (_joiningCode != null) return;
-    if (_needName()) return;
-    final code = widget.codeCtrl.text.trim();
-    if (code.isEmpty) return _toast('Isi kode ruangan dulu');
+    if (code.isEmpty) {
+      setState(() => _codeMissing = true);
+      return;
+    }
+    FocusScope.of(context).unfocus();
     setState(() {
       _joiningCode = code;
       _nameMissing = false;
+      _codeMissing = false;
     });
-    final err = await widget.onJoin(code);
+    String? error;
+    try {
+      error = await widget.onJoin(code);
+    } catch (e) {
+      error = errMsg(e);
+    }
     if (!mounted) return;
-    if (err == null) {
+    if (error == null) {
       Navigator.of(context).pop();
       return;
     }
     setState(() => _joiningCode = null);
-    _toast(err);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    if (fromList) _load(quiet: true);
   }
 
-  Future<void> _join(_Room r) async {
-    if (_joiningCode != null) return;
-    if (_needName()) return;
-    setState(() {
-      _joiningCode = r.code;
-      _nameMissing = false;
-    });
-    final err = await widget.onJoin(r.code);
-    if (!mounted) return;
-    if (err == null) {
-      Navigator.of(context).pop();
-      return;
-    }
-    setState(() => _joiningCode = null);
-    _toast(err);
-    _load(quiet: true); // ruangan mungkin sudah penuh atau sudah dimulai
-  }
-
-  List<_Room> _visible() {
+  List<_Room> _visible(List<_Room> rooms) {
     final q = _query.trim().toLowerCase();
     final list = [
-      for (final r in _rooms ?? const <_Room>[])
+      for (final r in rooms)
         if (q.isEmpty ||
             r.code.toLowerCase().contains(q) ||
             r.host.toLowerCase().contains(q))
@@ -187,671 +169,560 @@ class _PublicRoomsPageState extends State<PublicRoomsPage>
     ];
     list.sort((a, b) {
       if (_sort == _Sort.busiest) {
-        final c = b.players.compareTo(a.players);
-        if (c != 0) return c;
+        final count = b.players.compareTo(a.players);
+        if (count != 0) return count;
       }
       return a.ageS.compareTo(b.ageS);
     });
     return list;
   }
 
-  String _ageText(int s) {
-    if (s < 45) return 'baru saja';
-    final m = (s / 60).round();
-    if (m < 60) return '$m mnt lalu';
-    return '${s ~/ 3600} jam lalu';
+  String _ageText(int seconds) {
+    if (seconds < 45) return 'Baru saja';
+    final minutes = seconds ~/ 60;
+    if (minutes < 60) return '${minutes.clamp(1, 59)} mnt lalu';
+    return '${seconds ~/ 3600} jam lalu';
   }
-
-  // ============================ kerangka ============================
 
   @override
-  Widget build(BuildContext context) {
-    final rooms = _rooms;
-    return PopScope(
-      canPop: _joiningCode == null,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF050A08),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Backdrop(path: sceneryPath('rumahdesa-hijau'), dim: 0.62),
-            SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 940),
-                  child: Column(
-                    children: [
-                      _topBar(rooms?.length),
-                      _sharedTop(),
-                      Expanded(
-                          child: _tab == 0 ? _codeTab() : _content(rooms)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _topBar(int? count) {
-    final sub = _tab == 0
-        ? 'Masukkan kode dari temanmu'
-        : count == null
-        ? 'Memuat daftar...'
-        : count == 0
-        ? 'Belum ada ruangan yang dibuka'
-        : '$count ruangan menunggu pemain';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 10, 6),
-      child: Row(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_joining,
+    child: Scaffold(
+      backgroundColor: EmbunColors.bg,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          IconButton(
-            tooltip: 'Kembali',
-            onPressed:
-            _joiningCode != null ? null : () => Navigator.pop(context),
-            color: EmbunColors.gold,
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          ),
-          const GameIcon('jointoroom', size: 38),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Gabung Ruangan',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                    color: EmbunColors.gold,
-                    shadows: [Shadow(color: Colors.black, blurRadius: 10)],
-                  ),
-                ),
-                Text(sub,
-                    style:
-                    const TextStyle(fontSize: 12, color: Colors.white60)),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: _tab == 0
-                ? null
-                : _refreshing
-                ? const Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-                : IconButton(
-              tooltip: 'Muat ulang',
-              color: EmbunColors.gold,
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _load,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _content(List<_Room>? rooms) {
-    if (rooms == null) {
-      return _loadError == null ? _skeleton() : _failed();
-    }
-    final visible = _visible();
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: CustomScrollView(
-        controller: _scroll,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Column(
+          Backdrop(path: sceneryPath('rumahdesa-hijau'), dim: 0.40),
+          RoomEntryFrame(
+            child: LayoutBuilder(
+              builder: (context, box) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_loadError != null)
-                    NoticeStrip(
-                      icon: 'alert',
-                      text: 'Gagal memuat ulang: ${errMsg(_loadError!)}',
-                      accent: EmbunColors.blood,
+                  Visibility(
+                    visible: box.maxHeight >= 160,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border(bottom: roomEntryRule()),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RoomEntryHeader(
+                            title: 'Gabung Ruangan',
+                            icon: 'jointoroom',
+                            onBack: _joining
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            action: _isPublic
+                                ? IconButton(
+                                    tooltip: 'Muat ulang',
+                                    color: EmbunColors.gold,
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    onPressed: _refreshing || _joining
+                                        ? null
+                                        : _load,
+                                  )
+                                : null,
+                          ),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 388),
+                            child: Row(
+                              children: [
+                                Expanded(child: _tabButton('Pakai Kode', 0)),
+                                Expanded(
+                                  child: _tabButton('Ruangan Publik', 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  if (rooms.length > 4) _controls(rooms.length, visible.length),
-                  if (rooms.isNotEmpty) _listHeader(visible.length),
+                  ),
+                  Expanded(child: _isPublic ? _publicTab() : _codeTab()),
                 ],
               ),
             ),
           ),
-          if (rooms.isEmpty)
-            SliverFillRemaining(hasScrollBody: false, child: _empty())
-          else if (visible.isEmpty)
-            SliverFillRemaining(hasScrollBody: false, child: _noMatch())
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              sliver: SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 460,
-                  mainAxisExtent: 100,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 14,
+        ],
+      ),
+    ),
+  );
+
+  Widget _tabButton(String label, int index) {
+    final selected = _tab == index;
+    return Semantics(
+      selected: selected,
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: selected
+              ? const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: EmbunColors.gold, width: 2),
+                  ),
+                )
+              : null,
+          child: InkWell(
+            onTap: _joining ? null : () => _selectTab(index),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 43),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: selected ? EmbunColors.gold : EmbunColors.cream,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
                 ),
-                itemCount: visible.length,
-                itemBuilder: (_, i) => _card(visible[i]),
-              ),
-            ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
-              child: Text(
-                'Daftar disegarkan otomatis. Tarik ke bawah untuk memuat ulang.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.white38),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _nameField() => TextField(
+    controller: widget.nameCtrl,
+    focusNode: _nameFocus,
+    enabled: !_joining,
+    maxLength: 20,
+    textCapitalization: TextCapitalization.words,
+    textInputAction: _isPublic ? TextInputAction.done : TextInputAction.next,
+    onChanged: (_) {
+      if (_nameMissing) setState(() => _nameMissing = false);
+    },
+    decoration: InputDecoration(
+      labelText: 'Namamu',
+      counterText: '',
+      errorText: _nameMissing ? 'Isi namamu dulu' : null,
+      prefixIcon: const Padding(
+        padding: EdgeInsets.all(8),
+        child: GameIcon('identity', size: 24),
+      ),
+    ),
+  );
+
+  Widget _codeTab() => SingleChildScrollView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+    padding: const EdgeInsets.symmetric(vertical: 20),
+    child: Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _nameField(),
+            const SizedBox(height: 14),
+            TextField(
+              controller: widget.codeCtrl,
+              enabled: !_joining,
+              textCapitalization: TextCapitalization.characters,
+              textInputAction: TextInputAction.done,
+              maxLength: 8,
+              onChanged: (_) {
+                if (_codeMissing) setState(() => _codeMissing = false);
+              },
+              onSubmitted: (_) => _join(widget.codeCtrl.text.trim()),
+              decoration: InputDecoration(
+                labelText: 'Kode ruangan',
+                counterText: '',
+                errorText: _codeMissing ? 'Isi kode ruangan dulu' : null,
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: GameIcon('roomcode', size: 24),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Masukkan kode 5 huruf yang dibagikan host.',
+              style: TextStyle(fontSize: 13, color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            EmbunButton(
+              label: _joining ? 'Sedang masuk…' : 'Gabung',
+              icon: _joining ? 'wait' : 'joinroom',
+              expand: true,
+              height: 45,
+              onPressed: _joining
+                  ? null
+                  : () => _join(widget.codeCtrl.text.trim()),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _publicTab() => LayoutBuilder(
+    builder: (context, box) {
+      final roomy = box.maxWidth >= 760;
+      final wide =
+          roomy ||
+          (box.maxWidth >= 520 && MediaQuery.sizeOf(context).height < 450);
+      final list = _roomList(showName: !wide);
+      if (!wide) return list;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: roomy ? 268 : 184,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(0, 20, 23, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _nameField(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Nama ini akan terlihat oleh pemain lain.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: DecoratedBox(
+              decoration: BoxDecoration(border: Border(left: roomEntryRule())),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 22),
+                child: list,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  Widget _roomList({required bool showName}) {
+    final rooms = _rooms;
+    final visible = rooms == null ? const <_Room>[] : _visible(rooms);
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: CustomScrollView(
+        key: const PageStorageKey('public-rooms'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showName) ...[_nameField(), const SizedBox(height: 14)],
+                  if (rooms != null && _loadError != null) ...[
+                    const Text(
+                      'Gagal memuat ulang. Daftar terakhir masih ditampilkan.',
+                      style: TextStyle(color: EmbunColors.blood, fontSize: 13),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (rooms != null && rooms.isNotEmpty) ...[
+                    _search(),
+                    const SizedBox(height: 10),
+                    _listHeader(rooms.length, visible.length),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (rooms == null)
+            SliverToBoxAdapter(
+              child: _loadError == null || _refreshing ? _loading() : _failed(),
+            )
+          else if (rooms.isEmpty)
+            SliverToBoxAdapter(child: _empty())
+          else if (visible.isEmpty)
+            SliverToBoxAdapter(child: _noMatch())
+          else
+            SliverList.builder(
+              itemCount: visible.length,
+              itemBuilder: (context, index) => _roomRow(visible[index]),
+            ),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
         ],
       ),
     );
   }
 
-  // ============================ bagian atas daftar ============================
-
-  /// Bagian yang dipakai kedua tab: kolom nama dan pemilih tab.
-  Widget _sharedTop() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _tabButton(
-                  label: 'Pakai Kode', icon: 'roomcode', index: 0),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _tabButton(
-                  label: 'Ruangan Publik',
-                  icon: 'persona',
-                  index: 1,
-                  badge: (_rooms?.length ?? 0) > 0 ? _rooms!.length : null),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _namePanel(),
-      ],
-    ),
-  );
-
-  Widget _tabButton(
-      {required String label,
-        required String icon,
-        required int index,
-        int? badge}) {
-    final on = _tab == index;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: _joiningCode != null ? null : () => setState(() => _tab = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: on
-              ? EmbunColors.leaf.withValues(alpha: 0.22)
-              : Colors.black.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: on
-                ? EmbunColors.gold
-                : EmbunColors.goldDim.withValues(alpha: 0.4),
-            width: on ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GameIcon(icon, size: 26),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: on ? FontWeight.bold : FontWeight.w500,
-                  color: on ? EmbunColors.gold : EmbunColors.cream,
-                ),
-              ),
-            ),
-            if (badge != null) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(
-                  color: EmbunColors.leaf.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text('$badge',
-                    style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87)),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Tab "Pakai Kode".
-  Widget _codeTab() => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 520),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        child: OrnatePanel(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: widget.codeCtrl,
-                textCapitalization: TextCapitalization.characters,
-                textInputAction: TextInputAction.done,
-                textAlign: TextAlign.center,
-                maxLength: 8,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6,
-                    color: EmbunColors.gold),
-                onSubmitted: (_) => _joinByCode(),
-                decoration: const InputDecoration(
-                  labelText: 'Kode ruangan',
-                  counterText: '',
-                  prefixIcon: Padding(
-                    padding: EdgeInsets.all(6),
-                    child: GameIcon('roomcode', size: 30),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              EmbunButton(
-                label: _joiningCode != null ? 'Masuk...' : 'Gabung',
-                icon: _joiningCode != null ? 'wait' : 'joinroom',
-                expand: true,
-                onPressed: _joiningCode != null ? null : _joinByCode,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Kode terdiri dari 5 huruf dan dibagikan oleh host ruangan. '
-                    'Belum punya? Lihat tab Ruangan Publik.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11.5, color: Colors.white54),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Widget _namePanel() => Container(
-    padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.32),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(
-        color: _nameMissing
-            ? EmbunColors.blood
-            : EmbunColors.goldDim.withValues(alpha: 0.4),
-      ),
-    ),
-    child: TextField(
-      controller: widget.nameCtrl,
-      focusNode: _nameFocus,
-      maxLength: 20,
-      textInputAction: TextInputAction.done,
-      onChanged: (_) {
-        if (_nameMissing) setState(() => _nameMissing = false);
-      },
-      decoration: InputDecoration(
-        labelText: 'Bergabung sebagai',
-        hintText: 'Namamu',
-        counterText: '',
-        isDense: true,
-        errorText: _nameMissing ? 'Isi namamu dulu untuk bergabung' : null,
-        prefixIcon: const Padding(
-          padding: EdgeInsets.all(6),
-          child: GameIcon('identity', size: 28),
-        ),
-      ),
-    ),
-  );
-
-  Widget _controls(int total, int shown) => Padding(
-    padding: const EdgeInsets.only(top: 12),
-    child: Column(
-      children: [
-        TextField(
+  Widget _search() => Row(
+    children: [
+      Expanded(
+        child: TextField(
           controller: _searchCtrl,
-          onChanged: (v) => setState(() => _query = v),
+          enabled: !_joining,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
-            hintText: 'Cari kode atau nama host',
+            labelText: 'Cari kode/host',
             isDense: true,
-            prefixIcon: const Icon(Icons.search_rounded),
+            prefixIcon: const Icon(Icons.search_rounded, size: 19),
             suffixIcon: _query.isEmpty
                 ? null
                 : IconButton(
-              tooltip: 'Hapus pencarian',
-              icon: const Icon(Icons.close_rounded),
-              onPressed: () {
-                _searchCtrl.clear();
-                setState(() => _query = '');
-              },
-            ),
+                    tooltip: 'Hapus pencarian',
+                    icon: const Icon(Icons.close_rounded, size: 19),
+                    onPressed: _joining ? null : _clearSearch,
+                  ),
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            ChoiceChip(
-              label: const Text('Terbaru'),
-              selected: _sort == _Sort.newest,
-              visualDensity: VisualDensity.compact,
-              onSelected: (_) => setState(() => _sort = _Sort.newest),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: const Text('Paling ramai'),
-              selected: _sort == _Sort.busiest,
-              visualDensity: VisualDensity.compact,
-              onSelected: (_) => setState(() => _sort = _Sort.busiest),
-            ),
-            const Spacer(),
-            if (shown != total)
-              Text('$shown dari $total',
-                  style: const TextStyle(fontSize: 12, color: Colors.white54)),
-          ],
-        ),
-      ],
-    ),
-  );
-
-  Widget _listHeader(int shown) => Padding(
-    padding: const EdgeInsets.fromLTRB(2, 14, 2, 0),
-    child: Row(
-      children: [
-        const Text('Menunggu pemain',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: EmbunColors.cream)),
-        const SizedBox(width: 8),
-        Text('$shown ruangan',
-            style: const TextStyle(fontSize: 12, color: Colors.white54)),
-        const Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(left: 10),
-            child: Divider(height: 1, color: Colors.white12),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  // ============================ kartu ruangan ============================
-
-  Widget _pips(int n) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (var i = 0; i < _maxPlayers; i++)
-        Container(
-          width: 9,
-          height: 9,
-          margin: EdgeInsets.only(left: i == 0 ? 0 : 3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: i < n ? EmbunColors.leaf : Colors.transparent,
-            border: Border.all(
-              color: i < n ? EmbunColors.leaf : Colors.white30,
-            ),
-          ),
-        ),
+      ),
+      const SizedBox(width: 5),
+      PopupMenuButton<_Sort>(
+        tooltip: 'Urutkan',
+        icon: const Icon(Icons.sort_rounded, color: EmbunColors.gold),
+        enabled: !_joining,
+        initialValue: _sort,
+        onSelected: (sort) => setState(() => _sort = sort),
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: _Sort.newest, child: Text('Terbaru')),
+          PopupMenuItem(value: _Sort.busiest, child: Text('Paling ramai')),
+        ],
+      ),
     ],
   );
 
-  Widget _card(_Room r) {
-    final joining = _joiningCode == r.code;
-    final locked = _joiningCode != null && !joining;
-    final age = r.ageS + DateTime.now().difference(_fetchedAt).inSeconds;
-    final almostFull = r.players >= _maxPlayers - 1;
-    final fresh = !almostFull && age < 120;
-
-    final card = Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: almostFull
-              ? EmbunColors.gold.withValues(alpha: 0.75)
-              : EmbunColors.goldDim.withValues(alpha: 0.5),
-        ),
-      ),
+  Widget _listHeader(int total, int shown) => DecoratedBox(
+    decoration: BoxDecoration(border: Border(bottom: roomEntryRule())),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.35),
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: EmbunColors.goldDim.withValues(alpha: 0.5)),
-            ),
-            child: const GameIcon('host', size: 42),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ruangan ${r.host}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.3,
-                    color: EmbunColors.gold,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    _pips(r.players),
-                    const SizedBox(width: 8),
-                    Text('${r.players}/$_maxPlayers',
-                        style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: EmbunColors.cream)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Kode ${r.code}  ·  ${_ageText(age)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 11.5,
-                      letterSpacing: 0.4,
-                      color: Colors.white54),
-                ),
-              ],
+          const Expanded(
+            child: Text(
+              'Menunggu pemain',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: EmbunColors.cream,
+              ),
             ),
           ),
           const SizedBox(width: 8),
-          EmbunButton(
-            label: joining ? 'Masuk...' : 'Gabung',
-            icon: joining ? 'wait' : 'joinroom',
-            height: 46,
-            onPressed: (joining || locked) ? null : () => _join(r),
+          Flexible(
+            child: Text(
+              shown == total ? '$total ruangan' : '$shown dari $total ruangan',
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ),
         ],
       ),
-    );
+    ),
+  );
 
-    return Semantics(
-      label: 'Ruangan ${r.host}, ${r.players} dari $_maxPlayers pemain, '
-          'kode ${r.code}',
-      child: Opacity(
-        opacity: locked ? 0.55 : 1,
-        child: Stack(
-          clipBehavior: Clip.none,
+  Widget _roomRow(_Room room) {
+    final joining = _joiningCode == room.code;
+    final age = room.ageS + DateTime.now().difference(_fetchedAt).inSeconds;
+    final nearlyFull = room.players >= kMaxPlayers - 1;
+    final accent = nearlyFull ? EmbunColors.gold : EmbunColors.leaf;
+    final ratio = (room.players / kMaxPlayers).clamp(0.0, 1.0).toDouble();
+    return DecoratedBox(
+      key: ValueKey(room.code),
+      decoration: BoxDecoration(border: Border(bottom: roomEntryRule())),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
           children: [
-            Positioned.fill(child: card),
-            if (almostFull)
-              const Positioned(
-                top: -8,
-                right: 16,
-                child: StatusTag(
-                    text: 'Hampir penuh', color: EmbunColors.gold),
-              )
-            else if (fresh)
-              const Positioned(
-                top: -8,
-                right: 16,
-                child: StatusTag(text: 'Baru', color: EmbunColors.leaf),
+            if (MediaQuery.sizeOf(context).width >= 800) ...[
+              const GameIcon('host', size: 33),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    room.host,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    semanticsLabel: 'Ruangan ${room.host}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: EmbunColors.cream,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: [
+                      Text(
+                        'Kode ${room.code}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      Text(
+                        _ageText(age),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 38,
+                        child: LinearProgressIndicator(
+                          value: ratio,
+                          color: accent,
+                          backgroundColor: Colors.white12,
+                          minHeight: 3,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      Text(
+                        '${room.players}/$kMaxPlayers pemain',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: accent,
+                        ),
+                      ),
+                      if (nearlyFull)
+                        const Text(
+                          'Hampir penuh',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: EmbunColors.gold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: EmbunButton(
+                label: joining ? 'Masuk…' : 'Gabung',
+                height: 43,
+                onPressed: _joining
+                    ? null
+                    : () => _join(room.code, fromList: true),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ============================ keadaan lain ============================
-
-  Widget _skeleton() => AnimatedBuilder(
-    animation: _pulse,
-    builder: (_, _) => ListView.separated(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      itemCount: 5,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (_, _) => Opacity(
-        opacity: 0.25 + 0.25 * _pulse.value,
-        child: Container(
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: EmbunColors.goldDim.withValues(alpha: 0.4)),
-          ),
+  Widget _loading() => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 14),
+    child: Row(
+      children: [
+        SizedBox.square(
+          dimension: 17,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      ),
+        SizedBox(width: 10),
+        Flexible(child: Text('Memuat ruangan publik…')),
+      ],
     ),
   );
 
   Widget _stateMessage({
     required String icon,
     required String title,
-    required String body,
-    Widget? action,
-  }) =>
-      Center(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Opacity(opacity: 0.55, child: GameIcon(icon, size: 72)),
-                const SizedBox(height: 14),
-                Text(title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: EmbunColors.gold)),
-                const SizedBox(height: 6),
-                Text(body,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 12.5, height: 1.4, color: Colors.white60)),
-                if (action != null) ...[
-                  const SizedBox(height: 18),
-                  action,
-                ],
-              ],
+    required String message,
+    required Widget action,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GameIcon(icon, size: 34),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: EmbunColors.cream,
+              ),
             ),
-          ),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 8),
+            action,
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _empty() => _stateMessage(
     icon: 'persona',
     title: 'Belum ada ruangan publik',
-    body: 'Jadilah yang pertama. Buat ruangan publik dan pemain lain '
-        'bisa bergabung dari daftar ini.',
-    action: EmbunButton(
-      label: 'Buat ruangan publik',
-      icon: 'roomcreate',
-      expand: true,
+    message: 'Buat ruangan agar pemain lain bisa bergabung dari sini.',
+    action: TextButton.icon(
+      icon: const GameIcon('roomcreate', size: 22),
+      label: const Text('Buat ruangan publik'),
       onPressed: () {
-        Navigator.pop(context);
+        Navigator.of(context).pop();
         widget.onCreate();
       },
     ),
   );
 
   Widget _noMatch() => _stateMessage(
-    icon: 'persona',
+    icon: 'roomcode',
     title: 'Tidak ada yang cocok',
-    body: 'Tidak ada ruangan dengan kode atau host "${_query.trim()}".',
-    action: EmbunButton(
-      label: 'Hapus pencarian',
-      icon: 'silang',
-      kind: EmbunButtonKind.secondary,
-      height: 46,
-      onPressed: () {
-        _searchCtrl.clear();
-        setState(() => _query = '');
-      },
+    message: 'Coba kode atau nama host yang lain.',
+    action: TextButton(
+      onPressed: _clearSearch,
+      child: const Text('Bersihkan pencarian'),
     ),
   );
 
   Widget _failed() => _stateMessage(
     icon: 'alert',
     title: 'Daftar tidak bisa dimuat',
-    body: errMsg(_loadError!),
-    action: EmbunButton(
-      label: 'Coba lagi',
-      kind: EmbunButtonKind.secondary,
-      height: 46,
-      onPressed: _refreshing ? null : () => _load(),
-    ),
+    message: errMsg(_loadError!),
+    action: TextButton(onPressed: _load, child: const Text('Coba lagi')),
   );
+
+  void _clearSearch() {
+    _searchCtrl.clear();
+    setState(() {});
+  }
 }
