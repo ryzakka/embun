@@ -580,9 +580,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   Color get _accent => widget.dark ? EmbunColors.mist : EmbunColors.gold;
 
-  BoxDecoration _glassDeco({double radius = 16}) =>
-      daySurface(_accent, radius: radius);
-
   Widget _section(String title, {String? icon, String? trailing}) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
@@ -895,12 +892,20 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         const gap = 8.0;
         const inset = 8.0;
         final available = box.maxWidth - 2 * inset;
-        final columns = ((available + gap) / (52 + gap))
-            .floor()
-            .clamp(1, min(4, list.length))
-            .toInt();
+        final twoRows =
+            available >= 285 &&
+            available <= 425 &&
+            box.maxHeight >= 365 &&
+            list.length >= 4;
+        final columns = twoRows
+            ? 2
+            : ((available + gap) / (52 + gap))
+                  .floor()
+                  .clamp(1, min(4, list.length))
+                  .toInt();
         final byWidth = (available - (columns - 1) * gap) / columns;
-        final byHeight = (box.maxHeight - 66) / kTallAspect;
+        final byHeight =
+            ((twoRows ? box.maxHeight / 2 : box.maxHeight) - 66) / kTallAspect;
         final width = min(
           byWidth,
           byHeight.clamp(50.0, 162.0),
@@ -926,7 +931,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _marketSelection({required bool side, required bool short}) {
+  Widget _marketSelection({
+    required bool side,
+    required bool short,
+    required bool inline,
+  }) {
     final list = offers;
     if (list == null || list.isEmpty) return const SizedBox.shrink();
     final index = _selectedOffer;
@@ -937,7 +946,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final reason = _blockReason(offer, price);
     final kind = kindLabel[def?['kind']] ?? 'Kartu';
     final description = def?['description'] as String? ?? '';
-    final accent = def?['side'] == 'antagonis' ? EmbunColors.mist : _accent;
     final title = Row(
       children: [
         GameIcon(kindIcon[def?['kind']] ?? 'item', size: 27),
@@ -1010,94 +1018,102 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       ],
     );
 
-    final panel = Container(
-      padding: EdgeInsets.all(short ? 8 : 12),
-      decoration: daySurface(accent, radius: 13).copyWith(
-        color: widget.dark ? const Color(0xFF282037) : const Color(0xFF132B22),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          details,
-          SizedBox(height: short ? 4 : 10),
-          EmbunButton(
-            label: offer['bought'] == true ? 'Terbeli' : 'Beli · $price',
-            icon: offer['bought'] == true
-                ? 'centang'
-                : def?['side'] == 'antagonis'
-                ? 'bulirhitam'
-                : 'bulirembun',
-            expand: true,
-            height: 44,
-            onPressed: reason == null && !busy
-                ? () => _buyOffer(id, index)
-                : null,
-          ),
-        ],
-      ),
+    final buy = EmbunButton(
+      label: offer['bought'] == true ? 'Terbeli' : 'Beli · $price',
+      icon: offer['bought'] == true
+          ? 'centang'
+          : def?['side'] == 'antagonis'
+          ? 'bulirhitam'
+          : 'bulirembun',
+      expand: true,
+      height: 42,
+      onPressed: reason == null && !busy ? () => _buyOffer(id, index) : null,
     );
-    if (!side) return panel;
-    return Center(child: SingleChildScrollView(child: panel));
+    if (side) {
+      return Container(
+        decoration: tableEdge(_accent, vertical: true),
+        padding: const EdgeInsets.fromLTRB(10, 4, 3, 5),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            if (box.maxHeight < 72) {
+              return SingleChildScrollView(
+                child: Column(children: [details, buy]),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: SingleChildScrollView(child: details)),
+                const SizedBox(height: 4),
+                buy,
+              ],
+            );
+          },
+        ),
+      );
+    }
+    return Container(
+      decoration: tableEdge(_accent, top: true),
+      padding: const EdgeInsets.fromLTRB(3, 2, 3, 5),
+      child: inline
+          ? Row(
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 10),
+                SizedBox(width: 154, child: buy),
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [details, const SizedBox(height: 4), buy],
+            ),
+    );
   }
 
   Widget _shopPanel() => LayoutBuilder(
     builder: (context, box) {
-      final short = box.maxHeight < 355;
-      final split =
-          box.maxWidth >= (short ? 440 : 505) && offers?.isNotEmpty == true;
+      final short = box.maxHeight < 350;
+      final hasOffers = offers?.isNotEmpty == true;
+      final split = short && box.maxWidth >= 435 && hasOffers;
       final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
       final tight = box.maxHeight < 220 + 70 * (scale - 1).clamp(0, 1);
-      final details = _marketSelection(side: split, short: short);
-      final heading = _dayHeading(
-        'store',
-        'Pasar Pagi',
-        eyebrow: short ? null : 'PERDAGANGAN DESA',
-        trailing: _marketStatus(),
+      final details = _marketSelection(
+        side: split,
+        short: short,
+        inline: !split && box.maxWidth >= 425,
       );
-      return Container(
-        padding: EdgeInsets.all(tight ? 7 : (short ? 9 : 14)),
-        decoration: daySurface(_accent),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            heading,
-            const SizedBox(height: 7),
+            _dayHeading('store', 'Pasar Pagi', trailing: _marketStatus()),
             if (split)
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: _shopMat(_marketOffers())),
-                    const SizedBox(width: 8),
+                    Expanded(child: _marketOffers()),
                     SizedBox(
-                      width: (box.maxWidth * 0.30)
-                          .clamp(170.0, 245.0)
-                          .toDouble(),
+                      width: (box.maxWidth * 0.30).clamp(165.0, 245.0),
                       child: details,
                     ),
                   ],
                 ),
               )
-            else if (tight && offers?.isNotEmpty == true)
+            else if (tight && hasOffers)
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(height: 177, child: _shopMat(_marketOffers())),
-                      const SizedBox(height: 6),
-                      details,
-                    ],
-                  ),
+                child: ListView(
+                  children: [
+                    SizedBox(height: 177, child: _marketOffers()),
+                    details,
+                  ],
                 ),
               )
             else ...[
-              Expanded(child: _shopMat(_marketOffers())),
-              if (offers?.isNotEmpty == true) ...[
-                const SizedBox(height: 6),
-                details,
-              ],
+              Expanded(child: _marketOffers()),
+              if (hasOffers) details,
             ],
           ],
         ),
@@ -1105,110 +1121,33 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     },
   );
 
-  Widget _dayHeading(
-    String icon,
-    String title, {
-    String? eyebrow,
-    Widget? trailing,
-  }) => Row(
-    children: [
-      GameIcon(icon, size: eyebrow == null ? 28 : 36),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (eyebrow != null)
-              Text(
-                eyebrow,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: dayOverline,
-              ),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: eyebrow == null ? 17 : 23,
-                fontWeight: FontWeight.w800,
-                color: EmbunColors.cream,
-              ),
+  Widget _dayHeading(String icon, String title, {Widget? trailing}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      children: [
+        GameIcon(icon, size: 27),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: EmbunColors.cream,
             ),
-          ],
+          ),
         ),
-      ),
-      if (trailing != null)
-        Flexible(
-          child: Align(alignment: Alignment.centerRight, child: trailing),
-        ),
-    ],
+        if (trailing != null)
+          Flexible(
+            child: Align(alignment: Alignment.centerRight, child: trailing),
+          ),
+      ],
+    ),
   );
 
   // ====================== Meja ======================
-
-  /// Alas Meja: meja kayu bertinta; anyaman gelap bila peran gelap tampil.
-  Widget _mejaBody({double minW = 96}) {
-    final p = sceneryPath(widget.dark ? 'anyaman-gelap' : 'mejaku');
-    if (p == null) return _mejaBodyInner(minW: minW);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Anyaman (peran gelap) diputar bila bidangnya potret; meja kayu
-          // (`mejaku`) adalah pemandangan, jadi tidak pernah diputar.
-          OrientedImage(path: p, cacheWidth: 900, rotateWhenTall: widget.dark),
-          ColoredBox(
-            color: Colors.black.withValues(alpha: widget.dark ? 0.35 : 0.58),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(4),
-            child: _mejaBodyInner(minW: minW),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Alas Toko: tikar anyaman. Gelap untuk peran gelap, rusak bila dikurung
-  /// (tak bisa berbelanja), temaram selain itu.
-  Widget _shopMat(Widget child) {
-    final p = sceneryPath(
-      widget.jailed
-          ? 'anyaman-rusak'
-          : widget.dark
-          ? 'anyaman-gelap'
-          : (sceneryPath('kedai-kartuwarga') != null
-                ? 'kedai-kartuwarga'
-                : 'anyaman-temaram'),
-    );
-    if (p == null) return child;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          OrientedImage(
-            path: p,
-            cacheWidth: 900,
-            rotateWhenTall: widget.jailed || widget.dark,
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x60101912), Color(0xB007130F)],
-              ),
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-  }
 
   // ---- Meja: kartu dikelompokkan menurut fungsinya ----
 
@@ -1364,7 +1303,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _mejaBodyInner({double minW = 96}) {
+  Widget _mejaBody({double minW = 96}) {
     final hand = widget.hand;
     final strip = _guardStrip();
     if (hand.isEmpty) {
@@ -1635,7 +1574,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: _glassDeco(radius: 16),
+      decoration: tableEdge(_accent, top: true),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1712,23 +1651,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   Widget _gabungBody({double minW = 96}) {
-    final p = sceneryPath('anyaman-temarangabungkartu');
-    final inner = _gabungBodyInner(minW: minW);
-    if (p == null) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          OrientedImage(path: p, cacheWidth: 900),
-          ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
-          inner,
-        ],
-      ),
-    );
-  }
-
-  Widget _gabungBodyInner({double minW = 96}) {
     final c = _fuseCandidates();
     // Pilihan yang sudah tidak ada di tangan dilepas otomatis.
     final advOk = _fuseAdv != null && c.adv.any((e) => e.$1 == _fuseAdv);
@@ -1754,44 +1676,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AnimatedBuilder(
-                animation: _t,
-                builder: (context, child) {
-                  final glow = ready ? _pulse : 0.0;
-                  return Container(
-                    padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          EmbunColors.panelHi.withValues(alpha: 0.75),
-                          Colors.black.withValues(alpha: 0.55),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Color.lerp(
-                          _accent.withValues(alpha: 0.4),
-                          EmbunColors.gold,
-                          ready ? 0.5 + 0.5 * glow : 0,
-                        )!,
-                        width: ready ? 1.6 : 1,
-                      ),
-                      boxShadow: ready
-                          ? [
-                              BoxShadow(
-                                color: EmbunColors.gold.withValues(
-                                  alpha: 0.12 + 0.22 * glow,
-                                ),
-                                blurRadius: 12 + 12 * glow,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: child,
-                  );
-                },
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                 child: Column(
                   children: [
                     _fuseSteps(adv != null, poin != null),
@@ -2008,10 +1894,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   Widget _feedRow(Map<String, dynamic> e) => Container(
     margin: const EdgeInsets.only(bottom: 6),
     padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(10),
-    ),
+    decoration: tableEdge(_accent),
     child: Row(
       children: [
         GameIcon(e['kind'] == 'give' ? 'bulirembun' : 'barter', size: 26),
@@ -2033,17 +1916,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   Widget _hintCard() => Container(
     padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(10),
-    ),
     child: const Row(
       children: [
         GameIcon('info', size: 28),
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            'Ketuk avatar pemain di atas untuk memberi embun, menukar '
+            'Buka daftar warga atau ketuk avatar untuk memberi embun, menukar '
             'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
             'sebuah kartu untuk membaca efeknya.',
             style: TextStyle(fontSize: 12, color: Colors.white70),
@@ -2156,17 +2035,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         key: index == _tabMeja ? _mejaKey : null,
         color: Colors.transparent,
         child: Ink(
-          decoration: BoxDecoration(
-            color: active
-                ? _accent.withValues(alpha: 0.15)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: active
-                  ? _accent.withValues(alpha: 0.55)
-                  : Colors.transparent,
-            ),
-          ),
+          decoration: active ? tableEdge(_accent, vertical: vertical) : null,
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: () => _goTab(index),
@@ -2212,7 +2081,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         liveRegion: true,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: daySurface(EmbunColors.leaf, radius: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2256,7 +2124,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       );
       return Container(
         padding: const EdgeInsets.all(4),
-        decoration: daySurface(_accent, radius: 14),
+        decoration: tableEdge(_accent),
         child: stacked
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2279,7 +2147,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   Widget _sideRail() => Container(
     width: 80,
     padding: const EdgeInsets.all(4),
-    decoration: daySurface(_accent, radius: 14),
     child: Column(
       children: [
         Expanded(
@@ -2345,7 +2212,6 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           _dayHeading(
             icon,
             title,
-            eyebrow: dense || wide ? null : 'RUANG KERJA',
             trailing: index == _tabMeja
                 ? _chip('mydeck2', '${widget.hand.length} kartu')
                 : null,
@@ -2370,35 +2236,26 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     children: [
       _shopPanel(),
       for (final index in const [_tabMeja, _tabGabung, _tabBalai])
-        Container(decoration: daySurface(_accent), child: _handPage(index)),
+        _handPage(index),
     ],
   );
 
-  Widget _desktopRail() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        child: Container(
-          decoration: daySurface(_accent),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
-                child: Row(
-                  children: [
-                    for (final index in const [_tabMeja, _tabGabung, _tabBalai])
-                      Expanded(child: _tabButton(index, wide: true)),
-                  ],
-                ),
-              ),
-              Expanded(child: _handPage(_deskTab, wide: true)),
-            ],
-          ),
+  Widget _desktopRail() => Container(
+    decoration: tableEdge(_accent, vertical: true),
+    padding: const EdgeInsets.only(left: 7, bottom: 5),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            for (final index in const [_tabMeja, _tabGabung, _tabBalai])
+              Expanded(child: _tabButton(index, wide: true)),
+          ],
         ),
-      ),
-      const SizedBox(height: 8),
-      _endButton(),
-    ],
+        Expanded(child: _handPage(_deskTab, wide: true)),
+        _endButton(),
+      ],
+    ),
   );
 
   @override
@@ -2419,9 +2276,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _pages()),
-              const SizedBox(height: 5),
               _dock(),
+              const SizedBox(height: 2),
+              Expanded(child: _pages()),
             ],
           );
         case _Mode.landscape:

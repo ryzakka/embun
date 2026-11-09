@@ -14,7 +14,6 @@ import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
-import 'countdown.dart';
 import 'day_chrome.dart';
 import 'day_transition.dart';
 import 'day_view.dart';
@@ -74,6 +73,7 @@ class _TablePageState extends State<TablePage> {
   final GlobalKey _balanceKey = GlobalKey();
   final GlobalKey _mejaKey = GlobalKey();
   final GlobalKey _stripKey = GlobalKey();
+  final GlobalKey _playersKey = GlobalKey();
   final Map<String, GlobalKey> _avatarKeys = {};
   final Set<String> _eventIds = {};
   bool _eventsPrimed = false;
@@ -277,7 +277,7 @@ class _TablePageState extends State<TablePage> {
   Rect _avatarRect(String? id) {
     final r = id == null ? null : globalRectOf(_avatarKeys[id]);
     if (r != null) return r;
-    final strip = globalRectOf(_stripKey);
+    final strip = globalRectOf(_stripKey) ?? globalRectOf(_playersKey);
     if (strip != null) return Rect.fromCenter(center: strip.center, width: 38, height: 38);
     final s = MediaQuery.sizeOf(context);
     return Rect.fromCenter(center: Offset(s.width / 2, 120), width: 38, height: 38);
@@ -331,7 +331,7 @@ class _TablePageState extends State<TablePage> {
       if (!mounted || _fxBlocked) return;
       final to = globalRectOf(_balanceKey);
       if (to == null) return;
-      final strip = globalRectOf(_stripKey);
+      final strip = globalRectOf(_stripKey) ?? globalRectOf(_playersKey);
       final from = strip == null
           ? to.shift(const Offset(0, 90))
           : Rect.fromCenter(center: strip.center, width: 8, height: 8);
@@ -924,7 +924,8 @@ class _TablePageState extends State<TablePage> {
 
   // ---------- sheet ----------
 
-  void _showPlayersSheet(int day) {
+  void _showPlayersSheet(int day, String phase) {
+    final villageOpen = phase == 'day' || phase == 'research' || phase == 'discussion';
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF14221F),
@@ -934,7 +935,20 @@ class _TablePageState extends State<TablePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(icon: 'persona', title: 'Daftar Warga Desa'),
+            SectionHeader(
+              icon: 'persona',
+              title: 'Daftar Warga Desa',
+              trailing: villageOpen
+                  ? IconButton(
+                      tooltip: 'Isyarat',
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openEmotes(day);
+                      },
+                      icon: const Icon(Icons.emoji_emotions_outlined),
+                    )
+                  : null,
+            ),
             const SizedBox(height: 10),
             Flexible(
               child: ListView(
@@ -943,6 +957,12 @@ class _TablePageState extends State<TablePage> {
                   for (final p in players)
                     ListTile(
                       dense: true,
+                      onTap: villageOpen && p['user_id'] != repo.myId && !isOut(p)
+                          ? () {
+                              Navigator.pop(ctx);
+                              _openPlayer(p, phase);
+                            }
+                          : null,
                       leading: Opacity(
                         opacity: isOut(p) ? 0.4 : 1,
                         child: PlayerAvatar(
@@ -1370,9 +1390,9 @@ class _TablePageState extends State<TablePage> {
         Backdrop(
           path: phaseScenery(phase, day, leaves),
           dark: showAsAntag,
-          dim: phase == 'day' ? 0.52 : 0.74,
+          dim: phase == 'day' || phase == 'research' ? 0.60 : 0.74,
         ),
-        if (phase == 'day')
+        if (phase == 'day' || phase == 'research')
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1561,15 +1581,13 @@ class _TablePageState extends State<TablePage> {
     final showStrip =
         phase == 'day' || phase == 'research' || phase == 'discussion';
 
-    final marketLayout = phase == 'day' || phase == 'research';
-    final gap = _short ? 5.0 : (narrow ? 8.0 : 12.0);
-    final accent = showAsAntag ? EmbunColors.mist : EmbunColors.gold;
+    final gap = _short ? 3.0 : (narrow ? 5.0 : 7.0);
     final village = showStrip
         ? KeyedSubtree(
             key: _stripKey,
             child: VillageStrip(
-              compact: narrow || marketLayout,
-              slim: marketLayout && _short,
+              compact: true,
+              slim: true,
               myId: repo.myId,
               players: players,
               emotes: emotes,
@@ -1595,7 +1613,7 @@ class _TablePageState extends State<TablePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _phoneHeader(
+          _tableHud(
             balance: balance,
             rate: rate,
             myCardId: myCardId,
@@ -1607,7 +1625,8 @@ class _TablePageState extends State<TablePage> {
             isHost: isHost,
             showChat: phase != 'discussion',
             showDue: phase != 'voting',
-            dayLayout: marketLayout,
+            phase: phase,
+            village: village,
             winLeaves: (g['win_leaves'] as int?) ?? 20,
             akar: (g['akar_c'] as String?) ?? 'biasa',
             batang: (g['batang_c'] as String?) ?? 'biasa',
@@ -1631,29 +1650,6 @@ class _TablePageState extends State<TablePage> {
               gap: gap,
             ),
           ),
-          if (village != null) ...[
-            SizedBox(height: gap),
-            if (marketLayout)
-              Container(
-                decoration: daySurface(accent, radius: 14),
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Row(
-                  children: [
-                    if (_wide && !_short)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 16, 0),
-                        child: Text(
-                          'WARGA DESA',
-                          style: dayOverline.copyWith(color: accent),
-                        ),
-                      ),
-                    Expanded(child: village),
-                  ],
-                ),
-              )
-            else
-              village,
-          ],
           SizedBox(height: gap),
           // Selama adegan peralihan, isi hari ditahan supaya animasi Kabar Pagi
           // dan vonis baru diputar saat adegan selesai.
@@ -1856,18 +1852,17 @@ class _TablePageState extends State<TablePage> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+    return DecoratedBox(
+      decoration: tableEdge(color),
       child: Material(
-        color: color.withValues(alpha: 0.12),
+        color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: compact ? 32 : 38,
+            height: compact ? 27 : 31,
             child: Row(
               children: [
-                Container(width: 3, color: color),
-                const SizedBox(width: 9),
+                const SizedBox(width: 5),
                 leading,
                 const SizedBox(width: 8),
                 Expanded(
@@ -1940,12 +1935,7 @@ class _TablePageState extends State<TablePage> {
     );
   }
 
-  /// Header ponsel, serendah mungkin supaya ruang kartu lega.
-  ///  Baris 1 (52 px): identitas di kiri; saldo emas, obrolan, kemampuan,
-  ///  dan menu di kanan.
-  ///  Baris 2 (24 px): hari, daun, hitung mundur, dan keterangan persembahan
-  ///  sebagai satu baris teks; jumlah pemain siap di ujung kanan.
-  Widget _phoneHeader({
+  Widget _tableHud({
     required double balance,
     required double rate,
     required String myCardId,
@@ -1957,7 +1947,8 @@ class _TablePageState extends State<TablePage> {
     required bool isHost,
     required bool showChat,
     bool showDue = true,
-    required bool dayLayout,
+    required String phase,
+    Widget? village,
     required int winLeaves,
     required String akar,
     required String batang,
@@ -1967,10 +1958,6 @@ class _TablePageState extends State<TablePage> {
     final readyCount = _alive.where((p) => p['ready'] == true).length;
     final cycleLength = cycle > 0 ? cycle : 3;
     final offeringIn = (cycleLength - day % cycleLength) % cycleLength;
-    final due = offeringIn == 0
-        ? 'Persembahan malam ini'
-        : 'Persembahan $offeringIn hari lagi';
-
     PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
         PopupMenuItem<String>(
           value: v,
@@ -1982,11 +1969,6 @@ class _TablePageState extends State<TablePage> {
             ],
           ),
         );
-
-    const dot = Padding(
-      padding: EdgeInsets.symmetric(horizontal: 6),
-      child: Text('·', style: TextStyle(color: Colors.white38)),
-    );
 
     final balanceMetric = Row(
       mainAxisSize: MainAxisSize.min,
@@ -2053,7 +2035,7 @@ class _TablePageState extends State<TablePage> {
             case 'me':
               _openMyInfo();
             case 'players':
-              _showPlayersSheet(day);
+              _showPlayersSheet(day, phase);
             case 'fx':
               setState(() => chatFx = !chatFx);
             case 'sound':
@@ -2105,8 +2087,7 @@ class _TablePageState extends State<TablePage> {
       batang: batang,
       tanah: tanah,
     );
-    if (dayLayout) {
-      return DayTableHeader(
+    return DayTableHeader(
         accent: showAsAntag ? EmbunColors.mist : EmbunColors.gold,
         day: day,
         leaves: leaves,
@@ -2121,7 +2102,10 @@ class _TablePageState extends State<TablePage> {
         balance: balanceMetric,
         tools: tools,
         parts: parts,
-        onPlayers: () => _showPlayersSheet(day),
+        onPlayers: () => _showPlayersSheet(day, phase),
+        playersKey: _playersKey,
+        village: village,
+        showOffering: showDue,
         onHayu: () => showPartsSheet(
           context,
           akar: akar,
@@ -2131,107 +2115,6 @@ class _TablePageState extends State<TablePage> {
           winLeaves: winLeaves,
         ),
       );
-    }
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 52,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: _identity(myCardId, compact: true),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                balanceMetric,
-                const SizedBox(width: 2),
-                ...tools,
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 24,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('HARI $day',
-                                style: const TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1)),
-                            dot,
-                            const GameIcon('helaidaun', size: 17),
-                            const SizedBox(width: 3),
-                            Text(
-                              '$leaves',
-                              style: const TextStyle(fontSize: 12.5),
-                            ),
-                            dot,
-                            parts,
-                            if (worms > 0) ...[
-                              dot,
-                              Text('🐛 $worms',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.purpleAccent)),
-                            ],
-                            dot,
-                            Countdown(
-                                deadline: deadline,
-                                style: const TextStyle(fontSize: 12.5)),
-                            if (showDue) ...[
-                              dot,
-                              Text(due,
-                                  style: const TextStyle(
-                                      fontSize: 11.5, color: Colors.white70)),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _showPlayersSheet(day),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const GameIcon('persona', size: 17),
-                        const SizedBox(width: 3),
-                        Text('$readyCount/${_alive.length}',
-                            style: const TextStyle(fontSize: 12.5)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _waiting(int ready, int total, String text) => Center(

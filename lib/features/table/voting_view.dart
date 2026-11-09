@@ -9,6 +9,7 @@ import '../common/art.dart';
 import '../../data/errors.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import 'day_chrome.dart';
 import 'player_status.dart';
 
 double _seg(double v, double a, double b) =>
@@ -545,13 +546,10 @@ class _VotingViewState extends State<VotingView>
         constraints: const BoxConstraints(maxWidth: 560),
         child: Container(
           padding: EdgeInsets.fromLTRB(10, compact ? 6 : 8, 10, compact ? 6 : 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: (target != null ? EmbunColors.blood : EmbunColors.goldDim)
-                  .withValues(alpha: 0.55),
-            ),
+          decoration: tableEdge(
+            target != null ? EmbunColors.blood : EmbunColors.gold,
+            vertical: vertical,
+            top: !vertical,
           ),
           child: LayoutBuilder(builder: (context, c) {
             final stacked = vertical || c.maxWidth < 300;

@@ -7,7 +7,7 @@ import '../../data/game_repository.dart';
 import '../../data/game_rules.dart';
 import '../common/art.dart';
 import 'card_tile.dart';
-import 'countdown.dart';
+import 'day_chrome.dart';
 import '../common/ornate.dart';
 
 /// Layar memilih kartu persembahan untuk Hayu: kartu tersusun seperti kipas,
@@ -190,23 +190,22 @@ class _OfferingViewState extends State<OfferingView>
     return null;
   }
 
-  /// Judul fase di kiri, hitung mundur di kanan.
-  Widget _header() => Row(
-    children: [
-      const GameIcon('titlepersembahan', width: 150, height: 40),
-      const Spacer(),
-      if (widget.deadline != null)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: EmbunColors.goldDim.withValues(alpha: 0.6)),
+  Widget _header({bool wide = false}) => Container(
+    decoration: tableEdge(widget.isAntag ? EmbunColors.mist : EmbunColors.gold),
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: wide
+        ? Row(children: [
+            const GameIcon('titlepersembahan', width: 143, height: 34),
+            const SizedBox(width: 16),
+            Expanded(child: _gauge()),
+          ])
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const GameIcon('titlepersembahan', width: 125, height: 28),
+              _gauge(),
+            ],
           ),
-          child: Countdown(deadline: widget.deadline),
-        ),
-    ],
   );
 
   /// Takaran daun Hayu 0..30 dengan penanda batas menang. Satu baris, tanpa kotak.
@@ -283,7 +282,7 @@ class _OfferingViewState extends State<OfferingView>
     );
   }
 
-  /// Keterangan kartu yang disentuh: satu panel berukuran tetap.
+  /// Keterangan kartu yang terakhir disentuh.
   Widget _info() {
     final picked = <Map<String, dynamic>>[
       for (final h in widget.hand)
@@ -293,15 +292,8 @@ class _OfferingViewState extends State<OfferingView>
     final d = focus == null ? null : widget.defs[focus['card_id']];
     final locked =
         focus != null && widget.isAntag && focus['id'] == _samaranId;
-    return Container(
-      height: 84,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: d == null
           ? Center(
         child: Text(
@@ -347,24 +339,6 @@ class _OfferingViewState extends State<OfferingView>
 
   /// Kartu tersusun rata satu baris dengan jarak; bila terlalu banyak, bisa
   /// digeser ke samping. Kartu terpilih terangkat dan bertepi emas.
-  Widget _cards() {
-    final p = sceneryPath('ayakanrotan-temaram');
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (p != null) ...[
-            Opacity(opacity: 0.45, child: GameImage(path: p, cacheWidth: 1000)),
-            ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
-          ] else
-            ColoredBox(color: Colors.black.withValues(alpha: 0.3)),
-          _cardRow(),
-        ],
-      ),
-    );
-  }
-
   Widget _cardRow() {
     final hand = widget.hand;
     if (hand.isEmpty) {
@@ -384,7 +358,7 @@ class _OfferingViewState extends State<OfferingView>
       final byWidth = (c.maxWidth - side * 2 - gap * (n - 1)) / n;
       // Muat satu baris bila lebar kartu tidak kurang dari 66; selain itu geser.
       final w = math.min(byHeight, math.max(byWidth, 66.0))
-          .clamp(56.0, 130.0)
+          .clamp(28.0, 130.0)
           .toDouble();
       return Center(
         child: SingleChildScrollView(
@@ -629,76 +603,96 @@ class _OfferingViewState extends State<OfferingView>
     });
   }
 
-  Widget _trayFan() {
-    final p = sceneryPath('ayakanrotan-temaram');
-    if (p == null) return _sentFan();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Opacity(opacity: 0.6, child: GameImage(path: p, cacheWidth: 1000)),
-          ColoredBox(color: Colors.black.withValues(alpha: 0.3)),
-          _sentFan(),
-        ],
-      ),
-    );
-  }
-
-  // ---------- mode ----------
-
-  Widget _picking(List<Map<String, dynamic>> others) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _header(),
-      const SizedBox(height: 8),
-      _gauge(),
-      const SizedBox(height: 10),
-      Expanded(child: _cards()),
-      const SizedBox(height: 10),
-      _info(),
-      if (_needsTarget) ...[
-        const SizedBox(height: 10),
-        _targets(others),
-      ],
-      const SizedBox(height: 10),
-      EmbunButton(
-        label: sel.isEmpty
-            ? 'Pilih kartu dulu'
-            : 'Persembahkan (${sel.length}/2)',
+  Widget _picking(List<Map<String, dynamic>> others) => LayoutBuilder(
+    builder: (context, box) {
+      final wide = box.maxWidth >= 485;
+      final action = EmbunButton(
+        label: sel.isEmpty ? 'Pilih kartu dulu' : 'Persembahkan (${sel.length}/2)',
         icon: 'donations',
         expand: true,
+        height: 44,
         onPressed: busy || sel.isEmpty ? null : _submit,
-      ),
-    ],
+      );
+      final detail = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _info(),
+          if (_needsTarget) _targets(others),
+        ],
+      );
+      final Widget content;
+      if (wide) {
+        content = Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _cardRow()),
+            Container(
+              width: (box.maxWidth * 0.30).clamp(185.0, 305.0),
+              padding: const EdgeInsets.fromLTRB(8, 2, 2, 0),
+              decoration: tableEdge(EmbunColors.gold, vertical: true),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: Center(child: SingleChildScrollView(child: detail))),
+                  action,
+                ],
+              ),
+            ),
+          ],
+        );
+      } else if (box.maxHeight < 410) {
+        content = ListView(
+          children: [SizedBox(height: 148, child: _cardRow()), detail, action],
+        );
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _cardRow()),
+            DecoratedBox(decoration: tableEdge(EmbunColors.gold, top: true), child: detail),
+            action,
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [_header(wide: wide), Expanded(child: content)],
+      );
+    },
   );
 
-  Widget _waiting() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _header(),
-      const SizedBox(height: 6),
-      _gauge(),
-      const SizedBox(height: 8),
-      Expanded(
-        child: _sentCount > 0
-            ? _trayFan()
-            : Center(
-            child: Opacity(
-                opacity: 0.8, child: TreePortrait(leaves: widget.leaves))),
-      ),
-      const SizedBox(height: 8),
-      const Text('Persembahanmu sudah diserahkan',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: EmbunColors.gold)),
-      const SizedBox(height: 8),
-      _roster(),
-      const SizedBox(height: 10),
-      _statusPill(),
-    ],
+  Widget _waiting() => LayoutBuilder(
+    builder: (context, box) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(wide: box.maxWidth >= 485),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: (box.maxHeight * 0.37).clamp(90.0, 205.0),
+                    child: _sentCount > 0
+                        ? _sentFan()
+                        : Center(child: TreePortrait(leaves: widget.leaves)),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text('Persembahanmu sudah diserahkan', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                      color: EmbunColors.gold)),
+                  const SizedBox(height: 7),
+                  _roster(),
+                  const SizedBox(height: 7),
+                  _statusPill(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 
   /// Sudah keluar dari desa: tidak ada kartu untuk dipilih, hanya menonton.
@@ -706,8 +700,6 @@ class _OfferingViewState extends State<OfferingView>
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _header(),
-      const SizedBox(height: 6),
-      _gauge(),
       Expanded(
         child: Center(
           child: SingleChildScrollView(

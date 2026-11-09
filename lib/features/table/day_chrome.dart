@@ -4,14 +4,6 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'countdown.dart';
 
-BoxDecoration daySurface(Color accent, {double radius = 18}) => BoxDecoration(
-  color: accent == EmbunColors.mist
-      ? const Color(0xF2191525)
-      : const Color(0xF20B1C17),
-  borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: accent.withValues(alpha: 0.24)),
-);
-
 const dayOverline = TextStyle(
   color: Color(0xFFB8C6B6),
   fontSize: 10,
@@ -24,6 +16,22 @@ const dayCaption = TextStyle(
   fontSize: 12,
   height: 1.3,
 );
+
+/// Garis pemisah di meja yang menyatu dengan latar permainan.
+BoxDecoration tableEdge(
+  Color accent, {
+  bool vertical = false,
+  bool top = false,
+}) {
+  final line = BorderSide(color: accent.withValues(alpha: 0.32));
+  return BoxDecoration(
+    border: vertical
+        ? Border(left: line)
+        : top
+        ? Border(top: line)
+        : Border(bottom: line),
+  );
+}
 
 class DayTableHeader extends StatelessWidget {
   final Color accent;
@@ -42,6 +50,9 @@ class DayTableHeader extends StatelessWidget {
   final Widget parts;
   final VoidCallback onPlayers;
   final VoidCallback onHayu;
+  final Widget? village;
+  final GlobalKey? playersKey;
+  final bool showOffering;
 
   const DayTableHeader({
     super.key,
@@ -61,15 +72,22 @@ class DayTableHeader extends StatelessWidget {
     required this.parts,
     required this.onPlayers,
     required this.onHayu,
+    this.village,
+    this.playersKey,
+    this.showOffering = true,
   });
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      final singleLine = box.maxWidth >= (short ? 600 : 840);
-      final showParts = box.maxWidth >= (singleLine ? 780 : 402);
+      final singleLine = box.maxWidth >= (short ? 620 : 940);
+      final inlineVillage =
+          village != null && box.maxWidth >= (singleLine ? 1010 : 475);
+      final showParts =
+          box.maxWidth >= (inlineVillage ? 1100 : (singleLine ? 800 : 402));
       final scale = MediaQuery.textScalerOf(context).scale(13) / 13;
-      final fullOffering = singleLine && box.maxWidth >= 950 && scale <= 1.35;
+      final showWorms = box.maxWidth >= 355 || scale <= 1.25;
+      final fullOffering = singleLine && box.maxWidth >= 1050 && scale <= 1.35;
       final shortOffering = offeringIn == 0
           ? 'Malam ini'
           : '$offeringIn hari lagi';
@@ -95,7 +113,7 @@ class DayTableHeader extends StatelessWidget {
           Expanded(
             flex: fullOffering ? 2 : 1,
             child: Tooltip(
-              message: offering,
+              message: showOffering ? offering : 'Hari $day',
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Column(
@@ -108,7 +126,7 @@ class DayTableHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: dayOverline.copyWith(color: accent),
                     ),
-                    if (!short)
+                    if (showOffering && !short)
                       Text(
                         fullOffering ? offering : shortOffering,
                         maxLines: 1,
@@ -123,7 +141,9 @@ class DayTableHeader extends StatelessWidget {
           Flexible(
             flex: 1,
             child: Tooltip(
-              message: 'Pohon Hayu · $leaves daun, target akhir $winLeaves',
+              message:
+                  'Pohon Hayu · $leaves daun, target akhir $winLeaves'
+                  '${worms > 0 ? ' · $worms ulat senyap' : ''}',
               child: InkWell(
                 onTap: onHayu,
                 borderRadius: BorderRadius.circular(9),
@@ -168,7 +188,7 @@ class DayTableHeader extends StatelessWidget {
             ),
           ),
           if (showParts) parts,
-          if (worms > 0)
+          if (worms > 0 && showWorms)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Tooltip(
@@ -191,6 +211,7 @@ class DayTableHeader extends StatelessWidget {
           Tooltip(
             message: 'Daftar warga · $ready dari $total siap',
             child: InkWell(
+              key: playersKey,
               onTap: onPlayers,
               borderRadius: BorderRadius.circular(9),
               child: Padding(
@@ -213,39 +234,47 @@ class DayTableHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (!inlineVillage && village != null)
+            SizedBox(width: 38, child: village),
         ],
       );
-      final divider = Divider(height: 1, color: accent.withValues(alpha: 0.2));
 
-      return Container(
-        decoration: daySurface(accent),
-        padding: EdgeInsets.symmetric(
-          horizontal: singleLine ? 12 : 8,
-          vertical: short ? 2 : 5,
+      final embeddedWidth = (box.maxWidth * (singleLine ? 0.24 : 0.30)).clamp(
+        125.0,
+        325.0,
+      );
+      final roster = inlineVillage
+          ? SizedBox(width: embeddedWidth, child: village)
+          : null;
+      return DecoratedBox(
+        decoration: tableEdge(accent),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+          child: singleLine
+              ? Row(
+                  children: [
+                    Expanded(flex: 5, child: actionRow),
+                    if (roster != null) ...[const SizedBox(width: 8), roster],
+                    const SizedBox(width: 8),
+                    Expanded(flex: 6, child: statusRow),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    actionRow,
+                    if (roster == null)
+                      statusRow
+                    else
+                      Row(
+                        children: [
+                          Expanded(child: statusRow),
+                          roster,
+                        ],
+                      ),
+                  ],
+                ),
         ),
-        child: singleLine
-            ? Row(
-                children: [
-                  Expanded(flex: short ? 5 : 6, child: actionRow),
-                  SizedBox(
-                    height: 32,
-                    child: VerticalDivider(
-                      width: 20,
-                      color: accent.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  Expanded(flex: short ? 6 : 5, child: statusRow),
-                ],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  actionRow,
-                  if (!short) const SizedBox(height: 3),
-                  divider,
-                  statusRow,
-                ],
-              ),
       );
     },
   );

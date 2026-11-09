@@ -434,11 +434,32 @@ class _VillageStripState extends State<VillageStrip> {
     );
   }
 
+  Widget _collapsedEmotes(DateTime now) {
+    MapEntry<String, _Bubble>? newest;
+    for (final entry in _bubbles.entries) {
+      if (_alive(entry.value, now) &&
+          (newest == null || entry.value.at.isAfter(newest.value.at))) {
+        newest = entry;
+      }
+    }
+    final recent = newest;
+    return IconButton(
+      tooltip: recent == null ? 'Isyarat' : 'Isyarat dari ${_nameOf(recent.key)}',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      onPressed: widget.onEmoteButton,
+      icon: recent == null
+          ? const Icon(Icons.emoji_emotions_outlined, size: 19)
+          : Text(recent.value.emoji, style: const TextStyle(fontSize: 18)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     return LayoutBuilder(
       builder: (context, box) {
+        if (box.maxWidth < 90) return _collapsedEmotes(now);
         // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
         // bila tidak, deretan bisa digulir dengan lebar sel tetap.
         final cp = widget.compact;

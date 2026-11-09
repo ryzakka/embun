@@ -187,325 +187,246 @@ class _ResearchViewState extends State<ResearchView> {
 
     return LayoutBuilder(
       builder: (context, box) {
-        final short = box.maxHeight < 330;
-        final split = box.maxWidth >= (short ? 510 : 720);
-        final finishInHeader = short && split;
-        final compact = box.maxHeight < 440;
-        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        final scrollDetails =
-            box.maxHeight < 355 + math.max(0, scale - 1) * 100;
-        final ready = _finishControl();
+        final short = box.maxHeight < 340;
+        final split = box.maxWidth >= (short ? 510 : 700);
+        final compact = box.maxHeight < 425;
+        final hasOffers = _error == null && selected != null;
+        final finish = _finishControl();
+        final controls = hasOffers ? _categories(groups, category) : null;
+        final finishInHeader = split || !hasOffers;
         final Widget content;
-        if (_error != null || selected == null) {
+        if (!hasOffers) {
           content = _marketState();
         } else {
-          final catalog = _catalog(
-            groups,
-            category,
-            offers,
-            selected,
-            short: short,
-          );
-          final details = _selection(
+          final catalog = _offersGrid(offers, selected, category, short: short);
+          final selection = _selection(
             selected,
             category,
             compact: compact,
             side: split,
+            finish: finishInHeader ? null : finish,
           );
           if (split) {
             content = Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: catalog),
-                const SizedBox(width: 10),
                 SizedBox(
-                  width: (box.maxWidth * 0.31).clamp(190.0, 350.0),
-                  child: details,
+                  width: (box.maxWidth * 0.27).clamp(188.0, 316.0),
+                  child: selection,
                 ),
               ],
             );
-          } else if (scrollDetails) {
-            content = ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                SizedBox(height: 255, child: catalog),
-                const SizedBox(height: 8),
-                details,
-              ],
-            );
           } else {
-            content = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: catalog),
-                const SizedBox(height: 8),
-                details,
-              ],
-            );
+            final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+            if (box.maxHeight < 225 + math.max(0, scale - 1) * 85) {
+              content = ListView(
+                children: [
+                  SizedBox(height: 170, child: catalog),
+                  selection,
+                ],
+              );
+            } else {
+              content = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: catalog),
+                  selection,
+                ],
+              );
+            }
           }
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _header(compact: compact, finish: finishInHeader ? ready : null),
-            SizedBox(height: short ? 5 : 8),
+            _toolbar(
+              inline: split,
+              controls: controls,
+              finish: finishInHeader ? finish : null,
+            ),
             Expanded(child: content),
-            if (!finishInHeader) ...[const SizedBox(height: 6), _footer(ready)],
           ],
         );
       },
     );
   }
 
-  Widget _header({required bool compact, Widget? finish}) {
+  Widget _toolbar({required bool inline, Widget? controls, Widget? finish}) {
     final quota = _error == null && _items != null ? '$_left/$_limit' : '–';
     return Container(
-      decoration: daySurface(_accent),
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: compact ? 5 : 10),
-      child: Row(
+      decoration: tableEdge(_accent),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GameIcon('store', size: compact ? 29 : 38),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!compact)
-                  Text(
-                    'RISET DESA',
-                    style: dayOverline.copyWith(color: _accent),
-                  ),
-                const Text(
+          Row(
+            children: [
+              const GameIcon('store', size: 25),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
                   'Pasar Riset',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 19,
                     fontWeight: FontWeight.w800,
                     color: EmbunColors.cream,
                   ),
                 ),
-                Text(
-                  compact ? 'Harga +20%' : 'Harga +20% dari harga biasa',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: dayCaption,
+              ),
+              if (inline && controls != null)
+                Flexible(flex: 2, child: controls),
+              const SizedBox(width: 7),
+              Tooltip(
+                message: 'Harga +20% dari harga biasa',
+                child: Text('+20%', style: dayCaption.copyWith(color: _accent)),
+              ),
+              const SizedBox(width: 9),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(text: 'Jatah '),
+                    TextSpan(
+                      text: quota,
+                      style: TextStyle(
+                        color: _accent,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
+                style: dayCaption,
+              ),
+              if (inline && finish != null) ...[
+                const SizedBox(width: 9),
+                SizedBox(width: 139, child: finish),
               ],
-            ),
+            ],
           ),
-          const SizedBox(width: 5),
-          _quota(quota),
-          if (finish != null) ...[
-            const SizedBox(width: 8),
-            SizedBox(width: 152, child: finish),
-          ],
+          if (!inline && controls != null) controls,
+          if (!inline && finish != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(width: 145, child: finish),
+            ),
         ],
       ),
     );
   }
-
-  Widget _quota(String value) => DecoratedBox(
-    decoration: daySurface(
-      _accent,
-      radius: 12,
-    ).copyWith(color: _accent.withValues(alpha: 0.09)),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Column(
-        children: [
-          const Text(
-            'Jatah riset',
-            style: TextStyle(fontSize: 10, color: Color(0xFFBBC7B8)),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: _left > 0 ? _accent : Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 
   Widget _marketState() {
     final error = _error;
     final loading = error == null && _items == null;
-    return Container(
-      decoration: daySurface(_accent),
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (loading)
-                const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                GameIcon(error == null ? 'item' : 'alert', size: 30),
-              const SizedBox(height: 8),
-              Text(
-                error != null
-                    ? 'Stok riset gagal dimuat'
-                    : loading
-                    ? 'Memuat stok riset…'
-                    : 'Pasar riset sedang kosong',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: EmbunColors.cream,
-                ),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading)
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              GameIcon(error == null ? 'item' : 'alert', size: 30),
+            const SizedBox(height: 8),
+            Text(
+              error != null
+                  ? 'Stok riset gagal dimuat'
+                  : loading
+                  ? 'Memuat stok riset…'
+                  : 'Pasar riset sedang kosong',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: EmbunColors.cream,
               ),
-              if (error != null) ...[
-                const SizedBox(height: 4),
-                Text(error, textAlign: TextAlign.center, style: dayCaption),
-                TextButton(
-                  onPressed: _action == null
-                      ? () {
-                          setState(() => _items = null);
-                          _load();
-                        }
-                      : null,
-                  child: const Text('Coba lagi'),
-                ),
-              ],
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 4),
+              Text(error, textAlign: TextAlign.center, style: dayCaption),
+              TextButton(
+                onPressed: _action == null
+                    ? () {
+                        setState(() => _items = null);
+                        _load();
+                      }
+                    : null,
+                child: const Text('Coba lagi'),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _catalog(
+  Widget _categories(
     Map<_Category, List<Map<String, dynamic>>> groups,
     _Category category,
-    List<Map<String, dynamic>> offers,
-    Map<String, dynamic> selected, {
-    required bool short,
-  }) => Container(
-    clipBehavior: Clip.antiAlias,
-    decoration: daySurface(_accent),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(6, 5, 6, short ? 4 : 6),
-          child: Row(
-            children: [
-              for (final kind in _Category.values)
-                Expanded(
-                  child: _categoryTab(
-                    kind,
-                    groups[kind]!.length,
-                    selected: category == kind,
-                    short: short,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        if (!short)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Text(category.hint, style: dayCaption),
-          ),
+  ) => Row(
+    children: [
+      for (final kind in _Category.values)
         Expanded(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              GameImage(path: sceneryPath('kedai-karturiset'), cacheWidth: 960),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x9E061410), Color(0xE0061410)],
-                  ),
-                ),
-              ),
-              _offersGrid(offers, selected, category, short: short),
-            ],
+          child: _categoryTab(
+            kind,
+            groups[kind]!.length,
+            selected: category == kind,
           ),
         ),
-      ],
-    ),
+    ],
   );
 
-  Widget _categoryTab(
-    _Category kind,
-    int count, {
-    required bool selected,
-    required bool short,
-  }) => Semantics(
-    selected: selected,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: _accent.withValues(alpha: selected ? 0.62 : 0.15),
-            ),
-            color: _accent.withValues(alpha: selected ? 0.15 : 0.03),
-          ),
+  Widget _categoryTab(_Category kind, int count, {required bool selected}) {
+    final color = selected ? _accent : EmbunColors.cream;
+    return Semantics(
+      selected: selected,
+      child: Tooltip(
+        message: kind.hint,
+        child: Material(
+          color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(11),
             onTap: count == 0
                 ? null
                 : () => setState(() {
                     _category = kind;
                     _selectedId = null;
                   }),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: short ? 32 : 42),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GameIcon(kind.icon, size: short ? 15 : 18),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        kind.label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: short ? 11 : 12,
-                          fontWeight: FontWeight.w800,
-                          color: count == 0
-                              ? Colors.white38
-                              : EmbunColors.cream,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$count',
+            child: Container(
+              decoration: selected ? tableEdge(_accent) : null,
+              constraints: const BoxConstraints(minHeight: 35),
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GameIcon(kind.icon, size: 16),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      kind.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: _accent,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
+                        color: count == 0 ? Colors.white38 : color,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text('$count', style: dayCaption.copyWith(color: color)),
+                ],
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _offersGrid(
     List<Map<String, dynamic>> offers,
@@ -615,15 +536,7 @@ class _ResearchViewState extends State<ResearchView> {
       child: Material(
         type: MaterialType.transparency,
         child: Ink(
-          decoration: BoxDecoration(
-            color: selected
-                ? _accent.withValues(alpha: 0.14)
-                : const Color(0x8610271E),
-            border: Border.all(
-              color: _accent.withValues(alpha: selected ? 0.65 : 0.16),
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: short && selected ? tableEdge(_accent) : null,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () => setState(() => _selectedId = _id(item)),
@@ -675,13 +588,13 @@ class _ResearchViewState extends State<ResearchView> {
     _Category category, {
     required bool compact,
     required bool side,
+    Widget? finish,
   }) {
     final definition = _definition(item);
     final name = _name(item);
     final description = definition?['description'] as String?;
     final reason = _blockReason(item);
     final bought = item['bought'] == true;
-    final path = cardArtPath(definition);
     final detail = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -755,66 +668,61 @@ class _ResearchViewState extends State<ResearchView> {
       onPressed: reason == null && _action == null ? () => _buy(item) : null,
     );
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: daySurface(_accent, radius: 14).copyWith(
-        color: widget.dark ? const Color(0xFF282037) : const Color(0xFF132B22),
-      ),
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final padding = EdgeInsets.all(compact ? 7 : 13);
-          if (side && compact && box.maxHeight >= 84) {
-            return Padding(
-              padding: padding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: SingleChildScrollView(child: detail)),
-                  const SizedBox(height: 4),
-                  action,
-                ],
-              ),
-            );
-          }
-
-          final content = Padding(
-            padding: padding,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    if (side) {
+      return Container(
+        decoration: tableEdge(_accent, vertical: true),
+        padding: const EdgeInsets.fromLTRB(12, 5, 4, 6),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            if (box.maxHeight < 72) {
+              return SingleChildScrollView(
+                child: Column(children: [detail, action]),
+              );
+            }
+            if (!compact) {
+              return Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [detail, const SizedBox(height: 7), action],
+                  ),
+                ),
+              );
+            }
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (side &&
-                    !compact &&
-                    box.maxHeight >= 330 &&
-                    path != null) ...[
-                  Text(
-                    'KARTU TERPILIH',
-                    textAlign: TextAlign.center,
-                    style: dayOverline.copyWith(color: _accent),
-                  ),
-                  const SizedBox(height: 9),
-                  Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: SizedBox(
-                        width: 108,
-                        height: 108 * kTallAspect,
-                        child: GameImage(path: path, cacheWidth: 320),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 13),
-                ],
-                detail,
-                const SizedBox(height: 6),
+                Expanded(
+                  child: Center(child: SingleChildScrollView(child: detail)),
+                ),
+                const SizedBox(height: 5),
                 action,
               ],
-            ),
-          );
-          return side
-              ? Center(child: SingleChildScrollView(child: content))
-              : content;
-        },
+            );
+          },
+        ),
+      );
+    }
+    return Container(
+      decoration: tableEdge(_accent, top: true),
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 5),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          detail,
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Expanded(child: action),
+              if (finish != null) ...[
+                const SizedBox(width: 7),
+                Expanded(child: finish),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -855,27 +763,4 @@ class _ResearchViewState extends State<ResearchView> {
       onPressed: _action == null ? _finish : null,
     );
   }
-
-  Widget _footer(Widget control) => Container(
-    decoration: daySurface(_accent, radius: 14),
-    padding: const EdgeInsets.all(4),
-    child: LayoutBuilder(
-      builder: (context, box) {
-        if (box.maxWidth < 540) return control;
-        return Row(
-          children: [
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Pasar Pagi dibuka setelah fase riset berakhir.',
-                style: dayCaption,
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(width: 230, child: control),
-          ],
-        );
-      },
-    ),
-  );
 }
