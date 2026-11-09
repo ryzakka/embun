@@ -607,8 +607,8 @@ class _PrologueFlowState extends State<PrologueFlow>
               child: CardPick(
                 key: ValueKey('pick$_pickEpoch'),
                 title: 'Pilih Kartu Karaktermu',
-                hint: 'Tiga kartu terbalik. Ketuk satu; wajahnya baru '
-                    'terlihat setelah kamu memilih.',
+                hint: 'Ketuk satu kartu tertutup, lalu kunci pilihanmu. '
+                    'Kartu itu akan dibuka pada pengungkapan peran.',
                 options: [
                   for (final s in _goodOptions)
                     PickOption(protagonistPath(s), characterTitle(s)),
@@ -620,7 +620,7 @@ class _PrologueFlowState extends State<PrologueFlow>
               ),
             )
           else if (step == _Step.waiting)
-              const EmbunLoading(text: 'Menunggu pemain lain...')
+              const SafeArea(child: _WaitingForPlayers())
             else
               RoleReveal(
                 role: role,
@@ -652,8 +652,8 @@ class _PrologueFlowState extends State<PrologueFlow>
             key: const ValueKey('darkpick'),
             dark: true,
             title: 'Pilih Wajah Gelapmu',
-            hint: 'Tiga wajah terbalik. Ketuk satu; ini wajah aslimu yang '
-                'hanya kamu yang melihat.',
+            hint: 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat '
+                'wajah gelap yang kamu ambil.',
             options: [
               for (final i in _darkOptions)
                 PickOption(AssetCatalog.I.file(antagonisDir, stems[i]),
@@ -1053,6 +1053,46 @@ class _PrologueFlowState extends State<PrologueFlow>
     if (role == null) return null;
     return role == 'antagonis' ? darkCardPath(darkSeed) : protagonistPath(myCard);
   }
+}
+
+class _WaitingForPlayers extends StatelessWidget {
+  const _WaitingForPlayers();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('PROLOG SELESAI', style: TextStyle(
+              color: EmbunColors.gold, fontSize: 11,
+              letterSpacing: 1.5, fontWeight: FontWeight.w800,
+            )),
+            const SizedBox(height: 6),
+            const Text('Menunggu pemain lain', style: TextStyle(
+              color: EmbunColors.cream, fontSize: 25,
+              height: 1.15, fontWeight: FontWeight.w900,
+            )),
+            const SizedBox(height: 8),
+            const Text(
+              'Kamu sudah siap. Meja dibuka bersama saat semua pemain selesai '
+              'atau waktu prolog habis.',
+              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            LinearProgressIndicator(
+              color: EmbunColors.leaf, backgroundColor: Colors.white12, minHeight: 2,
+              semanticsLabel: 'Menunggu meja permainan dibuka',
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Efek atmosfer prolog menurut suasana adegan:

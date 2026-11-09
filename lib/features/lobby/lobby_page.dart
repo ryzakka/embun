@@ -21,6 +21,7 @@ import 'more_games_sheet.dart';
 import 'announcements_page.dart';
 import 'public_rooms_page.dart';
 import 'room_entry_view.dart';
+import 'waiting_room_view.dart';
 import 'title_intro.dart';
 import 'announcement_body.dart';
 import '../table/chat_sheet.dart';
@@ -55,9 +56,12 @@ class _LobbyPageState extends State<LobbyPage>
   bool busy = false;
   bool _navigated = false;
 
-  /// Slot ('ruangan:pemain') yang sudah pernah dianimasikan masuk,
-  /// agar animasi hanya diputar untuk pemain yang benar-benar baru.
-  final Set<String> _seenSlots = {};
+  ({
+    String id,
+    Stream<Map<String, dynamic>?> game,
+    Stream<List<Map<String, dynamic>>> players,
+    Stream<List<Map<String, dynamic>>> chat,
+  })? _roomStreams;
 
   late _Stage _stage;
   bool _createPublic = false;
@@ -312,14 +316,6 @@ class _LobbyPageState extends State<LobbyPage>
     }
   }
 
-  Future<void> _setPublic(String id, bool v) async {
-    try {
-      await repo.setRoomPublic(id, v);
-    } catch (e) {
-      _toast(errMsg(e));
-    }
-  }
-
   // ====================== kerangka & latar ======================
 
   @override
@@ -333,7 +329,7 @@ class _LobbyPageState extends State<LobbyPage>
     final Widget screen;
     if (inRoom) {
       screen = KeyedSubtree(
-          key: const ValueKey('room'), child: _framed(1100, _room(gameId!)));
+          key: ValueKey('room-$gameId'), child: _room(gameId!));
     } else {
       switch (_stage) {
         case _Stage.title:
@@ -390,15 +386,6 @@ class _LobbyPageState extends State<LobbyPage>
       ),
     );
   }
-
-  Widget _framed(double maxW, Widget child) => SafeArea(
-    child: Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxW),
-        child: Padding(padding: const EdgeInsets.all(16), child: child),
-      ),
-    ),
-  );
 
   /// Layar judul memakai pembukaan sinematik ([TitleIntroBackdrop]); layar
   /// lain memakai latar bentang yang bergerak pelan.
@@ -982,19 +969,24 @@ class _LobbyPageState extends State<LobbyPage>
   }
 
   Widget _room(String id) {
+    if (_roomStreams?.id != id) {
+      _roomStreams = (
+        id: id,
+        game: repo.game(id),
+        players: repo.players(id),
+        chat: _gr.chat(id),
+      );
+    }
+    final streams = _roomStreams!;
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: repo.game(id),
-      builder: (context, gs) {
-        final game = gs.data;
+      stream: streams.game,
+      builder: (context, snapshot) {
+        final game = snapshot.data;
         if (game == null) {
-          // Sudah menerima data tetapi barisnya hilang: ruangan dibubarkan.
-          if (gs.connectionState != ConnectionState.waiting) {
+          if (snapshot.connectionState != ConnectionState.waiting) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || gameId != id) return;
-              setState(() {
-                gameId = null;
-                _stage = _Stage.menu;
-              });
+              _returnToMenu();
               _toast('Ruangan sudah dibubarkan');
             });
           }
@@ -1004,27 +996,33 @@ class _LobbyPageState extends State<LobbyPage>
           if (!_navigated) {
             _navigated = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
+              if (!mounted || gameId != id) return;
               Navigator.of(context).pushReplacement(
-                ClothTransition.route(
-                  PrologueFlow(gameId: id, repo: repo),
-                ),
+                ClothTransition.route(PrologueFlow(gameId: id, repo: repo)),
               );
             });
           }
           return const EmbunLoading();
         }
         return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: repo.players(id),
-          builder: (context, ps) {
-            final players = ps.data ?? [];
-            final mine = players.where((p) => p['user_id'] == repo.myId);
-            final me = mine.isEmpty ? null : mine.first;
-            return _RoomShell(
-              gr: _gr,
-              gameId: id,
+          stream: streams.players,
+          builder: (context, snapshot) {
+            final players = snapshot.data ?? [];
+            return WaitingRoomView(
+              code: game['code'] as String,
+              isPublic: game['is_public'] == true,
+              hostId: game['host_id'] as String,
+              viewerId: repo.myId,
               players: players,
-              room: _roomContent(id, game, players, me),
+              chatMessages: streams.chat,
+              chat: ChatPanel(
+                repo: _gr, gameId: id, players: players, lobby: true,
+              ),
+              onVisibilityChanged: (value) => repo.setRoomPublic(id, value),
+              onReady: (value) => repo.setReady(id, value),
+              onStart: () => repo.startGame(id),
+              onLeave: () => _leaveRoom(id),
+              onEditCharacter: (player) => _pickCard(id, player),
             );
           },
         );
@@ -1032,629 +1030,25 @@ class _LobbyPageState extends State<LobbyPage>
     );
   }
 
-  Future<void> _setReady(String id, bool v) async {
+  void _returnToMenu() {
+    setState(() {
+      gameId = null;
+      _roomStreams = null;
+      _navigated = false;
+      _stage = _Stage.menu;
+    });
+  }
+
+  Future<void> _leaveRoom(String id) async {
+    // Putus langganan sebelum host menghapus ruang.
+    _returnToMenu();
     try {
-      await repo.setReady(id, v);
+      await repo.leave(id);
     } catch (e) {
+      if (!mounted) return;
+      setState(() => gameId = id);
       _toast(errMsg(e));
     }
-  }
-
-  static const int _maxPlayers = 8;
-  static const int _minPlayers = 3;
-
-  /// Ruangan = kepala (logo + kode) → papan slot pemain → bilah aksi.
-  /// Di layar pendek (mis. ponsel landscape) bilah aksi ikut menggulir
-  /// supaya tidak menutupi slot.
-  Widget _roomContent(String id, Map<String, dynamic> game,
-      List<Map<String, dynamic>> players, Map<String, dynamic>? me) {
-    final isHost = game['host_id'] == repo.myId;
-    final hostId = game['host_id'] as String;
-    final iReady = me?['ready'] == true;
-    final readyN = players.where((p) => p['ready'] == true).length;
-    final canStart =
-        players.length >= _minPlayers && readyN == players.length;
-
-    final head = <Widget>[
-      SizedBox(
-        height: 40,
-        child: GameImage(
-            path: logoPath('logoteks-transparent'),
-            fit: BoxFit.contain,
-            cacheWidth: 600),
-      ),
-      const SizedBox(height: 10),
-      _codeHeader(game['code'] as String),
-      const SizedBox(height: 8),
-      _visibilityRow(id, game['is_public'] == true, isHost),
-      const SizedBox(height: 14),
-      SectionHeader(
-        icon: 'persona',
-        title: 'Pemain ${players.length}/$_maxPlayers · siap $readyN',
-      ),
-      const SizedBox(height: 10),
-      _slotBoard(id, players, hostId),
-      const SizedBox(height: 8),
-      _slotHint(me, iReady),
-    ];
-
-    final actions = _roomActions(
-      id: id,
-      me: me,
-      isHost: isHost,
-      iReady: iReady,
-      canStart: canStart,
-      playerCount: players.length,
-      readyN: readyN,
-    );
-
-    return LayoutBuilder(builder: (context, c) {
-      final compact = c.maxHeight < 560;
-      if (compact) {
-        return ListView(
-          padding: EdgeInsets.zero,
-          children: [...head, const SizedBox(height: 14), actions],
-        );
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ListView(padding: EdgeInsets.zero, children: head),
-          ),
-          const SizedBox(height: 12),
-          actions,
-        ],
-      );
-    });
-  }
-
-  Widget _slotHint(Map<String, dynamic>? me, bool iReady) {
-    if (me == null) return const SizedBox.shrink();
-    return Text(
-      iReady
-          ? 'Kartumu terkunci selama berstatus siap.'
-          : 'Ketuk kartumu untuk mengganti karakter.',
-      textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 11, color: Colors.white54),
-    );
-  }
-
-  /// Papan slot: kolom menyesuaikan lebar (2-4), tinggi mengikuti isi,
-  /// sehingga tidak pernah meluap. Slot kosong menjadi tempat pemain berikut.
-  Widget _slotBoard(
-      String id, List<Map<String, dynamic>> players, String hostId) {
-    return LayoutBuilder(builder: (context, c) {
-      const gap = 10.0;
-      final w = c.maxWidth;
-      final cols = (w / 118).floor().clamp(2, 4).toInt();
-      final slotW = (w - gap * (cols - 1)) / cols;
-      // Muat pertama: slot muncul beruntun. Pemain susulan: langsung dramatis.
-      final firstLoad = !_seenSlots.any((k) => k.startsWith('$id:'));
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (var i = 0; i < _maxPlayers; i++)
-            SizedBox(
-              key: ValueKey(i < players.length
-                  ? 'p-${players[i]['user_id']}'
-                  : 'e-$i'),
-              width: slotW,
-              child: i < players.length
-                  ? _revealSlot(id, players[i], hostId, i, firstLoad)
-                  : _emptySlot(i),
-            ),
-        ],
-      );
-    });
-  }
-
-  Widget _revealSlot(String id, Map<String, dynamic> p, String hostId, int i,
-      bool firstLoad) {
-    final key = '$id:${p['user_id']}';
-    return _SlotReveal(
-      key: ValueKey('r-$key'),
-      play: !_seenSlots.contains(key),
-      delay: firstLoad ? Duration(milliseconds: 140 * i) : Duration.zero,
-      grand: !firstLoad,
-      onShown: () => _seenSlots.add(key),
-      child: _playerSlot(id, p, hostId),
-    );
-  }
-
-  Widget _slotFrame({
-    required Widget child,
-    required Color border,
-    required Color fill,
-    double borderWidth = 1,
-    double glow = 0,
-  }) =>
-      Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: fill,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border, width: borderWidth),
-          boxShadow: glow > 0
-              ? [
-            BoxShadow(
-              color: EmbunColors.leaf.withValues(alpha: 0.12 + 0.3 * glow),
-              blurRadius: 8 + 12 * glow,
-              spreadRadius: 0.5 + 1.5 * glow,
-            ),
-          ]
-              : null,
-        ),
-        child: child,
-      );
-
-  Widget _chip(Widget child) => Container(
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.55),
-      shape: BoxShape.circle,
-    ),
-    child: child,
-  );
-
-  Widget _playerSlot(String id, Map<String, dynamic> p, String hostId) {
-    final ready = p['ready'] == true;
-    final isMe = p['user_id'] == repo.myId;
-    final isHostP = p['user_id'] == hostId;
-    final card = p['character_card'] as String;
-    final border = isMe
-        ? EmbunColors.gold
-        : ready
-        ? EmbunColors.leaf.withValues(alpha: 0.8)
-        : EmbunColors.goldDim.withValues(alpha: 0.3);
-    return AnimatedBuilder(
-      animation: _t,
-      builder: (context, _) {
-        // Slot yang siap berdenyut hijau pelan.
-        final pulse = ready ? 0.5 + 0.5 * sin(_t.value * 120 * 2.2) : 0.0;
-        return Semantics(
-          label: '${p['name']}, ${characterTitle(card)}, '
-              '${ready ? 'siap' : 'belum siap'}',
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: isMe && !ready ? () => _pickCard(id, p) : null,
-            child: _slotFrame(
-              border: border,
-              borderWidth: isMe ? 2 : 1,
-              glow: ready ? 0.25 + 0.75 * pulse : 0,
-              fill: Colors.black.withValues(alpha: isMe ? 0.34 : 0.22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1 / kProtagonistAspect,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
-                          child: GameImage(
-                              path: protagonistPath(card),
-                              fit: BoxFit.cover,
-                              cacheWidth: 300),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child:
-                          _chip(GameIcon(ready ? 'centang' : 'wait', size: 24)),
-                        ),
-                        if (isHostP)
-                          Positioned(
-                            top: 4,
-                            left: 4,
-                            child: _chip(const GameIcon('host', size: 24)),
-                          ),
-                        if (isMe && !ready)
-                          Positioned(
-                            bottom: 4,
-                            right: 4,
-                            child: _chip(const Padding(
-                              padding: EdgeInsets.all(3),
-                              child: Icon(Icons.edit,
-                                  size: 14, color: EmbunColors.gold),
-                            )),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    height: 38,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: SizedBox(
-                        width: 100,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              isMe ? '${p['name']} (kamu)' : p['name'] as String,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isMe ? EmbunColors.gold : EmbunColors.cream,
-                              ),
-                            ),
-                            Text(
-                              characterTitle(card),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _emptySlot(int index) {
-    final needed = index < _minPlayers;
-    return _slotFrame(
-      border: EmbunColors.goldDim.withValues(alpha: needed ? 0.35 : 0.18),
-      fill: Colors.black.withValues(alpha: 0.12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AspectRatio(
-            aspectRatio: 1 / kProtagonistAspect,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(9),
-                color: Colors.white.withValues(alpha: 0.03),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08), width: 1),
-              ),
-              child: Center(
-                // Berdenyut pelan, bergantian antarslot: "menanti pemain".
-                child: AnimatedBuilder(
-                  animation: _t,
-                  builder: (context, _) {
-                    final w =
-                        0.5 + 0.5 * sin(_t.value * 120 * 1.6 + index * 0.9);
-                    return Transform.scale(
-                      scale: 0.94 + 0.1 * w,
-                      child: Opacity(
-                        opacity: ((needed ? 0.25 : 0.12) +
-                            (needed ? 0.4 : 0.16) * w)
-                            .clamp(0.0, 1.0),
-                        child: const GameIcon('addmember', size: 34),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 38,
-            child: Center(
-              child: Text(
-                needed ? 'Menunggu pemain' : 'Slot kosong',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: needed ? 0.5 : 0.3),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _roomActions({
-    required String id,
-    required Map<String, dynamic>? me,
-    required bool isHost,
-    required bool iReady,
-    required bool canStart,
-    required int playerCount,
-    required int readyN,
-  }) {
-    final readyBtn = iReady
-        ? EmbunButton(
-      label: 'Siap · ketuk untuk batal',
-      icon: 'centang',
-      kind: EmbunButtonKind.secondary,
-      expand: true,
-      onPressed: me == null ? null : () => _setReady(id, false),
-    )
-        : EmbunButton(
-      label: 'Siap',
-      icon: 'centang',
-      expand: true,
-      onPressed: me == null ? null : () => _setReady(id, true),
-    );
-
-    final startBtn = EmbunButton(
-      label: canStart
-          ? 'Mulai'
-          : playerCount < _minPlayers
-          ? 'Butuh min. $_minPlayers pemain'
-          : 'Menunggu semua siap ($readyN/$playerCount)',
-      icon: 'start',
-      expand: true,
-      onPressed: canStart
-          ? () async {
-        try {
-          await repo.startGame(id);
-        } catch (e) {
-          _toast(errMsg(e));
-        }
-      }
-          : null,
-    );
-
-    final leaveBtn = EmbunButton(
-      label: isHost ? 'Bubarkan ruangan' : 'Keluar',
-      icon: isHost ? 'bubarkan' : 'keluar',
-      kind: EmbunButtonKind.secondary,
-      expand: true,
-      height: 44,
-      onPressed: () async {
-        // Keluar dulu agar penghapusan ruangan tidak memicu
-        // pesan "dibubarkan" untuk host sendiri.
-        setState(() {
-          gameId = null;
-          _stage = _Stage.menu;
-        });
-        try {
-          await repo.leave(id);
-        } catch (e) {
-          if (!mounted) return;
-          setState(() => gameId = id);
-          _toast(errMsg(e));
-        }
-      },
-    );
-
-    return LayoutBuilder(builder: (context, c) {
-      final sideBySide = isHost && c.maxWidth >= 460;
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (isHost && sideBySide)
-            Row(
-              children: [
-                Expanded(child: readyBtn),
-                const SizedBox(width: 10),
-                Expanded(child: startBtn),
-              ],
-            )
-          else ...[
-            readyBtn,
-            if (isHost) ...[const SizedBox(height: 8), startBtn],
-          ],
-          const SizedBox(height: 8),
-          leaveBtn,
-        ],
-      );
-    });
-  }
-
-  Widget _visibilityRow(String id, bool pub, bool isHost) => Container(
-    padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.3)),
-    ),
-    child: Row(
-      children: [
-        GameIcon(pub ? 'persona' : 'lock', size: 30),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            pub
-                ? 'Ruangan publik: tampil di daftar'
-                : 'Ruangan privat: hanya lewat kode',
-            style: const TextStyle(fontSize: 12.5, color: Colors.white70),
-          ),
-        ),
-        if (isHost)
-          Switch(value: pub, onChanged: (v) => _setPublic(id, v)),
-      ],
-    ),
-  );
-
-  Widget _codeHeader(String code) => Container(
-    padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: 0.3),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.4)),
-    ),
-    child: Row(
-      children: [
-        const GameIcon('roomcode', size: 46),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Kode ruangan',
-                  style: TextStyle(fontSize: 11, color: Colors.white60)),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  code,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6,
-                    color: EmbunColors.gold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        MedallionButton(
-          icon: 'salin',
-          label: 'Salin',
-          size: 40,
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: code));
-            _toast('Kode disalin');
-          },
-        ),
-      ],
-    ),
-  );
-}
-
-/// Animasi masuk dramatis untuk satu slot pemain: kartu berputar 3D dari
-/// samping dengan pantulan, disusul gelombang cahaya emas. [grand] (pemain
-/// susulan) memberi kilatan dan guncangan lebih besar. [play] false = tampil
-/// langsung tanpa animasi.
-class _SlotReveal extends StatefulWidget {
-  final Widget child;
-  final bool play;
-  final bool grand;
-  final Duration delay;
-  final VoidCallback onShown;
-  const _SlotReveal({
-    super.key,
-    required this.child,
-    required this.play,
-    required this.grand,
-    required this.delay,
-    required this.onShown,
-  });
-
-  @override
-  State<_SlotReveal> createState() => _SlotRevealState();
-}
-
-class _SlotRevealState extends State<_SlotReveal>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1300));
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.onShown();
-    if (!widget.play) {
-      _c.value = 1;
-    } else if (widget.delay == Duration.zero) {
-      _go();
-    } else {
-      _timer = Timer(widget.delay, _go);
-    }
-  }
-
-  void _go() {
-    if (!mounted) return;
-    if (widget.grand) HapticFeedback.mediumImpact();
-    _c.forward();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      child: widget.child,
-      builder: (context, child) {
-        final t = _c.value;
-        if (t >= 1) return child!;
-        final flip = Curves.easeOutBack.transform(_seg(t, 0.0, 0.55));
-        final angle = (1 - flip) * 1.45;
-        final fade = _seg(t, 0.0, 0.18);
-        final ring = _seg(t, 0.38, 1.0);
-        final k = widget.grand ? 1.0 : 0.55;
-        // guncangan kecil saat kartu mendarat
-        final shake = widget.grand
-            ? sin(ring * pi * 6) * (1 - ring) * 3.0 * _seg(t, 0.4, 0.5)
-            : 0.0;
-        final pop = 0.6 + 0.4 * flip + 0.05 * k * sin(ring * pi);
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // gelombang cahaya yang meluas lalu memudar
-            if (ring > 0)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14 + 10 * ring),
-                      boxShadow: [
-                        BoxShadow(
-                          color: EmbunColors.gold
-                              .withValues(alpha: (1 - ring) * 0.85 * k),
-                          blurRadius: 10 + 26 * ring * k,
-                          spreadRadius: 2 + 22 * ring * k,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            Opacity(
-              opacity: fade,
-              child: Transform.translate(
-                offset: Offset(shake, 0),
-                child: Transform.scale(
-                  scale: pop,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.0014)
-                      ..rotateY(angle),
-                    child: child,
-                  ),
-                ),
-              ),
-            ),
-            // kilat putih singkat di bidang kartu saat mendarat
-            if (widget.grand && t > 0.4 && t < 0.62)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.white.withValues(
-                          alpha: 0.35 * (1 - _seg(t, 0.4, 0.62))),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
   }
 }
 
@@ -1866,162 +1260,4 @@ class _Fx extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _Fx old) => true;
-}
-
-/// Panel kaca gelap untuk ruangan dan obrolan.
-class _Glass extends StatelessWidget {
-  final Widget child;
-  const _Glass({required this.child});
-
-  @override
-  Widget build(BuildContext context) =>
-      OrnatePanel(padding: const EdgeInsets.all(16), child: child);
-}
-
-/// Tata letak ruangan yang responsif:
-/// - layar lebar (>= 820 px): ruangan di kiri, obrolan di kanan;
-/// - ponsel: dua halaman yang digeser (ruangan, lalu obrolan di kanan).
-class _RoomShell extends StatefulWidget {
-  final GameRepository gr;
-  final String gameId;
-  final List<Map<String, dynamic>> players;
-  final Widget room;
-  const _RoomShell({
-    required this.gr,
-    required this.gameId,
-    required this.players,
-    required this.room,
-  });
-
-  @override
-  State<_RoomShell> createState() => _RoomShellState();
-}
-
-class _RoomShellState extends State<_RoomShell> {
-  static const _wideBreakpoint = 820.0;
-  final _pc = PageController();
-  int page = 0;
-  int seen = 0;
-  late final Stream<List<Map<String, dynamic>>> chat =
-  widget.gr.chat(widget.gameId);
-
-  @override
-  void dispose() {
-    _pc.dispose();
-    super.dispose();
-  }
-
-  Widget _chatPane() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SectionHeader(icon: 'discuss', title: 'Obrolan Desa'),
-      const SizedBox(height: 8),
-      Expanded(
-        child: ChatPanel(
-          repo: widget.gr,
-          gameId: widget.gameId,
-          players: widget.players,
-          lobby: true,
-        ),
-      ),
-    ],
-  );
-
-  void _goto(int i) => _pc.animateToPage(i,
-      duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
-
-  Widget _tabs(int unread) => Row(
-    children: [
-      Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          avatar: const GameIcon('persona', size: 26),
-          label: Text('Ruangan (${widget.players.length})'),
-          selected: page == 0,
-          visualDensity: VisualDensity.compact,
-          onSelected: (_) => _goto(0),
-        ),
-      ),
-      Badge(
-        isLabelVisible: unread > 0 && page != 1,
-        label: Text('$unread'),
-        child: ChoiceChip(
-          avatar: const GameIcon('discuss', size: 26),
-          label: const Text('Obrolan'),
-          selected: page == 1,
-          visualDensity: VisualDensity.compact,
-          onSelected: (_) => _goto(1),
-        ),
-      ),
-      const Spacer(),
-      if (page == 0)
-        const Text('Geser untuk obrolan',
-            style: TextStyle(fontSize: 11, color: Colors.white54)),
-      if (page == 0) const GameIcon('skip2', size: 22),
-    ],
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      if (c.maxWidth >= _wideBreakpoint) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _Glass(child: widget.room)),
-            const SizedBox(width: 16),
-            SizedBox(width: 380, child: _Glass(child: _chatPane())),
-          ],
-        );
-      }
-      return StreamBuilder<List<Map<String, dynamic>>>(
-        stream: chat,
-        builder: (context, s) {
-          final count = (s.data ?? [])
-              .where((m) => m['user_id'] != widget.gr.myId)
-              .length;
-          if (page == 1) seen = count;
-          final unread = count - seen;
-          return Column(
-            children: [
-              _tabs(unread),
-              const SizedBox(height: 8),
-              Expanded(
-                child: PageView(
-                  controller: _pc,
-                  onPageChanged: (i) => setState(() {
-                    page = i;
-                    if (i == 1) seen = count;
-                  }),
-                  children: [
-                    _KeepAlive(child: _Glass(child: widget.room)),
-                    _KeepAlive(child: _Glass(child: _chatPane())),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    });
-  }
-}
-
-class _KeepAlive extends StatefulWidget {
-  final Widget child;
-  const _KeepAlive({required this.child});
-  @override
-  State<_KeepAlive> createState() => _KeepAliveState();
-}
-
-class _KeepAliveState extends State<_KeepAlive>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
 }

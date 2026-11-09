@@ -1,40 +1,31 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../data/asset_catalog.dart';
+import '../../data/errors.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../table/flip_card.dart';
 
-/// Satu pilihan kartu: muka kartu (disembunyikan sampai dibuka) dan namanya.
 class PickOption {
   final String? facePath;
   final String label;
   const PickOption(this.facePath, this.label);
 }
 
-/// Pilih satu dari beberapa kartu TERBALIK (punggung). Dipakai dua kali di
-/// prolog: kartu karakter baik (semua pemain) dan wajah gelap (Si Terbisik).
-///
-/// Alur:
-///  1. kartu dibagikan sebagai punggung; pemain mengetuk satu lalu menekan
-///     tombol Ambil. Muka kartu TIDAK terlihat selama memilih.
-///  2. [onPick] dipanggil. Bila mengembalikan teks, itu pesan galat (kartu
-///     tetap tertutup, pemain boleh memilih lagi / lanjut tanpa memilih).
-///  3. Bila berhasil: kartu yang dipilih tetap tertutup, dua kartu lain
-///     berbalik memperlihatkan wajahnya, lalu [onDone] dipanggil.
+/// Pilihan karakter dan wajah gelap sama-sama memakai kartu tertutup.
+/// Setelah pilihan terkunci, hanya kartu yang tidak diambil yang dibuka.
 class CardPick extends StatefulWidget {
   final String title;
   final String hint;
   final List<PickOption> options;
   final bool dark;
-
-  /// Pesan dari percobaan sebelumnya (mis. kartu sudah diambil pemain lain).
   final String? note;
   final Future<String?> Function(int index) onPick;
   final VoidCallback onDone;
-
-  /// Tombol "Lanjut tanpa memilih"; hanya tampil setelah ada galat.
   final VoidCallback? onSkip;
 
   const CardPick({
@@ -54,16 +45,16 @@ class CardPick extends StatefulWidget {
 }
 
 class _CardPickState extends State<CardPick> {
-  int? _sel;
+  int? _selected;
   int? _chosen;
   bool _busy = false;
-  bool _flipOthers = false;
   bool _labelsOn = false;
   String? _error;
   Timer? _done;
   Timer? _labels;
 
   Color get _accent => widget.dark ? EmbunColors.mist : EmbunColors.gold;
+  bool get _locked => _chosen != null;
 
   @override
   void dispose() {
@@ -73,27 +64,32 @@ class _CardPickState extends State<CardPick> {
   }
 
   void _select(int i) {
-    if (_busy || _chosen != null) return;
+    if (_busy || _locked) return;
     HapticFeedback.selectionClick();
     setState(() {
-      _sel = i;
+      _selected = i;
       _error = null;
     });
   }
 
   Future<void> _confirm() async {
-    final i = _sel;
-    if (i == null || _busy || _chosen != null) return;
+    final i = _selected;
+    if (i == null || _busy || _locked) return;
     setState(() {
       _busy = true;
       _error = null;
     });
-    final err = await widget.onPick(i);
-    if (!mounted) return; // induk mengganti widget ini (pilihan dikocok ulang)
-    if (err != null) {
+    String? error;
+    try {
+      error = await widget.onPick(i);
+    } catch (e) {
+      error = errMsg(e);
+    }
+    if (!mounted) return;
+    if (error != null) {
       setState(() {
         _busy = false;
-        _error = err;
+        _error = error;
       });
       return;
     }
@@ -101,9 +97,7 @@ class _CardPickState extends State<CardPick> {
     setState(() {
       _busy = false;
       _chosen = i;
-      _flipOthers = true;
     });
-    // Nama kartu lain baru muncul setelah kartunya berbalik.
     _labels = Timer(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       HapticFeedback.lightImpact();
@@ -113,189 +107,292 @@ class _CardPickState extends State<CardPick> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final n = widget.options.length;
-    final back = cardBackPath(dark: widget.dark);
-    final picked = _chosen != null;
-    final err = _error ?? widget.note;
-
-    return LayoutBuilder(builder: (context, c) {
-      const gap = 12.0;
-      var w = (c.maxWidth - 40 - gap * (n - 1)) / n;
-      if (c.maxHeight.isFinite) {
-        final byH = (c.maxHeight - 240) / kTallAspect;
-        if (byH < w) w = byH;
-      }
-      w = w.clamp(64.0, 150.0).toDouble().floorToDouble();
-      final h = w * kTallAspect;
-
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.6,
-                    color: _accent,
-                    shadows: [
-                      Shadow(
-                          color: _accent.withValues(alpha: 0.5),
-                          blurRadius: 14),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Text(
-                    picked
-                        ? (widget.dark
-                        ? 'Wajah gelapmu terpilih. Dua wajah lain yang '
-                        'tak kamu ambil kini terbuka...'
-                        : 'Kartumu terambil. Dua kartu lain yang tak '
-                        'kamu ambil kini terbuka...')
-                        : widget.hint,
-                    key: ValueKey(picked),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 12.5, height: 1.4, color: Colors.white60),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (var i = 0; i < n; i++) ...[
-                      if (i > 0) const SizedBox(width: gap),
-                      _cell(i, w, h, back),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 14),
-                if (err != null && !picked) ...[
-                  Text(err,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 12.5, color: EmbunColors.blood)),
-                  const SizedBox(height: 10),
-                ],
-                if (!picked)
-                  EmbunButton(
-                    label: _sel == null ? 'Pilih satu kartu' : 'Ambil kartu ini',
-                    icon: 'centang',
-                    expand: true,
-                    onPressed: (_sel == null || _busy) ? null : _confirm,
-                  ),
-                if (err != null && !picked && widget.onSkip != null) ...[
-                  const SizedBox(height: 8),
-                  EmbunButton(
-                    label: 'Lanjut tanpa memilih',
-                    kind: EmbunButtonKind.secondary,
-                    expand: true,
-                    height: 46,
-                    onPressed: _busy ? null : widget.onSkip,
-                  ),
-                ],
-              ],
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xCB09140F),
+          widget.dark ? const Color(0x4B1C0B2B) : const Color(0x5007130F),
+          const Color(0xDD07130F),
+        ],
+      ),
+    ),
+    child: LayoutBuilder(
+      builder: (context, box) {
+        final short = box.maxHeight < 440;
+        final split = box.maxWidth >= (short ? 530 : 700);
+        final vertical = short ? 10.0 : 18.0;
+        return SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: short ? 12 : 16,
+            vertical: vertical,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1100,
+                minHeight: math.max(0, box.maxHeight - vertical * 2),
+              ),
+              child: split
+                  ? Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _heading(),
+                              const SizedBox(height: 14),
+                              _actions(),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: short ? 12 : 26),
+                        Expanded(flex: 3, child: _gallery(short: short)),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _heading(),
+                        const SizedBox(height: 16),
+                        _gallery(short: short),
+                        const SizedBox(height: 16),
+                        _actions(),
+                      ],
+                    ),
             ),
           ),
+        );
+      },
+    ),
+  );
+
+  Widget _heading() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        widget.dark ? 'PROLOG · WAJAH GELAP' : 'PROLOG · KARAKTER',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+          color: _accent,
         ),
-      );
-    });
+      ),
+      const SizedBox(height: 5),
+      Semantics(
+        header: true,
+        child: Text(
+          widget.title,
+          style: const TextStyle(
+            fontSize: 26,
+            height: 1.10,
+            fontWeight: FontWeight.w900,
+            color: EmbunColors.cream,
+          ),
+        ),
+      ),
+      const SizedBox(height: 7),
+      Text(
+        widget.hint,
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.35,
+          color: Colors.white70,
+        ),
+      ),
+    ],
+  );
+
+  Widget _actions() {
+    final selected = _selected;
+    final error = _error ?? widget.note;
+    final status = _locked
+        ? 'Pilihan terkunci'
+        : _busy
+        ? 'Mengunci pilihan…'
+        : selected == null
+        ? 'Belum ada kartu dipilih'
+        : 'Kartu ${selected + 1} dipilih';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: _accent.withValues(alpha: 0.32))),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              liveRegion: true,
+              child: Row(
+                children: [
+                  Icon(
+                    _locked ? Icons.lock_rounded : Icons.style_outlined,
+                    color: _locked ? EmbunColors.leaf : _accent,
+                    size: 17,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: _locked ? EmbunColors.leaf : EmbunColors.cream,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 7),
+            if (_locked)
+              const Text(
+                'Kartu lain dibuka. Sebentar lagi kamu lanjut.',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              )
+            else ...[
+              if (error != null) ...[
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    error,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: EmbunColors.blood,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 7),
+              ],
+              EmbunButton(
+                label: 'Kunci pilihan',
+                height: 44,
+                expand: true,
+                onPressed: selected == null || _busy ? null : _confirm,
+              ),
+              if (error != null && widget.onSkip != null)
+                TextButton(
+                  onPressed: _busy ? null : widget.onSkip,
+                  child: const Text('Lanjut tanpa memilih'),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
-  Widget _cell(int i, double w, double h, String? back) {
-    final o = widget.options[i];
-    final isChosen = _chosen == i;
-    final sel = _sel == i && _chosen == null;
-    final reveal = _flipOthers && !isChosen;
-    final dimmed = _chosen == null && _sel != null && !sel;
-    final accent = _accent;
-
-    final String label = isChosen ? 'Pilihanmu' : (_labelsOn ? o.label : '');
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _select(i),
-      child: SizedBox(
-        width: w,
-        child: Column(
+  Widget _gallery({required bool short}) {
+    final back = cardBackPath(dark: widget.dark);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final count = widget.options.length;
+        final gap = short ? 8.0 : 10.0;
+        final width = math.min(
+          short ? 112.0 : 192.0,
+          math.max(0.0, (box.maxWidth - gap * (count - 1)) / count),
+        );
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnimatedScale(
-              scale: (sel || isChosen) ? 1.07 : 1.0,
-              duration: const Duration(milliseconds: 180),
-              child: AnimatedOpacity(
-                opacity: dimmed ? 0.6 : 1,
-                duration: const Duration(milliseconds: 180),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    FlipCard(
-                      key: ValueKey('pick$i'),
-                      // Kartu yang terbuka berbalik bersamaan (indeks 0).
-                      index: reveal ? 0 : i,
-                      width: w,
-                      height: h,
-                      revealed: reveal,
-                      dark: widget.dark,
-                      backPath: back,
-                      glow: accent,
-                      front: CardArt(
-                          path: o.facePath,
-                          width: w,
-                          glow: widget.dark ? EmbunColors.mist : null),
-                    ),
-                    if (sel || isChosen)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: accent, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: accent.withValues(alpha: 0.55),
-                                    blurRadius: 18),
-                              ],
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) SizedBox(width: gap),
+              _cell(i, width, back),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _cell(int i, double width, String? back) {
+    final option = widget.options[i];
+    final chosen = _chosen == i;
+    final active = _selected == i;
+    final reveal = _locked && !chosen;
+    final label = chosen
+        ? 'Pilihanmu'
+        : _labelsOn
+        ? option.label
+        : 'Kartu ${i + 1}';
+
+    return Semantics(
+      selected: active,
+      button: !_busy && !_locked,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _busy || _locked ? null : () => _select(i),
+          child: SizedBox(
+            width: width,
+            child: Column(
+              children: [
+                AnimatedOpacity(
+                  opacity: !_locked && _selected != null && !active ? 0.70 : 1,
+                  duration: const Duration(milliseconds: 160),
+                  child: Stack(
+                    children: [
+                      FlipCard(
+                        key: ValueKey('pick$i'),
+                        index: reveal ? 0 : i,
+                        width: width,
+                        height: width * kTallAspect,
+                        revealed: reveal,
+                        dark: widget.dark,
+                        backPath: back,
+                        glow: _accent,
+                        front: CardArt(
+                          path: option.facePath,
+                          width: width,
+                          glow: widget.dark ? EmbunColors.mist : null,
+                        ),
+                      ),
+                      if (active)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: _accent, width: 2),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _accent.withValues(alpha: 0.30),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 34,
-              child: AnimatedOpacity(
-                opacity: label.isEmpty ? 0 : 1,
-                duration: const Duration(milliseconds: 500),
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.2,
-                    fontWeight: isChosen ? FontWeight.bold : FontWeight.normal,
-                    color: isChosen ? accent : Colors.white70,
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 7),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.2,
+                      fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                      color: active ? _accent : Colors.white70,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
