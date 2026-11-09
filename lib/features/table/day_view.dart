@@ -145,6 +145,7 @@ class _DayViewState extends State<DayView>
   String? _fusePoin;
   // Mode wide: panel kanan bisa dialihkan dari Meja ke Gabung.
   bool _railGabung = false;
+  bool _railBalai = false;
   _Mode _lastMode = _Mode.phone;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
@@ -201,8 +202,8 @@ class _DayViewState extends State<DayView>
     _hideKabarLater();
   }
 
-  bool get _hasKabar => widget.events
-      .any((e) => e['kind'] == 'kabar' && e['day'] == widget.day);
+  /// Kabar Pagi kini tampil di slot pemberitahuan tunggal (table_page).
+  bool get _hasKabar => false;
 
   /// Slot banner Kabar Pagi yang melipat mulus saat menyingkir.
   Widget _kabarSlot({required bool compact}) => AnimatedSize(
@@ -312,6 +313,7 @@ class _DayViewState extends State<DayView>
     setState(() {
       if (advCardId != null) _fuseAdv = advCardId;
       _railGabung = true;
+      _railBalai = false;
     });
     if (_lastMode != _Mode.wide) _goTab(_tabGabung);
   }
@@ -2421,74 +2423,99 @@ class _DayViewState extends State<DayView>
         ),
       );
 
-  /// Sakelar kecil di panel kanan: Meja atau Gabung.
+  /// Sakelar tab panel kanan: Meja, Gabung, Balai.
   Widget _railSwitch() {
-    Widget pill(String text, bool on, VoidCallback f) => GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: f,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color:
-          on ? EmbunColors.gold.withValues(alpha: 0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: on
-                  ? EmbunColors.gold.withValues(alpha: 0.65)
-                  : Colors.white24),
-        ),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                color: on ? EmbunColors.cream : Colors.white70)),
-      ),
-    );
+    final n = _incoming.length;
+    Widget tab(String text, bool on, VoidCallback f, {int badge = 0}) =>
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: f,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                      color: on ? EmbunColors.gold : Colors.transparent,
+                      width: 2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(text,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: on ? FontWeight.w800 : FontWeight.w500,
+                          color: on ? EmbunColors.cream : Colors.white60)),
+                  if (badge > 0) ...[
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: EmbunColors.gold,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('$badge',
+                          style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        pill('Meja · ${widget.hand.length}', !_railGabung,
-                () => setState(() => _railGabung = false)),
-        const SizedBox(width: 6),
-        pill('Gabung', _railGabung, () => setState(() => _railGabung = true)),
+        tab('Meja · ${widget.hand.length}', !_railGabung && !_railBalai,
+                () => setState(() {
+              _railGabung = false;
+              _railBalai = false;
+            })),
+        tab('Gabung', _railGabung && !_railBalai, () => setState(() {
+          _railGabung = true;
+          _railBalai = false;
+        })),
+        tab('Balai', _railBalai, () => setState(() => _railBalai = true),
+            badge: n),
       ],
     );
   }
 
-  /// Rel kanan: Meja, Balai, lalu tombol akhiri hari yang selalu terlihat.
+  /// Rel kanan: satu panel bertab (Meja, Gabung, Balai) dan satu tombol
+  /// utama Akhiri hari di bawahnya.
   Widget _rail() {
-    final n = _incoming.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 5,
           child: KeyedSubtree(
             key: _mejaKey,
-            child: _railPanel(
-              icon: _railGabung ? 'plus' : 'mydeck2',
-              title: _railGabung ? 'Gabungkan' : 'Mejamu',
-              trailing: _railSwitch(),
-              child: _railGabung
-                  ? _gabungBody(minW: 84)
-                  : _mejaBody(minW: 84),
+            child: _card(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _railSwitch(),
+                  Container(
+                      height: 1, color: Colors.white.withValues(alpha: 0.12)),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: _railBalai
+                        ? _balaiBody()
+                        : _railGabung
+                        ? _gabungBody(minW: 84)
+                        : _mejaBody(minW: 84),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Expanded(
-          flex: 4,
-          child: _railPanel(
-            icon: 'announcement',
-            title: 'Balai Desa',
-            trailing: n == 0
-                ? null
-                : _chip('barter', '$n tawaran', color: EmbunColors.gold),
-            child: _balaiBody(),
-          ),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
