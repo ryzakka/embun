@@ -1561,15 +1561,15 @@ class _TablePageState extends State<TablePage> {
     final showStrip =
         phase == 'day' || phase == 'research' || phase == 'discussion';
 
-    final daytime = phase == 'day';
+    final marketLayout = phase == 'day' || phase == 'research';
     final gap = _short ? 5.0 : (narrow ? 8.0 : 12.0);
     final accent = showAsAntag ? EmbunColors.mist : EmbunColors.gold;
     final village = showStrip
         ? KeyedSubtree(
             key: _stripKey,
             child: VillageStrip(
-              compact: narrow || daytime,
-              slim: daytime && _short,
+              compact: narrow || marketLayout,
+              slim: marketLayout && _short,
               myId: repo.myId,
               players: players,
               emotes: emotes,
@@ -1607,7 +1607,7 @@ class _TablePageState extends State<TablePage> {
             isHost: isHost,
             showChat: phase != 'discussion',
             showDue: phase != 'voting',
-            dayLayout: daytime,
+            dayLayout: marketLayout,
             winLeaves: (g['win_leaves'] as int?) ?? 20,
             akar: (g['akar_c'] as String?) ?? 'biasa',
             batang: (g['batang_c'] as String?) ?? 'biasa',
@@ -1633,7 +1633,7 @@ class _TablePageState extends State<TablePage> {
           ),
           if (village != null) ...[
             SizedBox(height: gap),
-            if (daytime)
+            if (marketLayout)
               Container(
                 decoration: daySurface(accent, radius: 14),
                 padding: const EdgeInsets.symmetric(horizontal: 6),

@@ -66,7 +66,11 @@ class _PhaseTitleState extends State<PhaseTitle>
                   final grow = Curves.easeOutCubic
                       .transform((t / 0.45).clamp(0.0, 1.0).toDouble());
                   return LayoutBuilder(builder: (context, box) {
-                    final w = math.min(340.0, box.maxWidth * 0.82);
+                    final availableHeight = math.max(0.0, box.maxHeight - 8);
+                    final w = math.min(
+                      math.min(340.0, box.maxWidth * 0.82),
+                      availableHeight * 2.2,
+                    );
                     return ColoredBox(
                       color: Colors.black.withValues(alpha: 0.7 * e),
                       child: Center(
