@@ -179,7 +179,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
           tooltip: 'Kembali',
           onPressed: () => Navigator.pop(context),
           color: EmbunColors.gold,
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          icon: const GameIcon('back', size: 23),
         ),
         const GameIcon('logorhistory', size: 38),
         const SizedBox(width: 10),
@@ -218,7 +218,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               : IconButton(
             tooltip: 'Muat ulang',
             color: EmbunColors.gold,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const GameIcon('refresh', size: 25),
             onPressed: _load,
           ),
         ),
@@ -534,6 +534,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     body: errMsg(_error!),
     action: EmbunButton(
       label: 'Coba lagi',
+      icon: 'refresh',
       kind: EmbunButtonKind.secondary,
       height: 46,
       onPressed: _refreshing ? null : _load,

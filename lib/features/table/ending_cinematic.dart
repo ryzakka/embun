@@ -683,9 +683,11 @@ class _EndingCinematicState extends State<EndingCinematic>
     final won = _myWon ?? _win;
     final c = won ? EmbunColors.gold : EmbunColors.blood;
     final stamp = won ? 'menang' : 'kalah';
-    if (ikonPath(stamp) != null) {
-      // Cap bergambar (assets/ikon/menang & kalah) dengan pendar tipis.
-      final w = small ? 130.0 : 190.0;
+    final banner = won ? 'akhir-menang' : 'akhir-kalah';
+    final icon = !small && ikonPath(banner) != null ? banner : stamp;
+    if (ikonPath(icon) != null) {
+      final w = small ? 130.0 : 206.0;
+      final h = icon == banner ? w * 0.46 : w / 2.8;
       return Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
@@ -693,7 +695,11 @@ class _EndingCinematicState extends State<EndingCinematic>
             BoxShadow(color: c.withValues(alpha: 0.35), blurRadius: 26),
           ],
         ),
-        child: GameIcon(stamp, width: w, height: w / 2.8),
+        child: Semantics(
+          image: true,
+          label: won ? 'Kamu menang' : 'Kamu kalah',
+          child: GameIcon(icon, width: w, height: h),
+        ),
       );
     }
     return Container(

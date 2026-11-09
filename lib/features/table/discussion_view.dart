@@ -261,7 +261,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.forum_outlined, size: 34, color: Colors.white24),
+                GameIcon('discuss', size: 34),
                 SizedBox(height: 8),
                 Text(
                   'Belum ada yang bicara',

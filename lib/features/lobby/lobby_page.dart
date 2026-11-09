@@ -611,7 +611,7 @@ class _LobbyPageState extends State<LobbyPage>
     tooltip: 'Kembali',
     onPressed: onTap,
     color: EmbunColors.gold,
-    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+    icon: const GameIcon('back', size: 23),
   );
 
   /// Panduan kini layar penuh (cara bermain, karakter, dan kartu item).
@@ -674,7 +674,7 @@ class _LobbyPageState extends State<LobbyPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SectionHeader(icon: 'settings', title: 'Pengaturan'),
+                const SectionHeader(icon: 'customization', title: 'Pengaturan'),
                 const SizedBox(height: 8),
                 ValueListenableBuilder<bool>(
                   valueListenable: Sfx.I.muted,

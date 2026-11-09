@@ -139,8 +139,7 @@ class _MyInfoDialog extends StatelessWidget {
                 border: Border.all(color: Colors.white24, width: 1.5),
               ),
               child: const Center(
-                child: Icon(Icons.hourglass_empty_rounded,
-                    color: Colors.white38, size: 32),
+                child: GameIcon('wait', size: 32),
               ),
             ),
           ),
@@ -167,8 +166,7 @@ class _MyInfoDialog extends StatelessWidget {
               color: Color(0x22B07CE8),
             ),
             child: Center(
-              child: Icon(Icons.visibility_off_rounded,
-                  color: _purple, size: 34),
+              child: GameIcon('hide', size: 34),
             ),
           ),
         )

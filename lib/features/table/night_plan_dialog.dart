@@ -352,7 +352,7 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
                             const SizedBox(height: 14),
                             EmbunButton(
                               label: 'Siapkan untuk malam ini',
-                              icon: 'show',
+                              icon: 'simpan',
                               expand: true,
                               onPressed: canSave ? _save : null,
                             ),

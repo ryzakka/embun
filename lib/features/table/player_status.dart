@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../common/art.dart';
 import '../common/ornate.dart';
 
 /// Status pemain dari baris `game_players`. Satu sumber kebenaran untuk
@@ -59,14 +60,16 @@ class StatusTag extends StatelessWidget {
   final String text;
   final Color color;
   final IconData? icon;
+  final String? asset;
   final double fontSize;
   const StatusTag({
     super.key,
     required this.text,
     required this.color,
     this.icon,
+    this.asset,
     this.fontSize = 10,
-  });
+  }) : assert(icon == null || asset == null);
 
   @override
   Widget build(BuildContext context) => Container(
@@ -79,8 +82,11 @@ class StatusTag extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (icon != null) ...[
-          Icon(icon, size: fontSize + 1, color: color),
+        if (asset != null || icon != null) ...[
+          if (asset case final name?)
+            GameIcon(name, size: fontSize + 3)
+          else
+            Icon(icon, size: fontSize + 1, color: color),
           const SizedBox(width: 3),
         ],
         Text(text,

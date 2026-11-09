@@ -518,14 +518,10 @@ class _OfferingViewState extends State<OfferingView>
                                 ? EmbunColors.leaf
                                 : Colors.white38),
                       ),
-                      child: Icon(
-                          p['ready'] == true
-                              ? Icons.check_rounded
-                              : Icons.more_horiz_rounded,
-                          size: 12,
-                          color: p['ready'] == true
-                              ? Colors.black87
-                              : Colors.white60),
+                      child: GameIcon(
+                        p['ready'] == true ? 'centang' : 'wait',
+                        size: 13,
+                      ),
                     ),
                   ),
                 ],

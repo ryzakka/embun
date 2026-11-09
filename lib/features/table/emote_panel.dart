@@ -273,8 +273,7 @@ class _EmotePanelState extends State<EmotePanel> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: chip(
-              avatar: const Icon(Icons.groups_rounded,
-                  size: 20, color: EmbunColors.gold),
+              avatar: const GameIcon('persona', size: 20),
               label: 'Semua',
               selected: target == null,
               onTap: () => setState(() => target = null),

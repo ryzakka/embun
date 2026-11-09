@@ -549,9 +549,8 @@ class _TablePageState extends State<TablePage> {
 
   // ===================== malam di antara hari biasa =====================
 
-  /// Hari biasa baru saja berakhir (fase 'day' berganti hari berikutnya):
-  /// putar layar malam. Voting tidak diikuti malam. Masuk kembali sesudahnya
-  /// tidak memutarnya lagi.
+  /// Putar laporan ketika hari biasa berakhir, atau ketika panah menentukan
+  /// pemenang. Masuk kembali sesudahnya tidak memutarnya lagi.
   void _checkNight(Map<String, dynamic>? prev, Map<String, dynamic> g) {
     if (isAntag &&
         (prev == null ||
@@ -559,31 +558,41 @@ class _TablePageState extends State<TablePage> {
             prev['phase'] != g['phase'])) {
       _loadNightPlan();
     }
-    if (prev == null) return;
-    // Sebelum migrasi v10 hari biasa langsung berganti hari ('day'); sesudahnya
-    // lewat fase 'night' dulu.
-    if (prev['status'] != 'playing' ||
-        (prev['phase'] != 'day' && prev['phase'] != 'night')) {
-      return;
-    }
-    if (g['status'] != 'playing') return;
+    if (prev == null || prev['status'] != 'playing') return;
     final prevDay = prev['day'] as int;
-    if (((g['day'] as int?) ?? prevDay) != prevDay + 1) return;
+    final phase = prev['phase'];
+    final finished = g['status'] == 'finished';
+    final finalBow = finished && phase == 'day' && g['end_reason'] == 'panah';
+    final nightFinished =
+        finished && phase == 'night' && g['winner'] != 'dibatalkan';
+    final nextDay = g['status'] == 'playing' &&
+        (phase == 'day' || phase == 'night') &&
+        g['day'] == prevDay + 1;
+    if (!finalBow && !nightFinished && !nextDay) return;
     if (_lastNightDay == prevDay) return;
     _lastNightDay = prevDay;
-    _nightScene = {'day': prevDay, 'rows': null};
-    _loadNight(prevDay);
+    _nightScene = {'day': prevDay, 'rows': null, 'finalBow': finalBow};
+    _loadNight(prevDay, finalBow: finalBow);
   }
 
-  Future<void> _loadNight(int day, [int attempt = 0]) async {
+  Future<void> _loadNight(int day,
+      {required bool finalBow, int attempt = 0}) async {
     var rows = <Map<String, dynamic>>[];
     try {
       rows = await repo.nightReports(widget.gameId, day);
+      if (finalBow) {
+        rows = rows.where((row) {
+          final impact = row['impact'];
+          return row['user_id'] == repo.myId &&
+              impact is Map &&
+              impact['effect'] == 'bow_final';
+        }).toList();
+      }
     } catch (_) {}
     if (!mounted) return;
-    if (rows.isEmpty && attempt < 1) {
+    if (!finalBow && rows.isEmpty && attempt < 1) {
       await Future.delayed(const Duration(milliseconds: 600));
-      return _loadNight(day, attempt + 1);
+      return _loadNight(day, finalBow: finalBow, attempt: attempt + 1);
     }
     setState(() {
       final cur = _nightScene;
@@ -602,10 +611,14 @@ class _TablePageState extends State<TablePage> {
     // Warna yang sama dengan dasar semua adegan (kSceneInk), supaya layar
     // penantian data tidak berbeda nuansa dari adegan yang menyusul.
     if (rows == null) return const ColoredBox(color: kSceneInk);
+    final finalBow = v['finalBow'] == true;
     return NightScene(
       key: ValueKey('night${v['day']}'),
       day: v['day'] as int,
       rows: rows,
+      defs: defs,
+      finalBow: finalBow,
+      finalBowBackdrop: finalBow ? landscapePath(game!['leaves'] as int) : null,
       onDone: () {
         if (mounted) setState(() => _nightScene = null);
       },
@@ -991,6 +1004,7 @@ class _TablePageState extends State<TablePage> {
                           ? const StatusTag(
                           text: 'Keluar',
                           color: Colors.white54,
+                          asset: 'keluar',
                           fontSize: 11)
                           : Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1001,7 +1015,7 @@ class _TablePageState extends State<TablePage> {
                               child: StatusTag(
                                   text: 'Dikurung',
                                   color: EmbunColors.blood,
-                                  icon: Icons.lock_rounded,
+                                  asset: 'lock',
                                   fontSize: 11),
                             ),
                           GameIcon(
@@ -1215,7 +1229,8 @@ class _TablePageState extends State<TablePage> {
   /// Ada adegan layar penuh yang berjalan: musik meja diredam (adegan punya
   /// suaranya sendiri). Saat game selesai, peredaman diurus EndingCinematic.
   bool _sceneDuck(Map<String, dynamic>? g) {
-    if (g == null || g['status'] == 'finished') return false;
+    if (g == null) return false;
+    if (g['status'] == 'finished') return _nightScene != null;
     return (_dayIntro != null && !_holdIntro) ||
         _evict != null ||
         _voteReveal != null ||
@@ -1687,8 +1702,7 @@ class _TablePageState extends State<TablePage> {
       if (out) {
         items.add(_Notice(
           color: Colors.white54,
-          leading: const Icon(Icons.visibility_rounded,
-              size: 20, color: Colors.white54),
+          leading: const GameIcon('show', size: 22),
           short: 'Kamu sudah keluar dari desa',
           long: 'Kamu dituduh mayoritas dua kali. Kamu hanya menonton '
               'sampai permainan selesai.',
@@ -1707,8 +1721,7 @@ class _TablePageState extends State<TablePage> {
       } else {
         items.add(_Notice(
           color: EmbunColors.gold,
-          leading: const Icon(Icons.warning_amber_rounded,
-              size: 20, color: EmbunColors.gold),
+          leading: const GameIcon('alert', size: 22),
           short: 'Kamu pernah dituduh sekali',
           long: isAntag
               ? 'Dituduh mayoritas sekali lagi, Si Terbisik tertangkap dan warga menang.'
@@ -1894,8 +1907,7 @@ class _TablePageState extends State<TablePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.visibility_rounded,
-              size: 56, color: Colors.white38),
+          const GameIcon('show', size: 56),
           const SizedBox(height: 12),
           const Text('Kamu menonton dari luar desa',
               textAlign: TextAlign.center,
@@ -2049,7 +2061,7 @@ class _TablePageState extends State<TablePage> {
         itemBuilder: (_) => [
           item('me', 'persona', 'Infoku'),
           item('players', 'persona', 'Daftar warga'),
-          item('guide', 'info', 'Panduan'),
+          item('guide', 'question', 'Panduan'),
           item(
             'fx',
             'showaddgraphic',
@@ -2133,7 +2145,7 @@ class _TablePageState extends State<TablePage> {
 
   Widget _result(Map<String, dynamic> g) {
     // Voting yang mengakhiri permainan: buka suara dulu, baru sinematik akhir.
-    if (_voteReveal != null || _evict != null) {
+    if (_voteReveal != null || _evict != null || _nightScene != null) {
       return const ColoredBox(color: Color(0xFF05080F));
     }
     final wargaMenang = g['winner'] == 'warga';
@@ -2379,8 +2391,9 @@ class _TablePageState extends State<TablePage> {
     // key = hari*10 + urutan (beli, persembahan, suara) agar urut stabil.
     final lines = <MapEntry<int, String>>[];
     for (final b in buys.where((b) => b['user_id'] == uid)) {
+      final verb = b['bonus'] == true ? 'Mendapat gratis' : 'Membeli';
       lines.add(MapEntry((b['day'] as int) * 10,
-          'Membeli ${_cardName(b['card_id'] as String)}'));
+          '$verb ${_cardName(b['card_id'] as String)}'));
     }
     final byDay = <int, List<Map<String, dynamic>>>{};
     for (final o in offs.where((o) => o['user_id'] == uid)) {
@@ -2396,8 +2409,9 @@ class _TablePageState extends State<TablePage> {
     });
     for (final v in votes.where((v) => v['user_id'] == uid)) {
       final t = v['target_id'] as String?;
+      final weight = v['weight'] == 2 ? ' (2 suara)' : '';
       lines.add(MapEntry((v['day'] as int) * 10 + 2,
-          t == null ? 'Tidak memilih' : 'Memilih ${_nameOf(t)}'));
+          t == null ? 'Tidak memilih' : 'Memilih ${_nameOf(t)}$weight'));
     }
     lines.sort((a, b) => a.key.compareTo(b.key));
 

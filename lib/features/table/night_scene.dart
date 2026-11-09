@@ -7,6 +7,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/scene_flow.dart';
+import 'night_impact.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -15,37 +16,25 @@ double _smooth(double x) => x * x * (3 - 2 * x);
 
 /// Layar malam di antara dua hari biasa, diputar SEBELUM adegan fajar.
 ///
-/// [rows] berasal dari `night_reports`: pengumuman untuk semua pemain
-/// (user_id kosong, kind 'attack' atau 'calm') dan baris pribadi bila aku
-/// menjadi korban (user_id = aku, kind 'private', kolom `scene` = 'sumur' atau
-/// 'rumah'). Sasaran dan jenis serangan tidak pernah diumumkan ke semua orang.
-///
-/// Seluruhnya gambar dari assets/bentang, dihidupkan dengan gerak kamera:
-///
-///   MALAM TENANG (semua pemain)
-///     langit-malamberawan -> kamera turun -> lembah-malamindah
-///   ADA SERANGAN (semua pemain: sama persis, tanpa sasaran / jenis)
-///     langit-malamberawan -> hentakan + kilat merah -> langit-malammerahungugelap
-///     -> kamera turun -> lembah-malamkering
-///   KORBAN SAJA (baris pribadi ber-scene)
-///     lembah-malamkering -> kamera turun lagi -> sumur-gelapmalam (Racun Sumur)
-///     atau rumah-malamdepanpintu (Maling Embun), bersama baris pribadinya.
-///     Sesaat kemudian hantunya menampakkan diri di gambar yang sama:
-///     hantu-perempuankeluarsumur (sumur) / hantu-priapenggodadikamar (rumah).
-///
-/// Pemain lain tak pernah melihat dua gambar terakhir itu. Kabut Pekat tidak
-/// punya korban pribadi, jadi bagi semua orang berhenti di lembah-malamkering.
+/// Laporan umum memakai suasana malam yang sama untuk semua pemain.
+/// Laporan pribadi menambahkan lokasi korban dan visual hasil bila tersedia.
 class NightScene extends StatefulWidget {
   /// Hari yang baru berakhir.
   final int day;
   final List<Map<String, dynamic>> rows;
   final VoidCallback onDone;
+  final Map<String, Map<String, dynamic>> defs;
+  final bool finalBow;
+  final String? finalBowBackdrop;
 
   const NightScene({
     super.key,
     required this.day,
     required this.rows,
     required this.onDone,
+    this.defs = const {},
+    this.finalBow = false,
+    this.finalBowBackdrop,
   });
 
   @override
@@ -64,6 +53,7 @@ class _NightSceneState extends State<NightScene>
   static const _ghostExtra = 1400; // tambahan waktu bila hantu menampakkan diri
 
   late final List<Map<String, dynamic>> _lines;
+  late final List<NightImpact?> _impacts;
   late final List<double> _starts; // kapan tiap baris mulai muncul (ms)
   late final int _total;
   late final int _attackIdx;
@@ -94,8 +84,10 @@ class _NightSceneState extends State<NightScene>
         if (r['user_id'] != null) r
     ];
     _lines = [...pub, ...priv];
+    _impacts = _lines.map(NightImpact.fromReport).toList();
     _attackIdx = _lines.indexWhere((l) => l['kind'] == 'attack');
-    _privateIdx = _lines.indexWhere((l) => l['kind'] == 'private');
+    _privateIdx = _lines.indexWhere((l) =>
+        l['kind'] == 'private' && nightVictimPath(l['scene'] as String?) != null);
     _victimScene = _privateIdx < 0
         ? null
         : (_lines[_privateIdx]['scene'] as String?);
@@ -113,12 +105,12 @@ class _NightSceneState extends State<NightScene>
         at = math.max(at, starts[_attackIdx] + _privAfter);
       }
       starts.add(at);
-      cursor = at + _slot(_lines[i]);
+      cursor = at + _slot(i);
     }
     _starts = starts;
 
     final last = _lines.length - 1;
-    final lastRead = _slot(_lines[last]);
+    final lastRead = _slot(last);
     _total = (_starts[last] +
         lastRead +
         (_privateIdx >= 0
@@ -143,7 +135,12 @@ class _NightSceneState extends State<NightScene>
       _timers.add(Timer(Duration(milliseconds: _lineStart(i).round()), () {
         if (!mounted) return;
         final k = _lines[i]['kind'];
-        if (k == 'attack') {
+        final impact = _impacts[i];
+        if (impact != null) {
+          final sound = impact.sound;
+          if (sound != null) Sfx.I.play(sound, owner: this, tag: 'impact');
+          if (impact.applied) HapticFeedback.mediumImpact();
+        } else if (k == 'attack') {
           // Pengumuman serangan: sama untuk semua pemain (tanpa sasaran/jenis).
           Sfx.I.play(Snd.slashPedang, owner: this, tag: 'slash');
           HapticFeedback.heavyImpact();
@@ -182,9 +179,13 @@ class _NightSceneState extends State<NightScene>
   /// Waktu (ms) yang disediakan untuk satu baris sebelum baris berikutnya
   /// muncul: sesuai panjang teksnya. Serangan diberi tambahan agar hentakannya
   /// sempat dirasakan sebelum teks lain menimpa.
-  double _slot(Map<String, dynamic> l) {
-    final base = readMs('${l['text']}', min: 1700, max: 5200).toDouble();
-    return l['kind'] == 'attack' ? base + 500 : base;
+  double _slot(int index) {
+    final line = _lines[index];
+    final impact = _impacts[index];
+    final text = '${impact?.title ?? ''} ${line['text']}';
+    final base = readMs(text, min: 1700, max: 5200).toDouble();
+    if (impact != null) return base + 560;
+    return line['kind'] == 'attack' ? base + 500 : base;
   }
 
   /// Baris pribadi muncul setelah kamera selesai turun ke lembah serangan
@@ -218,6 +219,11 @@ class _NightSceneState extends State<NightScene>
   }
 
   Widget _world(double ms, double h, double atkAt, double privAt) {
+    if (widget.finalBow) {
+      final p = _smooth(_seg(ms, 0, 2600));
+      return _layer(widget.finalBowBackdrop ?? _valAtk, 1, h,
+          incoming: false, p: p);
+    }
     final hasAtk = _attackIdx >= 0;
     final hasVictim = _privateIdx >= 0 && _victimImg != null;
 
@@ -394,7 +400,8 @@ class _NightSceneState extends State<NightScene>
         const Color(0xFFE8EDFF), const Color(0xFFFFD9DD), attack)!;
     final titleGlow = Color.lerp(
         const Color(0xFF7FA8FF), EmbunColors.blood, attack)!;
-    const word = 'MALAM';
+    final word = widget.finalBow ? 'PANAH' : 'MALAM';
+    final active = _starts.lastIndexWhere((start) => start <= ms);
     final subA = _smooth(_seg(ms, 750, 1250));
     final ornA = _smooth(_seg(ms, 500, 1300));
 
@@ -437,7 +444,7 @@ class _NightSceneState extends State<NightScene>
             padding: const EdgeInsets.fromLTRB(0, 6, 8, 0),
             child: TextButton.icon(
               onPressed: _finish,
-              icon: const Icon(Icons.fast_forward_rounded, size: 20),
+              icon: const GameIcon('skip2', size: 22),
               label: const Text('Lewati'),
               style: TextButton.styleFrom(foregroundColor: Colors.white54),
             ),
@@ -452,9 +459,14 @@ class _NightSceneState extends State<NightScene>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [for (var i = 0; i < word.length; i++) letter(i)],
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < word.length; i++) letter(i),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -472,7 +484,9 @@ class _NightSceneState extends State<NightScene>
                     Opacity(
                       opacity: subA,
                       child: Text(
-                        'Hari ${widget.day} berlalu',
+                        widget.finalBow
+                            ? 'Busur Terakhir'
+                            : 'Hari ${widget.day} berlalu',
                         style: const TextStyle(
                             fontSize: 13.5,
                             letterSpacing: 1.2,
@@ -480,8 +494,8 @@ class _NightSceneState extends State<NightScene>
                       ),
                     ),
                     const SizedBox(height: 26),
-                    for (var i = 0; i < _lines.length; i++)
-                      _line(_lines[i], i, ms, atkPulse),
+                    for (var i = active; i >= 0; i--)
+                      _line(_lines[i], i, ms, atkPulse, active: i == active),
                   ],
                 ),
               ),
@@ -492,33 +506,53 @@ class _NightSceneState extends State<NightScene>
     );
   }
 
-  Widget _line(Map<String, dynamic> l, int i, double ms, double atkPulse) {
+  Widget _line(Map<String, dynamic> l, int i, double ms, double atkPulse,
+      {required bool active}) {
     final kind = '${l['kind']}';
     final text = '${l['text']}';
     final a = _seg(ms, _lineStart(i), _lineStart(i) + 520);
+    final impact = _impacts[i];
+    if (impact != null) {
+      final card = widget.defs[impact.card];
+      return Opacity(
+        opacity: a,
+        child: NightImpactReport(
+          key: ValueKey(l['id']),
+          impact: impact,
+          message: text,
+          progress: _seg(ms, _lineStart(i), _lineStart(i) + 1650),
+          cardArt: cardArtPath(card),
+          cardName: card?['name'] as String?,
+          active: active,
+        ),
+      );
+    }
     final Color color;
-    final IconData icon;
+    final Widget icon;
     String? tag;
     switch (kind) {
       case 'attack':
         color = EmbunColors.blood;
-        icon = Icons.warning_amber_rounded;
+        icon = const GameIcon('alert', size: 28);
         tag = 'BAHAYA';
       case 'bow':
         color = EmbunColors.gold;
-        icon = Icons.gps_fixed_rounded;
+        icon = const Icon(Icons.gps_fixed_rounded,
+            size: 28, color: EmbunColors.gold);
         tag = 'BUSUR TERAKHIR';
       case 'skill':
         color = EmbunColors.mist;
-        icon = Icons.auto_awesome_rounded;
+        icon = const Icon(Icons.auto_awesome_rounded,
+            size: 28, color: EmbunColors.mist);
         tag = 'HARGA KEMAMPUAN';
       case 'private':
         color = EmbunColors.gold;
-        icon = Icons.lock_rounded;
+        icon = const GameIcon('lock', size: 28);
         tag = 'Hanya kamu yang tahu';
       default:
         color = const Color(0xFF8FD6B0);
-        icon = Icons.bedtime_rounded;
+        icon = const Icon(Icons.bedtime_rounded,
+            size: 28, color: Color(0xFF8FD6B0));
     }
     final isAtk = kind == 'attack';
     final pop = Curves.elasticOut.transform(_seg(a, 0.0, 1.0));
@@ -571,7 +605,7 @@ class _NightSceneState extends State<NightScene>
               children: [
                 Transform.scale(
                   scale: (0.3 + 0.7 * pop).clamp(0.1, 1.5).toDouble(),
-                  child: Icon(icon, size: 28, color: color),
+                  child: icon,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

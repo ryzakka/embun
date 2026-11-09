@@ -52,8 +52,11 @@ bool abilityIsManual(String id) => const {
   'kunci_segel',
 }.contains(id);
 
-/// Kartu kemampuan (rasio 3:4). Memakai gambar di assets/kartu/kemampuan bila
-/// ada; bila belum, tampil sebagai kartu berikon.
+/// Bidang 5:6 memuat semua muka kartu biru dengan bingkai aslinya utuh.
+const abilityCardAspect = 1.2;
+const _cardBlue = Color(0xFF8FCBFF);
+
+/// Kartu kemampuan memakai ilustrasi asli atau ikon saat ilustrasi tak ada.
 class AbilityCardView extends StatelessWidget {
   final Map<String, dynamic> def;
   final bool used;
@@ -70,7 +73,7 @@ class AbilityCardView extends StatelessWidget {
     final id = '${def['id']}';
     final accent = abilityAccent(id);
     final art = abilityArtPath(def);
-    final h = width * kTallAspect;
+    final h = width * abilityCardAspect;
     return Container(
       width: width,
       height: h,
@@ -79,11 +82,11 @@ class AbilityCardView extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF1F3A33), Color(0xFF0C1B17)],
+          colors: [Color(0xFF15283B), Color(0xFF0A1726)],
         ),
-        border: Border.all(color: accent.withValues(alpha: 0.85), width: 2),
+        border: Border.all(color: _cardBlue.withValues(alpha: 0.40)),
         boxShadow: [
-          BoxShadow(color: accent.withValues(alpha: 0.35), blurRadius: 22),
+          BoxShadow(color: _cardBlue.withValues(alpha: 0.19), blurRadius: 16),
         ],
       ),
       child: ClipRRect(
@@ -92,7 +95,9 @@ class AbilityCardView extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (art != null)
-              GameImage(path: art, cacheWidth: (width * 2).round())
+              GameImage(
+                path: art, fit: BoxFit.contain, cacheWidth: (width * 2).round(),
+              )
             else
               Padding(
                 padding: EdgeInsets.all(width * 0.08),
@@ -136,7 +141,7 @@ class AbilityCardView extends StatelessWidget {
                       border: Border.all(color: EmbunColors.blood, width: 2.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('TERPAKAI',
+                    child: Text(def['kind'] == 'pasif' ? 'NONAKTIF' : 'TERPAKAI',
                         style: TextStyle(
                             fontSize: width * 0.11,
                             fontWeight: FontWeight.w900,
@@ -259,11 +264,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
   Widget _resultPanel() {
     final r = result!;
     final res = '${r['result']}';
-    final (Color color, IconData icon) = switch (res) {
-      'benar' => (EmbunColors.blood, Icons.warning_amber_rounded),
-      'ragu' => (EmbunColors.gold, Icons.help_outline_rounded),
-      'bukan' => (EmbunColors.leaf, Icons.check_circle_outline_rounded),
-      _ => (abilityAccent(_id), abilityIcon(_id)),
+    final (color, icon) = switch (res) {
+      'benar' => (EmbunColors.blood, 'alert'),
+      'ragu' => (EmbunColors.gold, 'question'),
+      'bukan' => (EmbunColors.leaf, 'centang'),
+      _ => (abilityAccent(_id), null),
     };
     final isRead = _id == 'jangan_bohong';
     return Container(
@@ -276,7 +281,10 @@ class _AbilityDialogState extends State<_AbilityDialog> {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 36, color: color),
+          if (icon != null)
+            GameIcon(icon, size: 36)
+          else
+            Icon(abilityIcon(_id), size: 36, color: color),
           const SizedBox(height: 6),
           if (isRead) ...[
             Text('Firasatmu tentang ${r['target']}',
@@ -362,7 +370,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         title: const Text('Berkorban untuk Hayu?'),
         content: const Text(
             'Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam '
-                'tiba. Ini tidak bisa dibatalkan.'),
+                'tiba. Jika Hayu mencapai 30 daun, pengorbanan dibayar saat itu.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -385,7 +393,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Harga: 1 nyawa, dibayar saat malam tiba.',
+            _note('Harga: 1 nyawa, dibayar pada malam hari biasa berikutnya.',
                 color: EmbunColors.gold),
             gap,
             const Text('Pilih satu pemain:',
@@ -405,9 +413,8 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Malam ini kamu akan tahu jenis serangan malam yang terjadi, '
-                'atau tahu malam itu damai. Hasilnya muncul di musyawarah '
-                'berikutnya.'),
+            _note('Hasilnya muncul pada musyawarah berikutnya. Kamera mencatat '
+                'serangan yang dilancarkan, termasuk bila tertangkis.'),
             gap,
             EmbunButton(
               label: 'Pasang kamera',
@@ -436,7 +443,8 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Harga dibayar saat malam tiba. Pilih satu.'),
+            _note('Harga dibayar malam ini. Jika Hayu mencapai 30 daun, '
+                'harga dibayar saat itu dan warga menang.'),
             gap,
             EmbunButton(
               label: '+5 daun, harga 1 nyawa',
@@ -483,18 +491,21 @@ class _AbilityDialogState extends State<_AbilityDialog> {
 
     if (!abilityIsManual(_id)) {
       final text = switch (_id) {
-        'tumbuhan' => 'Bekerja otomatis. Laju embunmu sudah naik sejak awal.',
+        'tumbuhan' => _usedNow
+            ? 'Bonus laju embun sudah dinonaktifkan.'
+            : 'Bekerja otomatis. Laju dasar embunmu naik 0,75 sejak awal.',
         'lidah_manis' => _usedNow
-            ? 'Sudah terpakai: tuduhan pertamamu sudah dilewati.'
-            : 'Bekerja otomatis saat kamu pertama kali dituduh mayoritas.',
+            ? 'Si Lidah Manis sudah tidak aktif.'
+            : 'Bekerja otomatis pada tuduhan mayoritas pertama yang akan '
+                'mengurungmu. Tuduhan tetap tercatat.',
         'kebangkitan_arwah' => _usedNow
-            ? 'Sudah terpakai: arwahmu sudah bangkit satu kali.'
-            : 'Bekerja otomatis saat kamu akan tersingkir dari desa: arwahmu '
-            'bangkit dengan 1 nyawa, sebagai warga biasa.',
+            ? 'Kebangkitan Arwah sudah tidak aktif.'
+            : 'Bekerja otomatis jika kamu akan tersingkir karena voting atau '
+                'Busur Terakhir. Kamu bangkit dengan 1 nyawa sebagai warga biasa.',
         'palu_hakim' => _usedNow
-            ? 'Sudah terpakai: palumu sudah jatuh satu kali.'
+            ? 'Palu sudah tidak tersedia untuk voting berikutnya.'
             : 'Dipakai di layar voting: nyalakan "Patuhilah Padaku" sebelum '
-            'mengunci suara, dan suaramu bernilai 2.',
+            'mengunci tuduhan. Suaramu berbobot 2.',
         _ => 'Tidak ada yang perlu dipakai. Kamu warga desa biasa.',
       };
       return _note(text);
@@ -604,10 +615,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
                       ? FlipCard(
                     index: 0,
                     width: 170,
-                    height: 170 * kTallAspect,
+                    height: 170 * abilityCardAspect,
                     revealed: true,
-                    glow: accent,
+                    glow: _cardBlue,
                     backPath: abilityBackPath(),
+                    backFit: BoxFit.contain,
                     front: AbilityCardView(
                         def: widget.def, used: _usedNow, width: 170),
                   )

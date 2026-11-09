@@ -311,7 +311,10 @@ class _TutorialPageState extends State<TutorialPage>
             IconButton(
               tooltip: 'Langkah sebelumnya',
               onPressed: _page > 0 ? () => _go(-1) : null,
-              icon: const Icon(Icons.arrow_back_rounded, size: 21),
+              icon: Opacity(
+                opacity: _page > 0 ? 1 : 0.45,
+                child: const GameIcon('back', size: 23),
+              ),
             ),
             const SizedBox(width: 6),
             Expanded(

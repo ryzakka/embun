@@ -180,8 +180,7 @@ class _VillageStripState extends State<VillageStrip> {
                 if (out)
                   const Positioned.fill(
                     child: Center(
-                      child: Icon(Icons.close_rounded,
-                          size: 30, color: EmbunColors.blood),
+                      child: GameIcon('silang', size: 30),
                     ),
                   )
                 else
@@ -261,7 +260,8 @@ class _VillageStripState extends State<VillageStrip> {
               ),
             ),
             if (out && !widget.compact)
-              const StatusTag(text: 'Keluar', color: Colors.white54, fontSize: 9)
+              const StatusTag(
+                text: 'Keluar', color: Colors.white54, asset: 'keluar', fontSize: 9)
             else if (jailed && !widget.compact)
               const StatusTag(
                   text: 'Dikurung', color: EmbunColors.blood, fontSize: 9),

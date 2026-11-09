@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../common/art.dart';
 import '../common/ornate.dart';
 
 // =====================================================================
@@ -383,8 +384,7 @@ class _AnnouncementBodyState extends State<AnnouncementBody> {
               children: [
                 const Padding(
                   padding: EdgeInsets.only(top: 2, right: 8),
-                  child: Icon(Icons.priority_high_rounded,
-                      size: 17, color: EmbunColors.gold),
+                  child: GameIcon('alert', size: 18),
                 ),
                 Expanded(
                   child: _rich(b.text, _body.copyWith(color: EmbunColors.cream)),

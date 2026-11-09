@@ -382,9 +382,15 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
       if (count < kMaxPlayers)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            '${kMaxPlayers - count} slot kosong',
-            style: const TextStyle(fontSize: 12, color: Colors.white70),
+          child: Row(
+            children: [
+              const GameIcon('addmember', size: 21),
+              const SizedBox(width: 6),
+              Text(
+                '${kMaxPlayers - count} slot kosong',
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+            ],
           ),
         ),
     ];
@@ -471,10 +477,7 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                 tooltip: ready
                     ? 'Karakter terkunci selama siap'
                     : 'Ganti karakter',
-                icon: Icon(
-                  ready ? Icons.lock_outline_rounded : Icons.edit_outlined,
-                  size: 18,
-                ),
+                icon: GameIcon(ready ? 'lock' : 'change', size: 21),
                 color: EmbunColors.gold,
                 onPressed: _busy || ready
                     ? null
@@ -536,9 +539,10 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                TextButton(
+                TextButton.icon(
                   onPressed: _busy ? null : () => _act(widget.onLeave),
-                  child: Text(_host ? 'Bubarkan' : 'Keluar'),
+                  icon: GameIcon(_host ? 'bubarkan' : 'keluar', size: 19),
+                  label: Text(_host ? 'Bubarkan' : 'Keluar'),
                 ),
               ],
             ),

@@ -544,6 +544,7 @@ class _GuideFlip extends StatefulWidget {
   final double width;
   final double height;
   final String? backPath;
+  final BoxFit backFit;
   final bool dark;
   final Color glow;
   final Widget front;
@@ -552,6 +553,7 @@ class _GuideFlip extends StatefulWidget {
     required this.height,
     required this.front,
     this.backPath,
+    this.backFit = BoxFit.cover,
     this.dark = false,
     this.glow = const Color(0xFFFFD866),
   });
@@ -604,6 +606,7 @@ class _GuideFlipState extends State<_GuideFlip> {
     dark: widget.dark,
     glow: widget.glow,
     backPath: widget.backPath,
+    backFit: widget.backFit,
     front: widget.front,
   );
 }
@@ -853,7 +856,11 @@ Widget _catalogState(String loading, {String? error, VoidCallback? retry}) =>
                   const GameIcon('alert', size: 30),
                   const SizedBox(height: 5),
                   Text(error, textAlign: TextAlign.center),
-                  TextButton(onPressed: retry, child: const Text('Coba lagi')),
+                  TextButton.icon(
+                    onPressed: retry,
+                    icon: const GameIcon('refresh', size: 20),
+                    label: const Text('Coba lagi'),
+                  ),
                 ],
               ),
       ),
@@ -1879,8 +1886,9 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
         children: [
           _GuideFlip(
             width: w,
-            height: w * kTallAspect,
+            height: w * abilityCardAspect,
             backPath: abilityBackPath(),
+            backFit: BoxFit.contain,
             glow: accent,
             front: AbilityCardView(def: d, width: w),
           ),

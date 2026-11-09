@@ -870,7 +870,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
         ),
         TextButton.icon(
           onPressed: _finish,
-          icon: const Icon(Icons.fast_forward_rounded, size: 20),
+          icon: const GameIcon('skip2', size: 22),
           label: const Text('Lewati'),
           style: TextButton.styleFrom(foregroundColor: Colors.white60),
         ),

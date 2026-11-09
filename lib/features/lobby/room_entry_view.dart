@@ -248,11 +248,11 @@ class _CreateRoomViewState extends State<CreateRoomView> {
               child: _visibilityChoice(
                 false,
                 'Privat',
-                Icons.lock_outline_rounded,
+                'lock',
               ),
             ),
             Expanded(
-              child: _visibilityChoice(true, 'Publik', Icons.public_rounded),
+              child: _visibilityChoice(true, 'Publik', 'persona'),
             ),
           ],
         ),
@@ -296,7 +296,7 @@ class _CreateRoomViewState extends State<CreateRoomView> {
     ],
   );
 
-  Widget _visibilityChoice(bool value, String label, IconData icon) {
+  Widget _visibilityChoice(bool value, String label, String icon) {
     final selected = widget.isPublic == value;
     final color = selected ? EmbunColors.gold : EmbunColors.cream;
     return Semantics(
@@ -313,7 +313,7 @@ class _CreateRoomViewState extends State<CreateRoomView> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         onPressed: widget.busy ? null : () => widget.onVisibilityChanged(value),
-        icon: Icon(icon, size: 17),
+        icon: GameIcon(icon, size: 19),
         label: Text(
           label,
           style: TextStyle(

@@ -362,8 +362,7 @@ class _VotingViewState extends State<VotingView>
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             padding: EdgeInsets.zero,
             onPressed: () => _showRules(need),
-            icon: const Icon(Icons.info_outline_rounded,
-                size: 22, color: Colors.white60),
+            icon: const GameIcon('question', size: 23),
           ),
         ],
       ),
@@ -794,7 +793,7 @@ class _SuspectCard extends StatelessWidget {
                           child: const StatusTag(
                               text: 'Dikurung',
                               color: EmbunColors.blood,
-                              icon: Icons.lock_rounded),
+                              asset: 'lock'),
                         ),
                       ),
                     ),
@@ -1060,7 +1059,7 @@ class _LockedViewState extends State<_LockedView>
                   : null,
             ),
             child: i < ready
-                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                ? const GameIcon('centang', size: 16)
                 : null,
           ),
       ],

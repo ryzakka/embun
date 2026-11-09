@@ -36,7 +36,7 @@ Widget _up(double t, double a, double b, Widget child, {double dy = 18}) {
 
 class _Award {
   final String title;
-  final IconData icon;
+  final String icon;
   final Color color;
   final String uid;
   final String text;
@@ -53,6 +53,7 @@ class _Day {
   final int day;
   final List<(String, String)> offers; // (pemain, kartu)
   final List<(String, String)> buys; // (pemain, kartu)
+  final List<(String, String)> bonusCards;
   final String? top; // paling banyak dituding; null = seri / tanpa sidang
   final int topN, voters;
   final bool caught;
@@ -60,6 +61,7 @@ class _Day {
     required this.day,
     required this.offers,
     required this.buys,
+    required this.bonusCards,
     required this.top,
     required this.topN,
     required this.voters,
@@ -148,7 +150,7 @@ const _endReasonText = {
 ///
 /// Gunakan tab, tombol bawah, atau geser isi untuk berganti bab.
 /// Semua statistik dihitung dari data game_recap + rahasia yang terbuka di
-/// akhir permainan, tanpa perubahan SQL.
+/// akhir permainan. Bobot suara dan bonus bisa absen pada rekap lama.
 class FinalResultScreen extends StatefulWidget {
   final bool wargaMenang;
   final int leaves;
@@ -339,7 +341,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     List<Map<String, dynamic>> list(String k) =>
         List<Map<String, dynamic>>.from((r[k] as List?) ?? const []);
     final offs = list('offerings');
-    final buys = list('purchases');
+    final market = list('purchases');
+    final buys = market.where((row) => row['bonus'] != true).toList();
+    final bonusCards = market.where((row) => row['bonus'] == true).toList();
     final votes = list('votes');
 
     String? antagId;
@@ -387,24 +391,25 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       final uid = v['user_id'] as String;
       final d = v['day'] as int;
       final t = v['target_id'] as String?;
+      final weight = v['weight'] == 2 ? 2 : 1;
       if (t != null) {
         recvBy[t] = (recvBy[t] ?? 0) + 1;
         final m = tally.putIfAbsent(d, () => {});
-        m[t] = (m[t] ?? 0) + 1;
+        m[t] = (m[t] ?? 0) + weight;
       }
-      voteN[d] = (voteN[d] ?? 0) + 1;
+      voteN[d] = (voteN[d] ?? 0) + weight;
       if (antagId == null || uid == antagId) continue;
       final a = byDay.putIfAbsent(d, () => [0, 0, 0]);
-      wargaVotes++;
+      wargaVotes += weight;
       if (t == null) {
-        a[2]++;
+        a[2] += weight;
         noneBy[uid] = (noneBy[uid] ?? 0) + 1;
       } else if (t == antagId) {
-        a[0]++;
-        right++;
+        a[0] += weight;
+        right += weight;
         rightBy[uid] = (rightBy[uid] ?? 0) + 1;
       } else {
-        a[1]++;
+        a[1] += weight;
         wrongBy[uid] = (wrongBy[uid] ?? 0) + 1;
       }
     }
@@ -433,7 +438,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Mata Elang',
-          Icons.visibility_rounded,
+          'show',
           EmbunColors.gold,
           eagle,
           '${rightBy[eagle]}× menunjuk Si Terbisik dengan tepat',
@@ -446,7 +451,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Paling Dicurigai',
-          Icons.person_search_rounded,
+          'question',
           EmbunColors.blood,
           suspect,
           'Dituding ${recvBy[suspect]}× di seluruh sidang '
@@ -463,7 +468,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Salah Sasaran',
-          Icons.report_gmailerrorred_rounded,
+          'alert',
           Colors.orangeAccent,
           wrong,
           '${wrongBy[wrong]}× menuding warga yang tak bersalah',
@@ -475,7 +480,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Dermawan Hayu',
-          Icons.volunteer_activism_rounded,
+          'donations',
           EmbunColors.leaf,
           giver,
           '${goodBy[giver]} kartu dipersembahkan',
@@ -487,7 +492,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Pembelanja Ulung',
-          Icons.shopping_bag_rounded,
+          'store',
           Colors.lightBlueAccent,
           shopper,
           '${buyBy[shopper]} kartu · ${costBy[shopper]} embun',
@@ -498,7 +503,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Dalang Kabut',
-          Icons.nightlight_round,
+          'bulirhitam',
           EmbunColors.mist,
           antagId,
           '${badBy[antagId]} kartu kabut dipersembahkan',
@@ -509,7 +514,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     // Kronik: peristiwa tiap hari, urut dari hari pertama.
     final dayKeys = <int>{
       for (final o in offs) o['day'] as int,
-      for (final b in buys) b['day'] as int,
+      for (final b in market) b['day'] as int,
       ...tally.keys,
       ...voteN.keys,
     }.toList()..sort();
@@ -537,6 +542,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           ],
           buys: [
             for (final b in buys)
+              if (b['day'] == d)
+                (b['user_id'] as String, b['card_id'] as String),
+          ],
+          bonusCards: [
+            for (final b in bonusCards)
               if (b['day'] == d)
                 (b['user_id'] as String, b['card_id'] as String),
           ],
@@ -575,7 +585,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         awards.add(
           _Award(
             'Tak Pernah Meleset',
-            Icons.gps_fixed_rounded,
+            'vote',
             EmbunColors.cream,
             a.uid,
             '${a.right} dari ${a.total} suara tepat',
@@ -589,7 +599,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       awards.add(
         _Award(
           'Paling Ragu',
-          Icons.hourglass_empty_rounded,
+          'wait',
           Colors.white70,
           hesitant,
           '${noneBy[hesitant]}× memilih tak memilih',
@@ -602,7 +612,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         awards.add(
           _Award(
             'Bayang Lolos',
-            Icons.blur_on_rounded,
+            'hide',
             EmbunColors.mist,
             antagId,
             'Lolos dari tudingan terbanyak $escaped sidang',
@@ -618,7 +628,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       antagId: antagId,
       offerCards: offs.length,
       buys: buys.length,
-      votes: votes.length,
+      votes: voteN.values.fold<int>(0, (a, b) => a + b),
       goodOffers: good,
       badOffers: bad,
       rightTotal: right,
@@ -834,7 +844,10 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             IconButton(
               tooltip: 'Bagian sebelumnya',
               onPressed: _page == 0 ? null : () => _goto(_page - 1),
-              icon: const Icon(Icons.chevron_left_rounded, size: 24),
+              icon: Opacity(
+                opacity: _page == 0 ? 0.45 : 1,
+                child: const GameIcon('back', size: 24),
+              ),
             ),
             Expanded(
               child: Align(
@@ -891,11 +904,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         else
-          const Icon(
-            Icons.info_outline_rounded,
-            color: EmbunColors.gold,
-            size: 19,
-          ),
+          const GameIcon('info', size: 21),
         const SizedBox(width: 10),
         Expanded(
           child: Text(message, style: const TextStyle(color: Colors.white70)),
@@ -1245,11 +1254,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 6,
       children: [
-        Icon(
-          winner ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
-          size: 18,
-          color: winner ? EmbunColors.gold : EmbunColors.blood,
-        ),
+        GameIcon(winner ? 'menang' : 'kalah', width: 40, height: 20),
         Text(
           winner ? '$name · Menang' : '$name · Kalah',
           textAlign: TextAlign.center,
@@ -1824,6 +1829,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                   ),
                   ..._grouped('donations', 'mempersembahkan', d.offers, true),
                   ..._grouped('bulirembun', 'membeli', d.buys, false),
+                  ..._grouped(
+                    'bulirembun',
+                    'mendapat gratis',
+                    d.bonusCards,
+                    false,
+                  ),
                   if (d.voters > 0)
                     _eventLine('vote', [
                       if (d.top == null)
@@ -2294,7 +2305,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                   color: a.color.withValues(alpha: 0.18),
                   border: Border.all(color: a.color),
                 ),
-                child: Icon(a.icon, color: a.color, size: 21),
+                child: Center(child: GameIcon(a.icon, size: 28)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2431,7 +2442,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           ),
           const SizedBox(width: 8),
           if (isOut(p))
-            const StatusTag(text: 'Keluar', color: Colors.white54)
+            const StatusTag(
+              text: 'Keluar',
+              color: Colors.white54,
+              asset: 'keluar',
+            )
           else
             LivesRow(lives: livesLeft(p), size: 16),
         ],

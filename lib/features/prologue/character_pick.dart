@@ -231,11 +231,7 @@ class _CardPickState extends State<CardPick> {
               liveRegion: true,
               child: Row(
                 children: [
-                  Icon(
-                    _locked ? Icons.lock_rounded : Icons.style_outlined,
-                    color: _locked ? EmbunColors.leaf : _accent,
-                    size: 17,
-                  ),
+                  GameIcon(_locked ? 'lock' : 'mydeck', size: 20),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
@@ -271,6 +267,7 @@ class _CardPickState extends State<CardPick> {
               ],
               EmbunButton(
                 label: 'Kunci pilihan',
+                icon: 'lock',
                 height: 44,
                 expand: true,
                 onPressed: selected == null || _busy ? null : _confirm,

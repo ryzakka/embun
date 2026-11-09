@@ -292,7 +292,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                       const StatusTag(
                           text: 'Dikurung',
                           color: EmbunColors.blood,
-                          icon: Icons.lock_rounded,
+                          asset: 'lock',
                           fontSize: 11),
                   ],
                 ),
@@ -302,7 +302,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
           // Tombol tutup eksplisit: berguna di desktop yang tak bisa menyeret.
           IconButton(
             tooltip: 'Tutup',
-            icon: const Icon(Icons.close_rounded, color: Colors.white54),
+            icon: const GameIcon('x', size: 21),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
         ],
@@ -620,8 +620,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.error_outline_rounded,
-            size: 18, color: EmbunColors.blood),
+        const GameIcon('alert', size: 17),
         const SizedBox(width: 8),
         Expanded(
           child: Text(message,

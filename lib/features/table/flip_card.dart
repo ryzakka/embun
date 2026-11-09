@@ -19,12 +19,14 @@ class CardBackFace extends StatelessWidget {
 
   /// Berkas punggung; null = punggung kartu karakter menurut [dark].
   final String? backPath;
+  final BoxFit fit;
   const CardBackFace({
     super.key,
     required this.width,
     this.height,
     this.dark = false,
     this.backPath,
+    this.fit = BoxFit.cover,
   });
 
   @override
@@ -42,7 +44,7 @@ class CardBackFace extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: GameImage(path: p, cacheWidth: 320),
+        child: GameImage(path: p, fit: fit, cacheWidth: 320),
       ),
     );
   }
@@ -80,6 +82,7 @@ class FlipCard extends StatefulWidget {
 
   /// Punggung kartu; null = punggung karakter menurut [dark].
   final String? backPath;
+  final BoxFit backFit;
 
   const FlipCard({
     super.key,
@@ -95,6 +98,7 @@ class FlipCard extends StatefulWidget {
     this.suspense = false,
     this.shine = true,
     this.backPath,
+    this.backFit = BoxFit.cover,
   });
 
   @override
@@ -272,7 +276,8 @@ class _FlipCardState extends State<FlipCard> with TickerProviderStateMixin {
               width: widget.width,
               height: widget.height,
               dark: widget.dark,
-              backPath: widget.backPath);
+              backPath: widget.backPath,
+              fit: widget.backFit);
 
           final glowA = (0.75 * peak + 0.5 * sus).clamp(0.0, 1.0).toDouble();
 

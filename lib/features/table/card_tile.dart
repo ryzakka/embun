@@ -190,7 +190,7 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
                         shape: BoxShape.circle,
                         border: Border.all(color: accent, width: 1.4),
                       ),
-                      child: Icon(Icons.info_outline, size: 13, color: accent),
+                      child: const Center(child: GameIcon('info', size: 16)),
                     ),
                   ),
                 ],
@@ -304,6 +304,7 @@ class CardTile extends StatelessWidget {
   final String fallbackName;
   final bool selected;
   final bool dim;
+  final bool bought;
   final bool showCost;
   final int? costOverride; // harga setelah Kabar Pagi
   final String? badge; // mis. 'Terbeli', menggantikan harga
@@ -338,6 +339,7 @@ class CardTile extends StatelessWidget {
     required this.fallbackName,
     this.selected = false,
     this.dim = false,
+    this.bought = false,
     this.showCost = false,
     this.costOverride,
     this.badge,
@@ -508,16 +510,20 @@ class CardTile extends StatelessWidget {
                             : EmbunColors.gold)),
               ),
             ),
-          if (selected)
+          if (bought || selected)
             Positioned(
               bottom: 8,
               left: 0,
               right: 0,
               child: Center(
-                child: GameIcon('dipilih', width: width * 0.7, height: width * 0.3),
+                child: GameIcon(
+                  bought ? 'dibeli' : 'dipilih',
+                  width: width * 0.7,
+                  height: width * 0.3,
+                ),
               ),
             ),
-          if (hasInfo && !selected)
+          if (hasInfo && !selected && !bought)
             const Positioned(
               left: 6,
               bottom: 6,

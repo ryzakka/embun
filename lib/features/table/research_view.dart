@@ -349,14 +349,15 @@ class _ResearchViewState extends State<ResearchView> {
             if (error != null) ...[
               const SizedBox(height: 4),
               Text(error, textAlign: TextAlign.center, style: dayCaption),
-              TextButton(
+              TextButton.icon(
                 onPressed: _action == null
                     ? () {
                         setState(() => _items = null);
                         _load();
                       }
                     : null,
-                child: const Text('Coba lagi'),
+                icon: const GameIcon('refresh', size: 20),
+                label: const Text('Coba lagi'),
               ),
             ],
           ],
@@ -496,6 +497,7 @@ class _ResearchViewState extends State<ResearchView> {
       width: width,
       selected: selected && !short,
       dim: bought && !selected,
+      bought: bought,
     );
     final title = Text(
       name,

@@ -217,7 +217,10 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
                                 ? IconButton(
                                     tooltip: 'Muat ulang',
                                     color: EmbunColors.gold,
-                                    icon: const Icon(Icons.refresh_rounded),
+                                    icon: Opacity(
+                                      opacity: _refreshing || _joining ? 0.45 : 1,
+                                      child: const GameIcon('refresh', size: 25),
+                                    ),
                                     onPressed: _refreshing || _joining
                                         ? null
                                         : _load,
@@ -478,7 +481,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
                 ? null
                 : IconButton(
                     tooltip: 'Hapus pencarian',
-                    icon: const Icon(Icons.close_rounded, size: 19),
+                    icon: const GameIcon('x', size: 18),
                     onPressed: _joining ? null : _clearSearch,
                   ),
           ),
@@ -718,7 +721,11 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
     icon: 'alert',
     title: 'Daftar tidak bisa dimuat',
     message: errMsg(_loadError!),
-    action: TextButton(onPressed: _load, child: const Text('Coba lagi')),
+    action: TextButton.icon(
+      onPressed: _load,
+      icon: const GameIcon('refresh', size: 20),
+      label: const Text('Coba lagi'),
+    ),
   );
 
   void _clearSearch() {

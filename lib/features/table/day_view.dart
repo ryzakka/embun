@@ -784,6 +784,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                           width: width,
                           selected: selected,
                           dim: bought && !selected,
+                          bought: bought,
                         ),
                       ),
                     ),
@@ -863,9 +864,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         'store',
         'Pasar gagal dimuat',
         'Coba ambil lagi penawaran hari ini.',
-        action: TextButton(
+        action: TextButton.icon(
           onPressed: _loadOffers,
-          child: const Text('Coba lagi'),
+          icon: const GameIcon('refresh', size: 20),
+          label: const Text('Coba lagi'),
         ),
       );
     }
@@ -1518,7 +1520,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       ),
     ),
     child: done
-        ? const Icon(Icons.check_rounded, size: 15, color: Colors.black87)
+        ? const GameIcon('centang', size: 18)
         : Text(
             '$n',
             style: const TextStyle(
