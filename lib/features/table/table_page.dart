@@ -2330,37 +2330,31 @@ class _TablePageState extends State<TablePage> {
       future: recapFuture,
       builder: (context, s) {
         final r = s.data;
-        if (r == null) return const SizedBox.shrink();
+        if (r == null) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              s.connectionState == ConnectionState.waiting
+                  ? 'Memuat catatan pertandingan…'
+                  : 'Catatan pertandingan tidak tersedia.',
+              style: const TextStyle(color: Colors.white70),
+            ),
+          );
+        }
         List<Map<String, dynamic>> list(String k) =>
             List<Map<String, dynamic>>.from((r[k] as List?) ?? const []);
         final offs = list('offerings');
         final buys = list('purchases');
         final votes = list('votes');
 
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(top: 18),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Text('Rekap permainan',
-                      style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-                for (final p in players)
-                  _recapTile(p, secrets, offs, buys, votes),
-              ],
-            ),
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final p in players) ...[
+              const Divider(height: 1, color: Colors.white12),
+              _recapTile(p, secrets, offs, buys, votes),
+            ],
+          ],
         );
       },
     );
@@ -2374,7 +2368,8 @@ class _TablePageState extends State<TablePage> {
       List<Map<String, dynamic>> votes,
       ) {
     final uid = p['user_id'] as String;
-    final antag = secrets[uid]?['role'] == 'antagonis';
+    final role = secrets[uid]?['role'];
+    final antag = role == 'antagonis';
     // Kemampuan warga dibuka saat permainan berakhir (yang sudah keluar dari
     // desa tidak punya catatan rahasia lagi).
     final abName = antag
@@ -2416,7 +2411,7 @@ class _TablePageState extends State<TablePage> {
       title: Text(p['name'] as String),
       subtitle: Text(
         '${usernames[uid] != null ? '${usernames[uid]} · ' : ''}'
-            '${antag ? 'Si Terbisik' : 'Warga Desa'}'
+            '${role == null ? 'Peran tidak diketahui' : antag ? 'Si Terbisik' : 'Warga Desa'}'
             '${abName == null ? '' : ' · $abName'}',
         style: TextStyle(
           fontSize: 12,

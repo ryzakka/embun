@@ -8,6 +8,8 @@ import '../../data/game_rules.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import '../table/parts_strip.dart';
+import 'learning_frame.dart';
 
 /// Tutorial singkat: halaman yang digeser kiri-kanan, tiap halaman satu
 /// gambar kecil (dirakit dari widget dan aset game, bukan tangkapan layar)
@@ -48,7 +50,14 @@ class _Step {
   final String body;
   final Color accent;
   final Widget Function(Animation<double> pulse) visual;
-  const _Step(this.title, this.body, this.accent, this.visual);
+  final bool hasNarration;
+  const _Step(
+    this.title,
+    this.body,
+    this.accent,
+    this.visual, {
+    this.hasNarration = true,
+  });
 }
 
 const _kBlue = Color(0xFF5B9BE8);
@@ -60,8 +69,9 @@ class _TutorialPageState extends State<TutorialPage>
   bool _voice = true;
 
   late final AnimationController _pulse = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1800))
-    ..repeat(reverse: true);
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
 
   late final List<_Step> _steps = _buildSteps();
 
@@ -83,15 +93,12 @@ class _TutorialPageState extends State<TutorialPage>
   }
 
   void _speak(int i) {
-    if (!_voice) {
+    final index = _steps.take(i).where((step) => step.hasNarration).length;
+    if (!_voice || !_steps[i].hasNarration || index >= Snd.tutor.length) {
       unawaited(Sfx.I.stopNarration());
       return;
     }
-    if (i >= Snd.tutor.length) {
-      unawaited(Sfx.I.stopNarration());
-      return;
-    }
-    unawaited(Sfx.I.narrate(Snd.tutor[i], owner: this));
+    unawaited(Sfx.I.narrate(Snd.tutor[index], owner: this));
   }
 
   void _toggleVoice() {
@@ -99,8 +106,7 @@ class _TutorialPageState extends State<TutorialPage>
     _speak(_page);
   }
 
-  /// Isi halaman mengikuti versi terbaru permainan (13 halaman). Narasi suara
-  /// per halaman ada di Snd.tutor (urutan sama).
+  /// Urutan narasi mengikuti Snd.tutor dengan melewati langkah tanpa rekaman.
   List<_Step> _buildSteps() => [
     _Step(
       'Selamat datang',
@@ -109,7 +115,7 @@ class _TutorialPageState extends State<TutorialPage>
           'sedikit**. Tugas warga: merawatnya sampai rimbun dan menemukan '
           'siapa penyusupnya. Jangan mudah percaya pada siapa pun.',
       EmbunColors.leaf,
-          (p) => const _HayuGrow(),
+      (p) => const _HayuGrow(),
     ),
     _Step(
       'Peran',
@@ -118,7 +124,7 @@ class _TutorialPageState extends State<TutorialPage>
           'lawan tahu siapa dirimu. Satu ruangan diisi $kMinPlayers sampai '
           '$kMaxPlayers pemain.',
       EmbunColors.gold,
-          (p) => const _RoleDemo(),
+      (p) => const _RoleDemo(),
     ),
     _Step(
       'Satu siklus',
@@ -127,7 +133,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**voting**. Tiap malam Si Terbisik bisa menyerang. Dari hari '
           'ke-2, hari biasa dibuka dengan **Pasar Riset**.',
       EmbunColors.gold,
-          (p) => const _CycleDemo(),
+      (p) => const _CycleDemo(),
     ),
     _Step(
       'Embun',
@@ -135,7 +141,7 @@ class _TutorialPageState extends State<TutorialPage>
           'pertama setiap siklus ada **tambahan 5 embun**. Embun dipakai '
           'untuk berbelanja dan bisa **diberikan ke pemain lain**.',
       EmbunColors.gold,
-          (p) => const _EmbunDemo(),
+      (p) => const _EmbunDemo(),
     ),
     _Step(
       'Pagi berbelanja',
@@ -143,7 +149,7 @@ class _TutorialPageState extends State<TutorialPage>
           'Pagi. Kamu juga bisa **bertukar kartu**, **mengirim isyarat**, '
           'dan **mengobrol**. Bila siap, **akhiri hari**.',
       EmbunColors.gold,
-          (p) => const _MarketDemo(),
+      (p) => const _MarketDemo(),
     ),
     _Step(
       'Pasar Riset',
@@ -152,16 +158,16 @@ class _TutorialPageState extends State<TutorialPage>
           '**20% lebih mahal**, stoknya tetap, dan jatahnya **2 kartu per '
           'hari**, terpisah dari jatah Pasar Pagi.',
       EmbunColors.gold,
-          (p) => const _ResearchDemo(),
+      (p) => const _ResearchDemo(),
     ),
     _Step(
       'Kartu kombinasi',
       'Kartu lanjutan harus **digabung** dengan kartu poinnya di tab '
-          'Gabung pada hari biasa, lalu tekan **Tempatkan**. Warga: '
+          'Gabung pada hari biasa, lalu tekan **Aktifkan kartu**. Warga: '
           'Regenerasi + Poin Regenerasi. Si Terbisik: Rekayasa + Poin DNA. '
           'Hanya kartu yang sudah **aktif** yang bisa dipersembahkan.',
       EmbunColors.cream,
-          (p) => const _FuseDemo(),
+      (p) => const _FuseDemo(),
     ),
     _Step(
       'Informasi palsu',
@@ -170,7 +176,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**Boneka Sawah** bisa memalsukan hasilnya. Jangan percaya '
           'begitu saja.',
       _kBlue,
-          (p) => const _InspectDemo(),
+      (p) => const _InspectDemo(),
     ),
     _Step(
       'Serangan malam',
@@ -178,7 +184,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**ada serangan**, bukan siapa sasarannya. **Kartu perlindungan** '
           'membantu, tetapi hanya berlaku pada malam itu.',
       EmbunColors.mist,
-          (p) => const _NightDemo(),
+      (p) => const _NightDemo(),
     ),
     _Step(
       'Malam persembahan',
@@ -187,7 +193,7 @@ class _TutorialPageState extends State<TutorialPage>
           'desa hanya tahu **jumlahnya**. Si Terbisik **wajib menyertakan '
           'Roti Surplus** sebagai kedok.',
       EmbunColors.leaf,
-          (p) => const _OfferDemo(),
+      (p) => const _OfferDemo(),
     ),
     _Step(
       'Musyawarah dan voting',
@@ -196,13 +202,15 @@ class _TutorialPageState extends State<TutorialPage>
           'Tuduhan sah bila suara yang mendukung **lebih dari separuh** '
           'pemain yang tersisa.',
       EmbunColors.blood,
-          (p) => const Column(children: [
-        _CycleStrip(active: 5),
-        SizedBox(height: 12),
-        _RingDemo(),
-        SizedBox(height: 10),
-        _Chip('3 dari 5 pemain = tuduhan sah', EmbunColors.blood),
-      ]),
+      (p) => const Column(
+        children: [
+          _CycleStrip(active: 5),
+          SizedBox(height: 12),
+          _RingDemo(),
+          SizedBox(height: 10),
+          _Chip('3 dari 5 pemain = tuduhan sah', EmbunColors.blood),
+        ],
+      ),
     ),
     _Step(
       'Nyawa',
@@ -212,7 +220,7 @@ class _TutorialPageState extends State<TutorialPage>
           'menang; bila warga, ia **keluar dari desa**. Bila pemain '
           'tersisa kurang dari $kMinPlayers, **Si Terbisik menang**.',
       EmbunColors.blood,
-          (p) => const _LivesDemo(),
+      (p) => const _LivesDemo(),
     ),
     _Step(
       'Bagian Hayu',
@@ -224,7 +232,8 @@ class _TutorialPageState extends State<TutorialPage>
           'bekerja tiap malam persembahan. Angka aslinya tersembunyi, dan '
           'perubahan baru terasa di malam persembahan berikutnya.',
       EmbunColors.leaf,
-          (p) => const _WinDemo(),
+      (p) => const _HayuPartsDemo(),
+      hasNarration: false,
     ),
     _Step(
       'Kemenangan',
@@ -233,126 +242,50 @@ class _TutorialPageState extends State<TutorialPage>
           '6 / 12 / 18 / 24 hari memakai batas **12 / 20 / 24 / 26**. '
           'Kurang dari itu, **Si Terbisik menang**. Lama sesi dipilih host.',
       EmbunColors.leaf,
-          (p) => const _WinDemo(),
+      (p) => const _WinDemo(),
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final last = _page == _steps.length - 1;
-    return Scaffold(
-      backgroundColor: EmbunColors.bg,
-      body: Stack(
-        fit: StackFit.expand,
+    return LearningFrame(
+      title: 'Tutorial',
+      icon: 'tutor',
+      background: sceneryPath('balkon-siang') ?? landscapePath(30),
+      actions: [
+        IconButton(
+          tooltip: _voice ? 'Matikan narasi' : 'Nyalakan narasi',
+          visualDensity: VisualDensity.compact,
+          onPressed: _toggleVoice,
+          color: EmbunColors.gold,
+          icon: Icon(
+            _voice ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+          ),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          child: const Text('Lewati'),
+        ),
+      ],
+      child: Column(
         children: [
-          Backdrop(
-              path: sceneryPath('balkon-siang') ?? landscapePath(30),
-              dim: 0.5),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x66000000), Color(0x22000000), Color(0x99000000)],
-              ),
+          Expanded(
+            child: PageView.builder(
+              controller: _pc,
+              itemCount: _steps.length,
+              onPageChanged: (i) {
+                setState(() => _page = i);
+                HapticFeedback.selectionClick();
+                _speak(i);
+              },
+              itemBuilder: (_, i) => _pageOf(_steps[i], i),
             ),
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                _bar(),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pc,
-                    itemCount: _steps.length,
-                    onPageChanged: (i) {
-                      setState(() => _page = i);
-                      HapticFeedback.selectionClick();
-                      _speak(i);
-                    },
-                    itemBuilder: (_, i) => _pageOf(_steps[i], i),
-                  ),
-                ),
-                _dots(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 520),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 120,
-                            child: EmbunButton(
-                              label: 'Kembali',
-                              kind: EmbunButtonKind.secondary,
-                              height: 50,
-                              expand: true,
-                              onPressed: _page > 0 ? () => _go(-1) : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: EmbunButton(
-                              label: last ? 'Mulai bermain' : 'Lanjut',
-                              height: 50,
-                              expand: true,
-                              onPressed: last
-                                  ? () => Navigator.of(context).maybePop()
-                                  : () => _go(1),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _controls(context),
         ],
       ),
     );
   }
-
-  Widget _bar() => Padding(
-    padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
-    child: Row(
-      children: [
-        IconButton(
-          tooltip: 'Kembali',
-          onPressed: () => Navigator.of(context).maybePop(),
-          color: EmbunColors.gold,
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-        ),
-        const GameIcon('tutor', size: 30),
-        const SizedBox(width: 8),
-        const Text(
-          'Tutorial',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.6,
-            color: EmbunColors.gold,
-          ),
-        ),
-        const Spacer(),
-        IconButton(
-          tooltip: _voice ? 'Matikan narasi' : 'Nyalakan narasi',
-          onPressed: _toggleVoice,
-          color: EmbunColors.gold,
-          icon: Icon(
-              _voice ? Icons.volume_up_rounded : Icons.volume_off_rounded),
-        ),
-        TextButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          style: TextButton.styleFrom(foregroundColor: Colors.white60),
-          icon: const GameIcon('skip2', size: 22),
-          label: const Text('Lewati'),
-        ),
-      ],
-    ),
-  );
 
   void _go(int delta) {
     final to = (_page + delta).clamp(0, _steps.length - 1);
@@ -364,27 +297,72 @@ class _TutorialPageState extends State<TutorialPage>
     );
   }
 
-  Widget _dots() => Padding(
-    padding: const EdgeInsets.only(top: 4),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (var i = 0; i < _steps.length; i++)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            width: i == _page ? 18 : 7,
-            height: 7,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: i == _page
-                  ? _steps[i].accent
-                  : Colors.white.withValues(alpha: 0.25),
+  Widget _controls(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 360;
+    final stepLabel = 'Langkah ${_page + 1} dari ${_steps.length}';
+    final step = _steps[_page];
+    final last = _page == _steps.length - 1;
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border(top: learningRule(step.accent))),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: [
+            IconButton(
+              tooltip: 'Langkah sebelumnya',
+              onPressed: _page > 0 ? () => _go(-1) : null,
+              icon: const Icon(Icons.arrow_back_rounded, size: 21),
             ),
-          ),
-      ],
-    ),
-  );
+            const SizedBox(width: 6),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        compact ? '${_page + 1} / ${_steps.length}' : stepLabel,
+                        semanticsLabel: stepLabel,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: (_page + 1) / _steps.length,
+                        color: step.accent,
+                        backgroundColor: Colors.white12,
+                        minHeight: 3,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: EmbunButton(
+                label: last ? 'Selesai' : 'Lanjut',
+                height: 42,
+                expand: true,
+                onPressed: last
+                    ? () => Navigator.of(context).maybePop()
+                    : () => _go(1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   static String _chapter(int i) => i < 2
       ? 'DASAR'
@@ -398,102 +376,139 @@ class _TutorialPageState extends State<TutorialPage>
       ? 'SIDANG'
       : 'AKHIR';
 
-  Widget _pageOf(_Step s, int i) => LayoutBuilder(
-    builder: (context, c) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: math.max(0.0, c.maxHeight - 16)),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 1. penanda posisi
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(14),
-                    border:
-                    Border.all(color: s.accent.withValues(alpha: 0.6)),
-                  ),
-                  child: Text(
-                    '${_chapter(i)}  ·  ${i + 1} / ${_steps.length}',
-                    style: TextStyle(
-                        fontSize: 11.5,
-                        letterSpacing: 1.6,
-                        fontWeight: FontWeight.w700,
-                        color: s.accent),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // 2. judul
-                Text(
-                  s.title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    color: s.accent,
-                    shadows: const [
-                      Shadow(color: Colors.black, blurRadius: 14),
-                      Shadow(color: Colors.black, blurRadius: 3),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // 3. gambar
-                _stage(s.accent, s.visual(_pulse)),
-                const SizedBox(height: 14),
-                // 4. penjelasan
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: _rich(s.body, s.accent),
-                ),
-              ],
+  Widget _pageOf(_Step step, int index) => LayoutBuilder(
+    builder: (context, box) {
+      final short = box.maxHeight < 385;
+      final wide = box.maxWidth >= (short ? 510 : 650);
+      final heading = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _chapter(index),
+            style: TextStyle(
+              color: step.accent,
+              fontSize: 11,
+              letterSpacing: 1.6,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Semantics(
+            header: true,
+            child: Text(
+              step.title,
+              style: TextStyle(
+                fontSize: wide && !short ? 39 : 27,
+                height: 1.12,
+                fontWeight: FontWeight.w900,
+                color: EmbunColors.cream,
+              ),
+            ),
+          ),
+        ],
+      );
+      final explanation = _rich(step.body, step.accent);
+      final visual = _stage(
+        step.accent,
+        step.visual(_pulse),
+        maxHeight: wide && short ? math.max(95, box.maxHeight - 20) : 315,
+      );
+      return SingleChildScrollView(
+        key: PageStorageKey(index),
+        padding: EdgeInsets.symmetric(
+          horizontal: wide ? 18 : 4,
+          vertical: short ? 8 : 16,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: math.max(0, box.maxHeight - (short ? 16 : 32)),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: wide ? 1000 : 520),
+              child: wide
+                  ? Row(
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              heading,
+                              const SizedBox(height: 15),
+                              explanation,
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: short ? 20 : 42),
+                        Expanded(flex: 6, child: visual),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        heading,
+                        const SizedBox(height: 12),
+                        visual,
+                        const SizedBox(height: 12),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: Border(top: learningRule(step.accent)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 11),
+                            child: explanation,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ),
-      ),
-    ),
+      );
+    },
   );
 
-  /// Panggung gambar: panel kaca berbingkai aksen dengan pendar lembut.
-  Widget _stage(Color accent, Widget child) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.black.withValues(alpha: 0.58),
-          accent.withValues(alpha: 0.14),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.4),
-      boxShadow: [
-        BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 24),
-      ],
-    ),
-    child: child,
-  );
+  Widget _stage(Color accent, Widget child, {required double maxHeight}) =>
+      DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            colors: [accent.withValues(alpha: 0.12), Colors.transparent],
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: 400,
+                child: MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: 1.15,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 7,
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 
   /// Teks dengan **tebal** berwarna aksen.
   Widget _rich(String s, Color accent) {
     final parts = s.split('**');
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 15.5, height: 1.5, color: Colors.white),
+        style: const TextStyle(
+          fontSize: 15.5,
+          height: 1.5,
+          color: Colors.white,
+        ),
         children: [
           for (var i = 0; i < parts.length; i++)
             TextSpan(
@@ -514,53 +529,6 @@ class _TutorialPageState extends State<TutorialPage>
 String? _art(String kind, String side, String stem) =>
     cardArtPath({'kind': kind, 'side': side, 'art': stem, 'id': stem});
 
-class _C {
-  final String? path;
-  final String label;
-  final Color? glow;
-  const _C(this.path, this.label, {this.glow});
-}
-
-/// Deretan kartu dengan keterangan di bawahnya; ukuran menyesuaikan lebar.
-class _CardRow extends StatelessWidget {
-  final List<_C> cards;
-  const _CardRow({required this.cards});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final n = cards.length;
-      final w = ((c.maxWidth - n * 12) / n).clamp(44.0, 100.0).toDouble();
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final k in cards)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Column(
-                children: [
-                  CardArt(path: k.path, width: w, glow: k.glow),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: w + 8,
-                    child: Text(
-                      k.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: const TextStyle(
-                          fontSize: 11.5, height: 1.2, color: Colors.white70),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      );
-    });
-  }
-}
-
 class _Chip extends StatelessWidget {
   final String text;
   final Color color;
@@ -577,7 +545,10 @@ class _Chip extends StatelessWidget {
     child: Text(
       text,
       style: TextStyle(
-          fontSize: 12.5, fontWeight: FontWeight.w700, color: color),
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
     ),
   );
 }
@@ -602,7 +573,9 @@ class _Loop extends StatefulWidget {
 
 class _LoopState extends State<_Loop> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: Duration(milliseconds: widget.ms));
+    vsync: this,
+    duration: Duration(milliseconds: widget.ms),
+  );
 
   @override
   void initState() {
@@ -619,8 +592,8 @@ class _LoopState extends State<_Loop> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _c,
-    builder: (context, _) => widget.builder(
-        context, _c.value, _c.status != AnimationStatus.reverse),
+    builder: (context, _) =>
+        widget.builder(context, _c.value, _c.status != AnimationStatus.reverse),
   );
 }
 
@@ -633,14 +606,15 @@ class _CardCol extends StatelessWidget {
   final double opacity;
   final String? badge;
   final Color badgeColor;
-  const _CardCol(
-      {required this.path,
-        required this.label,
-        required this.w,
-        this.glow,
-        this.opacity = 1,
-        this.badge,
-        this.badgeColor = EmbunColors.gold});
+  const _CardCol({
+    required this.path,
+    required this.label,
+    required this.w,
+    this.glow,
+    this.opacity = 1,
+    this.badge,
+    this.badgeColor = EmbunColors.gold,
+  });
 
   @override
   Widget build(BuildContext context) => Opacity(
@@ -653,18 +627,22 @@ class _CardCol extends StatelessWidget {
           children: [
             CardArt(path: path, width: w, glow: glow),
             if (badge != null)
-              Positioned(
-                  right: -8, top: -8, child: _Chip(badge!, badgeColor)),
+              Positioned(right: -8, top: -8, child: _Chip(badge!, badgeColor)),
           ],
         ),
         const SizedBox(height: 8),
         SizedBox(
           width: w + 10,
-          child: Text(label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: const TextStyle(
-                  fontSize: 11.5, height: 1.2, color: Colors.white70)),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: const TextStyle(
+              fontSize: 11.5,
+              height: 1.2,
+              color: Colors.white70,
+            ),
+          ),
         ),
       ],
     ),
@@ -706,44 +684,50 @@ class _CycleStrip extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: Colors.black.withValues(alpha: 0.4),
                     border: Border.all(
-                      color:
-                      i == active ? EmbunColors.gold : Colors.white24,
+                      color: i == active ? EmbunColors.gold : Colors.white24,
                       width: i == active ? 2 : 1,
                     ),
                     boxShadow: i == active
                         ? [
-                      BoxShadow(
-                          color: EmbunColors.gold.withValues(alpha: 0.4),
-                          blurRadius: 12)
-                    ]
+                            BoxShadow(
+                              color: EmbunColors.gold.withValues(alpha: 0.4),
+                              blurRadius: 12,
+                            ),
+                          ]
                         : null,
                   ),
                   child: _items[i].$2 != null
-                      ? Icon(_items[i].$2,
-                      size: 22,
-                      color: i == 2 ? EmbunColors.mist : EmbunColors.gold)
+                      ? Icon(
+                          _items[i].$2,
+                          size: 22,
+                          color: i == 2 ? EmbunColors.mist : EmbunColors.gold,
+                        )
                       : GameIcon(_items[i].$1, size: 26),
                 ),
               ),
               const SizedBox(height: 4),
-              Text(_items[i].$3,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight:
-                      i == active ? FontWeight.w800 : FontWeight.w500,
-                      color:
-                      i == active ? EmbunColors.gold : Colors.white54)),
+              Text(
+                _items[i].$3,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: i == active ? FontWeight.w800 : FontWeight.w500,
+                  color: i == active ? EmbunColors.gold : Colors.white54,
+                ),
+              ),
             ],
           ),
         ),
         if (i < _items.length - 1)
           const Padding(
             padding: EdgeInsets.only(top: 10),
-            child: Icon(Icons.chevron_right_rounded,
-                size: 14, color: Colors.white30),
+            child: Icon(
+              Icons.chevron_right_rounded,
+              size: 14,
+              color: Colors.white30,
+            ),
           ),
       ],
     ],
@@ -763,9 +747,11 @@ Widget _caption(Object key, String text, {Color color = Colors.white}) =>
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
-        child: Text(text,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, height: 1.3, color: color)),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, height: 1.3, color: color),
+        ),
       ),
     );
 
@@ -773,7 +759,14 @@ Widget _caption(Object key, String text, {Color color = Colors.white}) =>
 class _HayuGrow extends StatelessWidget {
   const _HayuGrow();
 
-  static const _stages = ['pohon9', 'pohon8', 'pohon6', 'pohon4', 'pohon2', 'pohon0'];
+  static const _stages = [
+    'pohon9',
+    'pohon8',
+    'pohon6',
+    'pohon4',
+    'pohon2',
+    'pohon0',
+  ];
 
   @override
   Widget build(BuildContext context) => _Loop(
@@ -783,7 +776,7 @@ class _HayuGrow extends StatelessWidget {
       final paths = [
         for (final s in _stages)
           if (AssetCatalog.I.file(pohonDir, s) != null)
-            AssetCatalog.I.file(pohonDir, s)!
+            AssetCatalog.I.file(pohonDir, s)!,
       ];
       final e = _sm(_sg(t, 0.08, 0.92));
       final last = paths.isEmpty ? 0 : paths.length - 1;
@@ -805,13 +798,16 @@ class _HayuGrow extends StatelessWidget {
                     GameImage(path: paths[lo], cacheWidth: 900),
                   if (paths.isNotEmpty && hi != lo)
                     Opacity(
-                        opacity: fr,
-                        child: GameImage(path: paths[hi], cacheWidth: 900)),
+                      opacity: fr,
+                      child: GameImage(path: paths[hi], cacheWidth: 900),
+                    ),
                   Positioned(
                     left: 10,
                     bottom: 10,
-                    child: _Chip('Daun $leaves / $kLeavesMax',
-                        fwd ? EmbunColors.leaf : EmbunColors.blood),
+                    child: _Chip(
+                      'Daun $leaves / $kLeavesMax',
+                      fwd ? EmbunColors.leaf : EmbunColors.blood,
+                    ),
                   ),
                 ],
               ),
@@ -819,11 +815,12 @@ class _HayuGrow extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _caption(
-              fwd,
-              fwd
-                  ? 'Warga merawat Hayu: daunnya bertambah'
-                  : 'Si Terbisik menggerogotinya: daunnya berkurang',
-              color: fwd ? EmbunColors.leaf : EmbunColors.blood),
+            fwd,
+            fwd
+                ? 'Warga merawat Hayu: daunnya bertambah'
+                : 'Si Terbisik menggerogotinya: daunnya berkurang',
+            color: fwd ? EmbunColors.leaf : EmbunColors.blood,
+          ),
         ],
       );
     },
@@ -846,27 +843,30 @@ class _RoleDemo extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CardCol(
-                  path: cardBackPath(),
-                  label: 'Warga',
-                  w: 92,
-                  glow: warga ? EmbunColors.leaf : null,
-                  opacity: warga ? 1 : 0.5),
+                path: cardBackPath(),
+                label: 'Warga',
+                w: 92,
+                glow: warga ? EmbunColors.leaf : null,
+                opacity: warga ? 1 : 0.5,
+              ),
               const SizedBox(width: 22),
               _CardCol(
-                  path: cardBackPath(dark: true),
-                  label: 'Si Terbisik',
-                  w: 92,
-                  glow: warga ? null : EmbunColors.blood,
-                  opacity: warga ? 0.5 : 1),
+                path: cardBackPath(dark: true),
+                label: 'Si Terbisik',
+                w: 92,
+                glow: warga ? null : EmbunColors.blood,
+                opacity: warga ? 0.5 : 1,
+              ),
             ],
           ),
           const SizedBox(height: 12),
           _caption(
-              warga,
-              warga
-                  ? 'Warga bekerja sama menjaga Hayu'
-                  : 'Si Terbisik menyusup dan menggagalkannya',
-              color: warga ? EmbunColors.leaf : EmbunColors.blood),
+            warga,
+            warga
+                ? 'Warga bekerja sama menjaga Hayu'
+                : 'Si Terbisik menyusup dan menggagalkannya',
+            color: warga ? EmbunColors.leaf : EmbunColors.blood,
+          ),
         ],
       );
     },
@@ -948,11 +948,14 @@ class _EmbunDemo extends StatelessWidget {
                     children: [
                       const GameIcon('bulirembun', size: 32),
                       const SizedBox(width: 8),
-                      Text('$v',
-                          style: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              color: EmbunColors.gold)),
+                      Text(
+                        '$v',
+                        style: const TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1019,61 +1022,66 @@ class _MarketDemo extends StatelessWidget {
         (_art('persembahan', 'warga', 'kayupagar'), '5 embun'),
         (_art('sekali_pakai', 'warga', 'lenteralawas'), '4 embun'),
       ];
-      return LayoutBuilder(builder: (context, c) {
-        final w = ((c.maxWidth - 4 * 14) / 4).clamp(48.0, 84.0).toDouble();
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const GameIcon('bulirembun', size: 24),
-                const SizedBox(width: 6),
-                Text('Embunmu: $emb',
+      return LayoutBuilder(
+        builder: (context, c) {
+          final w = ((c.maxWidth - 4 * 22) / 4).clamp(48.0, 84.0).toDouble();
+          return Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const GameIcon('bulirembun', size: 24),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Embunmu: $emb',
                     style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.gold)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < 4; i++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: _CardCol(
-                      path: arts[i].$1,
-                      label: arts[i].$2,
-                      w: w,
-                      glow: (bought ? i == pick : i == scan && t < 0.4)
-                          ? EmbunColors.gold
-                          : null,
-                      opacity: bought && i != pick ? 0.4 : 1,
-                      badge: bought && i == pick ? 'Dibeli' : null,
-                      badgeColor: EmbunColors.leaf,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: EmbunColors.gold,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var i = 0; i < _chips.length; i++)
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: chip == -1 || chip == i ? 1 : 0.4,
-                    child: _Chip(_chips[i].$1, _chips[i].$2),
-                  ),
-              ],
-            ),
-          ],
-        );
-      });
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < 4; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: _CardCol(
+                        path: arts[i].$1,
+                        label: arts[i].$2,
+                        w: w,
+                        glow: (bought ? i == pick : i == scan && t < 0.4)
+                            ? EmbunColors.gold
+                            : null,
+                        opacity: bought && i != pick ? 0.4 : 1,
+                        badge: bought && i == pick ? 'Dibeli' : null,
+                        badgeColor: EmbunColors.leaf,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < _chips.length; i++)
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: chip == -1 || chip == i ? 1 : 0.4,
+                      child: _Chip(_chips[i].$1, _chips[i].$2),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      );
     },
   );
 }
@@ -1092,63 +1100,75 @@ class _ResearchDemo extends StatelessWidget {
       final buyB = t >= 0.82;
       final adv = _art('lanjutan', 'warga', 'gen-bibitlab');
       final poin = _art('poin', 'warga', 'gen-poinregenerasi');
-      return LayoutBuilder(builder: (context, c) {
-        final w = ((c.maxWidth - 3 * 24) / 2).clamp(60.0, 100.0).toDouble();
-        Widget col(String? path, String name, int base, bool bought) =>
-            _CardCol(
-              path: path,
-              label: '$name\n${up ? '${(base * 1.2).ceil()}' : '$base'} embun',
-              w: w,
-              glow: bought ? EmbunColors.leaf : null,
-              opacity: bought ? 0.55 : 1,
-              badge: bought ? 'Dibeli' : (up ? '+20%' : null),
-              badgeColor: bought ? EmbunColors.leaf : EmbunColors.gold,
-            );
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.science_rounded,
-                    size: 20, color: EmbunColors.gold),
-                const SizedBox(width: 6),
-                const Text('Pasar Riset',
+      return LayoutBuilder(
+        builder: (context, c) {
+          final w = ((c.maxWidth - 3 * 24) / 2).clamp(60.0, 100.0).toDouble();
+          Widget col(String? path, String name, int base, bool bought) =>
+              _CardCol(
+                path: path,
+                label:
+                    '$name\n${up ? '${(base * 1.2).ceil()}' : '$base'} embun',
+                w: w,
+                glow: bought ? EmbunColors.leaf : null,
+                opacity: bought ? 0.55 : 1,
+                badge: bought ? 'Dibeli' : (up ? '+20%' : null),
+                badgeColor: bought ? EmbunColors.leaf : EmbunColors.gold,
+              );
+          return Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.science_rounded,
+                    size: 20,
+                    color: EmbunColors.gold,
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Pasar Riset',
                     style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.gold)),
-                const SizedBox(width: 12),
-                _Chip('Jatah $left / 2',
-                    left > 0 ? EmbunColors.leaf : Colors.white38),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                col(poin, 'Kartu poin', 10, buyA),
-                const SizedBox(width: 24),
-                col(adv, 'Kartu lanjutan', 20, buyB),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _caption(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: EmbunColors.gold,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _Chip(
+                    'Jatah $left / 2',
+                    left > 0 ? EmbunColors.leaf : Colors.white38,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  col(poin, 'Kartu poin', 10, buyA),
+                  const SizedBox(width: 24),
+                  col(adv, 'Kartu lanjutan', 20, buyB),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _caption(
                 t < 0.28 ? 0 : (left == 0 ? 2 : 1),
                 t < 0.28
                     ? 'Hanya menjual kartu poin dan lanjutan'
                     : (left == 0
-                    ? 'Jatah habis: stok tetap, jatah terpisah dari Pasar Pagi'
-                    : 'Harganya 20% lebih mahal dari harga biasa'),
-                color: EmbunColors.gold),
-          ],
-        );
-      });
+                          ? 'Jatah habis: stok tetap, jatah terpisah dari Pasar Pagi'
+                          : 'Harganya 20% lebih mahal dari harga biasa'),
+                color: EmbunColors.gold,
+              ),
+            ],
+          );
+        },
+      );
     },
   );
 }
 
-/// 7. Kartu kombinasi: lanjutan + poin, Tempatkan, jadi AKTIF.
+/// 7. Kartu kombinasi: lanjutan + poin, Aktifkan kartu, jadi AKTIF.
 class _FuseDemo extends StatelessWidget {
   const _FuseDemo();
 
@@ -1159,10 +1179,11 @@ class _FuseDemo extends StatelessWidget {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
       border: Border.all(
-          color: on
-              ? EmbunColors.gold
-              : EmbunColors.goldDim.withValues(alpha: 0.5),
-          width: on ? 1.6 : 1),
+        color: on
+            ? EmbunColors.gold
+            : EmbunColors.goldDim.withValues(alpha: 0.5),
+        width: on ? 1.6 : 1,
+      ),
       color: Colors.black.withValues(alpha: 0.3),
     ),
     child: child,
@@ -1170,95 +1191,123 @@ class _FuseDemo extends StatelessWidget {
 
   Widget _sym(String s) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8),
-    child: Text(s,
-        style: const TextStyle(
-            fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white54)),
+    child: Text(
+      s,
+      style: const TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w900,
+        color: Colors.white54,
+      ),
+    ),
   );
 
   @override
   Widget build(BuildContext context) => _Loop(
     ms: 8000,
-    builder: (context, t, _) => LayoutBuilder(builder: (context, c) {
-      final w = ((c.maxWidth - 2 * 40 - 24) / 3).clamp(48.0, 88.0).toDouble();
-      final adv = _art('lanjutan', 'warga', 'gen-bibitlab');
-      final poin = _art('poin', 'warga', 'gen-poinregenerasi');
-      final a = _sm(_sg(t, 0.08, 0.22));
-      final b = _sm(_sg(t, 0.28, 0.42));
-      final press = t > 0.52 && t < 0.62;
-      final done = _sm(_sg(t, 0.64, 0.76));
-      final Widget advCard = Opacity(
-        opacity: a,
-        child: Transform.translate(
+    builder: (context, t, _) => LayoutBuilder(
+      builder: (context, c) {
+        final w = ((c.maxWidth - 2 * 40 - 24) / 3).clamp(48.0, 88.0).toDouble();
+        final adv = _art('lanjutan', 'warga', 'gen-bibitlab');
+        final poin = _art('poin', 'warga', 'gen-poinregenerasi');
+        final a = _sm(_sg(t, 0.08, 0.22));
+        final b = _sm(_sg(t, 0.28, 0.42));
+        final press = t > 0.52 && t < 0.62;
+        final done = _sm(_sg(t, 0.64, 0.76));
+        final Widget advCard = Opacity(
+          opacity: a,
+          child: Transform.translate(
             offset: Offset(0, 16 * (1 - a)),
-            child: CardArt(path: adv, width: w - 4)),
-      );
-      final Widget poinCard = Opacity(
-        opacity: b,
-        child: Transform.translate(
+            child: CardArt(path: adv, width: w - 4),
+          ),
+        );
+        final Widget poinCard = Opacity(
+          opacity: b,
+          child: Transform.translate(
             offset: Offset(0, 16 * (1 - b)),
-            child: CardArt(path: poin, width: w - 4)),
-      );
-      return Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(children: [
-                _slot(w, advCard, on: a > 0.5 && b < 0.5),
-                const SizedBox(height: 6),
-                const Text('Lanjutan',
-                    style: TextStyle(fontSize: 11.5, color: Colors.white70)),
-              ]),
-              Padding(
-                  padding: EdgeInsets.only(top: w * 0.55), child: _sym('+')),
-              Column(children: [
-                _slot(w, poinCard, on: b > 0.5 && done < 0.5),
-                const SizedBox(height: 6),
-                const Text('Poin',
-                    style: TextStyle(fontSize: 11.5, color: Colors.white70)),
-              ]),
-              Padding(
-                  padding: EdgeInsets.only(top: w * 0.55), child: _sym('=')),
-              Column(children: [
-                _slot(
-                  w,
-                  Opacity(
-                    opacity: done,
-                    child: Transform.scale(
-                      scale: 0.85 + 0.15 * done,
-                      child: CardArt(
-                          path: adv,
-                          width: w - 4,
-                          glow: EmbunColors.leaf.withValues(alpha: 0.8)),
+            child: CardArt(path: poin, width: w - 4),
+          ),
+        );
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    _slot(w, advCard, on: a > 0.5 && b < 0.5),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Lanjutan',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white70),
                     ),
-                  ),
-                  on: done > 0.5,
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Opacity(
-                    opacity: done,
-                    child: const _Chip('AKTIF', EmbunColors.leaf)),
-              ]),
-            ],
-          ),
-          const SizedBox(height: 14),
-          AnimatedScale(
-            duration: const Duration(milliseconds: 150),
-            scale: press ? 0.94 : 1,
-            child: _Chip('Tab Gabung  ›  Tempatkan',
-                press ? EmbunColors.gold : EmbunColors.cream),
-          ),
-          const SizedBox(height: 10),
-          _caption(
+                Padding(
+                  padding: EdgeInsets.only(top: w * 0.55),
+                  child: _sym('+'),
+                ),
+                Column(
+                  children: [
+                    _slot(w, poinCard, on: b > 0.5 && done < 0.5),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Poin',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white70),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: EdgeInsets.only(top: w * 0.55),
+                  child: _sym('='),
+                ),
+                Column(
+                  children: [
+                    _slot(
+                      w,
+                      Opacity(
+                        opacity: done,
+                        child: Transform.scale(
+                          scale: 0.85 + 0.15 * done,
+                          child: CardArt(
+                            path: adv,
+                            width: w - 4,
+                            glow: EmbunColors.leaf.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                      on: done > 0.5,
+                    ),
+                    const SizedBox(height: 6),
+                    Opacity(
+                      opacity: done,
+                      child: const _Chip('AKTIF', EmbunColors.leaf),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            AnimatedScale(
+              duration: const Duration(milliseconds: 150),
+              scale: press ? 0.94 : 1,
+              child: _Chip(
+                'Tab Gabung  ›  Aktifkan kartu',
+                press ? EmbunColors.gold : EmbunColors.cream,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _caption(
               done > 0.5 ? 1 : 0,
               done > 0.5
                   ? 'Kini aktif: siap dipersembahkan saat malam persembahan'
                   : 'Gabungkan kartu lanjutan dengan kartu poinnya',
-              color: done > 0.5 ? EmbunColors.leaf : Colors.white),
-        ],
-      );
-    }),
+              color: done > 0.5 ? EmbunColors.leaf : Colors.white,
+            ),
+          ],
+        );
+      },
+    ),
   );
 }
 
@@ -1273,7 +1322,9 @@ class _InspectDemo extends StatelessWidget {
     ms: 9000,
     builder: (context, t, _) {
       final masked = t >= 0.4;
-      final fk = t < 0.62 ? -1 : (_sg(t, 0.62, 0.98) * 3).floor().clamp(0, 2).toInt();
+      final fk = t < 0.62
+          ? -1
+          : (_sg(t, 0.62, 0.98) * 3).floor().clamp(0, 2).toInt();
       final col = masked ? EmbunColors.leaf : EmbunColors.blood;
       return Column(
         children: [
@@ -1281,9 +1332,10 @@ class _InspectDemo extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               CardArt(
-                  path: cardBackPath(),
-                  width: 86,
-                  glow: col.withValues(alpha: 0.5)),
+                path: cardBackPath(),
+                width: 86,
+                glow: col.withValues(alpha: 0.5),
+              ),
               Positioned(
                 right: -12,
                 top: -12,
@@ -1297,11 +1349,12 @@ class _InspectDemo extends StatelessWidget {
                     border: Border.all(color: col, width: 1.6),
                   ),
                   child: Icon(
-                      masked
-                          ? Icons.theater_comedy_rounded
-                          : Icons.search_rounded,
-                      size: 20,
-                      color: col),
+                    masked
+                        ? Icons.theater_comedy_rounded
+                        : Icons.search_rounded,
+                    size: 20,
+                    color: col,
+                  ),
                 ),
               ),
             ],
@@ -1312,10 +1365,11 @@ class _InspectDemo extends StatelessWidget {
             child: KeyedSubtree(
               key: ValueKey(masked),
               child: _Chip(
-                  masked
-                      ? 'Yang kamu lihat: tampak bersih'
-                      : 'Hasil asli: mencurigakan',
-                  col),
+                masked
+                    ? 'Yang kamu lihat: tampak bersih'
+                    : 'Hasil asli: mencurigakan',
+                col,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -1334,11 +1388,12 @@ class _InspectDemo extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _caption(
-              masked ? 1 : 0,
-              masked
-                  ? 'Topeng, Cermin Khayal, dan Boneka Sawah bisa memalsukannya'
-                  : 'Pemeriksaan bersifat pribadi: hanya kamu yang melihat',
-              color: _kBlue),
+            masked ? 1 : 0,
+            masked
+                ? 'Topeng, Cermin Khayal, dan Boneka Sawah bisa memalsukannya'
+                : 'Pemeriksaan bersifat pribadi: hanya kamu yang melihat',
+            color: _kBlue,
+          ),
         ],
       );
     },
@@ -1371,28 +1426,33 @@ class _NightDemo extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CardCol(
-                  path: _art('malam', 'antagonis', 'kerikilpanas'),
-                  label: 'Serangan',
-                  w: 78,
-                  glow: EmbunColors.blood,
-                  opacity: atk),
+                path: _art('malam', 'antagonis', 'kerikilpanas'),
+                label: 'Serangan',
+                w: 78,
+                glow: EmbunColors.blood,
+                opacity: atk,
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 38, 14, 0),
                 child: Opacity(
                   opacity: unk,
-                  child: const Text('?',
-                      style: TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white70)),
+                  child: const Text(
+                    '?',
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white70,
+                    ),
+                  ),
                 ),
               ),
               _CardCol(
-                  path: _art('persembahan', 'warga', 'kayupagar'),
-                  label: 'Perlindungan',
-                  w: 78,
-                  glow: EmbunColors.leaf,
-                  opacity: prot),
+                path: _art('persembahan', 'warga', 'kayupagar'),
+                label: 'Perlindungan',
+                w: 78,
+                glow: EmbunColors.leaf,
+                opacity: prot,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1438,7 +1498,9 @@ class _OfferDemo extends StatelessWidget {
                       clipBehavior: Clip.none,
                       children: [
                         CardArt(
-                            path: cardBackPath(dark: i == 3 && roti), width: 50),
+                          path: cardBackPath(dark: i == 3 && roti),
+                          width: 50,
+                        ),
                         if (i < shown)
                           Positioned(
                             right: -6,
@@ -1455,26 +1517,35 @@ class _OfferDemo extends StatelessWidget {
           AnimatedOpacity(
             duration: const Duration(milliseconds: 250),
             opacity: roti ? 1 : 0,
-            child: const _Chip('Roti Surplus wajib (Si Terbisik)', EmbunColors.blood),
+            child: const _Chip(
+              'Roti Surplus wajib (Si Terbisik)',
+              EmbunColors.blood,
+            ),
           ),
           const SizedBox(height: 10),
-          Text('Daun Hayu: $leaves / $kLeavesMax',
-              style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: EmbunColors.leaf)),
+          Text(
+            'Daun Hayu: $leaves / $kLeavesMax',
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: EmbunColors.leaf,
+            ),
+          ),
           const SizedBox(height: 6),
           Container(
             height: 10,
             decoration: BoxDecoration(
-                color: Colors.white12, borderRadius: BorderRadius.circular(5)),
+              color: Colors.white12,
+              borderRadius: BorderRadius.circular(5),
+            ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: (leaves / kLeavesMax).clamp(0.0, 1.0).toDouble(),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                    color: EmbunColors.leaf,
-                    borderRadius: BorderRadius.circular(5)),
+                  color: EmbunColors.leaf,
+                  borderRadius: BorderRadius.circular(5),
+                ),
               ),
             ),
           ),
@@ -1513,19 +1584,31 @@ class _LivesDemo extends StatelessWidget {
           child: Column(
             children: [
               SizedBox(
-                  height: 38,
-                  child: Center(
-                      child: FittedBox(fit: BoxFit.scaleDown, child: top))),
+                height: 38,
+                child: Center(
+                  child: FittedBox(fit: BoxFit.scaleDown, child: top),
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 12.5, fontWeight: FontWeight.w800, color: col)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: col,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(sub,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 11, height: 1.25, color: Colors.white60)),
+              Text(
+                sub,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  height: 1.25,
+                  color: Colors.white60,
+                ),
+              ),
             ],
           ),
         ),
@@ -1547,42 +1630,103 @@ class _LivesDemo extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _stage(s == 0, _hearts(kStrikesMax), 'Awal',
-                  '$kStrikesMax nyawa', EmbunColors.cream),
+              _stage(
+                s == 0,
+                _hearts(kStrikesMax),
+                'Awal',
+                '$kStrikesMax nyawa',
+                EmbunColors.cream,
+              ),
               _arrow(),
               _stage(
-                  s == 1,
-                  Row(mainAxisSize: MainAxisSize.min, children: [
+                s == 1,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     _hearts(kStrikesMax - 1),
                     const SizedBox(width: 6),
                     const GameIcon('lock', size: 26),
-                  ]),
-                  'Tuduhan 1',
-                  'Dikurung sampai musyawarah berikutnya',
-                  EmbunColors.gold),
+                  ],
+                ),
+                'Tuduhan 1',
+                'Dikurung sampai musyawarah berikutnya',
+                EmbunColors.gold,
+              ),
               _arrow(),
-              _stage(s >= 2, _hearts(0), 'Tuduhan 2',
-                  'Si Terbisik tertangkap, atau warga keluar dari desa',
-                  EmbunColors.blood),
+              _stage(
+                s >= 2,
+                _hearts(0),
+                'Tuduhan 2',
+                'Si Terbisik tertangkap, atau warga keluar dari desa',
+                EmbunColors.blood,
+              ),
             ],
           ),
           const SizedBox(height: 14),
-          _caption(
-              s,
-              switch (s) {
-                0 => 'Tiap pemain punya $kStrikesMax nyawa',
-                1 => 'Dikurung: tak bisa membeli atau menawar tukar, tapi masih bisa bicara dan memilih',
-                2 => 'Tuduhan kedua: Si Terbisik tertangkap dan warga menang, atau warga biasa keluar',
-                _ => 'Bila pemain tersisa kurang dari 3, Si Terbisik langsung menang',
-              },
-              color: hearts == 0 ? EmbunColors.blood : EmbunColors.gold),
+          _caption(s, switch (s) {
+            0 => 'Tiap pemain punya $kStrikesMax nyawa',
+            1 =>
+              'Dikurung: tak bisa membeli atau menawar tukar, tapi masih bisa bicara dan memilih',
+            2 =>
+              'Tuduhan kedua: Si Terbisik tertangkap dan warga menang, atau warga biasa keluar',
+            _ =>
+              'Bila pemain tersisa kurang dari 3, Si Terbisik langsung menang',
+          }, color: hearts == 0 ? EmbunColors.blood : EmbunColors.gold),
         ],
       );
     },
   );
 }
 
-/// 13. Kemenangan: lama sesi menggeser batas daun.
+/// Contoh kondisi akar, batang, dan tanah pada bilah status Hayu.
+class _HayuPartsDemo extends StatelessWidget {
+  const _HayuPartsDemo();
+
+  static const _parts = [
+    ('akar', 'subur', 'Embun warga'),
+    ('batang', 'biasa', 'Perlindungan'),
+    ('tanah', 'layu', 'Kabut'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      SizedBox(height: 126, child: Center(child: TreePortrait(leaves: 18))),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          for (final (part, condition, effect) in _parts)
+            Expanded(
+              child: Column(
+                children: [
+                  PartBadge(part, condition, size: 34),
+                  const SizedBox(height: 5),
+                  Text(
+                    PartsStrip.partName(part),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    condition,
+                    style: TextStyle(
+                      color: PartsStrip.colorOf(condition),
+                      fontSize: 11,
+                    ),
+                  ),
+                  Text(
+                    effect,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Kemenangan: lama sesi menggeser batas daun.
 class _WinDemo extends StatelessWidget {
   const _WinDemo();
 
@@ -1596,96 +1740,116 @@ class _WinDemo extends StatelessWidget {
       final i = (t * 4).floor().clamp(0, 3).toInt();
       const have = 21;
       final win = have >= _need[i];
-      return LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth;
-        double x(int leaves) => w * leaves / kLeavesMax;
-        return Column(
-          children: [
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              children: [
-                for (var k = 0; k < 4; k++)
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: k == i ? 1 : 0.4,
-                    child: _Chip('${_days[k]} hari',
-                        k == i ? EmbunColors.gold : Colors.white54),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            const Text('Daun Hayu: $have / $kLeavesMax',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: EmbunColors.leaf)),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 52,
-              child: Stack(
-                clipBehavior: Clip.none,
+      return LayoutBuilder(
+        builder: (context, c) {
+          final w = c.maxWidth;
+          double x(int leaves) => w * leaves / kLeavesMax;
+          return Column(
+            children: [
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
                 children: [
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      height: 14,
-                      decoration: BoxDecoration(
+                  for (var k = 0; k < 4; k++)
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: k == i ? 1 : 0.4,
+                      child: _Chip(
+                        '${_days[k]} hari',
+                        k == i ? EmbunColors.gold : Colors.white54,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Daun Hayu: $have / $kLeavesMax',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: EmbunColors.leaf,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        height: 14,
+                        decoration: BoxDecoration(
                           color: Colors.white12,
-                          borderRadius: BorderRadius.circular(7)),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: have / kLeavesMax,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                              color:
-                              win ? EmbunColors.leaf : EmbunColors.blood,
-                              borderRadius: BorderRadius.circular(7)),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: have / kLeavesMax,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: win ? EmbunColors.leaf : EmbunColors.blood,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 450),
-                    curve: Curves.easeOutCubic,
-                    left: x(_need[i]) - 1,
-                    top: -4,
-                    child: Container(
-                        width: 2, height: 22, color: EmbunColors.gold),
-                  ),
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 450),
-                    curve: Curves.easeOutCubic,
-                    left: (x(_need[i]) - 40).clamp(0.0, w - 80).toDouble(),
-                    top: 22,
-                    width: 80,
-                    child: Text('batas ${_need[i]}',
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      left: x(_need[i]) - 1,
+                      top: -4,
+                      child: Container(
+                        width: 2,
+                        height: 22,
+                        color: EmbunColors.gold,
+                      ),
+                    ),
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      left: (x(_need[i]) - 40).clamp(0.0, w - 80).toDouble(),
+                      top: 22,
+                      width: 80,
+                      child: Text(
+                        'batas ${_need[i]}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                            fontSize: 11, color: EmbunColors.gold)),
-                  ),
-                  const Positioned(
-                    right: 0,
-                    top: 22,
-                    child: Text('30: menang langsung',
-                        style:
-                        TextStyle(fontSize: 10.5, color: EmbunColors.leaf)),
-                  ),
-                ],
+                          fontSize: 11,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
+                    ),
+                    const Positioned(
+                      right: 0,
+                      top: 22,
+                      child: Text(
+                        '30: menang langsung',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: EmbunColors.leaf,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            _caption(
+              const SizedBox(height: 10),
+              _caption(
                 i,
                 win
                     ? 'Sesi ${_days[i]} hari: 21 daun cukup, warga menang'
                     : 'Sesi ${_days[i]} hari: 21 daun belum cukup, Si Terbisik menang',
-                color: win ? EmbunColors.leaf : EmbunColors.blood),
-          ],
-        );
-      });
+                color: win ? EmbunColors.leaf : EmbunColors.blood,
+              ),
+            ],
+          );
+        },
+      );
     },
   );
 }
@@ -1702,8 +1866,9 @@ class _RingDemo extends StatefulWidget {
 class _RingDemoState extends State<_RingDemo>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 6000))
-    ..repeat();
+    vsync: this,
+    duration: const Duration(milliseconds: 6000),
+  )..repeat();
 
   @override
   void dispose() {
@@ -1715,105 +1880,120 @@ class _RingDemoState extends State<_RingDemo>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, box) {
-      final w = box.maxWidth;
-      const h = 230.0;
-      const cw = 42.0;
-      final ch = cw * kProtagonistAspect;
-      final center = Offset(w / 2, h / 2);
-      final r = math.min(w / 2 - cw, h / 2 - ch / 2 - 6).clamp(30.0, 200.0)
-          .toDouble();
-      final pos = [
-        for (var k = 0; k < 5; k++)
-          center +
-              Offset(math.cos(-math.pi / 2 + 2 * math.pi * k / 5),
-                  math.sin(-math.pi / 2 + 2 * math.pi * k / 5)) *
-                  r,
-      ];
-      return SizedBox(
-        width: w,
-        height: h,
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            final t = _c.value;
-            final prog = [
-              for (var i = 0; i < 3; i++)
-                ((t - (0.10 + 0.2 * i)) / 0.18).clamp(0.0, 1.0).toDouble(),
-            ];
-            final count = prog.where((p) => p >= 1).length;
-            final maj = _seg(t, 0.72, 0.80) * (1 - _seg(t, 0.94, 1.0));
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _ArrowsPainter(
-                        pos: pos, from: _from, to: 0, prog: prog, inset: ch / 2 + 4),
-                  ),
-                ),
-                for (var k = 0; k < 5; k++)
-                  Positioned(
-                    left: pos[k].dx - cw / 2,
-                    top: pos[k].dy - ch / 2,
-                    child: CardArt(
-                      path: cardBackPath(),
-                      width: cw,
-                      glow: k == 0 && maj > 0
-                          ? EmbunColors.blood.withValues(alpha: maj)
-                          : null,
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = box.maxWidth;
+        const h = 230.0;
+        const cw = 42.0;
+        final ch = cw * kProtagonistAspect;
+        final center = Offset(w / 2, h / 2);
+        final r = math
+            .min(w / 2 - cw, h / 2 - ch / 2 - 6)
+            .clamp(30.0, 200.0)
+            .toDouble();
+        final pos = [
+          for (var k = 0; k < 5; k++)
+            center +
+                Offset(
+                      math.cos(-math.pi / 2 + 2 * math.pi * k / 5),
+                      math.sin(-math.pi / 2 + 2 * math.pi * k / 5),
+                    ) *
+                    r,
+        ];
+        return SizedBox(
+          width: w,
+          height: h,
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) {
+              final t = _c.value;
+              final prog = [
+                for (var i = 0; i < 3; i++)
+                  ((t - (0.10 + 0.2 * i)) / 0.18).clamp(0.0, 1.0).toDouble(),
+              ];
+              final count = prog.where((p) => p >= 1).length;
+              final maj = _seg(t, 0.72, 0.80) * (1 - _seg(t, 0.94, 1.0));
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _ArrowsPainter(
+                        pos: pos,
+                        from: _from,
+                        to: 0,
+                        prog: prog,
+                        inset: ch / 2 + 4,
+                      ),
                     ),
                   ),
-                if (count > 0)
-                  Positioned(
-                    left: pos[0].dx + cw / 2 - 12,
-                    top: pos[0].dy - ch / 2 - 10,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: maj > 0.5 ? EmbunColors.blood : EmbunColors.gold,
-                        border: Border.all(
-                            color: const Color(0xFF05080F), width: 1.5),
+                  for (var k = 0; k < 5; k++)
+                    Positioned(
+                      left: pos[k].dx - cw / 2,
+                      top: pos[k].dy - ch / 2,
+                      child: CardArt(
+                        path: cardBackPath(),
+                        width: cw,
+                        glow: k == 0 && maj > 0
+                            ? EmbunColors.blood.withValues(alpha: maj)
+                            : null,
                       ),
-                      child: Text(
-                        '$count',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
+                    ),
+                  if (count > 0)
+                    Positioned(
+                      left: pos[0].dx + cw / 2 - 12,
+                      top: pos[0].dy - ch / 2 - 10,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
                           color: maj > 0.5
-                              ? Colors.white
-                              : const Color(0xFF07130F),
+                              ? EmbunColors.blood
+                              : EmbunColors.gold,
+                          border: Border.all(
+                            color: const Color(0xFF05080F),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: maj > 0.5
+                                ? Colors.white
+                                : const Color(0xFF07130F),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: center.dy - 10,
+                    child: Opacity(
+                      opacity: maj,
+                      child: const Text(
+                        'MAYORITAS',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w900,
+                          color: EmbunColors.blood,
                         ),
                       ),
                     ),
                   ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: center.dy - 10,
-                  child: Opacity(
-                    opacity: maj,
-                    child: const Text(
-                      'MAYORITAS',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        letterSpacing: 3,
-                        fontWeight: FontWeight.w900,
-                        color: EmbunColors.blood,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    });
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -1864,7 +2044,9 @@ class _ArrowsPainter extends CustomPainter {
           ..lineTo(e.dx - u.dx * 9 - n.dx * 5, e.dy - u.dy * 9 - n.dy * 5)
           ..close();
         canvas.drawPath(
-            head, Paint()..color = EmbunColors.blood.withValues(alpha: 0.95));
+          head,
+          Paint()..color = EmbunColors.blood.withValues(alpha: 0.95),
+        );
       }
     }
   }
