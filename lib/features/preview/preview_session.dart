@@ -120,9 +120,13 @@ class PreviewSession
       'win_leaves': 20,
       'is_public': true,
       'antagonist_count': antagonists,
+      'hayu_rules_version': 2,
+      'akar_score': offeringDay && phase != 'offering' ? 5 : 4,
+      'batang_score': offeringDay && phase != 'offering' ? 6 : 3,
+      'tanah_score': offeringDay && phase != 'offering' ? -5 : -3,
       'akar_c': 'subur',
       'batang_c': 'subur',
-      'tanah_c': 'layu',
+      'tanah_c': offeringDay && phase != 'offering' ? 'rusak' : 'layu',
       'verdict': winner == 'dibatalkan'
           ? 'Host menyudahi permainan.'
           : winner == 'warga'

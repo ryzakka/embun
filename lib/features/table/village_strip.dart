@@ -123,8 +123,12 @@ class _VillageStripState extends State<VillageStrip> {
   bool _alive(_Bubble b, DateTime now) =>
       now.difference(b.at).inMilliseconds < _lifeMs + 150;
 
-  Widget _cell(Map<String, dynamic> p, DateTime now, double cellW,
-      double avatar) {
+  Widget _cell(
+    Map<String, dynamic> p,
+    DateTime now,
+    double cellW,
+    double avatar,
+  ) {
     final id = p['user_id'] as String;
     final me = id == widget.myId;
     final ready = p['ready'] == true;
@@ -148,129 +152,175 @@ class _VillageStripState extends State<VillageStrip> {
         ? Colors.amberAccent
         : Colors.grey;
 
+    final portrait = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: widget.slim ? avatar : null,
+          height: widget.slim ? 8 : (widget.compact ? 14 : 20),
+          child: live != null ? Center(child: _targetChip(live, now)) : null,
+        ),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Opacity(
+              opacity: out ? 0.35 : 1,
+              child: PlayerAvatar(
+                key: widget.avatarKeyFor?.call(id),
+                path: protagonistPath(p['character_card'] as String),
+                size: avatar,
+                ring: out
+                    ? Colors.white30
+                    : jailed
+                    ? EmbunColors.blood
+                    : me
+                    ? EmbunColors.gold
+                    : EmbunColors.goldDim.withValues(alpha: 0.8),
+              ),
+            ),
+            if (incoming != null && !out)
+              Positioned.fill(child: _receiverOverlay(incoming)),
+            if (out)
+              const Positioned.fill(
+                child: Center(child: GameIcon('silang', size: 30)),
+              )
+            else
+              Positioned(
+                right: -5,
+                bottom: -4,
+                child: ready
+                    ? const DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF07130F),
+                        ),
+                        child: GameIcon('centang', size: 20),
+                      )
+                    : Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: dot,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 1.5),
+                        ),
+                      ),
+              ),
+            // Nyawa: dua hati di kiri bawah avatar.
+            if (!out)
+              Positioned(
+                left: -4,
+                bottom: -5,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xCC07130F),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 1,
+                    ),
+                    child: LivesRow(
+                      lives: livesLeft(p),
+                      size: widget.compact ? 9 : 11,
+                    ),
+                  ),
+                ),
+              ),
+            if (jailed)
+              Positioned(
+                left: -7,
+                top: -7,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF07130F),
+                    border: Border.all(color: EmbunColors.blood, width: 1.5),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(1),
+                    child: GameIcon('lock', size: 22),
+                  ),
+                ),
+              ),
+            // Isyarat menindih potret pengirim (paling atas).
+            if (live != null && !out)
+              Positioned.fill(child: _senderOverlay(live, avatar)),
+          ],
+        ),
+      ],
+    );
+    final name = Text(
+      p['name'] as String,
+      maxLines: widget.slim ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: widget.slim ? 12 : 10,
+        height: 1.12,
+        fontWeight: widget.slim ? FontWeight.w700 : FontWeight.w400,
+        color: out
+            ? Colors.white54
+            : jailed
+            ? EmbunColors.blood
+            : me
+            ? EmbunColors.gold
+            : EmbunColors.cream,
+      ),
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: (me || out) ? null : () => widget.onTapPlayer(p),
       child: SizedBox(
         width: cellW,
-        child: Column(
-          children: [
-            SizedBox(
-              height: widget.slim ? 8 : (widget.compact ? 14 : 20),
-              child: live != null
-                  ? Center(child: _targetChip(live, now))
-                  : null,
-            ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Opacity(
-                  opacity: out ? 0.35 : 1,
-                  child: PlayerAvatar(
-                    key: widget.avatarKeyFor?.call(id),
-                    path: protagonistPath(p['character_card'] as String),
-                    size: avatar,
-                    ring: out
-                        ? Colors.white30
-                        : jailed
-                        ? EmbunColors.blood
-                        : me
-                        ? EmbunColors.gold
-                        : EmbunColors.goldDim.withValues(alpha: 0.8),
-                  ),
+        child: widget.slim
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    portrait,
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          name,
+                          if (me)
+                            const Text(
+                              'Kamu',
+                              style: TextStyle(
+                                fontSize: 10,
+                                height: 1.3,
+                                color: Colors.white70,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                if (incoming != null && !out)
-                  Positioned.fill(child: _receiverOverlay(incoming)),
-                if (out)
-                  const Positioned.fill(
-                    child: Center(
-                      child: GameIcon('silang', size: 30),
-                    ),
-                  )
-                else
-                  Positioned(
-                    right: -5,
-                    bottom: -4,
-                    child: ready
-                        ? const DecoratedBox(
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF07130F)),
-                      child: GameIcon('centang', size: 20),
+              )
+            : Column(
+                children: [
+                  portrait,
+                  const SizedBox(height: 3),
+                  name,
+                  if (out && !widget.compact)
+                    const StatusTag(
+                      text: 'Keluar',
+                      color: Colors.white54,
+                      asset: 'keluar',
+                      fontSize: 9,
                     )
-                        : Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: dot,
-                        shape: BoxShape.circle,
-                        border:
-                        Border.all(color: Colors.black, width: 1.5),
-                      ),
+                  else if (jailed && !widget.compact)
+                    const StatusTag(
+                      text: 'Dikurung',
+                      color: EmbunColors.blood,
+                      fontSize: 9,
                     ),
-                  ),
-                // Nyawa: dua hati di kiri bawah avatar.
-                if (!out)
-                  Positioned(
-                    left: -4,
-                    bottom: -5,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: const Color(0xCC07130F),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 2, vertical: 1),
-                        child: LivesRow(lives: livesLeft(p), size: widget.compact ? 9 : 11),
-                      ),
-                    ),
-                  ),
-                if (jailed)
-                  Positioned(
-                    left: -7,
-                    top: -7,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF07130F),
-                        border: Border.all(color: EmbunColors.blood, width: 1.5),
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.all(1),
-                        child: GameIcon('lock', size: 22),
-                      ),
-                    ),
-                  ),
-                // Isyarat menindih potret pengirim (paling atas).
-                if (live != null && !out)
-                  Positioned.fill(child: _senderOverlay(live, avatar)),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              p['name'] as String,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                color: out
-                    ? Colors.white38
-                    : jailed
-                    ? EmbunColors.blood
-                    : me
-                    ? EmbunColors.gold
-                    : Colors.white70,
+                ],
               ),
-            ),
-            if (out && !widget.compact)
-              const StatusTag(
-                text: 'Keluar', color: Colors.white54, asset: 'keluar', fontSize: 9)
-            else if (jailed && !widget.compact)
-              const StatusTag(
-                  text: 'Dikurung', color: EmbunColors.blood, fontSize: 9),
-          ],
-        ),
       ),
     );
   }
@@ -467,53 +517,64 @@ class _VillageStripState extends State<VillageStrip> {
     final now = DateTime.now();
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxWidth < 90) return _collapsedEmotes(now);
+        final collapseBelow = widget.collapsedBuilder == null ? 90.0 : 160.0;
+        if (box.maxWidth < collapseBelow) return _collapsedEmotes(now);
         // Sel melebar membagi ruang bila semua pemain muat (seperti slot lobi);
         // bila tidak, deretan bisa digulir dengan lebar sel tetap.
         final cp = widget.compact;
         final gap = 6.0;
-        final minW = cp ? 46.0 : 56.0;
-        final maxW = cp ? 64.0 : 84.0;
-        final scrollW = cp ? 52.0 : 62.0;
+        final minW = widget.slim ? 96.0 : (cp ? 46.0 : 56.0);
+        final maxW = widget.slim ? 138.0 : (cp ? 64.0 : 84.0);
+        final scrollW = widget.slim ? 118.0 : (cp ? 52.0 : 62.0);
         final avail = box.maxWidth - (cp ? 50 : 56); // ruang tombol isyarat
-        final n = widget.players.length;
+        final members = widget.slim
+            ? [
+                ...widget.players.where((p) => p['user_id'] == widget.myId),
+                ...widget.players.where((p) => p['user_id'] != widget.myId),
+              ]
+            : widget.players;
+        final n = members.length;
         final fits = n > 0 && n * minW + (n - 1) * gap <= avail;
         final cellW = fits
             ? ((avail - (n - 1) * gap) / n).clamp(minW, maxW).toDouble()
             : scrollW;
         final avatar = widget.slim
-            ? 28.0
+            ? 30.0
             : (cellW * 0.62)
                   .clamp(cp ? 30.0 : 36.0, cp ? 40.0 : 52.0)
                   .toDouble();
         final Widget list = fits
             ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: widget.slim
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
                 children: [
                   for (var i = 0; i < n; i++) ...[
                     if (i > 0) SizedBox(width: gap),
-                    _cell(widget.players[i], now, cellW, avatar),
+                    _cell(members[i], now, cellW, avatar),
                   ],
                 ],
               )
             : ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  for (final p in widget.players)
+                  for (final p in members)
                     Padding(
                       padding: EdgeInsets.only(right: gap),
                       child: _cell(p, now, cellW, avatar),
                     ),
                 ],
               );
-        final extra = (MediaQuery.textScalerOf(context).scale(10) - 10).clamp(
-          0.0,
-          24.0,
-        );
+        final scaler = MediaQuery.textScalerOf(context);
+        final extra = (scaler.scale(10) - 10).clamp(0.0, 24.0);
         return _strip(
           list,
-          avatar + (widget.slim ? 26 : (cp ? 36 : 54)) + extra * (cp ? 1 : 2),
+          widget.slim
+              ? math.max(
+                  48.0,
+                  scaler.scale(12) * 2.24 + scaler.scale(10) * 1.3 + 6,
+                )
+              : avatar + (cp ? 36 : 54) + extra * (cp ? 1 : 2),
         );
       },
     );
@@ -533,13 +594,17 @@ class _VillageStripState extends State<VillageStrip> {
               child: Container(
                 width: widget.compact ? 38 : 44,
                 height: widget.compact ? 38 : 44,
-                margin: EdgeInsets.symmetric(horizontal: widget.compact ? 4 : 6),
+                margin: EdgeInsets.symmetric(
+                  horizontal: widget.compact ? 4 : 6,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFF0C1B17),
                   border: Border.all(
-                      color: EmbunColors.gold.withValues(alpha: 0.7), width: 1.5),
+                    color: EmbunColors.gold.withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
                 ),
                 child: const Text('😀', style: TextStyle(fontSize: 20)),
               ),
@@ -550,6 +615,7 @@ class _VillageStripState extends State<VillageStrip> {
     );
   }
 }
+
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
 

@@ -994,97 +994,152 @@ class _TablePageState extends State<TablePage> {
   // ---------- sheet ----------
 
   void _showPlayersSheet(int day, String phase) {
-    final villageOpen = phase == 'day' || phase == 'research' || phase == 'discussion';
-    showModalBottomSheet(
+    final villageOpen =
+        phase == 'day' || phase == 'research' || phase == 'discussion';
+    final me = _meRow;
+    final others = players.where((p) => p['user_id'] != repo.myId);
+    final active = _alive;
+    final ready = active.where((p) => p['ready'] == true).length;
+    showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 580),
       backgroundColor: const Color(0xFF14221F),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(
-              icon: 'persona',
-              title: 'Daftar Warga Desa',
-              trailing: villageOpen
-                  ? IconButton(
-                      tooltip: 'Isyarat',
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _openEmotes(day);
-                      },
-                      icon: const Icon(Icons.emoji_emotions_outlined),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 10),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final p in players)
-                    ListTile(
-                      dense: true,
-                      onTap: villageOpen && p['user_id'] != repo.myId && !isOut(p)
-                          ? () {
-                              Navigator.pop(ctx);
-                              _openPlayer(p, phase);
-                            }
-                          : null,
-                      leading: Opacity(
-                        opacity: isOut(p) ? 0.4 : 1,
-                        child: PlayerAvatar(
-                          path: protagonistPath(p['character_card'] as String),
-                          size: 36,
-                          ring: isJailed(p, day)
-                              ? EmbunColors.blood
-                              : Colors.white38,
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.74,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  icon: 'persona',
+                  title: 'Daftar warga',
+                  trailing: villageOpen
+                      ? IconButton(
+                          tooltip: 'Kirim isyarat',
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _openEmotes(day);
+                          },
+                          icon: const Icon(Icons.emoji_emotions_outlined),
+                        )
+                      : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    '$ready dari ${active.length} warga siap',
+                    style: dayCaption,
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      if (me != null) _playerListRow(me, day, mine: true),
+                      for (final p in [
+                        ...others.where((p) => !isOut(p)),
+                        ...others.where(isOut),
+                      ]) ...[
+                        const Divider(height: 1, color: Colors.white12),
+                        _playerListRow(
+                          p,
+                          day,
+                          onTap: villageOpen && !isOut(p)
+                              ? () {
+                                  Navigator.pop(ctx);
+                                  _openPlayer(p, phase);
+                                }
+                              : null,
                         ),
-                      ),
-                      title: Text(
-                        p['name'] as String,
-                        style: TextStyle(
-                            color: isOut(p) ? Colors.white38 : null),
-                      ),
-                      subtitle: isOut(p)
-                          ? null
-                          : Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: LivesRow(lives: livesLeft(p), size: 14),
-                        ),
-                      ),
-                      trailing: isOut(p)
-                          ? const StatusTag(
-                          text: 'Keluar',
-                          color: Colors.white54,
-                          asset: 'keluar',
-                          fontSize: 11)
-                          : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isJailed(p, day))
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: StatusTag(
-                                  text: 'Dikurung',
-                                  color: EmbunColors.blood,
-                                  asset: 'lock',
-                                  fontSize: 11),
-                            ),
-                          GameIcon(
-                              p['ready'] == true ? 'centang' : 'wait',
-                              size: 28),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _playerListRow(
+    Map<String, dynamic> player,
+    int day, {
+    bool mine = false,
+    VoidCallback? onTap,
+  }) {
+    final out = isOut(player);
+    final jailed = isJailed(player, day);
+    final ready = player['ready'] == true;
+    return Material(
+      color: mine
+          ? EmbunColors.gold.withValues(alpha: 0.08)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        leading: Opacity(
+          opacity: out ? 0.45 : 1,
+          child: PlayerAvatar(
+            path: protagonistPath(
+              (player['character_card'] as String?) ?? 'default',
+            ),
+            size: 40,
+            ring: jailed
+                ? EmbunColors.blood
+                : mine
+                ? EmbunColors.gold
+                : Colors.white38,
+          ),
+        ),
+        title: Text(
+          (player['name'] as String?) ?? 'Pemain',
+          style: TextStyle(
+            color: out ? Colors.white70 : EmbunColors.cream,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Wrap(
+            spacing: 9,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (mine)
+                Text(
+                  'Kamu',
+                  style: dayCaption.copyWith(color: EmbunColors.gold),
+                ),
+              if (!out) LivesRow(lives: livesLeft(player), size: 14),
+              Text(
+                out ? 'Keluar' : (ready ? 'Siap' : 'Belum siap'),
+                style: dayCaption.copyWith(
+                  color: ready && !out ? EmbunColors.leaf : null,
+                ),
+              ),
+              if (jailed)
+                Text(
+                  'Dikurung',
+                  style: dayCaption.copyWith(color: EmbunColors.blood),
+                ),
+            ],
+          ),
+        ),
+        trailing: onTap == null
+            ? null
+            : const Icon(Icons.chevron_right, size: 20),
+        onTap: onTap,
       ),
     );
   }
@@ -1575,6 +1630,7 @@ class _TablePageState extends State<TablePage> {
         gameId: widget.gameId,
         leaves: leaves,
         isAntag: isAntag,
+        tanahFog: hayu.tanah.tanahFog,
         // Kartu serangan malam (ungu) dan kartu siang (kuning) tidak bisa
         // dipersembahkan.
         hand: hand.where((h) {
@@ -1692,11 +1748,14 @@ class _TablePageState extends State<TablePage> {
             cycle: cycle,
             deadline: deadline,
             isHost: isHost,
-            players: _playersShortcut(day, phase, readyCount, alive.length),
+            people: _peopleBar(
+              me: meRow,
+              village: village,
+              shortcut: _playersShortcut(day, phase, readyCount, alive.length),
+            ),
             showChat: phase != 'discussion',
             showDue: phase != 'voting',
             phase: phase,
-            village: village,
           ),
           // Satu slot pemberitahuan: status diri > vonis > kabar pagi.
           AnimatedSize(
@@ -1980,6 +2039,68 @@ class _TablePageState extends State<TablePage> {
     ),
   );
 
+  static const _playersShortcutWidth = 124.0;
+
+  Widget _peopleBar({
+    required Map<String, dynamic>? me,
+    required Widget? village,
+    required Widget shortcut,
+  }) => LayoutBuilder(
+    builder: (context, box) {
+      final showRoster = village != null && box.maxWidth >= 650;
+      return Row(
+        children: [
+          Expanded(
+            child: showRoster
+                ? village
+                : Row(
+                    children: [
+                      PlayerAvatar(
+                        path: protagonistPath(
+                          (me?['character_card'] as String?) ?? 'default',
+                        ),
+                        size: 30,
+                        ring: EmbunColors.goldDim,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              (me?['name'] as String?) ?? 'Pemain',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                height: 1.1,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Kamu',
+                              style: dayCaption.copyWith(
+                                color: EmbunColors.gold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(width: 8),
+          if (showRoster || village == null)
+            shortcut
+          else
+            SizedBox(width: _playersShortcutWidth, child: village),
+        ],
+      );
+    },
+  );
+
   Widget _playersShortcut(
     int day,
     String phase,
@@ -1988,7 +2109,8 @@ class _TablePageState extends State<TablePage> {
     String? emoji,
     String? sender,
   }) {
-    final label = 'Daftar warga, $ready dari $total siap'
+    final label =
+        'Daftar warga, $ready dari $total siap'
         '${sender == null ? '' : ', isyarat dari $sender'}';
     return Semantics(
       label: label,
@@ -1996,7 +2118,7 @@ class _TablePageState extends State<TablePage> {
       excludeSemantics: true,
       onTap: () => _showPlayersSheet(day, phase),
       child: SizedBox(
-        width: 49,
+        width: _playersShortcutWidth,
         height: 42,
         child: InkWell(
           key: _playersKey,
@@ -2014,13 +2136,29 @@ class _TablePageState extends State<TablePage> {
                       const GameIcon('persona', size: 17)
                     else
                       Text(emoji, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 6),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Daftar warga',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '$ready/$total siap',
+                          style: dayCaption.copyWith(fontSize: 10),
+                        ),
+                      ],
+                    ),
                     const SizedBox(width: 3),
-                    Text(
-                      '$ready/$total',
-                      style: dayMetricValue.copyWith(
-                        fontSize: 12,
-                        color: EmbunColors.cream,
-                      ),
+                    const Icon(
+                      Icons.expand_more,
+                      size: 14,
+                      color: EmbunColors.goldDim,
                     ),
                   ],
                 ),
@@ -2039,16 +2177,18 @@ class _TablePageState extends State<TablePage> {
     required int cycle,
     required DateTime? deadline,
     required bool isHost,
-    required Widget players,
+    required Widget people,
     required bool showChat,
     bool showDue = true,
     required String phase,
-    Widget? village,
   }) {
     final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
     final cycleLength = cycle > 0 ? cycle : 3;
-    final offeringIn = showDue ? (cycleLength - day % cycleLength) % cycleLength : null;
-    final canOpenAbility = !isAntag && _abilityKnown && abilityDefs[abilityId] != null;
+    final offeringIn = showDue
+        ? (cycleLength - day % cycleLength) % cycleLength
+        : null;
+    final canOpenAbility =
+        !isAntag && _abilityKnown && abilityDefs[abilityId] != null;
     final canChatAsTerbisik = showAsAntag && _terbisikChatAccess.value;
     PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
         PopupMenuItem<String>(
@@ -2062,19 +2202,19 @@ class _TablePageState extends State<TablePage> {
           ),
         );
 
-    void openHayu() => showPartsSheet(
-      context, effects: hayu, offeringIn: offeringIn,
-    );
+    void openHayu() =>
+        showPartsSheet(context, effects: hayu, offeringIn: offeringIn);
     final income = hayu.income;
     final disguisedRate = disguiseMode ? (myState?['rate'] as num?) : null;
     final incomeLabel = income != null
         ? '${hayuAmount(income.total, signed: true)} besok'
         : disguisedRate == null
-            ? '—'
-            : '${hayuAmount(disguisedRate, signed: true)}/hari';
+        ? '—'
+        : '${hayuAmount(disguisedRate, signed: true)}/hari';
     final currencyLabel = showAsAntag ? 'BULIR HITAM' : 'TETES EMBUN';
-    final balanceTone =
-        showAsAntag ? const Color(0xFFE4CDFF) : const Color(0xFFFFDE8D);
+    final balanceTone = showAsAntag
+        ? const Color(0xFFE4CDFF)
+        : const Color(0xFFFFDE8D);
     final balanceMetric = LayoutBuilder(
       builder: (context, box) {
         final iconSize = box.maxWidth < 112 || _short ? 23.0 : 28.0;
@@ -2203,7 +2343,8 @@ class _TablePageState extends State<TablePage> {
         item('me', 'persona', 'Infoku'),
         item('players', 'persona', 'Daftar warga'),
         if (canOpenAbility) item('ability', 'item', 'Kemampuan'),
-        if (canChatAsTerbisik) item('terbisik_chat', 'lock', 'Obrolan Terbisik'),
+        if (canChatAsTerbisik)
+          item('terbisik_chat', 'lock', 'Obrolan Terbisik'),
         item('guide', 'question', 'Panduan'),
         item(
           'fx',
@@ -2250,10 +2391,10 @@ class _TablePageState extends State<TablePage> {
       tools: tools,
       wideTools: wideTools,
       menu: menu,
-      menuAttention: canOpenAbility && !abilityUsed && abilityIsManual(abilityId),
+      menuAttention:
+          canOpenAbility && !abilityUsed && abilityIsManual(abilityId),
       parts: PartsStrip(effects: hayu, onTap: openHayu),
-      players: players,
-      village: village,
+      people: people,
     );
   }
 

@@ -51,12 +51,11 @@ class DayTableHeader extends StatelessWidget {
     required this.short,
     required this.balance,
     required this.parts,
-    required this.players,
+    required this.people,
     required this.tools,
     required this.wideTools,
     required this.menu,
     required this.menuAttention,
-    this.village,
   });
 
   final Color accent;
@@ -66,12 +65,11 @@ class DayTableHeader extends StatelessWidget {
   final bool short;
   final Widget balance;
   final Widget parts;
-  final Widget players;
+  final Widget people;
   final List<Widget> tools;
   final List<Widget> wideTools;
   final Widget menu;
   final bool menuAttention;
-  final Widget? village;
 
   Widget _divider({double height = 28}) => SizedBox(
     height: height,
@@ -157,20 +155,11 @@ class DayTableHeader extends StatelessWidget {
     ],
   );
 
-  Widget _roster() => Align(
-    alignment: Alignment.centerRight,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 236),
-      child: village,
-    ),
-  );
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
       final wide = box.maxWidth >= 1040 && textScale <= 1.3;
-      final showRoster = village != null && box.maxWidth >= 680;
       final dayMetric = _dayMetric(wide: wide);
       final actions = _actions(wide: wide);
       final primary = Row(
@@ -196,48 +185,40 @@ class DayTableHeader extends StatelessWidget {
             horizontal: wide ? 13 : 9,
             vertical: short ? 3 : 4,
           ),
-          child: wide
-              ? Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (wide)
+                Row(
                   children: [
                     dayMetric,
                     SizedBox(width: 132, child: balance),
                     _divider(),
-                    SizedBox(
-                      width: (box.maxWidth * 0.29).clamp(300.0, 350.0),
-                      child: parts,
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 445),
+                          child: parts,
+                        ),
+                      ),
                     ),
-                    _divider(),
-                    Expanded(child: showRoster ? _roster() : const SizedBox()),
-                    players,
-                    const SizedBox(width: 8),
                     actions,
                   ],
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    primary,
-                    Divider(
-                      height: short ? 5 : 7,
-                      color: accent.withValues(alpha: 0.15),
-                    ),
-                    Row(
-                      children: [
-                        if (showRoster) ...[
-                          SizedBox(width: 360, child: parts),
-                          _divider(),
-                          Expanded(child: _roster()),
-                        ] else
-                          Expanded(child: parts),
-                        const SizedBox(width: 5),
-                        if (showRoster || village == null)
-                          players
-                        else
-                          SizedBox(width: 49, child: village),
-                      ],
-                    ),
-                  ],
+              else ...[
+                primary,
+                Divider(
+                  height: short ? 5 : 7,
+                  color: accent.withValues(alpha: 0.15),
                 ),
+                parts,
+              ],
+              Divider(height: 7, color: accent.withValues(alpha: 0.20)),
+              people,
+            ],
+          ),
         ),
       );
     },

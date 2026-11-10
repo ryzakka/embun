@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/embun_data.dart';
 import '../../data/game_rules.dart';
+import '../../data/hayu_effects.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -237,13 +238,12 @@ class _TutorialPageState extends State<TutorialPage>
     ),
     _Step(
       'Bagian Hayu',
-      'Selain daun, Hayu punya **Akar, Batang, dan Tanah** yang kondisinya '
-          'tampil di samping daun: **subur, biasa, layu, rusak**. '
-          'Akar memengaruhi **embun harian warga**, Batang memengaruhi '
-          '**perlindungan**, Tanah memengaruhi **kabut**. Kartu persembahan '
-          'bisa memulihkan atau merusaknya, dan kartu lanjutan terus '
-          'bekerja tiap malam persembahan. Ketuk Hayu untuk melihat '
-          '**dampak angkanya**, termasuk rincian embun untuk hari berikutnya.',
+      'Di ruang baru, **Akar, Batang, dan Tanah** bergerak dari **−8 sampai +8**. '
+          'Akar mengubah embun harian Warga tiap poin. Batang mengubah perisai '
+          'dan Tanah mengubah kabut tiap dua poin, dihitung dari kondisi awal '
+          'persembahan. Tanah juga bisa mengurangi atau menambah ulat. '
+          '**Daun** naik menuju target dan membuka +0,5 bulir hitam tiap 5 daun '
+          'bagi Terbisik. Ketuk indikator Hayu untuk melihat rinciannya.',
       EmbunColors.leaf,
       (p) => const _HayuPartsDemo(),
       hasNarration: false,
@@ -1694,51 +1694,39 @@ class _LivesDemo extends StatelessWidget {
   );
 }
 
-/// Contoh kondisi akar, batang, dan tanah pada bilah status Hayu.
+/// Contoh indikator Hayu dengan tiga perubahan bertahap.
 class _HayuPartsDemo extends StatelessWidget {
   const _HayuPartsDemo();
 
-  static const _parts = [
-    ('akar', 'subur', '+25% embun Warga'),
-    ('batang', 'subur', '+1 perlindungan'),
-    ('tanah', 'layu', '+1 kabut'),
-  ];
-
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      SizedBox(height: 126, child: Center(child: TreePortrait(leaves: 18))),
-      const SizedBox(height: 12),
-      Row(
+  Widget build(BuildContext context) => _Loop(
+    ms: 9000,
+    builder: (context, t, _) {
+      final index = (t * 3).floor().clamp(0, 2);
+      final (leaves, akar, batang, tanah) = const [
+        (12, 0, 0, 0),
+        (16, 3, 2, -3),
+        (20, 6, 4, -7),
+      ][index];
+      final effects = HayuEffects.fromGame({
+        'hayu_rules_version': 2,
+        'leaves': leaves,
+        'win_leaves': 20,
+        'akar_score': akar,
+        'batang_score': batang,
+        'tanah_score': tanah,
+      });
+      return Column(
         children: [
-          for (final (part, condition, effect) in _parts)
-            Expanded(
-              child: Column(
-                children: [
-                  PartBadge(part, condition, size: 34),
-                  const SizedBox(height: 5),
-                  Text(
-                    PartsStrip.partName(part),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    condition,
-                    style: TextStyle(
-                      color: PartsStrip.colorOf(condition),
-                      fontSize: 11,
-                    ),
-                  ),
-                  Text(
-                    effect,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 11, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
+          SizedBox(height: 126, child: Center(child: TreePortrait(leaves: leaves))),
+          const SizedBox(height: 12),
+          PartsStrip(
+            effects: effects,
+            onTap: () => showPartsSheet(context, effects: effects),
+          ),
         ],
-      ),
-    ],
+      );
+    },
   );
 }
 

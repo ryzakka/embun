@@ -46,21 +46,28 @@ class PartsStrip extends StatelessWidget {
   final VoidCallback onTap;
 
   static Color colorOf(String c) => switch (c) {
+    'prima' => const Color(0xFF5DE5C3),
+    'kuat' => const Color(0xFF79E8AB),
     'subur' => const Color(0xFF87E1A0),
+    'tumbuh' => const Color(0xFFB5DC8D),
     'layu' => const Color(0xFFFFCB73),
+    'rapuh' => const Color(0xFFF9AE79),
     'rusak' => const Color(0xFFFF9A92),
+    'kritis' => const Color(0xFFFF7288),
     _ => const Color(0xFFACBEB4),
   };
 
   static IconData fallbackIcon(String part) => switch (part) {
     'akar' => Icons.water_drop,
     'batang' => Icons.park,
+    'daun' => Icons.eco,
     _ => Icons.landscape,
   };
 
   static String partName(String part) => switch (part) {
     'akar' => 'Akar',
     'batang' => 'Batang',
+    'daun' => 'Daun',
     _ => 'Tanah',
   };
 
@@ -69,31 +76,47 @@ class PartsStrip extends StatelessWidget {
     required String name,
     required String amount,
     required Color tone,
-  }) => Row(
+    String? detail,
+    Widget? meter,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
     children: [
-      icon,
-      const SizedBox(width: 4),
-      Expanded(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
+      Row(
+        children: [
+          icon,
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    amount,
+                    style: dayMetricValue.copyWith(fontSize: 15, color: tone),
+                  ),
+                ),
+              ],
             ),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                amount,
-                style: dayMetricValue.copyWith(fontSize: 15, color: tone),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+      if (detail != null)
+        Text(
+          detail,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: dayCaption.copyWith(fontSize: 9.5),
+        ),
+      if (meter != null) ...[const SizedBox(height: 3), meter],
     ],
   );
 
@@ -105,16 +128,19 @@ class PartsStrip extends StatelessWidget {
     final leaves = '${effects.leaves}/${effects.winLeaves}';
     final change = effects.leavesChange ?? 0;
     final delta = change == 0 ? '' : ' ${hayuAmount(change, signed: true)}';
+    final leafTone = effects.expandedRules
+        ? colorOf(effects.leafLevel.name)
+        : const Color(0xFF7BD88F);
 
     return Semantics(
       button: true,
       onTap: onTap,
       excludeSemantics: true,
       label:
-          'Dampak Hayu. Daun $leaves$delta. '
-          'Akar ${effects.akar.name}, $root embun. '
-          'Batang ${effects.batang.name}, $shield perlindungan. '
-          'Tanah ${effects.tanah.name}, $fog kabut.',
+          'Dampak Hayu. Daun $leaves$delta, ${effects.leafLevel.label}. '
+          'Akar ${_partReading(effects.akar)}, $root embun. '
+          'Batang ${_partReading(effects.batang)}, $shield perlindungan. '
+          'Tanah ${_partReading(effects.tanah)}, $fog kabut.',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -126,7 +152,11 @@ class PartsStrip extends StatelessWidget {
                 icon: GameIcon('helaidaun', size: size),
                 name: 'Daun$delta',
                 amount: leaves,
-                tone: const Color(0xFF7BD88F),
+                tone: leafTone,
+                detail: effects.expandedRules ? effects.leafLevel.label : null,
+                meter: effects.expandedRules
+                    ? _leafMeter(effects, leafTone)
+                    : null,
               ),
               for (final (part, condition, amount) in [
                 ('akar', effects.akar, root),
@@ -134,18 +164,23 @@ class PartsStrip extends StatelessWidget {
                 ('tanah', effects.tanah, fog),
               ])
                 _metric(
-                  icon: PartBadge(part, condition.name, size: size),
+                  icon: PartBadge(part, condition.toneKey, size: size),
                   name: partName(part),
                   amount: amount,
-                  tone: colorOf(condition.name),
+                  tone: colorOf(condition.toneKey),
+                  detail: condition.score != null
+                      ? _partReading(condition)
+                      : null,
+                  meter: _partMeter(condition),
                 ),
             ];
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 5),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (var i = 0; i < entries.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 5),
+                    if (i > 0) const SizedBox(width: 6),
                     Expanded(child: entries[i]),
                   ],
                 ],
@@ -156,6 +191,86 @@ class PartsStrip extends StatelessWidget {
       ),
     );
   }
+}
+
+String _partReading(HayuPartStatus part) => part.score == null
+    ? part.label
+    : '${hayuAmount(part.score!, signed: true)} · ${part.label}';
+
+Widget? _partMeter(HayuPartStatus part) {
+  final score = part.score;
+  return score == null
+      ? null
+      : _HayuMeter(
+          value: score / kHayuPartMax,
+          tone: PartsStrip.colorOf(part.toneKey),
+          centered: true,
+          mark: 0.5,
+        );
+}
+
+Widget _leafMeter(HayuEffects effects, Color tone) => _HayuMeter(
+  value: effects.leaves.clamp(0, kLeavesMax) / kLeavesMax,
+  tone: tone,
+  mark: effects.winLeaves.clamp(0, kLeavesMax) / kLeavesMax,
+);
+
+class _HayuMeter extends StatelessWidget {
+  const _HayuMeter({
+    required this.value,
+    required this.tone,
+    required this.mark,
+    this.centered = false,
+  });
+
+  final double value;
+  final Color tone;
+  final double mark;
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: value, end: value),
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 420),
+    curve: Curves.easeOutCubic,
+    builder: (context, current, _) => SizedBox(
+      height: 5,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final width = box.maxWidth;
+          final origin = centered ? width / 2 : 0.0;
+          final extent = current * (width - origin);
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const ColoredBox(color: Colors.white12),
+                if (extent != 0)
+                  Positioned(
+                    left: origin + (extent < 0 ? extent : 0),
+                    width: extent.abs(),
+                    top: 0,
+                    bottom: 0,
+                    child: ColoredBox(color: tone),
+                  ),
+                if (width >= 1)
+                  Positioned(
+                    left: (width * mark - 0.5).clamp(0.0, width - 1),
+                    width: 1,
+                    top: 0,
+                    bottom: 0,
+                    child: const ColoredBox(color: Colors.white70),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  );
 }
 
 /// Rincian Hayu dari kondisi publik dan, bila tersedia, laju pribadi pemain.
@@ -169,12 +284,12 @@ Future<void> showPartsSheet(
   final shield = hayuAmount(effects.batang.batangShield, signed: true);
   final fog = hayuAmount(effects.tanah.tanahFog, signed: true);
   final missing = effects.missingLeaves;
-  final soilNote = switch (effects.tanah) {
-    HayuCondition.subur =>
-      'Hingga 1 ulat senyap tambahan hilang saat persembahan.',
-    HayuCondition.rusak => 'Kartu yang menambah ulat menambah 1 ulat lagi.',
-    _ => 'Berlaku saat malam persembahan.',
-  };
+  final removed = effects.tanah.extraWormRemoval;
+  final spawned = effects.tanah.extraWormSpawn;
+  final damageLoss = effects.damageLeafLoss;
+  final leafTone = effects.expandedRules
+      ? PartsStrip.colorOf(effects.leafLevel.name)
+      : const Color(0xFF7BD88F);
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -198,11 +313,14 @@ Future<void> showPartsSheet(
             ),
           ),
           const SizedBox(height: 4),
-          const Center(
+          Center(
             child: Text(
-              'Angka menunjukkan dampak dari kondisi saat ini.',
+              effects.expandedRules
+                  ? 'Akar, Batang, dan Tanah bergerak dari −8 sampai +8. Garis tengah menandai 0. '
+                        'Setiap dua persembahan, bagian yang belum Rusak atau Kritis bergeser satu poin ke 0.'
+                  : 'Angka menunjukkan dampak dari kondisi saat ini.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.white60),
+              style: const TextStyle(fontSize: 12, color: Colors.white60),
             ),
           ),
           const SizedBox(height: 12),
@@ -218,12 +336,12 @@ Future<void> showPartsSheet(
               ),
             ),
           if (effects.income case final income?) _IncomeBreakdown(income),
-          if (effects.losesLeafOnOffering)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+          if (damageLoss > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
               child: Text(
-                '−1 daun saat persembahan jika dua bagian atau lebih masih rusak.',
-                style: TextStyle(color: Colors.orangeAccent),
+                '−$damageLoss daun jika kondisi rusak ini bertahan sampai awal persembahan.',
+                style: const TextStyle(color: Colors.orangeAccent),
               ),
             ),
           _PartCard(
@@ -238,8 +356,11 @@ Future<void> showPartsSheet(
               ),
             ),
             title: 'Daun',
-            status: '${effects.leaves}/${effects.winLeaves}',
-            color: const Color(0xFF7BD88F),
+            status:
+                '${effects.leaves}/${effects.winLeaves}'
+                '${effects.expandedRules ? ' · ${effects.leafLevel.label}' : ''}',
+            color: leafTone,
+            meter: effects.expandedRules ? _leafMeter(effects, leafTone) : null,
             desc: missing == 0
                 ? 'Target akhir tercapai. $kLeavesMax daun untuk menang langsung.'
                 : 'Kurang $missing daun untuk target akhir. '
@@ -252,37 +373,50 @@ Future<void> showPartsSheet(
               if (effects.worms > 0)
                 '${effects.worms} ulat tersisa · −1 daun pada persembahan berikutnya jika masih ada ulat.',
               if (effects.income?.isAntagonist == true)
-                '${hayuAmount(effects.antagonistLeavesBonus, signed: true)} bulir hitam per hari · +1 tiap 10 daun.',
+                '${hayuAmount(effects.antagonistLeavesBonus, signed: true)} bulir hitam per hari. '
+                    '${effects.expandedRules ? 'Naik +0,5 tiap 5 daun.' : 'Naik +1 tiap 10 daun.'}',
             ].join('\n'),
           ),
           _PartCard(
             zoom: 'pohonindikator-zoomakar',
-            badge: PartBadge('akar', effects.akar.name, size: 44),
+            badge: PartBadge('akar', effects.akar.toneKey, size: 44),
             title: 'Akar',
-            status: effects.akar.name,
-            color: PartsStrip.colorOf(effects.akar.name),
-            desc: 'Pengali laju embun Warga setelah penalti laju.',
+            status: _partReading(effects.akar),
+            meter: _partMeter(effects.akar),
+            color: PartsStrip.colorOf(effects.akar.toneKey),
+            desc: effects.expandedRules
+                ? 'Tiap poin menggeser laju embun Warga sebesar 6 poin persentase setelah penalti laju.'
+                : 'Pengali laju embun Warga setelah penalti laju.',
             effect: '$root embun harian Warga',
           ),
           _PartCard(
             zoom: 'pohonindikator-zoombatang',
-            badge: PartBadge('batang', effects.batang.name, size: 44),
+            badge: PartBadge('batang', effects.batang.toneKey, size: 44),
             title: 'Batang',
-            status: effects.batang.name,
-            color: PartsStrip.colorOf(effects.batang.name),
-            desc:
-                'Berlaku saat persembahan jika perlindungan tidak dilucuti. '
-                'Perlindungan paling rendah 0.',
+            status: _partReading(effects.batang),
+            meter: _partMeter(effects.batang),
+            color: PartsStrip.colorOf(effects.batang.toneKey),
+            desc: effects.expandedRules
+                ? 'Tiap dua poin menggeser satu perisai. Dihitung saat persembahan mulai, selama perlindungan belum dilucuti.'
+                : 'Berlaku saat persembahan jika perlindungan tidak dilucuti. Perlindungan paling rendah 0.',
             effect: '$shield perlindungan',
           ),
           _PartCard(
             zoom: 'pohonindikator-zoomtanah',
-            badge: PartBadge('tanah', effects.tanah.name, size: 44),
+            badge: PartBadge('tanah', effects.tanah.toneKey, size: 44),
             title: 'Tanah',
-            status: effects.tanah.name,
-            color: PartsStrip.colorOf(effects.tanah.name),
-            desc: '$soilNote Kabut menggerogoti daun Hayu.',
-            effect: '$fog kabut pada malam persembahan',
+            status: _partReading(effects.tanah),
+            meter: _partMeter(effects.tanah),
+            color: PartsStrip.colorOf(effects.tanah.toneKey),
+            desc: effects.expandedRules
+                ? 'Tiap dua poin menggeser satu kabut. Kabut dihitung dari kondisi awal persembahan.'
+                : 'Kondisi awal persembahan mengubah kabut yang menggerogoti daun.',
+            effect: [
+              '$fog kabut pada malam persembahan',
+              if (removed > 0) 'Hingga $removed ulat senyap tambahan hilang.',
+              if (spawned > 0)
+                'Kartu penambah ulat membawa $spawned ulat tambahan.',
+            ].join('\n'),
           ),
         ],
       ),
@@ -350,6 +484,7 @@ class _PartCard extends StatelessWidget {
   final Color color;
   final String desc;
   final String effect;
+  final Widget? meter;
   const _PartCard({
     required this.zoom,
     required this.badge,
@@ -358,6 +493,7 @@ class _PartCard extends StatelessWidget {
     required this.color,
     required this.desc,
     required this.effect,
+    this.meter,
   });
 
   @override
@@ -408,6 +544,7 @@ class _PartCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (meter != null) ...[const SizedBox(height: 6), meter!],
                       const SizedBox(height: 3),
                       Text(
                         desc,

@@ -18,6 +18,7 @@ class OfferingView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
   final int leaves;
+  final int tanahFog;
   final bool isAntag;
   final List<Map<String, dynamic>> hand;
   final Map<String, Map<String, dynamic>> defs;
@@ -41,6 +42,7 @@ class OfferingView extends StatefulWidget {
     required this.repo,
     required this.gameId,
     required this.leaves,
+    this.tanahFog = 0,
     required this.isAntag,
     required this.hand,
     required this.defs,
@@ -272,11 +274,13 @@ class _OfferingViewState extends State<OfferingView>
                 style: const TextStyle(fontSize: 12, color: Colors.white60)),
           ],
         ),
-        if (_fog != null)
+        if (_fog case final baseFog?)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('Kabut malam ini: -$_fog daun',
-                style: const TextStyle(color: EmbunColors.mist, fontSize: 11.5)),
+            child: Text(
+              'Kabut dasar + Tanah: ${math.max(0, baseFog + widget.tanahFog)} daun hilang',
+              style: const TextStyle(color: EmbunColors.mist, fontSize: 11.5),
+            ),
           ),
       ],
     );

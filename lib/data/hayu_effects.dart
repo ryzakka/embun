@@ -23,6 +23,67 @@ enum HayuCondition {
       values.where((condition) => condition.name == value).firstOrNull ?? biasa;
 }
 
+const int kHayuPartMax = 8;
+
+enum HayuLevel {
+  kritis('Kritis'),
+  rusak('Rusak'),
+  rapuh('Rapuh'),
+  layu('Layu'),
+  stabil('Stabil'),
+  tumbuh('Tumbuh'),
+  subur('Subur'),
+  kuat('Kuat'),
+  prima('Prima');
+
+  const HayuLevel(this.label);
+
+  final String label;
+
+  static HayuLevel fromScore(int score) {
+    final step = (score.abs() + 1) ~/ 2;
+    return values[stabil.index + step * score.sign];
+  }
+}
+
+class HayuPartStatus {
+  const HayuPartStatus({required this.condition, this.score});
+
+  factory HayuPartStatus.fromGame(Object? condition, Object? score) =>
+      HayuPartStatus(
+        condition: HayuCondition.fromGame(condition),
+        score: score is int ? score.clamp(-kHayuPartMax, kHayuPartMax) : null,
+      );
+
+  final HayuCondition condition;
+  final int? score;
+
+  HayuLevel? get level => score == null ? null : HayuLevel.fromScore(score!);
+  String get toneKey => level?.name ?? condition.name;
+  String get label => level?.label ?? condition.name;
+  bool get damaged =>
+      score == null ? condition == HayuCondition.rusak : score! <= -5;
+  int get akarPercent => score == null ? condition.akarPercent : score! * 6;
+  double get akarMultiplier =>
+      score == null ? condition.akarMultiplier : 1 + akarPercent / 100;
+  int get batangShield => score == null ? condition.batangShield : score! ~/ 2;
+  int get tanahFog => score == null ? condition.tanahFog : -(score! ~/ 2);
+
+  int get extraWormRemoval => switch (score) {
+    null => condition == HayuCondition.subur ? 1 : 0,
+    >= 6 => 2,
+    >= 2 => 1,
+    _ => 0,
+  };
+
+  int get extraWormSpawn => switch (score) {
+    null => condition == HayuCondition.rusak ? 1 : 0,
+    <= -8 => 2,
+    <= -4 => 1,
+    _ => 0,
+  };
+}
+
 String hayuAmount(num value, {bool signed = false}) {
   final amount = value
       .abs()
@@ -57,7 +118,7 @@ class HayuIncome {
   final double penalty;
   final double minimumAdjustment;
   final double akarChange;
-  final int leavesBonus;
+  final double leavesBonus;
   final int cycleBonus;
   final bool isAntagonist;
 
@@ -89,6 +150,7 @@ class HayuEffects {
     required this.leaves,
     required this.winLeaves,
     required this.worms,
+    this.expandedRules = false,
     this.leavesChange,
     this.income,
   });
@@ -98,7 +160,12 @@ class HayuEffects {
     Map<String, dynamic>? playerState,
     bool isAntagonist = false,
   }) {
-    final akar = HayuCondition.fromGame(game['akar_c']);
+    final expanded = ((game['hayu_rules_version'] as int?) ?? 1) >= 2;
+    HayuPartStatus part(String key) => HayuPartStatus.fromGame(
+      game['${key}_c'],
+      expanded ? game['${key}_score'] : null,
+    );
+    final akar = part('akar');
     final leaves = (game['leaves'] as int?) ?? 0;
     final winLeaves = (game['win_leaves'] as int?) ?? 20;
     final day = (game['day'] as int?) ?? 0;
@@ -119,8 +186,9 @@ class HayuEffects {
 
     return HayuEffects(
       akar: akar,
-      batang: HayuCondition.fromGame(game['batang_c']),
-      tanah: HayuCondition.fromGame(game['tanah_c']),
+      batang: part('batang'),
+      tanah: part('tanah'),
+      expandedRules: expanded,
       leaves: leaves,
       winLeaves: winLeaves,
       worms: (game['lingering_worms'] as int?) ?? 0,
@@ -135,7 +203,7 @@ class HayuEffects {
               rate: rate,
               penalty: penalty,
               akarMultiplier: isAntagonist ? 1 : akar.akarMultiplier,
-              leavesBonus: isAntagonist ? leaves ~/ 10 : 0,
+              leavesBonus: isAntagonist ? _leavesBonus(leaves, expanded) : 0,
               cycleBonus: nextDay % (cycle > 0 ? cycle : kCycleDays) == 1
                   ? 5
                   : 0,
@@ -145,22 +213,36 @@ class HayuEffects {
     );
   }
 
-  final HayuCondition akar;
-  final HayuCondition batang;
-  final HayuCondition tanah;
+  final HayuPartStatus akar;
+  final HayuPartStatus batang;
+  final HayuPartStatus tanah;
   final int leaves;
   final int winLeaves;
   final int worms;
+  final bool expandedRules;
   final int? leavesChange;
   final HayuIncome? income;
 
   int get missingLeaves => math.max(winLeaves - leaves, 0);
-  int get antagonistLeavesBonus => leaves ~/ 10;
-  bool get losesLeafOnOffering =>
-      [
-        akar,
-        batang,
-        tanah,
-      ].where((part) => part == HayuCondition.rusak).length >=
-      2;
+  double get antagonistLeavesBonus => _leavesBonus(leaves, expandedRules);
+
+  static double _leavesBonus(int leaves, bool expanded) => expanded
+      ? (leaves.clamp(0, kLeavesMax) ~/ 5) * 0.5
+      : (leaves ~/ 10).toDouble();
+
+  HayuLevel get leafLevel => switch (leaves) {
+    >= kLeavesMax => HayuLevel.prima,
+    >= 25 => HayuLevel.kuat,
+    >= 20 => HayuLevel.subur,
+    >= 15 => HayuLevel.tumbuh,
+    >= 10 => HayuLevel.stabil,
+    >= 5 => HayuLevel.layu,
+    _ => HayuLevel.kritis,
+  };
+
+  int get damageLeafLoss {
+    final damaged = [akar, batang, tanah].where((part) => part.damaged).length;
+    if (expandedRules && damaged == 3) return 2;
+    return damaged >= 2 ? 1 : 0;
+  }
 }
