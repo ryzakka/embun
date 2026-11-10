@@ -4,115 +4,52 @@ import '../../data/asset_catalog.dart';
 import '../../data/game_rules.dart';
 import '../../data/hayu_effects.dart';
 import '../common/art.dart';
+import 'day_chrome.dart';
 
-/// Lencana satu bagian Hayu (assets/bentang/pohonindikator-akar|batang|tanah).
-/// Kondisi memengaruhi tampilan: layu memucat dengan cincin kuning, rusak
-/// menggelap dengan cincin merah, subur berpendar hijau.
+/// Lencana kondisi dengan cincin tipis dan gambar yang terpusat.
 class PartBadge extends StatelessWidget {
-  final String part; // 'akar' | 'batang' | 'tanah'
-  final String cond; // 'subur' | 'biasa' | 'layu' | 'rusak'
-  final double size;
   const PartBadge(this.part, this.cond, {super.key, this.size = 28});
 
-  static const _desat = ColorFilter.matrix(<double>[
-    0.55,
-    0.30,
-    0.10,
-    0,
-    0,
-    0.20,
-    0.65,
-    0.10,
-    0,
-    0,
-    0.20,
-    0.30,
-    0.45,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-  ]);
-  static const _dark = ColorFilter.matrix(<double>[
-    0.30,
-    0.15,
-    0.05,
-    0,
-    0,
-    0.10,
-    0.25,
-    0.05,
-    0,
-    0,
-    0.10,
-    0.15,
-    0.20,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-  ]);
+  final String part;
+  final String cond;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    final col = PartsStrip.colorOf(cond);
-    final p = sceneryPath('pohonindikator-$part');
-    Widget img = GameImage(
-      path: p,
-      fit: BoxFit.contain,
-      cacheWidth: (size * 3).round(),
-    );
-    if (cond == 'layu') img = ColorFiltered(colorFilter: _desat, child: img);
-    if (cond == 'rusak') img = ColorFiltered(colorFilter: _dark, child: img);
-    final glow = cond == 'biasa'
-        ? null
-        : [
-            BoxShadow(
-              color: col.withValues(alpha: 0.55),
-              blurRadius: size * 0.35,
-            ),
-          ];
+    final tone = PartsStrip.colorOf(cond);
+    final path = sceneryPath('pohonindikator-$part');
     return Container(
       width: size,
       height: size,
+      padding: EdgeInsets.all(size * 0.08),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: cond == 'biasa' ? null : Border.all(color: col, width: 1.5),
-        boxShadow: glow,
+        gradient: RadialGradient(
+          colors: [tone.withValues(alpha: 0.21), const Color(0xFF10231E)],
+        ),
+        border: Border.all(color: tone.withValues(alpha: 0.76)),
       ),
-      child: p == null
-          ? Icon(PartsStrip.fallbackIcon(part), size: size * 0.7, color: col)
-          : img,
+      child: path == null
+          ? Icon(PartsStrip.fallbackIcon(part), size: size * 0.62, color: tone)
+          : ClipOval(
+              child: GameImage(path: path, cacheWidth: (size * 3).round()),
+            ),
     );
   }
 }
 
-/// Indikator ringkas dampak setiap kondisi.
+/// Akar, Batang, dan Tanah memakai lebar serta susunan yang seragam.
 class PartsStrip extends StatelessWidget {
-  const PartsStrip({
-    super.key,
-    required this.effects,
-    required this.onTap,
-    this.horizontal = false,
-  });
+  const PartsStrip({super.key, required this.effects, required this.onTap});
 
   final HayuEffects effects;
   final VoidCallback onTap;
 
-  /// Dalam baris tersendiri pada ponsel, ikon dan angka muat sejajar.
-  final bool horizontal;
-
   static Color colorOf(String c) => switch (c) {
-    'subur' => const Color(0xFF7BD88F),
-    'layu' => Colors.amber,
-    'rusak' => const Color(0xFFE5484D),
-    _ => Colors.white54,
+    'subur' => const Color(0xFF87E1A0),
+    'layu' => const Color(0xFFFFCB73),
+    'rusak' => const Color(0xFFFF9A92),
+    _ => const Color(0xFFACBEB4),
   };
 
   static IconData fallbackIcon(String part) => switch (part) {
@@ -131,40 +68,46 @@ class PartsStrip extends StatelessWidget {
     String part,
     HayuCondition condition,
     String amount,
-    String impact,
-  ) {
-    final col = colorOf(condition.name);
-    final badge = PartBadge(part, condition.name, size: 19);
-    final label = Text(
-      horizontal ? '${partName(part)} $amount' : amount,
-      maxLines: 1,
-      style: TextStyle(
-        fontSize: 10,
-        height: 1.1,
-        fontWeight: FontWeight.w800,
-        color: col,
-      ),
+    String impact, {
+    required bool inline,
+  }) {
+    final name = partName(part);
+    final badge = PartBadge(part, condition.name, size: inline ? 27 : 24);
+    final label = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: inline
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            amount,
+            style: dayMetricValue.copyWith(
+              fontSize: 15,
+              color: colorOf(condition.name),
+            ),
+          ),
+        ),
+      ],
     );
     return Tooltip(
-      message: '${partName(part)} ${condition.name} · $impact',
-      child: horizontal
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [badge, const SizedBox(width: 4), label],
-              ),
+      message: '$name ${condition.name} · $impact',
+      child: inline
+          ? Row(
+              children: [
+                badge,
+                const SizedBox(width: 5),
+                Expanded(child: label),
+              ],
             )
-          : SizedBox(
-              width: 28,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  badge,
-                  const SizedBox(height: 2),
-                  FittedBox(fit: BoxFit.scaleDown, child: label),
-                ],
-              ),
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [badge, const SizedBox(height: 3), label],
             ),
     );
   }
@@ -174,17 +117,39 @@ class PartsStrip extends StatelessWidget {
     final root = '${hayuAmount(effects.akar.akarPercent, signed: true)}%';
     final shield = hayuAmount(effects.batang.batangShield, signed: true);
     final fog = hayuAmount(effects.tanah.tanahFog, signed: true);
-    final badges = [
-      _one('akar', effects.akar, root, '$root laju embun Warga'),
-      _one('batang', effects.batang, shield, '$shield perlindungan'),
-      _one('tanah', effects.tanah, fog, '$fog kabut'),
-    ];
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: horizontal
-          ? Wrap(alignment: WrapAlignment.end, children: badges)
-          : Row(mainAxisSize: MainAxisSize.min, children: badges),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final inline = box.maxWidth >= 162;
+          final entries = [
+            _one(
+              'akar',
+              effects.akar,
+              root,
+              '$root laju embun Warga',
+              inline: inline,
+            ),
+            _one(
+              'batang',
+              effects.batang,
+              shield,
+              '$shield perlindungan',
+              inline: inline,
+            ),
+            _one('tanah', effects.tanah, fog, '$fog kabut', inline: inline),
+          ];
+          return Row(
+            children: [
+              for (var i = 0; i < entries.length; i++) ...[
+                if (i > 0) const SizedBox(width: 3),
+                Expanded(child: entries[i]),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 }

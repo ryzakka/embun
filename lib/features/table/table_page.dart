@@ -1263,9 +1263,6 @@ class _TablePageState extends State<TablePage> {
     };
   }
 
-  String _fmt(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-
   DateTime? _deadline(Map<String, dynamic> g) {
     final raw = g['phase_deadline'];
     return raw is String ? DateTime.tryParse(raw) : null;
@@ -2046,46 +2043,81 @@ class _TablePageState extends State<TablePage> {
               '$label ${hayuAmount(amount, signed: true)}',
           ].join('\n');
 
-    final balanceMetric = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: 24),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BalanceFx(
-                key: _balanceKey,
-                quiet: _quietBalance,
-                balance: balance,
-                day: day,
-                dark: showAsAntag,
-                ready: myState != null,
-                hold: _dayIntro != null || _holdIntro,
-                builder: (context, shown) => Text(
-                  _fmt(shown),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    height: 1.05,
-                    fontWeight: FontWeight.bold,
-                    color: EmbunColors.gold,
+    final currencyLabel = showAsAntag ? 'BULIR HITAM' : 'TETES EMBUN';
+    final balanceTone =
+        showAsAntag ? const Color(0xFFE4CDFF) : const Color(0xFFFFDE8D);
+    final balanceMetric = LayoutBuilder(
+      builder: (context, box) {
+        final iconSize = box.maxWidth < 130 || _short ? 28.0 : 34.0;
+        Widget balanceText(String text, TextStyle style) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(text, style: style),
+        );
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: iconSize + 4,
+              height: iconSize + 4,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: balanceTone.withValues(alpha: 0.10),
+              ),
+              alignment: Alignment.center,
+              child: GameIcon(
+                showAsAntag ? 'bulirhitam' : 'bulirembun',
+                size: iconSize - 2,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  balanceText(
+                    currencyLabel,
+                    dayOverline.copyWith(
+                      fontSize: 9,
+                      letterSpacing: 0.85,
+                      color: balanceTone,
+                    ),
                   ),
-                ),
+                  BalanceFx(
+                    key: _balanceKey,
+                    quiet: _quietBalance,
+                    balance: balance,
+                    day: day,
+                    dark: showAsAntag,
+                    ready: myState != null,
+                    hold: _dayIntro != null || _holdIntro,
+                    builder: (_, shown) => balanceText(
+                      hayuAmount(shown),
+                      dayMetricValue.copyWith(
+                        fontSize: _short ? 24 : 28,
+                        color: balanceTone,
+                      ),
+                    ),
+                  ),
+                  balanceText(
+                    incomeLabel,
+                    dayCaption.copyWith(
+                      fontSize: 10.5,
+                      height: 1.2,
+                      color: showAsAntag
+                          ? const Color(0xFFC7ACED)
+                          : const Color(0xFFA4CEAE),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                incomeLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10.5, color: Colors.white70),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
     final tools = <Widget>[
       if (showChat)
@@ -2185,7 +2217,6 @@ class _TablePageState extends State<TablePage> {
         ),
         tools: tools,
         parts: PartsStrip(effects: hayu, onTap: openHayu),
-        narrowParts: PartsStrip(effects: hayu, onTap: openHayu, horizontal: true),
         onPlayers: () => _showPlayersSheet(day, phase),
         playersKey: _playersKey,
         village: village,
