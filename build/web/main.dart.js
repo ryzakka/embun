@@ -41794,7 +41794,7 @@ if(r.f!==B.w9){r.f=B.w9
 r.a0U()}}return r.d.a.adR(a)},
 a0U(){var s,r
 for(s=this.w,r=0;r<s.length;++r)s[r].$1(this.f)},
-adO(a){if(B.c.q(B.a2E,a))return this.f===B.kS
+adO(a){if(B.c.q(B.a2D,a))return this.f===B.kS
 return!1}}
 A.agJ.prototype={
 $0(){return new A.bZ(Date.now(),0,!1)},
@@ -52809,7 +52809,7 @@ q=p?"Dasar":null
 s=A.b4x(B.ay,o,c,A.nM(q,!1,1,a,!1,!1,r,!1,null,new A.aKD(this,a),!1,!0,!0,null,b),s,b*1.5,b)
 r=A.k(a.h(0,"name"))
 return A.K(A.a([s,B.ag,A.b4Y(r,c?B.r:B.a7)],t.p),B.l,B.e,B.j)},
-auG(a){var s,r=null,q=new A.aKw(this,a),p=A.b7(r,r,B.am7,!1,r,r,!1,r,!1,r,r,!0,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r),o=t.p,n=A.a([q.$1(r)],o)
+auG(a){var s,r=null,q=new A.aKw(this,a),p=A.b7(r,r,B.am6,!1,r,r,!1,r,!1,r,r,!0,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r),o=t.p,n=A.a([q.$1(r)],o)
 for(s=0;s<4;++s)n.push(q.$1(B.xd[s]))
 return A.K(A.a([p,A.d9(B.a4,n,B.aO,B.a4,0,6)],o),B.F,B.e,B.j)},
 E(a7){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5=this,a6=null
@@ -54017,7 +54017,7 @@ for(s=J.aS(a),r=null;s.t();){q=s.gO()
 if(!J.c(q.h(0,"kind"),"pembaruan"))continue
 q=A.az(q.h(0,"version"))
 p=B.d.dk(q==null?"":q)
-if(p.length===0||A.Dn(p,"3.1.9")<=0)continue
+if(p.length===0||A.Dn(p,"3.1.10")<=0)continue
 if(r==null||A.Dn(p,r)>0)r=p}return r},
 aF1(a,b){var s,r,q,p,o=null
 for(s=J.aS(a),r=o;s.t();){q=s.gO()
@@ -54028,7 +54028,7 @@ q=A.az(q.h(0,"body"))
 r=A.b5r(q==null?"":q)
 if(r!=null)break}s=r!=null
 q=s?"Unduh pembaruannya di bawah ini.":"Muat ulang halaman atau perbarui aplikasimu."
-q=A.a([new A.op("info","Versi V"+b+" sudah tersedia (versimu V3.1.9). "+q,B.h,o)],t.p)
+q=A.a([new A.op("info","Versi V"+b+" sudah tersedia (versimu V3.1.10). "+q,B.h,o)],t.p)
 if(s)q.push(new A.S(B.vo,new A.ci("Unduh V"+b,o,new A.aBn(this,r),B.aK,!0,46,o),o))
 return new A.S(B.VC,A.K(q,B.P,B.e,B.j),o)},
 E(a){var s,r=null,q="assets/bentang",p=A.bA().bp(q,"balaidesa-dalamsiang")
@@ -54036,7 +54036,7 @@ if(p==null)p=A.bA().bp(q,"rumahdesa-hijau")
 s=t.p
 return A.vo(r,B.eH,A.au(B.C,A.a([new A.h6(p,!1,0.66,r),A.dG(!0,A.aZ(new A.bq(B.M6,A.K(A.a([this.aEB(),A.as(this.ang(),1)],s),B.l,B.e,B.j),r),r,r,r),B.a5,!0)],s),B.v,B.a3))},
 aEB(){var s=null,r=A.en(B.h,s,s,B.kQ,s,s,new A.aBm(this),s,s,s,"Kembali",s)
-return new A.S(B.Wu,A.aa(A.a([r,B.Y9,B.bc,B.WX,new A.V(48,48,this.f?B.O4:A.en(B.h,s,s,B.w6,s,s,this.gNM(),s,s,s,"Muat ulang",s),s)],t.p),B.l,s,B.e,B.j,0,s),s)},
+return new A.S(B.Wu,A.aa(A.a([r,B.Y9,B.bc,B.X1,new A.V(48,48,this.f?B.O4:A.en(B.h,s,s,B.w6,s,s,this.gNM(),s,s,s,"Muat ulang",s),s)],t.p),B.l,s,B.e,B.j,0,s),s)},
 ang(){var s,r,q,p,o=this,n=null,m="logorhistory",l=o.d
 if(l==null){s=o.e
 if(s==null)s=o.aD7()
@@ -54064,10 +54064,10 @@ if(r){a3=d.y.h(0,b)
 if(a3==null){a3=a1||a2||a6===0
 q=a3}else q=a3}else q=!1
 p=a?A.b5r(a4):c
-o=a&&s.length!==0&&A.Dn(s,"3.1.9")>0
+o=a&&s.length!==0&&A.Dn(s,"3.1.10")>0
 a3=A.a([],t.s)
 if(s.length!==0){n="v"+s
-a3.push(A.Dn(s,"3.1.9")===0?n+" (terpasang)":n)}n=A.az(a5.h(0,"published_at"))
+a3.push(A.Dn(s,"3.1.10")===0?n+" (terpasang)":n)}n=A.az(a5.h(0,"published_at"))
 n=A.SU(n==null?"":n)
 m=n==null?c:n.abz()
 a3.push(m==null?"":""+A.b3G(m)+" "+B.a0O[A.b3J(m)-1]+" "+A.Hf(m))
@@ -54346,7 +54346,7 @@ j.a=j.b=null
 for(i=J.aS(m);i.t();){l=i.gO()
 h=A.az(J.ba(l,"version"))
 k=B.d.dk(h==null?"":h)
-if(J.bS(k)===0||A.Dn(k,"3.1.9")<=0)continue
+if(J.bS(k)===0||A.Dn(k,"3.1.10")<=0)continue
 h=j.b
 if(h==null||A.Dn(k,h)>0){j.b=k
 j.a=null}if(J.c(k,j.b))if(j.a==null){h=A.az(J.ba(l,"body"))
@@ -54380,7 +54380,7 @@ o=o.a!=null?"Unduh V"+r:"Pembaruan V"+r
 o=A.BJ(1,a,"announcement",0,o,this.ga1l(),1)
 r=a?0:70
 q=t.p
-return new A.S(B.ih,A.K(A.a([o,new A.S(new A.D(r,0,0,0),A.aa(A.a([A.u("Versi baru \xb7 versimu V3.1.9",p,p,p,p,p,B.aiY,p,p),B.bc,A.eo(!1,p,!0,B.a81,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aM5(this),p,p,p,p,p,p,p)],q),B.l,p,B.e,B.u,0,p),p)],q),s,B.e,B.u),p)},
+return new A.S(B.ih,A.K(A.a([o,new A.S(new A.D(r,0,0,0),A.aa(A.a([A.u("Versi baru \xb7 versimu V3.1.10",p,p,p,p,p,B.aiY,p,p),B.bc,A.eo(!1,p,!0,B.a81,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aM5(this),p,p,p,p,p,p,p)],q),B.l,p,B.e,B.u,0,p),p)],q),s,B.e,B.u),p)},
 yY(){var s=0,r=A.q(t.H),q=this,p
 var $async$yY=A.r(function(a,b){if(a===1)return A.n(b,r)
 for(;;)switch(s){case 0:A.df()
@@ -54458,7 +54458,7 @@ A.cf(s,!1).hc(A.Ea(B.Jx,B.tR,t.H))},
 ayB(){var s=this.c
 s.toString
 return A.beG(s)},
-aFO(){var s=this,r=null,q=s.cy&&s.c.ih(t.cY)==null?new A.aM7(s):r,p=A.aj(8),o=s.ch>0,n=o?"V3.1.9  \xb7  ada kabar baru":"V3.1.9"
+aFO(){var s=this,r=null,q=s.cy&&s.c.ih(t.cY)==null?new A.aM7(s):r,p=A.aj(8),o=s.ch>0,n=o?"V3.1.10  \xb7  ada kabar baru":"V3.1.10"
 return A.b3(8,A.eo(!1,p,!0,new A.S(B.vq,A.u(n,r,r,r,r,r,A.ap(r,r,o?B.h:B.b6,r,r,r,r,r,r,r,r,11.5,r,r,r,r,r,!0,r,1.2,r,r,r,B.pe,r,r),r,r),r),r,!0,r,r,r,r,r,r,r,r,r,q,s.ga1h(),r,r,r,r,r,r,r),r,r,r,12,r,r)},
 awn(){return A.bC(new A.aLE(this))},
 z1(a,b){return this.azO(a,b)},
@@ -54675,7 +54675,7 @@ o=p*1.2
 n=t.p
 q=A.ag(A.bP(A.bF(B.i,new A.V(p*1.3,p,A.au(B.i,A.a([A.al(k,k,B.n,k,k,new A.R(k,k,k,k,k,new A.bD(B.i,0.5,B.z,k,0,A.a([B.h.m(0.18+0.12*r),B.h.m(0)],t.O),k,k),B.aJ),k,o,k,k,k,k,k,o),new A.cn(A.bA().bp("assets/logo","ikon-transparent"),B.c3,B.i,1000,k)],n),B.v,B.X),k),0.88+0.12*q),new A.f(0,i*5)),q)
 i=l.d
-i=A.ag(A.bP(A.u("BALAI PERTEMUAN DESA V3.1.9",k,k,k,k,k,A.ap(k,k,B.h.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.l3,k,k),k,k),new A.f(0,(1-i)*10)),i)
+i=A.ag(A.bP(A.u("BALAI PERTEMUAN DESA V3.1.10",k,k,k,k,k,A.ap(k,k,B.h.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.l3,k,k),k,k),new A.f(0,(1-i)*10)),i)
 o=l.e
 p=j.cy
 m=p?"Mulai":"Memuat..."
@@ -54814,7 +54814,7 @@ $1(a){var s=null,r=t.D0
 return A.l2(s,B.y,new A.bq(B.jE,A.uR(B.h,A.K(A.a([B.abu,B.ag,new A.kI($.bR().a,new A.b1C(),s,s,r),new A.kI($.CY(),new A.b1D(),s,s,r),B.ai,new A.ci("Tutup","silang",new A.b1E(a),B.bD,!1,46,s)],t.p),B.P,B.e,B.u),B.VJ),s),s,s,0,B.cG,B.dc,s,s,s)},
 $S:75}
 A.b1C.prototype={
-$3(a,b,c){return A.baO(B.a5,new A.b1B(),B.XC,B.alM,B.amn,!b)},
+$3(a,b,c){return A.baO(B.a5,new A.b1B(),B.XC,B.alM,B.amm,!b)},
 $S:178}
 A.b1B.prototype={
 $1(a){var s=!a
@@ -54933,7 +54933,7 @@ s.aL$=null
 s.ak()}}
 A.MO.prototype={}
 A.b1H.prototype={
-$1(a){var s,r=null,q=A.a([B.abt,B.ag,B.am2,B.ai],t.p)
+$1(a){var s,r=null,q=A.a([B.abt,B.ag,B.am1,B.ai],t.p)
 for(s=0;s<2;++s)q.push(new A.S(B.kt,new A.a2h(B.a1U[s],r),r))
 q.push(B.bY)
 q.push(new A.ci("Tutup","silang",new A.b1G(a),B.bD,!0,46,r))
@@ -55079,19 +55079,19 @@ aAd(){return A.bC(new A.aQG(this))},
 aBo(a){var s,r,q,p,o,n=this,m=null,l=n.f,k=l==null,j=k?B.a2R:n.aAe(l),i=n.ga1W(),h=t.p,g=A.a([],h)
 if(a)B.c.J(g,A.a([n.NY(),B.aD],h))
 s=!k
-if(s&&n.w!=null)B.c.J(g,A.a([B.amg,B.af],h))
+if(s&&n.w!=null)B.c.J(g,A.a([B.amf,B.af],h))
 if(s&&l.length!==0){s=n.aCd()
 r=l.length
 q=j.length
 p=B.h.m(0.3)
 o=""+r
-B.c.J(g,A.a([s,B.af,new A.aP(new A.R(m,m,new A.bB(B.t,B.t,new A.aA(p,1,B.A,-1),B.t),m,m,m,B.o),B.I,new A.S(B.oc,A.aa(A.a([B.X0,B.ak,new A.cM(1,B.aA,A.u(q===r?o+" ruangan":""+q+" dari "+o+" ruangan",m,m,m,m,m,B.ca,B.hn,m),m)],h),B.l,m,B.e,B.j,0,m),m),m)],h))}h=A.a([new A.lx(new A.S(B.UN,A.K(g,B.F,B.e,B.j),m),m)],h)
+B.c.J(g,A.a([s,B.af,new A.aP(new A.R(m,m,new A.bB(B.t,B.t,new A.aA(p,1,B.A,-1),B.t),m,m,m,B.o),B.I,new A.S(B.oc,A.aa(A.a([B.X_,B.ak,new A.cM(1,B.aA,A.u(q===r?o+" ruangan":""+q+" dari "+o+" ruangan",m,m,m,m,m,B.ca,B.hn,m),m)],h),B.l,m,B.e,B.j,0,m),m),m)],h))}h=A.a([new A.lx(new A.S(B.UN,A.K(g,B.F,B.e,B.j),m),m)],h)
 if(k){k=n.w
 if(k==null||n.x)k=B.a7Z
 else{k=A.dZ(k)
 k=n.P6(A.lE(B.kR,B.mk,i,m),"alert",k,"Daftar tidak bisa dimuat")}h.push(new A.lx(k,m))}else if(l.length===0)h.push(new A.lx(n.aoX(),m))
 else{k=j.length
-if(k===0)h.push(new A.lx(n.P6(A.lD(!1,B.ams,m,m,m,m,m,m,n.gXI(),m,m),"roomcode","Coba kode atau nama host yang lain.","Tidak ada yang cocok"),m))
+if(k===0)h.push(new A.lx(n.P6(A.lD(!1,B.amr,m,m,m,m,m,m,n.gXI(),m,m),"roomcode","Coba kode atau nama host yang lain.","Tidak ada yang cocok"),m))
 else h.push(A.baH(new A.aQH(n,j),k))}h.push(B.adH)
 return A.bac(A.b2H(B.a8m,B.iX,B.dB,h),i)},
 aCd(){var s,r=this,q=null,p=r.e,o=r.y==null
@@ -55564,7 +55564,7 @@ if(a)B.c.J(k,A.a([B.Xn,B.m3],l))
 s=a?B.aA:B.aI
 r=o.a.c
 k.push(new A.cM(1,s,A.K(A.a([B.anm,A.e1(B.aP,A.u(r,n,n,n,"Kode undangan "+r,n,B.ajz,n,n),B.aL)],l),B.F,B.e,B.j),n))
-k.push(A.lE(B.Xm,B.am9,o.gans(),n))
+k.push(A.lE(B.Xm,B.am8,o.gans(),n))
 q=A.aa(k,B.l,n,B.e,m,0,n)
 m=a?B.eX:B.e
 k=o.a.d
@@ -55998,7 +55998,7 @@ g.push(new A.ad(p,r))}r=i.a.d
 q=A.u("Pilih layar untuk dibuka dengan data contoh lokal.",h,h,h,h,h,A.a5(a).ok.y,h,h)
 o=i.e
 n=A.jm(h,h,B.amI,h,new A.aPy(i),!o,h,h,h,h,h)
-o=A.jm(h,h,B.amc,h,new A.aPz(i),o,h,h,h,h,h)
+o=A.jm(h,h,B.amb,h,new A.aPz(i),o,h,h,h,h,h)
 m=i.f
 l=t.p
 m=A.a([q,B.ai,A.d9(B.a4,A.a([n,o,B.aM,A.jm(h,h,B.anJ,h,new A.aPA(i),m===1,h,h,h,h,h),A.jm(h,h,B.amO,h,new A.aPB(i),m===2,h,h,h,h,h)],l),B.dx,B.a4,4,8),B.ai,A.Ax(h,B.ZY,h,h,h,1,h,new A.aPC(i),h,B.ma,h),B.ai],l)
@@ -57268,7 +57268,7 @@ k=A.rW(A.pv(a2,0.14,0.26))
 j=A.rW(A.pv(a2,0.38,0.46))
 i=A.rW(A.pv(a2,0.62,0.74))
 h=A.rW(A.pv(a2,0.8,0.92))
-s=A.ag(B.am0,k)
+s=A.ag(B.am_,k)
 g=A.ag(B.amX,j)
 f=A.pv(m,0,0.3)
 e=B.b.u(l,0,1.2)
@@ -58023,7 +58023,7 @@ return A.ft(B.i,s*20*3.141592653589793,A.bF(B.i,new A.e8(this.b,140,null,null),1
 $S:97}
 A.a98.prototype={
 E(a){var s=null
-return A.aZ(A.cG(new A.bq(B.tl,A.K(A.a([B.amG,B.aq,B.alW,B.ag,B.anX,B.bR,A.up(B.bU,s,B.H,2,"Menunggu meja permainan dibuka",s)],t.p),B.F,B.e,B.u),s),s,B.K,s,s,B.cG,s,s,B.T),s,s,s)}}
+return A.aZ(A.cG(new A.bq(B.tl,A.K(A.a([B.amG,B.aq,B.alV,B.ag,B.anX,B.bR,A.up(B.bU,s,B.H,2,"Menunggu meja permainan dibuka",s)],t.p),B.F,B.e,B.u),s),s,B.K,s,s,B.cG,s,s,B.T),s,s,s)}}
 A.a2g.prototype={
 a9(a,b){var s,r,q=this
 if(q.f<=0.01)return
@@ -59311,7 +59311,7 @@ l=A.a([],m)
 if(q!=null)l.push(new A.am(q,36,j,j,j))
 else l.push(A.fA(A.b5e(A.k(k.a.c.h(0,"id"))),r,j,j,36))
 l.push(B.aq)
-if(s==="jangan_bohong")B.c.J(l,A.a([A.u("Firasatmu tentang "+A.k(i.h(0,"target")),j,j,j,j,j,B.Jj,j,j),B.aa,A.u('"'+A.k(i.h(0,"phrase"))+'"',j,j,j,j,j,A.ap(j,j,r,j,j,j,j,j,j,j,j,19,j,j,B.E,j,j,!0,j,j,j,j,j,j,j,j),B.B,j),B.aq,B.amm],m))
+if(s==="jangan_bohong")B.c.J(l,A.a([A.u("Firasatmu tentang "+A.k(i.h(0,"target")),j,j,j,j,j,B.Jj,j,j),B.aa,A.u('"'+A.k(i.h(0,"phrase"))+'"',j,j,j,j,j,A.ap(j,j,r,j,j,j,j,j,j,j,j,19,j,j,B.E,j,j,!0,j,j,j,j,j,j,j,j),B.B,j),B.aq,B.aml],m))
 else l.push(A.u(A.k(i.h(0,"message")),j,j,j,j,j,A.ap(j,j,r,j,j,j,j,j,j,j,j,15,j,j,B.W,j,j,!0,j,j,j,j,j,j,j,j),B.B,j))
 return A.al(j,A.K(l,B.l,B.e,B.j),B.n,j,j,new A.R(p,j,n,o,j,j,B.o),j,j,j,j,B.vt,j,j,1/0)},
 gazM(){var s,r=this,q=A.k(r.a.c.h(0,"id"))
@@ -59382,7 +59382,7 @@ return A.K(A.a([s,B.af,new A.ci("+5 daun, harga 1 nyawa","plus",q,B.aK,!0,52,m),
 case"kunci_segel":s=A.a([],t.t)
 for(r=n.a.y,q=r.length,p=0;p<r.length;r.length===q||(0,A.y)(r),++p){o=r[p]
 if(n.auD(o))s.push(o)}s=n.a1F(s,"Tidak ada yang sedang dikurung.")
-return A.K(A.a([B.ama,B.ag,s,B.ai,new A.ci("Bebaskan","lock",n.e||n.d==null?m:new A.aAr(n),B.aK,!0,52,m)],t.p),B.P,B.e,B.j)}return B.ac},
+return A.K(A.a([B.am9,B.ag,s,B.ai,new A.ci("Bebaskan","lock",n.e||n.d==null?m:new A.aAr(n),B.aK,!0,52,m)],t.p),B.P,B.e,B.j)}return B.ac},
 ajZ(){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d=this,c=null,b="id"
 if(d.r!=null)return d.aB1()
 if(!B.qi.q(0,A.k(d.a.c.h(0,b)))){s=A.k(d.a.c.h(0,b))
@@ -59467,7 +59467,7 @@ $0(){return this.a.d=A.T(this.b.h(0,"user_id"))},
 $S:0}
 A.aAm.prototype={
 $1(a){var s=null
-return A.b2g(A.a([A.lD(!1,B.Jn,s,s,s,s,s,s,new A.aAk(a),s,s),A.lD(!1,B.anC,s,s,s,s,s,s,new A.aAl(a),s,s)],t.p),B.ame,B.amD)},
+return A.b2g(A.a([A.lD(!1,B.Jn,s,s,s,s,s,s,new A.aAk(a),s,s),A.lD(!1,B.anC,s,s,s,s,s,s,new A.aAl(a),s,s)],t.p),B.amd,B.amD)},
 $S:135}
 A.aAk.prototype={
 $0(){A.cf(this.a,!1).e9(!1)
@@ -59524,7 +59524,7 @@ l=A.u(A.T(n.h(0,"name")),h,h,h,h,h,h,h,h)
 k=i.d
 j=n.h(0,"user_id")
 f.push(A.jm(new A.f9(m,24,B.b7,h,h),h,l,h,new A.aC5(i,n),k==null?j==null:k===j,B.h.m(0.28),!1,h,h,h))}f=A.d9(B.bM,f,B.aO,B.a4,6,8)
-return A.l2(h,B.y,new A.bq(B.jF,A.uR(B.h,A.cG(A.K(A.a([B.alY,B.ag,B.anu,B.aD,f,B.bR,new A.ci("Lepaskan panah","centang",i.d==null?h:new A.aC6(i,a),B.aK,!0,52,h),B.ag,new A.ci("Batal","silang",new A.aC7(a),B.bD,!0,46,h)],g),B.P,B.e,B.u),h,B.K,h,h,h,h,h,B.T),B.cF),h),h,h,0,B.cG,B.dc,h,h,h)}}
+return A.l2(h,B.y,new A.bq(B.jF,A.uR(B.h,A.cG(A.K(A.a([B.alX,B.ag,B.anu,B.aD,f,B.bR,new A.ci("Lepaskan panah","centang",i.d==null?h:new A.aC6(i,a),B.aK,!0,52,h),B.ag,new A.ci("Batal","silang",new A.aC7(a),B.bD,!0,46,h)],g),B.P,B.e,B.u),h,B.K,h,h,h,h,h,B.T),B.cF),h),h,h,0,B.cG,B.dc,h,h,h)}}
 A.aC5.prototype={
 $1(a){var s=this.a
 return s.B(new A.aC4(s,this.b))},
@@ -60578,7 +60578,7 @@ a5.bK(g,o,n)
 n=A.a1()
 n.r=B.OL.m(B.b.u(0.95*i,0,1)).gp()
 a5.bK(g,h,n)
-for(o=0.08*i,n=a5.a,f=0;f<3;++f){e=B.a2C[f]
+for(o=0.08*i,n=a5.a,f=0;f<3;++f){e=B.a2B[f]
 m=e[0]
 l=e[1]
 k=e[2]
@@ -62084,7 +62084,7 @@ i=i.gag(i)?0:1
 s=k+j+i
 i=A.hH(B.h,!1,!1)
 j=t.p
-k=A.a([B.w7,B.dU,B.WY],j)
+k=A.a([B.w7,B.dU,B.WX],j)
 if(s>0){r=A.u(""+s,m,m,m,m,m,m,m,m)
 k.push(A.Dw(m,m,A.en(m,m,m,B.oZ,m,m,new A.aGs(n,l),m,m,m,"Catatan musyawarah",B.cb),!0,r,m,m))}k.push(A.en(m,m,m,B.Y5,m,m,n.gaCU(),m,m,m,"Log persembahan",B.cb))
 k=A.a([new A.aP(i,B.I,A.aa(k,B.l,m,B.e,B.j,0,m),m),A.as(n.am6(),1)],j)
@@ -65246,7 +65246,7 @@ h=d.a.c
 g=h?B.H:B.r
 g=A.bj(c,c,c,new A.a2i(a2,g,h?B.h:B.x,c),B.O)
 f=B.b.aB(a2)
-e=A.CJ(a4,0.07,0.25,A.aa(A.a([new A.cM(1,B.aA,new A.V(c,r,new A.vZ(a0,a1,c),c),c),B.bc,A.b7(c,c,A.b40(A.au(B.i,A.a([g,new A.S(B.Vf,A.e1(B.i,A.K(A.a([A.u(""+f+"/30",c,c,c,c,c,A.ap(c,c,h?B.H:B.r,c,c,c,c,c,c,c,c,26,c,c,B.E,c,c,!0,c,c,c,c,c,c,c,c),c,c),B.am4],n),B.l,B.e,B.u),B.aL),c)],n),B.v,B.a3),m),!1,c,c,!0,c,!1,c,c,c,c,c,c,c,"Daun Hayu. "+a0+" dari 30",c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c)],n),B.l,c,B.b_,B.j,0,c),18)
+e=A.CJ(a4,0.07,0.25,A.aa(A.a([new A.cM(1,B.aA,new A.V(c,r,new A.vZ(a0,a1,c),c),c),B.bc,A.b7(c,c,A.b40(A.au(B.i,A.a([g,new A.S(B.Vf,A.e1(B.i,A.K(A.a([A.u(""+f+"/30",c,c,c,c,c,A.ap(c,c,h?B.H:B.r,c,c,c,c,c,c,c,c,26,c,c,B.E,c,c,!0,c,c,c,c,c,c,c,c),c,c),B.am3],n),B.l,B.e,B.u),B.aL),c)],n),B.v,B.a3),m),!1,c,c,!0,c,!1,c,c,c,c,c,c,c,"Daun Hayu. "+a0+" dari 30",c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c)],n),B.l,c,B.b_,B.j,0,c),18)
 if(!p)return A.K(A.a([l,B.ag,e,B.aD,i],n),B.P,B.e,B.j)
 r=o?0:Math.min(440,a6-40)
 return new A.bq(new A.a3(0,1/0,r,1/0),A.aa(A.a([A.as(A.K(A.a([l,B.aD,i],n),B.F,B.e,B.j),1),B.I7,A.as(e,1)],n),B.l,c,B.e,B.j,0,c),c)},
@@ -65425,8 +65425,8 @@ s=a0.x
 if(s.length===0)return b.F2("Tidak ada suara warga yang tercatat.")
 r=B.c.j3(s,1,new A.aIu())
 s=t.p
-q=A.K(A.a([A.CJ(a1,0,0.2,A.aa(A.a([A.u(""+B.b.aB(a0.r/a0.w*100*B.Y.I(A.rT(a1,0.1,0.7)))+"%",a,a,a,a,a,B.agZ,a,a),B.bc,B.X1],s),B.l,a,B.e,B.j,0,a),18),B.ai,new A.aP(new A.R(a,a,new A.bB(B.t,B.t,new A.aA(B.h.m(0.28),1,B.A,-1),B.t),a,a,a,B.o),B.I,new A.S(B.UU,A.bC(new A.aIv(b,a0,a1,118/r)),a),a),B.af,A.CJ(a1,0.4,0.6,A.d9(B.a4,A.a([b.NK(B.H,"Tepat"),b.NK(B.x,"Keliru"),b.NK(B.b7,"Tak memilih")],s),B.aO,B.a4,6,14),18)],s),B.P,B.e,B.j)
-p=A.a([B.amp,B.aq],s)
+q=A.K(A.a([A.CJ(a1,0,0.2,A.aa(A.a([A.u(""+B.b.aB(a0.r/a0.w*100*B.Y.I(A.rT(a1,0.1,0.7)))+"%",a,a,a,a,a,B.agZ,a,a),B.bc,B.X0],s),B.l,a,B.e,B.j,0,a),18),B.ai,new A.aP(new A.R(a,a,new A.bB(B.t,B.t,new A.aA(B.h.m(0.28),1,B.A,-1),B.t),a,a,a,B.o),B.I,new A.S(B.UU,A.bC(new A.aIv(b,a0,a1,118/r)),a),a),B.af,A.CJ(a1,0.4,0.6,A.d9(B.a4,A.a([b.NK(B.H,"Tepat"),b.NK(B.x,"Keliru"),b.NK(B.b7,"Tak memilih")],s),B.aO,B.a4,6,14),18)],s),B.P,B.e,B.j)
+p=A.a([B.amo,B.aq],s)
 for(a0=a0.as,o=a0.length,n=t.N,m=t.G,l=0;l<a0.length;a0.length===o||(0,A.y)(a0),++l){k=a0[l]
 j=k.b
 i=k.c
@@ -65455,7 +65455,7 @@ s=A.aaK(A.rT(o,0.6,1))
 r=t.p
 return A.b7(q,q,A.K(A.a([new A.V(q,130+i,A.K(A.a([A.ag(A.u(""+a.gC5(),q,q,q,q,q,B.qY,q,q),s),B.bY,A.aZ(new A.V(28,q,A.K(A.a([n.$2(j,B.b7),n.$2(k,B.x),n.$2(l,B.H)],r),B.l,B.e,B.u),q),q,q,q)],r),B.l,B.eX,B.j),q),B.aa,A.e1(B.i,A.u("H"+m,q,q,q,q,q,B.ah0,q,q),B.aL)],r),B.l,B.e,B.j),!1,q,q,!0,q,!1,q,q,q,q,q,q,q,"Hari "+m+", "+l+" tepat, "+k+" keliru, "+j+" tak memilih",q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q)},
 ayP(a){var s,r,q,p,o,n,m,l,k,j,i,h,g=this,f=null,e=g.Q,d=e.e,c=e.f,b=d+c
-if(b===0)return B.amj
+if(b===0)return B.ami
 s=B.Y.I(A.rT(a,0.1,0.6))
 r=B.b.aB(d*s)
 q=B.b.aB(c*s)
@@ -65475,7 +65475,7 @@ l=B.b.u((a-l)/(0.55+m-l),0,1)
 s=l*l*(3-2*l)
 o.push(new A.dN(s,A.bP(new A.V(88,f,j,f),new A.f(0,(1-s)*10)),f))}return g.OY(p,A.K(A.a([B.alF,B.aD,A.d9(B.a4,o,B.aO,B.a4,14,12)],c),B.F,B.e,B.j))},
 ayQ(a0){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c=this,b=null,a=c.Q.z
-if(a.length===0)return B.am6
+if(a.length===0)return B.am5
 s=t.p
 r=A.a([],s)
 for(q=t.N,p=t.G,o=0;o<a.length;++o){n=a[o]
@@ -65711,7 +65711,7 @@ return a===0?B.ac:A.al(s,s,B.n,s,s,new A.R(b,s,s,A.aj(4),A.a([new A.bp(0,B.V,b.m
 $S:443}
 A.aIw.prototype={
 $2(a,b){var s=null,r=this.a
-return A.b7(s,s,A.eO(A.aj(8),new A.V(s,14,A.aa(A.a([new A.V(b.b*this.b,s,B.SN,s),B.X_],t.p),B.P,s,B.e,B.j,0,s),s)),!1,s,s,!1,s,!1,s,s,s,s,s,s,s,""+r.e+" kartu Cahaya dan "+r.f+" kartu Kabut",s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)},
+return A.b7(s,s,A.eO(A.aj(8),new A.V(s,14,A.aa(A.a([new A.V(b.b*this.b,s,B.SN,s),B.WZ],t.p),B.P,s,B.e,B.j,0,s),s)),!1,s,s,!1,s,!1,s,s,s,s,s,s,s,""+r.e+" kartu Cahaya dan "+r.f+" kartu Kabut",s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)},
 $S:373}
 A.aIx.prototype={
 $1(a){return this.a.ND(A.T(a.h(0,"user_id")))},
@@ -66686,9 +66686,9 @@ if(g)p="Sudah terpakai"
 else p=J.c(o.h(0,"kind"),"pasif")?"Pasif":"Sekali pakai"
 d.push(m.yQ(n,e,new A.pG(o,g,128,l),j,p))}else{g=A.aj(14)
 d.push(m.awE(B.b6,"Belum diketahui",new A.V(128,192,new A.aP(new A.R(l,l,A.be(B.ea,1.5),g,l,l,B.o),B.I,B.O8,l),l),j))}g=d}e=t.p
-g=A.a([B.alT,B.aq,f,B.bR,A.d9(B.bM,g,B.aO,B.a4,18,14)],e)
+g=A.a([B.alS,B.aq,f,B.bR,A.d9(B.bM,g,B.aO,B.a4,18,14)],e)
 if(!i&&m.r!=null)B.c.J(g,A.a([B.aD,A.u(A.k(m.r.h(0,"description")),l,l,l,l,l,B.hs,B.B,l)],e))
-if(i)B.c.J(g,A.a([B.aD,B.alX],e))
+if(i)B.c.J(g,A.a([B.aD,B.alW],e))
 g.push(B.af)
 g.push(B.amy)
 g.push(B.nY)
@@ -69423,7 +69423,7 @@ aqW(a){var s,r,q,p,o=this,n=null,m="bulirembun",l=o.a.w,k=A.auR(m,28,"Beri embun
 for(s=[1,2,3],r=0;r<3;++r){q=s[r]
 p=o.d||o.a.w<q?n:new A.aOH(o,q)
 i.push(new A.yW(m,"\xd7"+q,p,a,!1,n,n))}k=A.a([k,B.ai,A.aa(i,B.l,n,B.pA,B.j,0,n)],j)
-if(l<1)B.c.J(k,A.a([B.af,B.alZ],j))
+if(l<1)B.c.J(k,A.a([B.af,B.alY],j))
 return new A.BY(A.K(k,B.F,B.e,B.j),n)},
 Y9(a){var s=null,r=B.q.m(0.4),q=A.aj(10),p=A.be(B.ar.m(0.5),1)
 return A.al(s,A.u(a,s,s,s,s,s,B.aiL,s,s),B.n,s,s,new A.R(r,s,p,q,s,s,B.o),s,s,s,s,B.vz,s,s,s)},
@@ -72169,7 +72169,7 @@ if(r.k2!=null)n.push(r.aq4())
 if(p)n.push(r.aDq())
 n.push(r.aFQ())
 s=t.bA
-n.push(A.bz(new A.fv(A.a([r.gvb(),r.gGe()],s)),new A.aZ4(r),A.dG(!0,A.bz(new A.fv(A.a([r.gfO(),r.gjP()],s)),new A.aZ5(r),A.K(A.a([new A.S(B.VI,A.aa(A.a([A.as(A.K(A.a([B.amr,A.u(r.ga3W(),new A.aY(r.ga3W(),t.W),q,q,q,q,B.mh,q,q)],o),B.F,B.e,B.j),1),A.lE(B.w8,B.ml,r.gaFU(),A.vM(q,q,q,q,q,q,q,q,q,B.bb,q,q,q,q,q,q,q,q,q,q))],o),B.l,q,B.e,B.j,0,q),q),A.as(new A.fl(r.aDs(),r.p1),1),r.alW(),B.af],o),B.l,B.e,B.j)),B.a5,!0)))
+n.push(A.bz(new A.fv(A.a([r.gvb(),r.gGe()],s)),new A.aZ4(r),A.dG(!0,A.bz(new A.fv(A.a([r.gfO(),r.gjP()],s)),new A.aZ5(r),A.K(A.a([new A.S(B.VI,A.aa(A.a([A.as(A.K(A.a([B.amq,A.u(r.ga3W(),new A.aY(r.ga3W(),t.W),q,q,q,q,B.mh,q,q)],o),B.F,B.e,B.j),1),A.lE(B.w8,B.ml,r.gaFU(),A.vM(q,q,q,q,q,q,q,q,q,B.bb,q,q,q,q,q,q,q,q,q,q))],o),B.l,q,B.e,B.j,0,q),q),A.as(new A.fl(r.aDs(),r.p1),1),r.alW(),B.af],o),B.l,B.e,B.j)),B.a5,!0)))
 if(p)n.push(r.apQ())
 if(p)n.push(r.aoV())
 if(r.ax)n.push(r.aw6())
@@ -72253,7 +72253,7 @@ q=s[n.as]
 p=J.c(q.h(0,"voter_id"),n.a.e)
 o=J.c(q.h(0,"target_id"),n.a.e)
 return A.bz(n.goP(),new A.aZ2(n,p,q,o),null)},
-aFV(){var s=null,r=t.p,q=A.a([B.amq],r),p=this.e
+aFV(){var s=null,r=t.p,q=A.a([B.amp],r),p=this.e
 p===$&&A.b()
 p=p.length
 if(p!==0)B.c.J(q,A.a([B.aa,A.u(""+p+" tidak memilih",s,s,s,s,s,B.mh,s,s)],r))
@@ -72571,7 +72571,7 @@ j===$&&A.b()
 s=this.b
 if(s==null){r=B.ab.I(A.dc(j,0,0.35))
 k=t.p
-return A.ag(A.e1(B.i,new A.bq(B.LL,A.K(A.a([A.aa(A.a([A.ft(B.i,Math.sin(j*2*3.141592653589793*1.5)*0.14*(1-A.dc(j,0.55,1)),B.Zt),B.ak,B.alQ],k),B.l,l,B.e,B.u,0,l),B.aa,B.alG,B.am5],k),B.l,B.e,B.u),l),B.aL),r)}q=k.a1E(s)
+return A.ag(A.e1(B.i,new A.bq(B.LL,A.K(A.a([A.aa(A.a([A.ft(B.i,Math.sin(j*2*3.141592653589793*1.5)*0.14*(1-A.dc(j,0.55,1)),B.Zt),B.ak,B.alQ],k),B.l,l,B.e,B.u,0,l),B.aa,B.alG,B.am4],k),B.l,B.e,B.u),l),B.aL),r)}q=k.a1E(s)
 p=B.Y.I(A.dc(j,0.06,0.3))
 o=B.ab.I(A.dc(j,0.62,0.9))
 s=k.y.h(0,s)
@@ -73166,7 +73166,7 @@ s.r=!1},
 $S:0}
 A.aZm.prototype={
 $1(a){var s=null,r=A.cG(A.hU(A.by(A.a([A.by(s,s,s,B.r_,"Butuh "+this.a+" suara.\n\n"),B.afk],t.R),s,s,B.ahn,s),s,s,s,s,s,s),s,B.K,s,s,s,s,s,B.T)
-return A.b2g(A.a([A.lD(!1,B.amh,s,s,s,s,s,s,new A.aZl(a),s,s)],t.p),r,B.amV)},
+return A.b2g(A.a([A.lD(!1,B.amg,s,s,s,s,s,s,new A.aZl(a),s,s)],t.p),r,B.amV)},
 $S:135}
 A.aZl.prototype={
 $0(){A.cf(this.a,!1).e9(null)
@@ -73368,7 +73368,7 @@ m=A.bF(B.i,A.al(B.i,B.Yc,B.n,o,o,new A.R(o,o,A.be(B.x,2.5),o,A.a([new A.bp(2*s,B
 r=n.amE()
 n=n.aCc(p.b,p.c,s)
 q=p.d
-return A.K(A.a([m,B.fd,B.alV,B.af,r,B.Ib,n,B.af,A.u(q>0?"Menunggu "+q+" suara lagi...":"Semua suara terkunci. Pintu balai ditutup...",o,o,o,o,o,B.jk,o,o),B.aa,B.an3],t.p),B.l,B.e,B.u)},
+return A.K(A.a([m,B.fd,B.alU,B.af,r,B.Ib,n,B.af,A.u(q>0?"Menunggu "+q+" suara lagi...":"Semua suara terkunci. Pintu balai ditutup...",o,o,o,o,o,B.jk,o,o),B.aa,B.an3],t.p),B.l,B.e,B.u)},
 $S:142}
 A.a97.prototype={
 E(a){var s=this.c==null,r=s?B.bb:B.el,q=A.b5(a,B.b4,t.w).w.a,p=q.a
@@ -73421,7 +73421,7 @@ A.a37.prototype={
 ae(){this.an()
 $.ao.p3$.push(new A.aL5(this))},
 E(a){var s=null
-return A.d7(!1,B.U,!0,s,A.Y2(A.dG(!0,new A.bE(B.aT,s,s,new A.S(B.UB,A.hA(new A.aL4(),A.u("V3.1.9",s,s,s,s,s,A.ap(s,s,B.h.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.G,B.eg,s,s,new A.aJ(0,1,t.Z),t.i),s),s),B.a5,!0)),B.n,B.bI,0,s,s,s,s,s,B.aR)}}
+return A.d7(!1,B.U,!0,s,A.Y2(A.dG(!0,new A.bE(B.aT,s,s,new A.S(B.UB,A.hA(new A.aL4(),A.u("V3.1.10",s,s,s,s,s,A.ap(s,s,B.h.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.G,B.eg,s,s,new A.aJ(0,1,t.Z),t.i),s),s),B.a5,!0)),B.n,B.bI,0,s,s,s,s,s,B.aR)}}
 A.aL5.prototype={
 $1(a){return this.ach(a)},
 ach(a){var s=0,r=A.q(t.H),q,p=this,o
@@ -131555,8 +131555,8 @@ B.Wd=new A.D(4,0,0,0)
 B.f=new A.adW(0,"sRGB")
 B.b6=new A.j(0.5411764705882353,1,1,1,B.f)
 B.jh=new A.l(!0,B.b6,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amk=new A.ah("Belum ada isyarat hari ini",null,B.jh,null,null,null,null,null,null,null)
-B.a86=new A.S(B.Wd,B.amk,null)
+B.amj=new A.ah("Belum ada isyarat hari ini",null,B.jh,null,null,null,null,null,null,null)
+B.a86=new A.S(B.Wd,B.amj,null)
 B.KI=new A.bE(B.aP,null,null,B.a86,null)
 B.KJ=new A.hp(0,1)
 B.KK=new A.hp(0,-1)
@@ -132071,13 +132071,13 @@ B.anO=new A.ah("Belum ada yang bicara",null,B.hr,null,null,null,null,null,null,n
 B.bY=new A.V(null,2,null,null)
 B.b7=new A.j(0.3843137254901961,1,1,1,B.f)
 B.qX=new A.l(!0,B.b7,null,null,null,null,11.5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amt=new A.ah("Mulailah dengan menyebut siapa yang kamu curigai.",null,B.qX,B.B,null,null,null,null,null,null)
-B.a1t=s([B.Yl,B.ag,B.anO,B.bY,B.amt],t.p)
-B.SS=new A.hM(B.T,B.e,B.u,B.l,null,B.c0,null,0,B.a1t,null)
-B.ade=new A.r1(B.T,B.cF,null,null,null,B.SS,B.K,null,null)
+B.ams=new A.ah("Mulailah dengan menyebut siapa yang kamu curigai.",null,B.qX,B.B,null,null,null,null,null,null)
+B.a1t=s([B.Yl,B.ag,B.anO,B.bY,B.ams],t.p)
+B.ST=new A.hM(B.T,B.e,B.u,B.l,null,B.c0,null,0,B.a1t,null)
+B.ade=new A.r1(B.T,B.cF,null,null,null,B.ST,B.K,null,null)
 B.O_=new A.de(B.i,null,null,B.ade,null)
-B.alS=new A.ah("Obrolan Terbisik ditutup.",null,null,null,null,null,null,null,null,null)
-B.O3=new A.de(B.i,null,null,B.alS,null)
+B.alR=new A.ah("Obrolan Terbisik ditutup.",null,null,null,null,null,null,null,null,null)
+B.O3=new A.de(B.i,null,null,B.alR,null)
 B.atm=new A.aAD(0,"material")
 B.ne=new A.mk(2,null,null,null,null,null,null,null,null,null)
 B.I9=new A.V(22,22,B.ne,null)
@@ -132996,28 +132996,28 @@ B.vI=new A.tO(!1,!1,!1,!0)
 B.aI=new A.TE(0,"tight")
 B.E=new A.kh(7,800)
 B.ajY=new A.l(!0,B.h,null,null,null,null,16,B.E,null,0.4,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amb=new A.ah("Tukar kartu",null,B.ajY,null,null,null,null,null,null,null)
-B.WW=new A.dm(1,B.aI,B.amb,null)
+B.ama=new A.ah("Tukar kartu",null,B.ajY,null,null,null,null,null,null,null)
+B.WW=new A.dm(1,B.aI,B.ama,null)
+B.Jf=new A.l(!0,null,null,null,null,null,17,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.S=new A.Az(2,"ellipsis")
+B.anT=new A.ah("Musyawarah Senja",null,B.Jf,null,null,null,B.S,1,null,null)
+B.WX=new A.dm(1,B.aI,B.anT,null)
+B.SM=new A.bn(B.r,null,null)
+B.WZ=new A.dm(1,B.aI,B.SM,null)
+B.aiN=new A.l(!0,B.a7,null,null,null,null,15,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.alO=new A.ah("Menunggu pemain",null,B.aiN,null,null,null,null,null,null,null)
+B.X_=new A.dm(1,B.aI,B.alO,null)
+B.IM=new A.l(!0,B.M,null,null,null,null,null,null,null,null,null,null,1.3,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.an9=new A.ah("suara warga tepat menunjuk Si Terbisik",null,B.IM,null,null,null,null,null,null,null)
+B.X0=new A.dm(1,B.aI,B.an9,null)
 B.qj=new A.cF(B.q,B.m,10)
 B.l3=s([B.qj],t.r)
 B.aiH=new A.l(!0,B.h,null,null,null,null,20,B.W,null,0.8,null,null,null,null,null,null,null,null,null,null,null,null,B.l3,null,null,null)
-B.S=new A.Az(2,"ellipsis")
-B.am8=new A.ah("Pengumuman",null,B.aiH,null,null,null,B.S,1,null,null)
-B.alR=new A.ah("Log pembaruan  \xb7  versimu V3.1.9",null,B.ff,null,null,null,null,null,null,null)
-B.a2B=s([B.am8,B.alR],t.p)
-B.ST=new A.hM(B.T,B.e,B.j,B.F,null,B.c0,null,0,B.a2B,null)
-B.WX=new A.dm(1,B.aI,B.ST,null)
-B.Jf=new A.l(!0,null,null,null,null,null,17,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.anT=new A.ah("Musyawarah Senja",null,B.Jf,null,null,null,B.S,1,null,null)
-B.WY=new A.dm(1,B.aI,B.anT,null)
-B.SM=new A.bn(B.r,null,null)
-B.X_=new A.dm(1,B.aI,B.SM,null)
-B.aiN=new A.l(!0,B.a7,null,null,null,null,15,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.alO=new A.ah("Menunggu pemain",null,B.aiN,null,null,null,null,null,null,null)
-B.X0=new A.dm(1,B.aI,B.alO,null)
-B.IM=new A.l(!0,B.M,null,null,null,null,null,null,null,null,null,null,1.3,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.an9=new A.ah("suara warga tepat menunjuk Si Terbisik",null,B.IM,null,null,null,null,null,null,null)
-B.X1=new A.dm(1,B.aI,B.an9,null)
+B.am7=new A.ah("Pengumuman",null,B.aiH,null,null,null,B.S,1,null,null)
+B.amt=new A.ah("Log pembaruan  \xb7  versimu V3.1.10",null,B.ff,null,null,null,null,null,null,null)
+B.a2F=s([B.am7,B.amt],t.p)
+B.SS=new A.hM(B.T,B.e,B.j,B.F,null,B.c0,null,0,B.a2F,null)
+B.X1=new A.dm(1,B.aI,B.SS,null)
 B.J0=new A.l(!0,B.a7,null,null,null,null,19,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.amY=new A.ah("Pasar Riset",null,B.J0,null,null,null,B.S,1,null,null)
 B.X2=new A.dm(1,B.aI,B.amY,null)
@@ -133560,8 +133560,8 @@ B.a12=s([B.mX,B.mY],A.aV("H<Dp>"))
 B.Ml=new A.bp(0,B.V,B.as,B.m,18)
 B.a14=s([B.Ml],t.V)
 B.Kz=new A.lW(0,"newest")
-B.ami=new A.ah("Terbaru",null,null,null,null,null,null,null,null,null)
-B.a9a=new A.lp(B.Kz,B.ami,null,t.QB)
+B.amh=new A.ah("Terbaru",null,null,null,null,null,null,null,null,null)
+B.a9a=new A.lp(B.Kz,B.amh,null,t.QB)
 B.KA=new A.lW(1,"busiest")
 B.amS=new A.ah("Paling ramai",null,null,null,null,null,null,null,null,null)
 B.a9c=new A.lp(B.KA,B.amS,null,t.QB)
@@ -133603,10 +133603,10 @@ B.cc=new A.ni(1,"avatar")
 B.dy=new A.ni(2,"deleteIcon")
 B.a1e=s([B.cz,B.cc,B.dy],A.aV("H<ni>"))
 B.a2s=s([-1,1.5],t.n)
-B.a2F=s([1,1.6],t.n)
+B.a2E=s([1,1.6],t.n)
 B.a1N=s([-0.5,2],t.n)
 B.a19=s([0.55,2.1],t.n)
-B.a1f=s([B.a2s,B.a2F,B.a1N,B.a19],t.zg)
+B.a1f=s([B.a2s,B.a2E,B.a1N,B.a19],t.zg)
 B.a1g=s([0.32,0.42,0.54],t.n)
 B.Yz=new A.mC(0.75,-1,1,2,"layu")
 B.a1h=s([B.wf,B.we,B.Yz,B.p0],t.I2)
@@ -133776,11 +133776,11 @@ B.a9Q=new A.ad(0.68675338,0.06974996)
 B.aar=new A.ad(0.70678034,0.06529512)
 B.x1=s([B.aaw,B.aav,B.aa7,B.aai,B.aat,B.a9O,B.a9Z,B.aab,B.a9X,B.aap,B.aaA,B.a9Y,B.a9Q,B.aar],t.UO)
 B.a2v=s(["Daun Hayu mencapai **30**.","Hari terakhir berakhir dengan daun **di atas batas** (12 hari: **20**).","Semua Terbisik **tersingkir**."],t.s)
-B.a2D=s([-0.3,-0.25,0.22],t.n)
+B.a2C=s([-0.3,-0.25,0.22],t.n)
 B.a_X=s([0.28,0.12,0.16],t.n)
 B.a1M=s([-0.08,0.42,0.12],t.n)
-B.a2C=s([B.a2D,B.a_X,B.a1M],t.zg)
-B.a2E=s(["click","scroll"],t.s)
+B.a2B=s([B.a2C,B.a_X,B.a1M],t.zg)
+B.a2D=s(["click","scroll"],t.s)
 B.Mz=new A.xa()
 B.iW=new A.Xv(1,"page")
 B.lK=new A.he(B.bF,B.iW)
@@ -135017,8 +135017,8 @@ B.a7X=new A.VH(0,"nearestOverlay")
 B.a7Y=new A.VH(1,"rootOverlay")
 B.adz=new A.V(17,17,B.ne,null)
 B.bc=new A.V(10,null,null,null)
-B.alU=new A.ah("Memuat ruangan publik\u2026",null,null,null,null,null,null,null,null,null)
-B.Xd=new A.cM(1,B.aA,B.alU,null)
+B.alT=new A.ah("Memuat ruangan publik\u2026",null,null,null,null,null,null,null,null,null)
+B.Xd=new A.cM(1,B.aA,B.alT,null)
 B.a02=s([B.adz,B.bc,B.Xd],t.p)
 B.abc=new A.jJ(B.aU,B.e,B.j,B.l,null,B.c0,null,0,B.a02,null)
 B.a7Z=new A.S(B.kx,B.abc,null)
@@ -135035,8 +135035,8 @@ B.a81=new A.S(B.W3,B.anL,null)
 B.Yh=new A.am("roomcode",24,null,null,null)
 B.a82=new A.S(B.dM,B.Yh,null)
 B.ajo=new A.l(!0,B.ll,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.aml=new A.ah("\u22121 daun saat persembahan jika dua bagian atau lebih masih rusak.",null,B.ajo,null,null,null,null,null,null,null)
-B.a83=new A.S(B.kt,B.aml,null)
+B.amk=new A.ah("\u22121 daun saat persembahan jika dua bagian atau lebih masih rusak.",null,B.ajo,null,null,null,null,null,null,null)
+B.a83=new A.S(B.kt,B.amk,null)
 B.aiG=new A.l(!0,B.b6,null,null,null,null,null,null,null,null,null,null,1.4,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.amR=new A.ah('Kamu belum punya kartu serangan malam. Belilah di Pasar Pagi (kartu bertanda "Serangan malam").',null,B.aiG,B.B,null,null,null,null,null,null)
 B.a84=new A.S(B.kw,B.amR,null)
@@ -135047,8 +135047,8 @@ B.a85=new A.S(B.UP,B.O2,null)
 B.wk=new A.cc(63035,"MaterialIcons",!0)
 B.Zn=new A.ea(B.wk,14,B.cR,null,null,null)
 B.a87=new A.S(B.kv,B.Zn,null)
-B.amf=new A.ah("Belum ada kemampuan.",null,B.hr,null,null,null,null,null,null,null)
-B.NW=new A.de(B.i,null,null,B.amf,null)
+B.ame=new A.ah("Belum ada kemampuan.",null,B.hr,null,null,null,null,null,null,null)
+B.NW=new A.de(B.i,null,null,B.ame,null)
 B.a88=new A.S(B.ii,B.NW,null)
 B.VN=new A.D(1,1,1,1)
 B.a8b=new A.S(B.VN,B.oY,null)
@@ -135061,8 +135061,8 @@ B.ane=new A.ah("Belum ada gambar karakter.",null,B.hr,null,null,null,null,null,n
 B.NS=new A.de(B.i,null,null,B.ane,null)
 B.a8d=new A.S(B.ii,B.NS,null)
 B.jk=new A.l(!0,B.M,null,null,null,null,13,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amd=new A.ah("Mulai setelah minimal 5 pemain siap.",null,B.jk,null,null,null,null,null,null,null)
-B.a8e=new A.S(B.kz,B.amd,null)
+B.amc=new A.ah("Mulai setelah minimal 5 pemain siap.",null,B.jk,null,null,null,null,null,null,null)
+B.a8e=new A.S(B.kz,B.amc,null)
 B.an2=new A.ah("Belum ada yang terjadi...",null,B.dX,null,null,null,null,null,null,null)
 B.a8f=new A.S(B.kw,B.an2,null)
 B.XH=new A.am("alert",18,null,null,null)
@@ -135077,8 +135077,8 @@ B.Oz=new A.j(1,0.7333333333333333,0.7803921568627451,0.7215686274509804,B.f)
 B.bS=new A.l(!0,B.Oz,null,null,null,null,12,null,null,null,null,null,1.3,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.anM=new A.ah("Kamu sudah keluar dari desa. Kamu hanya bisa menonton.",null,B.bS,B.B,null,null,null,null,null,null)
 B.a8i=new A.S(B.kA,B.anM,null)
-B.am1=new A.ah("Kamu belum punya kartu malam.",null,B.hr,B.B,null,null,null,null,null,null)
-B.a8j=new A.S(B.vn,B.am1,null)
+B.am0=new A.ah("Kamu belum punya kartu malam.",null,B.hr,B.B,null,null,null,null,null,null)
+B.a8j=new A.S(B.vn,B.am0,null)
 B.alN=new A.ah("Tidak ada layar yang cocok.",null,null,null,null,null,null,null,null,null)
 B.a8k=new A.S(B.ii,B.alN,null)
 B.CL=new A.zf(null)
@@ -135285,8 +135285,8 @@ B.abb=new A.jJ(B.aU,B.e,B.j,B.l,null,B.c0,null,0,B.a3v,null)
 B.Yv=new A.am("info",28,null,null,null)
 B.ca=new A.l(!0,B.M,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.amT=new A.ah("Buka daftar warga atau ketuk avatar untuk memberi embun, menukar kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) sebuah kartu untuk membaca efeknya.",null,B.ca,null,null,null,null,null,null,null)
-B.WZ=new A.dm(1,B.aI,B.amT,null)
-B.a2A=s([B.Yv,B.ak,B.WZ],t.p)
+B.WY=new A.dm(1,B.aI,B.amT,null)
+B.a2A=s([B.Yv,B.ak,B.WY],t.p)
 B.abd=new A.jJ(B.aU,B.e,B.j,B.l,null,B.c0,null,0,B.a2A,null)
 B.asM=new A.a98(null)
 B.abe=new A.vn(!0,!0,B.a5,B.asM,null)
@@ -135584,8 +135584,8 @@ B.adH=new A.Aa(B.vj,null,null)
 B.hl=new A.awY(0,"firstIsTop")
 B.VV=new A.D(24,8,24,28)
 B.me=new A.l(!0,B.b7,null,null,null,null,11,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.am3=new A.ah("Tarik ke bawah untuk memuat ulang.",null,B.me,B.B,null,null,null,null,null,null)
-B.a89=new A.S(B.VV,B.am3,null)
+B.am2=new A.ah("Tarik ke bawah untuk memuat ulang.",null,B.me,B.B,null,null,null,null,null,null)
+B.a89=new A.S(B.VV,B.am2,null)
 B.adI=new A.lx(B.a89,null)
 B.adJ=new A.awZ(1,"enabled")
 B.adK=new A.ax_(1,"enabled")
@@ -135599,12 +135599,12 @@ B.adO=new A.n3(5,"timeout")
 B.adP=new A.Ab(null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.ana=new A.ah("Tautan disalin.",null,null,null,null,null,null,null,null,null)
 B.adQ=new A.n2(B.ana,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
-B.am_=new A.ah("Tidak bisa membuka tautan. Tautan disalin.",null,null,null,null,null,null,null,null,null)
-B.adR=new A.n2(B.am_,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
+B.alZ=new A.ah("Tidak bisa membuka tautan. Tautan disalin.",null,null,null,null,null,null,null,null,null)
+B.adR=new A.n2(B.alZ,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
 B.alE=new A.ah("Tidak bisa membuka peramban. Tautan disalin.",null,null,null,null,null,null,null,null,null)
 B.adS=new A.n2(B.alE,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
-B.amo=new A.ah("Pilih sasaran kartumu dulu",null,null,null,null,null,null,null,null,null)
-B.adT=new A.n2(B.amo,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
+B.amn=new A.ah("Pilih sasaran kartumu dulu",null,null,null,null,null,null,null,null,null)
+B.adT=new A.n2(B.amn,null,null,null,null,null,null,null,null,null,null,null,null,B.bj,!1,null,null,null,B.v,null)
 B.Id=new A.IX(0,"permissive")
 B.adU=new A.IX(1,"normal")
 B.adV=new A.IX(2,"forced")
@@ -136184,40 +136184,40 @@ B.alP=new A.ah("Suaramu sudah dijatuhkan.",null,B.hp,null,null,null,null,null,nu
 B.ajw=new A.l(!0,B.M,null,null,null,null,15,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.alQ=new A.ah("Tidak ada yang mencapai mayoritas",null,B.ajw,null,null,null,null,null,null,null)
 B.ah6=new A.l(!0,B.h,null,null,null,null,20,B.E,null,1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.alT=new A.ah("Infoku",null,B.ah6,B.B,null,null,null,null,null,null)
+B.alS=new A.ah("Infoku",null,B.ah6,B.B,null,null,null,null,null,null)
 B.afA=new A.l(!0,B.x,null,null,null,null,20,B.av,null,4,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.alV=new A.ah("SUARAMU TERKUNCI",null,B.afA,null,null,null,null,null,null,null)
+B.alU=new A.ah("SUARAMU TERKUNCI",null,B.afA,null,null,null,null,null,null,null)
 B.agp=new A.l(!0,B.a7,null,null,null,null,25,B.av,null,null,null,null,1.15,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.alW=new A.ah("Menunggu pemain lain",null,B.agp,null,null,null,null,null,null,null)
-B.alX=new A.ah("Semua pemain hanya melihat wajah samaranmu. Wajah asli tetap rahasia sampai permainan berakhir.",null,B.hs,B.B,null,null,null,null,null,null)
+B.alV=new A.ah("Menunggu pemain lain",null,B.agp,null,null,null,null,null,null,null)
+B.alW=new A.ah("Semua pemain hanya melihat wajah samaranmu. Wajah asli tetap rahasia sampai permainan berakhir.",null,B.hs,B.B,null,null,null,null,null,null)
 B.aky=new A.l(!0,B.h,null,null,null,null,20,B.E,null,0.6,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.alY=new A.ah("Bidik siapa?",null,B.aky,B.B,null,null,null,null,null,null)
-B.alZ=new A.ah("Saldo embunmu belum cukup untuk memberi.",null,B.jh,B.B,null,null,null,null,null,null)
+B.alX=new A.ah("Bidik siapa?",null,B.aky,B.B,null,null,null,null,null,null)
+B.alY=new A.ah("Saldo embunmu belum cukup untuk memberi.",null,B.jh,B.B,null,null,null,null,null,null)
 B.aiU=new A.l(!0,B.bb,null,null,null,null,12.5,B.W,null,6,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.am0=new A.ah("SEBUAH BISIKAN DARI KABUT",null,B.aiU,null,null,null,null,null,null,null)
+B.am_=new A.ah("SEBUAH BISIKAN DARI KABUT",null,B.aiU,null,null,null,null,null,null,null)
 B.ah9=new A.l(!0,B.bb,null,null,null,null,12.5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.am2=new A.ah("Dari pengembang yang sama. Dibuka di peramban.",null,B.ah9,null,null,null,null,null,null,null)
-B.am4=new A.ah("daun Hayu",null,B.hq,null,null,null,null,null,null,null)
+B.am1=new A.ah("Dari pengembang yang sama. Dibuka di peramban.",null,B.ah9,null,null,null,null,null,null,null)
+B.am3=new A.ah("daun Hayu",null,B.hq,null,null,null,null,null,null,null)
 B.IQ=new A.l(!0,B.b7,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.am5=new A.ah("Butuh lebih dari separuh suara.",null,B.IQ,null,null,null,null,null,null,null)
-B.am6=new A.ah("Tak ada yang menonjol kali ini.",null,B.dX,B.B,null,null,null,null,null,null)
-B.am7=new A.ah("Bagian Hayu",null,B.qZ,null,null,null,null,null,null,null)
-B.am9=new A.ah("Salin",null,null,null,null,null,null,null,null,null)
-B.ama=new A.ah("Pilih pemain yang dikurung:",null,B.mj,null,null,null,null,null,null,null)
-B.amc=new A.ah("Terbisik",null,null,null,null,null,null,null,null,null)
-B.ame=new A.ah("Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam tiba. Jika Hayu mencapai 30 daun, pengorbanan dibayar saat itu.",null,null,null,null,null,null,null,null,null)
-B.amg=new A.ah("Gagal memuat ulang. Daftar terakhir masih ditampilkan.",null,B.J6,null,null,null,null,null,null,null)
-B.amh=new A.ah("Mengerti",null,null,null,null,null,null,null,null,null)
-B.amj=new A.ah("Tidak ada persembahan yang tercatat.",null,B.dX,B.B,null,null,null,null,null,null)
+B.am4=new A.ah("Butuh lebih dari separuh suara.",null,B.IQ,null,null,null,null,null,null,null)
+B.am5=new A.ah("Tak ada yang menonjol kali ini.",null,B.dX,B.B,null,null,null,null,null,null)
+B.am6=new A.ah("Bagian Hayu",null,B.qZ,null,null,null,null,null,null,null)
+B.am8=new A.ah("Salin",null,null,null,null,null,null,null,null,null)
+B.am9=new A.ah("Pilih pemain yang dikurung:",null,B.mj,null,null,null,null,null,null,null)
+B.amb=new A.ah("Terbisik",null,null,null,null,null,null,null,null,null)
+B.amd=new A.ah("Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam tiba. Jika Hayu mencapai 30 daun, pengorbanan dibayar saat itu.",null,null,null,null,null,null,null,null,null)
+B.amf=new A.ah("Gagal memuat ulang. Daftar terakhir masih ditampilkan.",null,B.J6,null,null,null,null,null,null,null)
+B.amg=new A.ah("Mengerti",null,null,null,null,null,null,null,null,null)
+B.ami=new A.ah("Tidak ada persembahan yang tercatat.",null,B.dX,B.B,null,null,null,null,null,null)
 B.Jn=new A.ah("Batal",null,null,null,null,null,null,null,null,null)
-B.amm=new A.ah("Firasat bisa keliru. Hanya kamu yang mendengarnya.",null,B.qU,B.B,null,null,null,null,null,null)
-B.amn=new A.ah("Suara",null,null,null,null,null,null,null,null,null)
-B.amp=new A.ah("Ketepatan tiap warga",null,B.jl,null,null,null,null,null,null,null)
+B.aml=new A.ah("Firasat bisa keliru. Hanya kamu yang mendengarnya.",null,B.qU,B.B,null,null,null,null,null,null)
+B.amm=new A.ah("Suara",null,null,null,null,null,null,null,null,null)
+B.amo=new A.ah("Ketepatan tiap warga",null,B.jl,null,null,null,null,null,null,null)
 B.aj6=new A.l(!0,B.M,null,null,null,null,17,B.E,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amq=new A.ah("Semua suara telah masuk...",null,B.aj6,null,null,null,null,null,null,null)
+B.amp=new A.ah("Semua suara telah masuk...",null,B.aj6,null,null,null,null,null,null,null)
 B.ahz=new A.l(!0,B.h,null,null,null,null,22,B.E,null,1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.amr=new A.ah("Suara Terbuka",null,B.ahz,null,null,null,null,null,null,null)
-B.ams=new A.ah("Bersihkan pencarian",null,null,null,null,null,null,null,null,null)
+B.amq=new A.ah("Suara Terbuka",null,B.ahz,null,null,null,null,null,null,null)
+B.amr=new A.ah("Bersihkan pencarian",null,null,null,null,null,null,null,null,null)
 B.amu=new A.ah("Buat ruangan publik",null,null,null,null,null,null,null,null,null)
 B.amv=new A.ah("Kartu lain dibuka. Sebentar lagi kamu lanjut.",null,B.jk,null,null,null,null,null,null,null)
 B.agR=new A.l(!0,B.M,null,null,null,null,34,B.av,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
