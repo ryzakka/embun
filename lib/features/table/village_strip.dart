@@ -33,6 +33,9 @@ class VillageStrip extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onTapPlayer;
   final VoidCallback onEmoteButton;
 
+  /// Pintasan daftar warga yang juga menampilkan isyarat terakhir di layar sempit.
+  final Widget Function(String? emoji, String? sender)? collapsedBuilder;
+
   /// Ponsel: avatar lebih kecil dan tanpa label status, supaya hemat tinggi.
   final bool compact;
 
@@ -51,6 +54,7 @@ class VillageStrip extends StatefulWidget {
     required this.day,
     required this.onTapPlayer,
     required this.onEmoteButton,
+    this.collapsedBuilder,
     this.compact = false,
     this.slim = false,
     this.avatarKeyFor,
@@ -443,8 +447,12 @@ class _VillageStripState extends State<VillageStrip> {
       }
     }
     final recent = newest;
+    final sender = recent == null ? null : _nameOf(recent.key);
+    if (widget.collapsedBuilder case final build?) {
+      return build(recent?.value.emoji, sender);
+    }
     return IconButton(
-      tooltip: recent == null ? 'Isyarat' : 'Isyarat dari ${_nameOf(recent.key)}',
+      tooltip: recent == null ? 'Isyarat' : 'Isyarat dari $sender',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       onPressed: widget.onEmoteButton,

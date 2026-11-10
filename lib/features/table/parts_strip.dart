@@ -27,7 +27,7 @@ class PartBadge extends StatelessWidget {
         gradient: RadialGradient(
           colors: [tone.withValues(alpha: 0.21), const Color(0xFF10231E)],
         ),
-        border: Border.all(color: tone.withValues(alpha: 0.76)),
+        border: Border.all(color: tone.withValues(alpha: 0.58)),
       ),
       child: path == null
           ? Icon(PartsStrip.fallbackIcon(part), size: size * 0.62, color: tone)
@@ -64,91 +64,95 @@ class PartsStrip extends StatelessWidget {
     _ => 'Tanah',
   };
 
-  Widget _one(
-    String part,
-    HayuCondition condition,
-    String amount,
-    String impact, {
-    required bool inline,
-  }) {
-    final name = partName(part);
-    final badge = PartBadge(part, condition.name, size: inline ? 27 : 24);
-    final label = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: inline
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
-      children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
-        ),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            amount,
-            style: dayMetricValue.copyWith(
-              fontSize: 15,
-              color: colorOf(condition.name),
+  Widget _metric({
+    required Widget icon,
+    required String name,
+    required String amount,
+    required Color tone,
+  }) => Row(
+    children: [
+      icon,
+      const SizedBox(width: 4),
+      Expanded(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
             ),
-          ),
-        ),
-      ],
-    );
-    return Tooltip(
-      message: '$name ${condition.name} · $impact',
-      child: inline
-          ? Row(
-              children: [
-                badge,
-                const SizedBox(width: 5),
-                Expanded(child: label),
-              ],
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [badge, const SizedBox(height: 3), label],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                amount,
+                style: dayMetricValue.copyWith(fontSize: 15, color: tone),
+              ),
             ),
-    );
-  }
+          ],
+        ),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
     final root = '${hayuAmount(effects.akar.akarPercent, signed: true)}%';
     final shield = hayuAmount(effects.batang.batangShield, signed: true);
     final fog = hayuAmount(effects.tanah.tanahFog, signed: true);
-    return InkWell(
+    final leaves = '${effects.leaves}/${effects.winLeaves}';
+    final change = effects.leavesChange ?? 0;
+    final delta = change == 0 ? '' : ' ${hayuAmount(change, signed: true)}';
+
+    return Semantics(
+      button: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final inline = box.maxWidth >= 162;
-          final entries = [
-            _one(
-              'akar',
-              effects.akar,
-              root,
-              '$root laju embun Warga',
-              inline: inline,
-            ),
-            _one(
-              'batang',
-              effects.batang,
-              shield,
-              '$shield perlindungan',
-              inline: inline,
-            ),
-            _one('tanah', effects.tanah, fog, '$fog kabut', inline: inline),
-          ];
-          return Row(
-            children: [
-              for (var i = 0; i < entries.length; i++) ...[
-                if (i > 0) const SizedBox(width: 3),
-                Expanded(child: entries[i]),
-              ],
-            ],
-          );
-        },
+      excludeSemantics: true,
+      label:
+          'Dampak Hayu. Daun $leaves$delta. '
+          'Akar ${effects.akar.name}, $root embun. '
+          'Batang ${effects.batang.name}, $shield perlindungan. '
+          'Tanah ${effects.tanah.name}, $fog kabut.',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final size = box.maxWidth < 248 ? 20.0 : 24.0;
+            final entries = [
+              _metric(
+                icon: GameIcon('helaidaun', size: size),
+                name: 'Daun$delta',
+                amount: leaves,
+                tone: const Color(0xFF7BD88F),
+              ),
+              for (final (part, condition, amount) in [
+                ('akar', effects.akar, root),
+                ('batang', effects.batang, shield),
+                ('tanah', effects.tanah, fog),
+              ])
+                _metric(
+                  icon: PartBadge(part, condition.name, size: size),
+                  name: partName(part),
+                  amount: amount,
+                  tone: colorOf(condition.name),
+                ),
+            ];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 5),
+                    Expanded(child: entries[i]),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -158,6 +162,7 @@ class PartsStrip extends StatelessWidget {
 Future<void> showPartsSheet(
   BuildContext context, {
   required HayuEffects effects,
+  int? offeringIn,
 }) {
   final change = effects.leavesChange;
   final root = '${hayuAmount(effects.akar.akarPercent, signed: true)}%';
@@ -201,6 +206,17 @@ Future<void> showPartsSheet(
             ),
           ),
           const SizedBox(height: 12),
+          if (offeringIn != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                offeringIn == 0
+                    ? 'Persembahan malam ini'
+                    : 'Persembahan $offeringIn hari lagi',
+                style: dayCaption,
+                textAlign: TextAlign.center,
+              ),
+            ),
           if (effects.income case final income?) _IncomeBreakdown(income),
           if (effects.losesLeafOnOffering)
             const Padding(

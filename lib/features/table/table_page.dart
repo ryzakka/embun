@@ -23,7 +23,6 @@ import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'economy_fx.dart';
 import 'gift_fx.dart';
-import 'identity_badge.dart';
 import 'jail_verdict_scene.dart';
 import 'eviction_verdict_scene.dart';
 import 'emote_panel.dart';
@@ -1379,7 +1378,6 @@ class _TablePageState extends State<TablePage> {
     final iAmReady = meRow?['ready'] == true;
     final readyCount = alive.where((p) => p['ready'] == true).length;
     final jailed = meRow != null && isJailed(meRow, day);
-    final myCardId = (meRow?['character_card'] as String?) ?? 'default';
 
     if (g['status'] == 'finished') return _result(g);
 
@@ -1478,7 +1476,7 @@ class _TablePageState extends State<TablePage> {
         SafeArea(
           child: _narrow
               ? _panel(g, day, phase, leaves, iAmReady, readyCount, jailed,
-              myCardId, deadline,
+              deadline,
               narrow: true, cycle: cycle, isHost: isHost)
               : Align(
             alignment: Alignment.topCenter,
@@ -1486,7 +1484,7 @@ class _TablePageState extends State<TablePage> {
               constraints:
               const BoxConstraints(maxWidth: _maxContentWidth),
               child: _panel(g, day, phase, leaves, iAmReady,
-                  readyCount, jailed, myCardId, deadline,
+                  readyCount, jailed, deadline,
                   narrow: false,
                   cycle: cycle,
                   isHost: isHost),
@@ -1519,7 +1517,6 @@ class _TablePageState extends State<TablePage> {
       bool iAmReady,
       int readyCount,
       bool jailed,
-      String myCardId,
       DateTime? deadline, {
         required bool narrow,
         required int cycle,
@@ -1666,6 +1663,10 @@ class _TablePageState extends State<TablePage> {
               day: day,
               onTapPlayer: (p) => _openPlayer(p, phase),
               onEmoteButton: () => _openEmotes(day),
+              collapsedBuilder: (emoji, sender) => _playersShortcut(
+                day, phase, readyCount, alive.length,
+                emoji: emoji, sender: sender,
+              ),
               avatarKeyFor: _avatarKey,
             ),
           )
@@ -1687,11 +1688,11 @@ class _TablePageState extends State<TablePage> {
           _tableHud(
             balance: balance,
             hayu: hayu,
-            myCardId: myCardId,
             day: day,
             cycle: cycle,
             deadline: deadline,
             isHost: isHost,
+            players: _playersShortcut(day, phase, readyCount, alive.length),
             showChat: phase != 'discussion',
             showDue: phase != 'voting',
             phase: phase,
@@ -1979,42 +1980,76 @@ class _TablePageState extends State<TablePage> {
     ),
   );
 
-  /// Identitas pemain (peran + karakter). Mengikuti [showAsAntag], jadi mode
-  /// "Samarkan layar" tidak membocorkan peran asli.
-  Widget _identity(String myCardId, {required bool compact}) {
-    final seed = darkSeed;
-    final avatar = showAsAntag
-        ? (seed == null ? null : darkCardPath(seed))
-        : protagonistPath(myCardId);
-    final charName = characterTitle(myCardId);
-    return IdentityBadge(
-      avatarPath: avatar,
-      dark: showAsAntag,
-      characterName: showAsAntag ? 'Wajah asli' : charName,
-      playerName: _meRow?['name'] as String?,
-      hint: (showAsAntag && myCardId != 'default') ? 'Samaran: $charName' : null,
-      compact: compact,
-      onTap: _openMyInfo,
+  Widget _playersShortcut(
+    int day,
+    String phase,
+    int ready,
+    int total, {
+    String? emoji,
+    String? sender,
+  }) {
+    final label = 'Daftar warga, $ready dari $total siap'
+        '${sender == null ? '' : ', isyarat dari $sender'}';
+    return Semantics(
+      label: label,
+      button: true,
+      excludeSemantics: true,
+      onTap: () => _showPlayersSheet(day, phase),
+      child: SizedBox(
+        width: 49,
+        height: 42,
+        child: InkWell(
+          key: _playersKey,
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _showPlayersSheet(day, phase),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (emoji == null)
+                      const GameIcon('persona', size: 17)
+                    else
+                      Text(emoji, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 3),
+                    Text(
+                      '$ready/$total',
+                      style: dayMetricValue.copyWith(
+                        fontSize: 12,
+                        color: EmbunColors.cream,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _tableHud({
     required double balance,
     required HayuEffects hayu,
-    required String myCardId,
     required int day,
     required int cycle,
     required DateTime? deadline,
     required bool isHost,
+    required Widget players,
     required bool showChat,
     bool showDue = true,
     required String phase,
     Widget? village,
   }) {
     final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
-    final readyCount = _alive.where((p) => p['ready'] == true).length;
     final cycleLength = cycle > 0 ? cycle : 3;
-    final offeringIn = (cycleLength - day % cycleLength) % cycleLength;
+    final offeringIn = showDue ? (cycleLength - day % cycleLength) % cycleLength : null;
+    final canOpenAbility = !isAntag && _abilityKnown && abilityDefs[abilityId] != null;
+    final canChatAsTerbisik = showAsAntag && _terbisikChatAccess.value;
     PopupMenuItem<String> item(String v, String i, String t, {Color? c}) =>
         PopupMenuItem<String>(
           value: v,
@@ -2027,7 +2062,9 @@ class _TablePageState extends State<TablePage> {
           ),
         );
 
-    void openHayu() => showPartsSheet(context, effects: hayu);
+    void openHayu() => showPartsSheet(
+      context, effects: hayu, offeringIn: offeringIn,
+    );
     final income = hayu.income;
     final disguisedRate = disguiseMode ? (myState?['rate'] as num?) : null;
     final incomeLabel = income != null
@@ -2035,20 +2072,12 @@ class _TablePageState extends State<TablePage> {
         : disguisedRate == null
             ? '—'
             : '${hayuAmount(disguisedRate, signed: true)}/hari';
-    final balanceHint = income == null
-        ? 'Lihat dampak Hayu'
-        : [
-            'Perkiraan hari ${income.day} · ${hayuAmount(income.total, signed: true)} ${income.currency}',
-            for (final (label, amount) in income.components)
-              '$label ${hayuAmount(amount, signed: true)}',
-          ].join('\n');
-
     final currencyLabel = showAsAntag ? 'BULIR HITAM' : 'TETES EMBUN';
     final balanceTone =
         showAsAntag ? const Color(0xFFE4CDFF) : const Color(0xFFFFDE8D);
     final balanceMetric = LayoutBuilder(
       builder: (context, box) {
-        final iconSize = box.maxWidth < 130 || _short ? 28.0 : 34.0;
+        final iconSize = box.maxWidth < 112 || _short ? 23.0 : 28.0;
         Widget balanceText(String text, TextStyle style) => FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -2058,19 +2087,7 @@ class _TablePageState extends State<TablePage> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: iconSize + 4,
-              height: iconSize + 4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: balanceTone.withValues(alpha: 0.10),
-              ),
-              alignment: Alignment.center,
-              child: GameIcon(
-                showAsAntag ? 'bulirhitam' : 'bulirembun',
-                size: iconSize - 2,
-              ),
-            ),
+            GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: iconSize),
             const SizedBox(width: 5),
             Flexible(
               child: Column(
@@ -2082,6 +2099,7 @@ class _TablePageState extends State<TablePage> {
                     dayOverline.copyWith(
                       fontSize: 9,
                       letterSpacing: 0.85,
+                      height: 1.1,
                       color: balanceTone,
                     ),
                   ),
@@ -2096,7 +2114,7 @@ class _TablePageState extends State<TablePage> {
                     builder: (_, shown) => balanceText(
                       hayuAmount(shown),
                       dayMetricValue.copyWith(
-                        fontSize: _short ? 24 : 28,
+                        fontSize: _short ? 23 : 27,
                         color: balanceTone,
                       ),
                     ),
@@ -2105,7 +2123,7 @@ class _TablePageState extends State<TablePage> {
                     incomeLabel,
                     dayCaption.copyWith(
                       fontSize: 10.5,
-                      height: 1.2,
+                      height: 1.1,
                       color: showAsAntag
                           ? const Color(0xFFC7ACED)
                           : const Color(0xFFA4CEAE),
@@ -2128,101 +2146,115 @@ class _TablePageState extends State<TablePage> {
             tooltip: 'Obrolan',
             visualDensity: VisualDensity.compact,
             onPressed: _openChat,
-            icon: const GameIcon('discuss', size: 28),
+            icon: const GameIcon('discuss', size: 25),
           ),
         ),
-      if (showAsAntag && _terbisikChatAccess.value)
+    ];
+    final wideTools = <Widget>[
+      if (canChatAsTerbisik)
         IconButton(
           tooltip: 'Obrolan Terbisik',
           visualDensity: VisualDensity.compact,
           onPressed: _openTerbisikChat,
           icon: const Icon(Icons.lock_outline, color: EmbunColors.mist),
         ),
-      _abilityButton(),
-      PopupMenuButton<String>(
-        tooltip: 'Menu',
-        icon: const GameIcon('menu', size: 28),
-        padding: EdgeInsets.zero,
-        onSelected: (v) {
-          switch (v) {
-            case 'guide':
-              _openGuide();
-            case 'me':
-              _openMyInfo();
-            case 'players':
-              _showPlayersSheet(day, phase);
-            case 'fx':
-              setState(() => chatFx = !chatFx);
-            case 'sound':
-              Sfx.I.muted.value = !Sfx.I.muted.value;
-            case 'mask':
-              setState(() => disguiseMode = !disguiseMode);
-            case 'exit':
-              if (!busy) _confirmExit(isHost);
-          }
-        },
-        itemBuilder: (_) => [
-          item('me', 'persona', 'Infoku'),
-          item('players', 'persona', 'Daftar warga'),
-          item('guide', 'question', 'Panduan'),
-          item(
-            'fx',
-            'showaddgraphic',
-            chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
-            c: chatFx ? Colors.amberAccent : null,
-          ),
-          item(
-            'sound',
-            'announcement',
-            Sfx.I.muted.value ? 'Nyalakan suara' : 'Matikan suara',
-            c: Sfx.I.muted.value ? null : Colors.amberAccent,
-          ),
-          if (isAntag)
-            item(
-              'mask',
-              disguiseMode ? 'hide' : 'show',
-              disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
-              c: disguiseMode ? Colors.amberAccent : null,
-            ),
-          const PopupMenuDivider(),
-          item(
-            'exit',
-            isHost ? 'bubarkan' : 'keluar',
-            isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
-            c: Colors.redAccent,
-          ),
-        ],
-      ),
+      if (canOpenAbility) _abilityButton(),
     ];
-    return DayTableHeader(
-        accent: showAsAntag ? EmbunColors.mist : EmbunColors.gold,
-        day: day,
-        leaves: hayu.leaves,
-        winLeaves: hayu.winLeaves,
-        worms: hayu.worms,
-        leavesChange: hayu.leavesChange,
-        offeringIn: offeringIn,
-        deadline: deadline,
-        ready: readyCount,
-        total: _alive.length,
-        short: _short,
-        identity: _identity(myCardId, compact: true),
-        balance: Tooltip(
-          message: balanceHint,
-          child: InkWell(
-            onTap: openHayu,
-            borderRadius: BorderRadius.circular(8),
-            child: balanceMetric,
+    final menu = PopupMenuButton<String>(
+      tooltip: 'Menu',
+      icon: const GameIcon('menu', size: 25),
+      padding: EdgeInsets.zero,
+      onSelected: (v) {
+        switch (v) {
+          case 'back_preview':
+            widget.onExit?.call();
+          case 'guide':
+            _openGuide();
+          case 'me':
+            _openMyInfo();
+          case 'players':
+            _showPlayersSheet(day, phase);
+          case 'ability':
+            _openAbility();
+          case 'terbisik_chat':
+            _openTerbisikChat();
+          case 'fx':
+            setState(() => chatFx = !chatFx);
+          case 'sound':
+            Sfx.I.muted.value = !Sfx.I.muted.value;
+          case 'mask':
+            setState(() => disguiseMode = !disguiseMode);
+          case 'exit':
+            if (!busy) _confirmExit(isHost);
+        }
+      },
+      itemBuilder: (_) => [
+        if (widget.onExit != null)
+          const PopupMenuItem(
+            value: 'back_preview',
+            child: Row(
+              children: [
+                Icon(Icons.grid_view, size: 20, color: EmbunColors.gold),
+                SizedBox(width: 12),
+                Text('Panel pratinjau'),
+              ],
+            ),
           ),
+        item('me', 'persona', 'Infoku'),
+        item('players', 'persona', 'Daftar warga'),
+        if (canOpenAbility) item('ability', 'item', 'Kemampuan'),
+        if (canChatAsTerbisik) item('terbisik_chat', 'lock', 'Obrolan Terbisik'),
+        item('guide', 'question', 'Panduan'),
+        item(
+          'fx',
+          'showaddgraphic',
+          chatFx ? 'Matikan efek obrolan' : 'Nyalakan efek obrolan',
+          c: chatFx ? Colors.amberAccent : null,
         ),
-        tools: tools,
-        parts: PartsStrip(effects: hayu, onTap: openHayu),
-        onPlayers: () => _showPlayersSheet(day, phase),
-        playersKey: _playersKey,
-        village: village,
-        showOffering: showDue,
-        onHayu: openHayu,
-      );
+        item(
+          'sound',
+          'announcement',
+          Sfx.I.muted.value ? 'Nyalakan suara' : 'Matikan suara',
+          c: Sfx.I.muted.value ? null : Colors.amberAccent,
+        ),
+        if (isAntag)
+          item(
+            'mask',
+            disguiseMode ? 'hide' : 'show',
+            disguiseMode ? 'Matikan samaran' : 'Samarkan layar',
+            c: disguiseMode ? Colors.amberAccent : null,
+          ),
+        const PopupMenuDivider(),
+        item(
+          'exit',
+          isHost ? 'bubarkan' : 'keluar',
+          isHost ? 'Sudahi permainan' : 'Tinggalkan permainan',
+          c: Colors.redAccent,
+        ),
+      ],
+    );
+    return DayTableHeader(
+      accent: showAsAntag ? EmbunColors.mist : EmbunColors.gold,
+      day: day,
+      offeringIn: offeringIn,
+      deadline: deadline,
+      short: _short,
+      balance: Semantics(
+        hint: 'Buka rincian pemasukan',
+        child: InkWell(
+          onTap: openHayu,
+          borderRadius: BorderRadius.circular(8),
+          child: balanceMetric,
+        ),
+      ),
+      tools: tools,
+      wideTools: wideTools,
+      menu: menu,
+      menuAttention: canOpenAbility && !abilityUsed && abilityIsManual(abilityId),
+      parts: PartsStrip(effects: hayu, onTap: openHayu),
+      players: players,
+      village: village,
+    );
   }
 
   Widget _waiting(int ready, int total, String text) => Center(

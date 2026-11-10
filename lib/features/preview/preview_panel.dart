@@ -314,7 +314,11 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     MaterialPageRoute(
       builder: (routeContext) {
         void close() => Navigator.of(routeContext).pop();
-        return _PreviewFrame(onClose: close, child: _page(screen, close));
+        final page = _page(screen, close);
+        return switch (screen) {
+          _Screen.market || _Screen.hand || _Screen.merge || _Screen.hall => page,
+          _ => _PreviewFrame(onClose: close, child: page),
+        };
       },
     ),
   );

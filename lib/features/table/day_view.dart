@@ -431,8 +431,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
     final stacked =
         _lastMode == _Mode.phone &&
-        MediaQuery.sizeOf(context).width < 420 &&
-        scale > 1.25;
+        (MediaQuery.sizeOf(context).width < 320 ||
+            (MediaQuery.sizeOf(context).width < 410 && scale > 1.25));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -925,9 +925,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           byWidth,
           byHeight.clamp(50.0, 162.0),
         ).clamp(1.0, 162.0).floorToDouble();
-        return Center(
+        return Align(
+          alignment: Alignment.topCenter,
+          heightFactor: 1,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(inset),
+            padding: const EdgeInsets.fromLTRB(inset, 4, inset, 12),
             child: SizedBox(
               width: width * columns + (columns - 1) * gap,
               child: Wrap(
@@ -950,6 +952,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     required bool side,
     required bool short,
     required bool inline,
+    required double buyWidth,
   }) {
     final list = offers;
     if (list == null || list.isEmpty) return const SizedBox.shrink();
@@ -1075,7 +1078,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
               children: [
                 Expanded(child: details),
                 const SizedBox(width: 10),
-                SizedBox(width: 154, child: buy),
+                SizedBox(width: buyWidth, child: buy),
               ],
             )
           : Column(
@@ -1096,7 +1099,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       final details = _marketSelection(
         side: split,
         short: short,
-        inline: !split && box.maxWidth >= 425,
+        inline: !split && box.maxWidth >= (scale > 1.25 ? 425 : 350),
+        buyWidth: 150 + 56 * (scale - 1).clamp(0, 1),
       );
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -1127,8 +1131,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 ),
               )
             else ...[
-              Expanded(child: _marketOffers()),
-              if (hasOffers) details,
+              if (hasOffers) ...[
+                Flexible(child: _marketOffers()),
+                details,
+              ] else
+                Expanded(child: _marketOffers()),
             ],
           ],
         ),
@@ -2072,7 +2079,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                     : Column(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [icon, const SizedBox(height: 2), text],
+                        children: [
+                          icon,
+                          const SizedBox(height: 2),
+                          FittedBox(fit: BoxFit.scaleDown, child: text),
+                        ],
                       ),
               ),
             ),
@@ -2130,7 +2141,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   Widget _dock() => LayoutBuilder(
     builder: (context, box) {
       final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
-      final stacked = box.maxWidth < 390 && scale > 1.25;
+      final stacked = box.maxWidth < 300 ||
+          (box.maxWidth < 390 && scale > 1.25);
       final tabs = Row(
         children: [
           for (final index in const [_tabToko, _tabMeja, _tabGabung, _tabBalai])
@@ -2150,7 +2162,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                   Expanded(child: tabs),
                   const SizedBox(width: 4),
                   SizedBox(
-                    width: box.maxWidth < 360 ? 110 : 132,
+                    width: 132 + 80 * (scale - 1).clamp(0, 1),
                     child: _endButton(),
                   ),
                 ],
