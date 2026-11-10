@@ -1520,7 +1520,8 @@ class _ItemsTab extends StatefulWidget {
 
 class _ItemsTabState extends State<_ItemsTab>
     with AutomaticKeepAliveClientMixin {
-  Map<String, Map<String, dynamic>>? defs = _defsCache;
+  late final _data = EmbunData.maybeOf(context);
+  Map<String, Map<String, dynamic>>? defs;
   String? error;
   bool loading = false;
   int faction = 0; // 0 = warga (baik), 1 = Si Terbisik (jahat)
@@ -1533,18 +1534,18 @@ class _ItemsTabState extends State<_ItemsTab>
   @override
   void initState() {
     super.initState();
+    if (_data == null) defs = _defsCache;
     if (defs == null) _load();
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
-    final data = EmbunData.maybeOf(context);
-    final repo = data?.game ?? GameRepository();
+    final repo = _data?.game ?? GameRepository();
     try {
       return await repo.cardDefs();
     } catch (_) {
       // Belum punya sesi? Tabelnya bisa meminta pengguna masuk. Coba sekali
       // dengan sesi anonim (sama seperti saat membuat/gabung ruangan).
-      await (data?.lobby ?? LobbyRepository()).ensureSignedIn();
+      await (_data?.lobby ?? LobbyRepository()).ensureSignedIn();
       return await repo.cardDefs();
     }
   }
@@ -1556,7 +1557,7 @@ class _ItemsTabState extends State<_ItemsTab>
     });
     try {
       final d = await _fetch();
-      _defsCache = d;
+      if (_data == null) _defsCache = d;
       if (mounted) setState(() => defs = d);
     } catch (e) {
       if (mounted) setState(() => error = errMsg(e));
@@ -1808,7 +1809,8 @@ class _AbilitiesTab extends StatefulWidget {
 
 class _AbilitiesTabState extends State<_AbilitiesTab>
     with AutomaticKeepAliveClientMixin {
-  Map<String, Map<String, dynamic>>? defs = _abilityCache;
+  late final _data = EmbunData.maybeOf(context);
+  Map<String, Map<String, dynamic>>? defs;
   String? error;
   bool loading = false;
   int kindIdx = 0; // 0 = semua, 1 = sekali pakai, 2 = pasif
@@ -1829,16 +1831,16 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   @override
   void initState() {
     super.initState();
+    if (_data == null) defs = _abilityCache;
     if (defs == null) _load();
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
-    final data = EmbunData.maybeOf(context);
-    final repo = data?.game ?? GameRepository();
+    final repo = _data?.game ?? GameRepository();
     try {
       return await repo.abilityDefs();
     } catch (_) {
-      await (data?.lobby ?? LobbyRepository()).ensureSignedIn();
+      await (_data?.lobby ?? LobbyRepository()).ensureSignedIn();
       return await repo.abilityDefs();
     }
   }
@@ -1850,7 +1852,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
     });
     try {
       final d = await _fetch();
-      _abilityCache = d;
+      if (_data == null) _abilityCache = d;
       if (mounted) setState(() => defs = d);
     } catch (e) {
       if (mounted) setState(() => error = errMsg(e));

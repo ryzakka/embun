@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
+import '../../data/embun_data.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../guide/guide_page.dart';
@@ -195,16 +196,58 @@ const _sections = [
   ),
 ];
 
-class PreviewPanel extends StatefulWidget {
-  const PreviewPanel({super.key, required this.session});
-
-  final PreviewSession session;
+/// A preview owns both its repositories and its navigation stack. Routes
+/// pushed by the ordinary game screens stay within the sample session.
+class PreviewExperience extends StatefulWidget {
+  const PreviewExperience({super.key});
 
   @override
-  State<PreviewPanel> createState() => _PreviewPanelState();
+  State<PreviewExperience> createState() => _PreviewExperienceState();
 }
 
-class _PreviewPanelState extends State<PreviewPanel> {
+class _PreviewExperienceState extends State<PreviewExperience> {
+  final _session = PreviewSession();
+  final _navigator = GlobalKey<NavigatorState>();
+
+  @override
+  void dispose() {
+    _session.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => EmbunData(
+    game: _session,
+    lobby: _session,
+    announcements: _session,
+    child: ScaffoldMessenger(
+      child: NavigatorPopHandler<Object?>(
+        onPopWithResult: (result) => _navigator.currentState?.maybePop(result),
+        child: Navigator(
+          key: _navigator,
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) => _PreviewPanel(
+              session: _session,
+              onClose: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _PreviewPanel extends StatefulWidget {
+  const _PreviewPanel({required this.session, required this.onClose});
+
+  final PreviewSession session;
+  final VoidCallback onClose;
+
+  @override
+  State<_PreviewPanel> createState() => _PreviewPanelState();
+}
+
+class _PreviewPanelState extends State<_PreviewPanel> {
   static const _gameId = PreviewSession.gameId;
   PreviewSession get _session => widget.session;
 
@@ -568,7 +611,10 @@ class _PreviewPanelState extends State<PreviewPanel> {
         ),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Panel Pratinjau Embun')),
+      appBar: AppBar(
+        leading: BackButton(onPressed: widget.onClose),
+        title: const Text('Panel Pratinjau Embun'),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/embun_data.dart';
 import '../../data/game_rules.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
@@ -78,7 +79,7 @@ class _TutorialPageState extends State<TutorialPage>
   @override
   void initState() {
     super.initState();
-    unawaited(TutorialPage.markSeen());
+    if (EmbunData.maybeOf(context) == null) unawaited(TutorialPage.markSeen());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _speak(0);
     });

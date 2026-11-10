@@ -15,6 +15,7 @@ import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/cloth_transition.dart';
 import '../common/shader_fx.dart';
+import '../preview/preview_panel.dart';
 import '../prologue/prologue_page.dart';
 import '../guide/guide_page.dart';
 import '../guide/tutorial_page.dart';
@@ -42,13 +43,11 @@ class LobbyPage extends StatefulWidget {
   /// true = lewati layar judul (mis. kembali dari permainan).
   final bool startAtMenu;
   final bool startAtCreate;
-  final WidgetBuilder? previewPanel;
 
   const LobbyPage({
     super.key,
     this.startAtMenu = false,
     this.startAtCreate = false,
-    this.previewPanel,
   });
   @override
   State<LobbyPage> createState() => _LobbyPageState();
@@ -692,11 +691,11 @@ class _LobbyPageState extends State<LobbyPage>
     right: 12,
     child: InkWell(
       onTap: _openNews,
-      onLongPress: widget.previewPanel == null
-          ? null
-          : () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: widget.previewPanel!),
-              ),
+      onLongPress: _booted && EmbunData.maybeOf(context) == null
+          ? () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const PreviewExperience()),
+              )
+          : null,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
