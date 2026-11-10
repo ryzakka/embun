@@ -168,7 +168,8 @@ class GameRepository {
         .select()
         .eq('game_id', gameId)
         .eq('day', day)
-        .eq('user_id', myId);
+        .eq('user_id', myId)
+        .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
 

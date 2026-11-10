@@ -522,6 +522,13 @@ class PreviewSession
 
   @override
   Future<List<PreviewRow>> privateLogs(String gameId, int day) async => [
+    if (_dark)
+      {'message': 'Bisikan: Tersampaikan kepada Peselancar.'}
+    else
+      {
+        'message':
+            'Desas-desus: kamu mendengar bahwa Penjahit adalah Si Terbisik.',
+      },
     {'message': 'Firasatmu tertuju pada Peselancar.'},
   ];
 

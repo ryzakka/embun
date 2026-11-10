@@ -1604,6 +1604,7 @@ class _TablePageState extends State<TablePage> {
         players: players,
         events: events,
         readOnly: iAmOut,
+        showBisikanReports: !disguiseMode,
       );
     } else if (phase == 'voting') {
       // VotingView dipertahankan (kuncinya tetap) setelah suara dikunci,

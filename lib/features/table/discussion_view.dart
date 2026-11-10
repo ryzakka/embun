@@ -19,6 +19,7 @@ class DiscussionView extends StatefulWidget {
 
   /// Sudah keluar dari desa: boleh membaca obrolan, tidak boleh menulis.
   final bool readOnly;
+  final bool showBisikanReports;
 
   const DiscussionView({
     super.key,
@@ -32,6 +33,7 @@ class DiscussionView extends StatefulWidget {
     this.players = const [],
     this.events = const [],
     this.readOnly = false,
+    this.showBisikanReports = true,
   });
 
   @override
@@ -44,10 +46,24 @@ class _DiscussionViewState extends State<DiscussionView> {
     widget.gameId,
   );
   List<Map<String, dynamic>> effectLogs = [];
-  List<Map<String, dynamic>> mySecrets = [];
+  List<String> mySecrets = [];
+  bool _privateNotesFailed = false;
+  int _logRequest = 0;
   Map<String, int> counts = {};
 
   static const _clueMarks = ['Bisik angin:', 'Kabar burung:'];
+  static const _rumorPrefix = 'Desas-desus: ';
+  static const _reportPrefix = 'Bisikan: ';
+
+  bool _isRumor(String note) => note.startsWith(_rumorPrefix);
+  bool _isReport(String note) => note.startsWith(_reportPrefix);
+
+  List<String> get _visibleNotes => widget.showBisikanReports
+      ? mySecrets
+      : mySecrets.where((note) => !_isReport(note)).toList();
+
+  String _privateNoteText(String note) =>
+      _isReport(note) ? note.substring(_reportPrefix.length) : note;
 
   /// Petunjuk dari kabar pagi pada siklus ini (3 hari terakhir).
   List<String> get _clues => [
@@ -72,27 +88,45 @@ class _DiscussionViewState extends State<DiscussionView> {
   }
 
   void _loadLogs() {
+    final request = ++_logRequest;
+    bool current() => mounted && request == _logRequest;
     widget.repo
         .effects(widget.gameId, widget.day)
         .then((r) {
-          if (mounted) setState(() => effectLogs = r);
+          if (current()) setState(() => effectLogs = r);
         })
         .catchError((_) {});
-    widget.repo
-        .privateLogs(widget.gameId, widget.day)
-        .then((r) {
-          if (mounted) setState(() => mySecrets = r);
-        })
-        .catchError((_) {});
+    _loadPrivateNotes(request);
     widget.repo.offeringCounts(widget.gameId, widget.day).then((r) {
-      if (mounted) setState(() => counts = r);
+      if (current()) setState(() => counts = r);
     });
+  }
+
+  Future<void> _loadPrivateNotes(int request) async {
+    try {
+      final rows = await widget.repo.privateLogs(widget.gameId, widget.day);
+      if (!mounted || request != _logRequest) return;
+      setState(() {
+        mySecrets = [for (final row in rows) row['message'] as String];
+        _privateNotesFailed = false;
+      });
+    } catch (_) {
+      if (mounted && request == _logRequest) {
+        setState(() => _privateNotesFailed = true);
+      }
+    }
   }
 
   @override
   void didUpdateWidget(covariant DiscussionView old) {
     super.didUpdateWidget(old);
-    if (old.day != widget.day) _loadLogs();
+    if (old.day != widget.day) {
+      effectLogs = [];
+      mySecrets = [];
+      counts = {};
+      _privateNotesFailed = false;
+      _loadLogs();
+    }
   }
 
   @override
@@ -174,6 +208,7 @@ class _DiscussionViewState extends State<DiscussionView> {
   }
 
   void _showNotes(List<String> clues) {
+    final privateNotes = _visibleNotes;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -182,25 +217,84 @@ class _DiscussionViewState extends State<DiscussionView> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           children: [
-            const Text(
-              'Catatan musyawarah',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            for (final clue in clues)
-              NoticeStrip(
-                icon: 'announcement',
-                text: clue,
-                accent: Colors.lightBlueAccent,
-              ),
-            for (final secret in mySecrets)
-              NoticeStrip(
-                icon: 'info',
-                text: secret['message'] as String,
-                accent: EmbunColors.gold,
-              ),
+            const SectionHeader(icon: 'info', title: 'Catatan musyawarah'),
+            if (privateNotes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('CATATAN PRIBADI', style: dayOverline),
+              for (final secret in privateNotes)
+                NoticeStrip(
+                  icon: 'lock',
+                  text: _isReport(secret)
+                      ? 'Laporan Bisikan\n${_privateNoteText(secret)}'
+                      : secret,
+                  accent: _isReport(secret)
+                      ? EmbunColors.mist
+                      : EmbunColors.gold,
+                ),
+            ],
+            if (clues.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('PETUNJUK DESA', style: dayOverline),
+              for (final clue in clues)
+                NoticeStrip(
+                  icon: 'announcement',
+                  text: clue,
+                  accent: Colors.lightBlueAccent,
+                ),
+            ],
             if (counts.isNotEmpty) _offeringChips(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _privateSpotlight(String note, List<String> clues) {
+    final isReport = _isReport(note);
+    final accent = isReport ? EmbunColors.mist : EmbunColors.gold;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(3, 6, 3, 2),
+      child: Material(
+        color: accent.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: accent.withValues(alpha: 0.35)),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => _showNotes(clues),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
+            child: Row(
+              children: [
+                Icon(Icons.lock_outline, color: accent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isReport ? 'Laporan Bisikan' : 'Kabar pribadi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: accent,
+                        ),
+                      ),
+                      Text(
+                        _privateNoteText(note),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: dayCaption.copyWith(color: EmbunColors.cream),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, color: accent, size: 19),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -336,7 +430,11 @@ class _DiscussionViewState extends State<DiscussionView> {
   @override
   Widget build(BuildContext context) {
     final clues = _clues;
-    final notes = clues.length + mySecrets.length + (counts.isEmpty ? 0 : 1);
+    final privateNotes = _visibleNotes;
+    final notes = clues.length + privateNotes.length + (counts.isEmpty ? 0 : 1);
+    final spotlight =
+        privateNotes.where(_isRumor).firstOrNull ??
+        privateNotes.where(_isReport).firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -373,6 +471,17 @@ class _DiscussionViewState extends State<DiscussionView> {
             ],
           ),
         ),
+        if (spotlight != null)
+          _privateSpotlight(spotlight, clues)
+        else if (_privateNotesFailed)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _loadPrivateNotes(_logRequest),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Muat ulang catatan pribadi'),
+            ),
+          ),
         Expanded(child: _chatArea()),
         if (widget.readOnly)
           const Padding(
