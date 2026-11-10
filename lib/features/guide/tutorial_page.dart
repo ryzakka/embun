@@ -242,8 +242,8 @@ class _TutorialPageState extends State<TutorialPage>
           'Akar memengaruhi **embun harian warga**, Batang memengaruhi '
           '**perlindungan**, Tanah memengaruhi **kabut**. Kartu persembahan '
           'bisa memulihkan atau merusaknya, dan kartu lanjutan terus '
-          'bekerja tiap malam persembahan. Angka aslinya tersembunyi, dan '
-          'perubahan baru terasa di malam persembahan berikutnya.',
+          'bekerja tiap malam persembahan. Ketuk Hayu untuk melihat '
+          '**dampak angkanya**, termasuk rincian embun untuk hari berikutnya.',
       EmbunColors.leaf,
       (p) => const _HayuPartsDemo(),
       hasNarration: false,
@@ -1699,9 +1699,9 @@ class _HayuPartsDemo extends StatelessWidget {
   const _HayuPartsDemo();
 
   static const _parts = [
-    ('akar', 'subur', 'Embun warga'),
-    ('batang', 'biasa', 'Perlindungan'),
-    ('tanah', 'layu', 'Kabut'),
+    ('akar', 'subur', '+25% embun Warga'),
+    ('batang', 'subur', '+1 perlindungan'),
+    ('tanah', 'layu', '+1 kabut'),
   ];
 
   @override

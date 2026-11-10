@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
 import '../../data/embun_data.dart';
+import '../../data/hayu_effects.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../guide/guide_page.dart';
@@ -379,8 +380,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                 child: CardPick(
                   dark: true,
                   title: 'Pilih Wajah Gelapmu',
-                  hint:
-                      'Pilih satu kartu tertutup. Hanya kamu yang akan melihat wajah gelapmu.',
+                  hint: 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat wajah gelapmu.',
                   options: [
                     for (final stem
                         in AssetCatalog.I.stems(antagonisDir).take(3))
@@ -570,13 +570,16 @@ class _PreviewPanelState extends State<_PreviewPanel> {
           defs: previewCards,
         );
       case _Screen.parts:
+        final game = await s.game(_gameId).first;
+        final state = await s.myState(_gameId).first;
+        if (!context.mounted || game == null) return;
         await showPartsSheet(
           context,
-          akar: 'subur',
-          batang: 'biasa',
-          tanah: 'layu',
-          leaves: s.leaves,
-          winLeaves: 20,
+          effects: HayuEffects.fromGame(
+            game,
+            playerState: state,
+            isAntagonist: s.role == 'antagonis',
+          ),
         );
       case _Screen.nightPlan:
         await showNightPlanDialog(

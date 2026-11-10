@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../../data/hayu_effects.dart';
 import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
@@ -1372,7 +1373,6 @@ class _TablePageState extends State<TablePage> {
     final day = g['day'] as int;
     final phase = (g['phase'] as String?) ?? 'day';
     final leaves = g['leaves'] as int;
-    final worms = (g['lingering_worms'] as int?) ?? 0;
     final cycle = (g['cycle_len'] as int?) ?? 3;
     final deadline = _deadline(g);
     final isHost = g['host_id'] == repo.myId;
@@ -1482,7 +1482,7 @@ class _TablePageState extends State<TablePage> {
           child: _narrow
               ? _panel(g, day, phase, leaves, iAmReady, readyCount, jailed,
               myCardId, deadline,
-              narrow: true, cycle: cycle, worms: worms, isHost: isHost)
+              narrow: true, cycle: cycle, isHost: isHost)
               : Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -1492,7 +1492,6 @@ class _TablePageState extends State<TablePage> {
                   readyCount, jailed, myCardId, deadline,
                   narrow: false,
                   cycle: cycle,
-                  worms: worms,
                   isHost: isHost),
             ),
           ),
@@ -1527,14 +1526,17 @@ class _TablePageState extends State<TablePage> {
       DateTime? deadline, {
         required bool narrow,
         required int cycle,
-        required int worms,
         required bool isHost,
       }) {
     final balance = (myState?['balance'] as num?)?.toDouble() ?? 0;
-    final rate = (myState?['rate'] as num?)?.toDouble() ?? 0;
     final alive = _alive;
     final meRow = _meRow;
     final iAmOut = meRow != null && isOut(meRow);
+    final hayu = HayuEffects.fromGame(
+      g,
+      playerState: meRow == null || iAmOut || disguiseMode ? null : myState,
+      isAntagonist: isAntag,
+    );
     final verdict = (g['verdict_day'] == day - 1 && g['verdict'] != null)
         ? g['verdict'] as String
         : null;
@@ -1687,22 +1689,16 @@ class _TablePageState extends State<TablePage> {
         children: [
           _tableHud(
             balance: balance,
-            rate: rate,
+            hayu: hayu,
             myCardId: myCardId,
             day: day,
             cycle: cycle,
-            leaves: leaves,
-            worms: worms,
             deadline: deadline,
             isHost: isHost,
             showChat: phase != 'discussion',
             showDue: phase != 'voting',
             phase: phase,
             village: village,
-            winLeaves: (g['win_leaves'] as int?) ?? 20,
-            akar: (g['akar_c'] as String?) ?? 'biasa',
-            batang: (g['batang_c'] as String?) ?? 'biasa',
-            tanah: (g['tanah_c'] as String?) ?? 'biasa',
           ),
           // Satu slot pemberitahuan: status diri > vonis > kabar pagi.
           AnimatedSize(
@@ -2007,22 +2003,16 @@ class _TablePageState extends State<TablePage> {
 
   Widget _tableHud({
     required double balance,
-    required double rate,
+    required HayuEffects hayu,
     required String myCardId,
     required int day,
     required int cycle,
-    required int leaves,
-    required int worms,
     required DateTime? deadline,
     required bool isHost,
     required bool showChat,
     bool showDue = true,
     required String phase,
     Widget? village,
-    required int winLeaves,
-    required String akar,
-    required String batang,
-    required String tanah,
   }) {
     final unread = (_othersChatCount() - _chatSeen).clamp(0, 99).toInt();
     final readyCount = _alive.where((p) => p['ready'] == true).length;
@@ -2039,6 +2029,22 @@ class _TablePageState extends State<TablePage> {
             ],
           ),
         );
+
+    void openHayu() => showPartsSheet(context, effects: hayu);
+    final income = hayu.income;
+    final disguisedRate = disguiseMode ? (myState?['rate'] as num?) : null;
+    final incomeLabel = income != null
+        ? '${hayuAmount(income.total, signed: true)} besok'
+        : disguisedRate == null
+            ? '—'
+            : '${hayuAmount(disguisedRate, signed: true)}/hari';
+    final balanceHint = income == null
+        ? 'Lihat dampak Hayu'
+        : [
+            'Perkiraan hari ${income.day} · ${hayuAmount(income.total, signed: true)} ${income.currency}',
+            for (final (label, amount) in income.components)
+              '$label ${hayuAmount(amount, signed: true)}',
+          ].join('\n');
 
     final balanceMetric = Row(
       mainAxisSize: MainAxisSize.min,
@@ -2071,7 +2077,7 @@ class _TablePageState extends State<TablePage> {
                 ),
               ),
               Text(
-                '+${_fmt(rate)}/hari',
+                incomeLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 10.5, color: Colors.white70),
@@ -2156,41 +2162,35 @@ class _TablePageState extends State<TablePage> {
         ],
       ),
     ];
-    final parts = PartsStrip(
-      compact: true,
-      leaves: leaves,
-      winLeaves: winLeaves,
-      akar: akar,
-      batang: batang,
-      tanah: tanah,
-    );
     return DayTableHeader(
         accent: showAsAntag ? EmbunColors.mist : EmbunColors.gold,
         day: day,
-        leaves: leaves,
-        winLeaves: winLeaves,
-        worms: worms,
+        leaves: hayu.leaves,
+        winLeaves: hayu.winLeaves,
+        worms: hayu.worms,
+        leavesChange: hayu.leavesChange,
         offeringIn: offeringIn,
         deadline: deadline,
         ready: readyCount,
         total: _alive.length,
         short: _short,
         identity: _identity(myCardId, compact: true),
-        balance: balanceMetric,
+        balance: Tooltip(
+          message: balanceHint,
+          child: InkWell(
+            onTap: openHayu,
+            borderRadius: BorderRadius.circular(8),
+            child: balanceMetric,
+          ),
+        ),
         tools: tools,
-        parts: parts,
+        parts: PartsStrip(effects: hayu, onTap: openHayu),
+        narrowParts: PartsStrip(effects: hayu, onTap: openHayu, horizontal: true),
         onPlayers: () => _showPlayersSheet(day, phase),
         playersKey: _playersKey,
         village: village,
         showOffering: showDue,
-        onHayu: () => showPartsSheet(
-          context,
-          akar: akar,
-          batang: batang,
-          tanah: tanah,
-          leaves: leaves,
-          winLeaves: winLeaves,
-        ),
+        onHayu: openHayu,
       );
   }
 

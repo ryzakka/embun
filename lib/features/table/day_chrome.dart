@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/hayu_effects.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'countdown.dart';
@@ -39,6 +40,7 @@ class DayTableHeader extends StatelessWidget {
   final int leaves;
   final int winLeaves;
   final int worms;
+  final int? leavesChange;
   final int offeringIn;
   final DateTime? deadline;
   final int ready;
@@ -48,6 +50,7 @@ class DayTableHeader extends StatelessWidget {
   final Widget balance;
   final List<Widget> tools;
   final Widget parts;
+  final Widget? narrowParts;
   final VoidCallback onPlayers;
   final VoidCallback onHayu;
   final Widget? village;
@@ -70,6 +73,8 @@ class DayTableHeader extends StatelessWidget {
     required this.balance,
     required this.tools,
     required this.parts,
+    this.narrowParts,
+    this.leavesChange,
     required this.onPlayers,
     required this.onHayu,
     this.village,
@@ -85,6 +90,10 @@ class DayTableHeader extends StatelessWidget {
           village != null && box.maxWidth >= (singleLine ? 1010 : 475);
       final showParts =
           box.maxWidth >= (inlineVillage ? 1100 : (singleLine ? 800 : 402));
+      final change = leavesChange;
+      final leafDelta = change == null || change == 0
+          ? null
+          : hayuAmount(change, signed: true);
       final scale = MediaQuery.textScalerOf(context).scale(13) / 13;
       final showWorms = box.maxWidth >= 355 || scale <= 1.25;
       final fullOffering = singleLine && box.maxWidth >= 1050 && scale <= 1.35;
@@ -143,6 +152,7 @@ class DayTableHeader extends StatelessWidget {
             child: Tooltip(
               message:
                   'Pohon Hayu · $leaves daun, target akhir $winLeaves'
+                  '${leafDelta == null ? '' : ' · $leafDelta daun setelah persembahan'}'
                   '${worms > 0 ? ' · $worms ulat senyap' : ''}',
               child: InkWell(
                 onTap: onHayu,
@@ -163,7 +173,7 @@ class DayTableHeader extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hayu',
+                              leafDelta == null ? 'Hayu' : 'Hayu $leafDelta',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: dayCaption.copyWith(fontSize: 10),
@@ -271,6 +281,11 @@ class DayTableHeader extends StatelessWidget {
                           Expanded(child: statusRow),
                           roster,
                         ],
+                      ),
+                    if (!showParts && !short && narrowParts != null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: narrowParts!,
                       ),
                   ],
                 ),

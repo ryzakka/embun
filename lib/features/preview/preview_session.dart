@@ -112,6 +112,8 @@ class PreviewSession
           .toIso8601String(),
       'prologue_until': holdPrologue ? _stamp : null,
       'leaves': winner == 'antagonis' ? 8 : 17,
+      if (offeringDay && phase != 'offering') 'leaves_before_effects': 16,
+      'max_day': 12,
       'lingering_worms': 1,
       'cycle_len': kCycleDays,
       'cycles': 4,
@@ -119,7 +121,7 @@ class PreviewSession
       'is_public': true,
       'antagonist_count': antagonists,
       'akar_c': 'subur',
-      'batang_c': 'biasa',
+      'batang_c': 'subur',
       'tanah_c': 'layu',
       'verdict': winner == 'dibatalkan'
           ? 'Host menyudahi permainan.'
@@ -442,7 +444,7 @@ class PreviewSession
 
   @override
   Stream<PreviewRow?> myState(String gameId) =>
-      _watch(() => {'balance': _balance, 'rate': 3.8});
+      _watch(() => {'balance': _balance, 'rate': 3.0});
 
   @override
   Stream<List<PreviewRow>> myHand(String gameId) => _watch(() => hand);
