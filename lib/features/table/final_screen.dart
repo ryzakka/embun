@@ -76,7 +76,7 @@ class _Acc {
 }
 
 class _Stats {
-  final String? antagId;
+  final Set<String> antagIds;
   final int offerCards, buys, votes, goodOffers, badOffers;
   final int rightTotal, wargaVotes;
   final List<_Round> rounds;
@@ -86,7 +86,7 @@ class _Stats {
   final List<_Acc> acc;
   final int spent;
   const _Stats({
-    required this.antagId,
+    required this.antagIds,
     required this.offerCards,
     required this.buys,
     required this.votes,
@@ -346,10 +346,10 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     final bonusCards = market.where((row) => row['bonus'] == true).toList();
     final votes = list('votes');
 
-    String? antagId;
-    for (final e in _secrets.entries) {
-      if (e.value['role'] == 'antagonis') antagId = e.key;
-    }
+    final antagIds = {
+      for (final e in _secrets.entries)
+        if (e.value['role'] == 'antagonis') e.key,
+    };
     final order = [for (final p in widget.players) p['user_id'] as String];
 
     final goodBy = <String, int>{};
@@ -398,13 +398,13 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         m[t] = (m[t] ?? 0) + weight;
       }
       voteN[d] = (voteN[d] ?? 0) + weight;
-      if (antagId == null || uid == antagId) continue;
+      if (antagIds.isEmpty || antagIds.contains(uid)) continue;
       final a = byDay.putIfAbsent(d, () => [0, 0, 0]);
       wargaVotes += weight;
       if (t == null) {
         a[2] += weight;
         noneBy[uid] = (noneBy[uid] ?? 0) + 1;
-      } else if (t == antagId) {
+      } else if (antagIds.contains(t)) {
         a[0] += weight;
         right += weight;
         rightBy[uid] = (rightBy[uid] ?? 0) + 1;
@@ -418,11 +418,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       for (final d in days) _Round(d, byDay[d]![0], byDay[d]![1], byDay[d]![2]),
     ];
 
-    String? top(Map<String, int> m, {int min = 1, String? exclude}) {
+    String? top(Map<String, int> m, {int min = 1, Set<String> exclude = const {}}) {
       String? best;
       var bv = 0;
       for (final uid in order) {
-        if (uid == exclude) continue;
+        if (exclude.contains(uid)) continue;
         final v = m[uid] ?? 0;
         if (v > bv) {
           bv = v;
@@ -447,7 +447,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     }
     final suspect = top(recvBy, min: 2);
     if (suspect != null) {
-      final guilty = suspect == antagId;
+      final guilty = antagIds.contains(suspect);
       awards.add(
         _Award(
           'Paling Dicurigai',
@@ -455,7 +455,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           EmbunColors.blood,
           suspect,
           'Dituding ${recvBy[suspect]}× di seluruh sidang '
-              '${antagId == null
+              '${antagIds.isEmpty
                   ? ''
                   : guilty
                   ? 'dan memang dalangnya'
@@ -475,7 +475,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         ),
       );
     }
-    final giver = top(goodBy, exclude: antagId);
+    final giver = top(goodBy, exclude: antagIds);
     if (giver != null) {
       awards.add(
         _Award(
@@ -499,14 +499,16 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         ),
       );
     }
-    if (antagId != null && (badBy[antagId] ?? 0) > 0) {
+    for (final id in antagIds) {
+      final badOffers = badBy[id] ?? 0;
+      if (badOffers == 0) continue;
       awards.add(
         _Award(
           'Dalang Kabut',
           'bulirhitam',
           EmbunColors.mist,
-          antagId,
-          '${badBy[antagId]} kartu kabut dipersembahkan',
+          id,
+          '$badOffers kartu kabut dipersembahkan',
         ),
       );
     }
@@ -553,7 +555,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           top: tie ? null : topId,
           topN: topN,
           voters: voteN[d] ?? 0,
-          caught: !tie && topId != null && topId == antagId,
+          caught: !tie && antagIds.contains(topId),
         ),
       );
     }
@@ -562,7 +564,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     final acc =
         <_Acc>[
           for (final uid in order)
-            if (uid != antagId)
+            if (!antagIds.contains(uid))
               if ((rightBy[uid] ?? 0) +
                       (wrongBy[uid] ?? 0) +
                       (noneBy[uid] ?? 0) >
@@ -606,15 +608,22 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         ),
       );
     }
-    if (antagId != null) {
-      final escaped = chron.where((x) => x.voters > 0 && !x.caught).length;
+    final eliminatedDay = {
+      for (final p in widget.players)
+        if (p['out_day'] is int) p['user_id'] as String: p['out_day'] as int,
+    };
+    for (final id in antagIds) {
+      final outDay = eliminatedDay[id];
+      final escaped = chron.where((x) =>
+          x.voters > 0 && x.top != id && (outDay == null || x.day <= outDay)
+      ).length;
       if (escaped > 0) {
         awards.add(
           _Award(
             'Bayang Lolos',
             'hide',
             EmbunColors.mist,
-            antagId,
+            id,
             'Lolos dari tudingan terbanyak $escaped sidang',
           ),
         );
@@ -625,7 +634,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return _Stats(
-      antagId: antagId,
+      antagIds: antagIds,
       offerCards: offs.length,
       buys: buys.length,
       votes: voteN.values.fold<int>(0, (a, b) => a + b),
@@ -1884,7 +1893,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   Widget _p2(double t) {
     final s = _stats!;
     if (_loadingSecrets) return _notice('Memuat peran pemain…', loading: true);
-    if (s.antagId == null && s.votes > 0) {
+    if (s.antagIds.isEmpty && s.votes > 0) {
       return _notice(
         'Ketepatan suara tidak tersedia karena peran belum diketahui.',
       );

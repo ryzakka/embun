@@ -4,12 +4,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/app_info.dart';
 import 'data/asset_catalog.dart';
+import 'data/embun_data.dart';
 import 'features/common/cloth_transition.dart';
 import 'features/common/fx_shaders.dart';
 import 'features/common/ornate.dart';
 import 'features/common/scene_flow.dart';
 import 'features/common/sfx.dart';
 import 'features/lobby/lobby_page.dart';
+import 'features/preview/preview_panel.dart';
+import 'features/preview/preview_session.dart';
+
+const _previewBuild = bool.fromEnvironment('EMBUN_UI_PREVIEW');
 
 // Sementara ditanam langsung. Kunci "anon" memang publik; keamanan dijaga RLS.
 // JANGAN pernah menaruh kunci "service_role" di sini.
@@ -20,15 +25,21 @@ const supabaseAnonKey =
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Sfx.I.init();
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  if (!_previewBuild) {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  }
   await AssetCatalog.load();
   await ClothTransition.preload();
   await FxShaders.preload();
-  runApp(const ProviderScope(child: EmbunApp()));
+  runApp(
+    const ProviderScope(child: _previewBuild ? _PreviewBuild() : EmbunApp()),
+  );
 }
 
 class EmbunApp extends StatelessWidget {
-  const EmbunApp({super.key});
+  const EmbunApp({super.key, this.previewPanel});
+
+  final WidgetBuilder? previewPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -36,15 +47,42 @@ class EmbunApp extends StatelessWidget {
       title: 'Embun',
       debugShowCheckedModeBanner: false,
       theme: embunTheme(),
-      home: const _Launcher(),
+      home: _Launcher(previewPanel: previewPanel),
     );
   }
+}
+
+class _PreviewBuild extends StatefulWidget {
+  const _PreviewBuild();
+
+  @override
+  State<_PreviewBuild> createState() => _PreviewBuildState();
+}
+
+class _PreviewBuildState extends State<_PreviewBuild> {
+  final _session = PreviewSession();
+
+  @override
+  void dispose() {
+    _session.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => EmbunData(
+    game: _session,
+    lobby: _session,
+    announcements: _session,
+    child: EmbunApp(previewPanel: (_) => PreviewPanel(session: _session)),
+  );
 }
 
 /// Layar awal kosong: begitu muncul, kain menyapu dan LobbyPage
 /// menggantikannya. LobbyPage baru dibangun saat kain menutup penuh.
 class _Launcher extends StatefulWidget {
-  const _Launcher();
+  const _Launcher({this.previewPanel});
+
+  final WidgetBuilder? previewPanel;
 
   @override
   State<_Launcher> createState() => _LauncherState();
@@ -61,7 +99,7 @@ class _LauncherState extends State<_Launcher> {
       Sfx.I.playAny(Snd.winds);
       Navigator.of(context).pushReplacement(
         ClothTransition.route(
-          const LobbyPage(),
+          LobbyPage(previewPanel: widget.previewPanel),
           style: ClothStyle.daunHayu,
         ),
       );

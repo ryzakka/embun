@@ -75,6 +75,8 @@ const _neutralMist = Color(0xFF8E9A96);
 class RoleReveal extends StatefulWidget {
   /// 'antagonis' atau lainnya (warga). null = belum dimuat dari server.
   final String? role;
+  final int antagonistCount;
+  final String? partnerName;
 
   /// Gambar muka kartu pemain menurut peran: kartu karakter untuk warga,
   /// kartu gelap untuk Si Terbisik.
@@ -101,6 +103,8 @@ class RoleReveal extends StatefulWidget {
     this.disguisePath,
     this.disguiseName,
     this.twistGate,
+    this.antagonistCount = 1,
+    this.partnerName,
   });
 
   @override
@@ -754,8 +758,12 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                       opacity: descOpacity.clamp(0.0, 1.0).toDouble(),
                       child: Text(
                         dark
-                            ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
-                            : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
+                            ? (widget.partnerName == null
+                                ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
+                                : 'Rekan Terbisikmu adalah ${widget.partnerName}. Temui dia di obrolan rahasia.')
+                            : widget.antagonistCount == 2
+                                ? 'Selamatkan Hayu. Dua Terbisik bersembunyi di antara kalian.'
+                                : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(height: 1.35),
                       ),

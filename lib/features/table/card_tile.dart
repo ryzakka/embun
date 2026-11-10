@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/hayu_parts.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -23,6 +24,92 @@ const kindIcon = {
   'poin': 'bulirembun',
   'lanjutan': 'plus',
 };
+
+String _hayuPartsLabel(List<HayuPart> parts) =>
+    'Dampak pada Hayu, ${parts.map((part) => part.label).join(', ')}';
+
+/// Label untuk rak pasar yang menyediakan semantiknya sendiri.
+String? cardHayuTargetLabel(Map<String, dynamic>? def) {
+  final parts = cardHayuParts(def);
+  return parts.isEmpty ? null : _hayuPartsLabel(parts);
+}
+
+class _HayuTargetBadges extends StatelessWidget {
+  final List<HayuPart> parts;
+  final bool showLabels;
+
+  const _HayuTargetBadges(this.parts, {this.showLabels = false});
+
+  Widget _icon(HayuPart part, double size) => SizedBox.square(
+    dimension: size,
+    child: GameImage(
+      path: sceneryPath('pohonindikator-${part.name}'),
+      fit: BoxFit.contain,
+      cacheWidth: (size * 3).round(),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final edge = EmbunColors.goldDim.withValues(alpha: 0.68);
+    if (showLabels) {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 5,
+        runSpacing: 5,
+        children: [
+          for (final part in parts)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xCC14231D),
+                border: Border.all(color: edge),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(3, 2, 7, 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _icon(part, 24),
+                    const SizedBox(width: 4),
+                    Text(part.label,
+                        style: const TextStyle(
+                            color: EmbunColors.cream,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return Semantics(
+      label: _hayuPartsLabel(parts),
+      excludeSemantics: true,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xE60C1712),
+            border: Border.all(color: edge),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final part in parts) _icon(part, 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Matriks warna: tanpa perubahan.
 const _identityMatrix = <double>[
@@ -225,6 +312,7 @@ Future<void> showCardPreview(
   final act = onAction;
   final path = cardArtPath(def);
   final cost = def['cost'] as int?;
+  final hayuParts = cardHayuParts(def);
   return showDialog<void>(
     context: context,
     builder: (ctx) => Dialog(
@@ -251,24 +339,44 @@ Future<void> showCardPreview(
                       letterSpacing: 0.5,
                       color: EmbunColors.gold)),
               const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 3,
                 children: [
-                  GameIcon(kindIcon[def['kind']] ?? 'item', size: 28),
-                  const SizedBox(width: 6),
-                  Text(kindLabel[def['kind']] ?? '',
-                      style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                  if (cost != null) ...[
-                    const SizedBox(width: 16),
-                    GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 28),
-                    const SizedBox(width: 4),
-                    Text('$cost',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: EmbunColors.gold)),
-                  ],
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GameIcon(kindIcon[def['kind']] ?? 'item', size: 28),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          kindLabel[def['kind']] ?? '',
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (cost != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 28),
+                        const SizedBox(width: 4),
+                        Text('$cost',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: EmbunColors.gold)),
+                      ],
+                    ),
                 ],
               ),
+              if (hayuParts.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _HayuTargetBadges(hayuParts, showLabels: true),
+              ],
               const Divider(height: 22),
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
               const SizedBox(height: 14),
@@ -306,6 +414,7 @@ class CardTile extends StatelessWidget {
   final bool dim;
   final bool bought;
   final bool showCost;
+  final bool showHayuTargets;
   final int? costOverride; // harga setelah Kabar Pagi
   final String? badge; // mis. 'Terbeli', menggantikan harga
   final VoidCallback? onTap;
@@ -341,6 +450,7 @@ class CardTile extends StatelessWidget {
     this.dim = false,
     this.bought = false,
     this.showCost = false,
+    this.showHayuTargets = false,
     this.costOverride,
     this.badge,
     this.onTap,
@@ -358,6 +468,8 @@ class CardTile extends StatelessWidget {
     final cost = costOverride ?? (def?['cost'] as int?) ?? 0;
     final path = cardArtPath(def);
     final d = def;
+    final hayuParts = showHayuTargets ? cardHayuParts(d) : const <HayuPart>[];
+    final targets = hayuParts.isEmpty ? null : _HayuTargetBadges(hayuParts);
     final h = width * (aspect ?? cardAspectForDef(def));
 
     return GestureDetector(
@@ -405,8 +517,8 @@ class CardTile extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 path == null
-                    ? _textBody(bad, cost)
-                    : _artBody(path, bad, cost, d != null),
+                    ? _textBody(bad, cost, targets)
+                    : _artBody(path, bad, cost, d != null, targets),
                 if (count > 1)
                   Positioned(
                     right: 6,
@@ -454,7 +566,8 @@ class CardTile extends StatelessWidget {
   }
 
   /// Gambar kartu memenuhi tile; harga di pojok kanan atas.
-  Widget _artBody(String path, bool bad, int cost, bool hasInfo) {
+  Widget _artBody(
+      String path, bool bad, int cost, bool hasInfo, Widget? targets) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(9),
       child: Stack(
@@ -486,6 +599,13 @@ class CardTile extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
+          if (targets != null)
+            Positioned(
+              top: showCost ? 37 : 5,
+              left: 5,
+              right: 5,
+              child: Align(alignment: Alignment.centerRight, child: targets),
             ),
           if (tag != null)
             Positioned(
@@ -535,12 +655,16 @@ class CardTile extends StatelessWidget {
   }
 
   /// Cadangan saat definisi kartu belum memiliki ilustrasi.
-  Widget _textBody(bool bad, int cost) => LayoutBuilder(
+  Widget _textBody(bool bad, int cost, Widget? targets) => LayoutBuilder(
     builder: (context, box) => SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (targets != null) ...[
+            Align(alignment: Alignment.centerRight, child: targets),
+            const SizedBox(height: 3),
+          ],
           Text(
             def?['name'] ?? fallbackName,
             maxLines: width < 88 ? 2 : 3,

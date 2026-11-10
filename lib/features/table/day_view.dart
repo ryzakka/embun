@@ -24,6 +24,8 @@ const _tabMeja = 1;
 const _tabGabung = 2;
 const _tabBalai = 3;
 
+enum DayTab { market, hand, merge, hall }
+
 enum _Mode { phone, landscape, wide }
 
 _Mode _modeFor(BoxConstraints box) {
@@ -58,6 +60,7 @@ class DayView extends StatefulWidget {
   final int day;
   final int priceMod;
   final int extraBuy;
+  final DayTab initialTab;
 
   /// Naik tiap kali pasar perlu dimuat ulang dari luar (mis. Pedagang Ulung).
   final ValueListenable<int>? marketTick;
@@ -97,6 +100,7 @@ class DayView extends StatefulWidget {
     required this.day,
     required this.priceMod,
     required this.extraBuy,
+    this.initialTab = DayTab.market,
     this.marketTick,
     required this.hand,
     required this.defs,
@@ -120,7 +124,10 @@ class DayView extends StatefulWidget {
 }
 
 class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
-  final PageController _pager = PageController(keepPage: false);
+  late final PageController _pager = PageController(
+    initialPage: widget.initialTab.index,
+    keepPage: false,
+  );
 
   // Jam berdenyut untuk penggabungan kartu dan tawaran tukar.
   late final AnimationController _t = AnimationController(
@@ -128,13 +135,14 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     duration: const Duration(milliseconds: 2600),
   )..repeat();
   double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
-  int tab = _tabToko;
+  late int tab = widget.initialTab.index;
   // Tab Gabung: kartu lanjutan dan kartu syarat (poin) yang diletakkan di
   // petak, dikenali lewat card_id. Penggabungan baru terjadi saat
   // "Tempatkan" ditekan.
   String? _fuseAdv;
   String? _fusePoin;
-  int _deskTab = _tabMeja;
+  late int _deskTab =
+      widget.initialTab == DayTab.market ? _tabMeja : widget.initialTab.index;
   _Mode _lastMode = _Mode.phone;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
@@ -737,13 +745,17 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final price = _price(id);
     final name = _cardName(id);
     final currency = dark ? 'bulirhitam' : 'bulirembun';
+    final targets = cardHayuTargetLabel(def);
 
     return SizedBox(
       width: width,
       child: Semantics(
         selected: selected,
         button: true,
-        label: bought ? '$name, terbeli' : '$name, harga $price',
+        label: [
+          bought ? '$name, terbeli' : '$name, harga $price',
+          ?targets,
+        ].join(', '),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
@@ -785,6 +797,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                           selected: selected,
                           dim: bought && !selected,
                           bought: bought,
+                          showHayuTargets: true,
                         ),
                       ),
                     ),

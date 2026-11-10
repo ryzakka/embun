@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
@@ -48,15 +49,26 @@ import 'voting_view.dart';
 class TablePage extends StatefulWidget {
   final String gameId;
   final String role;
-  const TablePage({super.key, required this.gameId, required this.role});
+  final DayTab initialDayTab;
+  final bool showOpeningScenes;
+  final VoidCallback? onExit;
+
+  const TablePage({
+    super.key,
+    required this.gameId,
+    required this.role,
+    this.initialDayTab = DayTab.market,
+    this.showOpeningScenes = true,
+    this.onExit,
+  });
 
   @override
   State<TablePage> createState() => _TablePageState();
 }
 
 class _TablePageState extends State<TablePage> {
-  final repo = GameRepository();
-  final lobby = LobbyRepository();
+  late final repo = EmbunData.maybeOf(context)?.game ?? GameRepository();
+  late final lobby = EmbunData.maybeOf(context)?.lobby ?? LobbyRepository();
   final List<StreamSubscription<dynamic>> _subs = [];
   Timer? _beat;
 
@@ -155,10 +167,34 @@ class _TablePageState extends State<TablePage> {
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
   Future<Map<String, String>>? usernamesFuture;
-  bool _endingSeen = false; // sinematik akhir cukup diputar sekali per sesi
+  late bool _endingSeen = !widget.showOpeningScenes;
   Map<String, String> usernames = {}; // user_id -> username asli (akhir game)
 
   bool get isAntag => widget.role == 'antagonis';
+  bool get _duo => game?['antagonist_count'] == 2;
+
+  final _terbisikChatAccess = ValueNotifier<bool>(false);
+  String? _terbisikPartnerId;
+
+  void _syncTerbisikChat() {
+    final me = _meRow;
+    _terbisikChatAccess.value = isAntag &&
+        _duo &&
+        game?['status'] == 'playing' &&
+        me != null &&
+        !isOut(me);
+  }
+
+  Future<void> _openTerbisikChat() => showChatSheet(
+        context,
+        repo: repo,
+        gameId: widget.gameId,
+        players: players,
+        terbisikAccess: _terbisikChatAccess,
+        partnerName: _terbisikPartnerId == null
+            ? null
+            : _nameOf(_terbisikPartnerId),
+      );
 
   /// Adegan yang harus selesai dulu sebelum fajar / adegan persembahan.
   bool get _holdIntro =>
@@ -215,7 +251,9 @@ class _TablePageState extends State<TablePage> {
     final id = widget.gameId;
     _subs.add(lobby.game(id).listen(_onGame, onError: (_) {}));
     _subs.add(lobby.players(id).listen((p) {
-      if (mounted) setState(() => players = p);
+      if (!mounted) return;
+      setState(() => players = p);
+      _syncTerbisikChat();
     }, onError: (_) {}));
     _subs.add(repo.myState(id).listen((s) {
       if (mounted) setState(() => myState = s);
@@ -257,6 +295,7 @@ class _TablePageState extends State<TablePage> {
   @override
   void dispose() {
     _marketTick.dispose();
+    _terbisikChatAccess.dispose();
     Sfx.I.release(this);
     _beat?.cancel();
     for (final s in _subs) {
@@ -511,6 +550,7 @@ class _TablePageState extends State<TablePage> {
   void _onGame(Map<String, dynamic>? g) {
     if (!mounted) return;
     if (g == null) {
+      _terbisikChatAccess.value = false;
       if (game != null) _backToLobby('Permainan sudah dibubarkan');
       return;
     }
@@ -525,6 +565,12 @@ class _TablePageState extends State<TablePage> {
       _checkDayIntro(g);
       _checkOfferIntro(g);
     });
+    _syncTerbisikChat();
+    if (prev == null && _duo && isAntag) {
+      lobby.terbisikPartner(widget.gameId).then((id) {
+        if (mounted) setState(() => _terbisikPartnerId = id);
+      }).catchError((_) {});
+    }
     // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
     if (changed) _refreshHand();
   }
@@ -662,10 +708,16 @@ class _TablePageState extends State<TablePage> {
   Widget _nightChoiceLayer() {
     final g = game!;
     final hasCards = hand.any((h) => defs[h['card_id']]?['kind'] == 'malam');
+    final me = _meRow;
+    final canAct = isAntag && me != null && !isOut(me);
     return NightChoice(
-      key: ValueKey('nc${g['day']}'),
-      isAntag: isAntag,
+      key: ValueKey('nc${g['day']}:$canAct'),
+      isAntag: canAct,
+      sharedNight: _duo,
       hasCards: hasCards,
+      onTerbisikChat: showAsAntag && _terbisikChatAccess.value
+          ? _openTerbisikChat
+          : null,
       deadline: _deadline(g),
       busy: busy,
       onUseCard: _openNightPlan,
@@ -888,6 +940,10 @@ class _TablePageState extends State<TablePage> {
   void _backToLobby([String? msg]) {
     if (_leaving || !mounted) return;
     _leaving = true;
+    if (widget.onExit case final onExit?) {
+      onExit();
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LobbyPage(startAtMenu: true)),
@@ -899,7 +955,7 @@ class _TablePageState extends State<TablePage> {
     final title = isHost ? 'Sudahi permainan?' : 'Tinggalkan permainan?';
     final msg = isHost
         ? 'Permainan berakhir untuk semua pemain.'
-        : isAntag
+        : isAntag && !_duo
         ? 'Kamu adalah Si Terbisik. Jika kamu pergi, warga langsung menang.'
         : 'Kamu tidak bisa kembali ke permainan ini.';
     final ok = await showDialog<bool>(
@@ -1330,7 +1386,7 @@ class _TablePageState extends State<TablePage> {
 
     if (g['status'] == 'finished') return _result(g);
 
-    if (phase == 'effects' && _ceremonyDay != day) {
+    if (phase == 'effects' && widget.showOpeningScenes && _ceremonyDay != day) {
       // Semua kartu persembahan dilempar ke Hayu dulu, baru hasilnya.
       return OfferingCeremony(
         key: ValueKey('cer$day'),
@@ -1562,6 +1618,7 @@ class _TablePageState extends State<TablePage> {
       );
     } else {
       body = DayView(
+        initialTab: widget.initialDayTab,
         marketTick: _marketTick,
         mejaKey: _mejaKey,
         balanceKey: _balanceKey,
@@ -1704,8 +1761,7 @@ class _TablePageState extends State<TablePage> {
           color: Colors.white54,
           leading: const GameIcon('show', size: 22),
           short: 'Kamu sudah keluar dari desa',
-          long: 'Kamu dituduh mayoritas dua kali. Kamu hanya menonton '
-              'sampai permainan selesai.',
+          long: 'Kamu hanya menonton sampai permainan selesai.',
         ));
       } else if (jailed) {
         items.add(_Notice(
@@ -1724,7 +1780,9 @@ class _TablePageState extends State<TablePage> {
           leading: const GameIcon('alert', size: 22),
           short: 'Kamu pernah dituduh sekali',
           long: isAntag
-              ? 'Dituduh mayoritas sekali lagi, Si Terbisik tertangkap dan warga menang.'
+              ? (_duo
+                  ? 'Dituduh mayoritas sekali lagi, kamu tersingkir dari desa.'
+                  : 'Dituduh mayoritas sekali lagi, Si Terbisik tertangkap dan warga menang.')
               : 'Dituduh mayoritas sekali lagi, kamu keluar dari desa.',
           trailing: LivesRow(lives: livesLeft(me), size: 16),
         ));
@@ -2035,6 +2093,13 @@ class _TablePageState extends State<TablePage> {
             icon: const GameIcon('discuss', size: 28),
           ),
         ),
+      if (showAsAntag && _terbisikChatAccess.value)
+        IconButton(
+          tooltip: 'Obrolan Terbisik',
+          visualDensity: VisualDensity.compact,
+          onPressed: _openTerbisikChat,
+          icon: const Icon(Icons.lock_outline, color: EmbunColors.mist),
+        ),
       _abilityButton(),
       PopupMenuButton<String>(
         tooltip: 'Menu',
@@ -2270,10 +2335,19 @@ class _TablePageState extends State<TablePage> {
   }
 
   Widget _antagReveal(Map<String, Map<String, dynamic>> secrets) {
-    final entry = secrets.entries.where((e) => e.value['role'] == 'antagonis');
-    if (entry.isEmpty) return const SizedBox(height: 8);
-    final antagId = entry.first.key;
-    final seed = (entry.first.value['dark_seed'] as int?) ?? 0;
+    final entries = secrets.entries.where((e) => e.value['role'] == 'antagonis');
+    return Column(
+      children: [
+        for (final e in entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _revealedAntagonist(e.key, (e.value['dark_seed'] as int?) ?? 0),
+          ),
+      ],
+    );
+  }
+
+  Widget _revealedAntagonist(String antagId, int seed) {
     final who = players.where((p) => p['user_id'] == antagId);
     final name = who.isEmpty ? '?' : who.first['name'] as String;
     // Kartu baik samaran yang selama ini dilihat pemain lain.

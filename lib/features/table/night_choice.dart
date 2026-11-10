@@ -16,6 +16,8 @@ import 'countdown.dart';
 /// banyak berbeda). Bila tenggat server habis, malam jalan otomatis.
 class NightChoice extends StatefulWidget {
   final bool isAntag;
+  final bool sharedNight;
+  final VoidCallback? onTerbisikChat;
 
   /// Si Terbisik memegang setidaknya satu kartu jenis 'malam'.
   final bool hasCards;
@@ -29,6 +31,8 @@ class NightChoice extends StatefulWidget {
   const NightChoice({
     super.key,
     required this.isAntag,
+    this.sharedNight = false,
+    this.onTerbisikChat,
     required this.hasCards,
     required this.deadline,
     required this.busy,
@@ -48,7 +52,7 @@ class _NightChoiceState extends State<NightChoice> {
   void initState() {
     super.initState();
     Sfx.I.playAny(Snd.winds, owner: this, tag: 'wind');
-    if (widget.isAntag) {
+    if (widget.isAntag && !widget.sharedNight) {
       // Tangan kartu baru dimuat ulang saat fase berganti; nilainya dibaca
       // saat timer berbunyi, bukan sekarang.
       _auto = Timer(_noCardDelay, () {
@@ -88,9 +92,22 @@ class _NightChoiceState extends State<NightChoice> {
   }
 
   Widget _content() {
-    final showChoice = widget.isAntag && widget.hasCards;
+    final showChoice = widget.isAntag && (widget.hasCards || widget.sharedNight);
     return Stack(
       children: [
+        if (widget.onTerbisikChat != null)
+          Positioned(
+            top: 8,
+            left: 12,
+            child: TextButton.icon(
+              onPressed: widget.onTerbisikChat,
+              icon: const Icon(Icons.lock_outline, color: EmbunColors.mist),
+              label: const Text(
+                'Obrolan Terbisik',
+                style: TextStyle(color: EmbunColors.mist),
+              ),
+            ),
+          ),
         Positioned(
           top: 10,
           right: 12,
@@ -138,30 +155,44 @@ class _NightChoiceState extends State<NightChoice> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Kabut menunggu perintahmu. Lancarkan serangan malam, '
-                            'atau biarkan malam berlalu.',
+                      Text(
+                        widget.sharedNight
+                            ? 'Satu serangan untuk kubumu. Sepakati siapa yang memakai kartu.'
+                            : 'Kabut menunggu perintahmu. Lancarkan serangan malam, '
+                                'atau biarkan malam berlalu.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12.5,
                             height: 1.4,
                             color: Colors.white70),
                       ),
-                      const SizedBox(height: 12),
-                      EmbunButton(
-                        label: 'Gunakan kartu malam',
-                        icon: 'show',
-                        expand: true,
-                        onPressed: widget.busy ? null : widget.onUseCard,
-                      ),
-                      const SizedBox(height: 8),
-                      EmbunButton(
-                        label: 'Lanjut ke hari berikutnya',
-                        kind: EmbunButtonKind.secondary,
-                        expand: true,
-                        height: 46,
-                        onPressed: widget.busy ? null : widget.onContinue,
-                      ),
+                      if (widget.hasCards) ...[
+                        const SizedBox(height: 12),
+                        EmbunButton(
+                          label: 'Gunakan kartu malam',
+                          icon: 'show',
+                          expand: true,
+                          onPressed: widget.busy ? null : widget.onUseCard,
+                        ),
+                      ],
+                      if (!widget.sharedNight) ...[
+                        const SizedBox(height: 8),
+                        EmbunButton(
+                          label: 'Lanjut ke hari berikutnya',
+                          kind: EmbunButtonKind.secondary,
+                          expand: true,
+                          height: 46,
+                          onPressed: widget.busy ? null : widget.onContinue,
+                        ),
+                      ] else if (!widget.hasCards)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Kamu belum punya kartu malam.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ),
                     ],
                   ),
                 ),

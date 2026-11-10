@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
@@ -150,6 +151,9 @@ List<double> _sat(double s) {
 class PrologueFlow extends StatefulWidget {
   final String gameId;
   final LobbyRepository repo;
+  final int antagonistCount;
+  final bool startAtWaiting;
+  final bool startAtShuffling;
 
   /// true = masuk kembali saat gerbang prolog masih tertutup (mis. aplikasi
   /// dibuka ulang): lewati cerita, langsung ke pilihan kartu (bila belum
@@ -160,6 +164,9 @@ class PrologueFlow extends StatefulWidget {
     required this.gameId,
     required this.repo,
     this.resume = false,
+    this.antagonistCount = 1,
+    this.startAtWaiting = false,
+    this.startAtShuffling = false,
   });
 
   @override
@@ -182,6 +189,16 @@ class _PrologueFlowState extends State<PrologueFlow>
   String? role;
   int darkSeed = 0;
   String myCard = 'default';
+  String? _partnerId;
+  List<Map<String, dynamic>> _roster = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _rosterSub;
+
+  String? get _partnerName {
+    for (final p in _roster) {
+      if (p['user_id'] == _partnerId) return p['name'] as String?;
+    }
+    return null;
+  }
 
   // Pilih kartu karakter (semua) dan wajah gelap (Si Terbisik).
   // true = tidak perlu memilih (sudah memilih, atau migrasi belum jalan).
@@ -199,7 +216,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   StreamSubscription<Map<String, dynamic>?>? _gameSub;
   Timer? _waitTimer;
   bool _opened = false;
-  final _gr = GameRepository();
+  late final _gr = EmbunData.maybeOf(context)?.game ?? GameRepository();
   Timer? _beat;
 
   // Lewati cerita bersama: baru jalan bila SEMUA pemain setuju.
@@ -240,7 +257,12 @@ class _PrologueFlowState extends State<PrologueFlow>
     super.initState();
     _fx = FxShaders.make(FxShaders.prologue);
     Sfx.I.music(Snd.bgmProlog, owner: this);
-    if (widget.resume) step = _Step.role;
+    if (widget.startAtWaiting) {
+      step = _Step.waiting;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _enterWaiting());
+    } else if (widget.resume) {
+      step = _Step.role;
+    }
     randomStems = protagonistStems();
     _shuffleCtrl = AnimationController(
       vsync: this,
@@ -257,22 +279,33 @@ class _PrologueFlowState extends State<PrologueFlow>
         _darkChosen = s['dark_chosen'] != false || role != 'antagonis';
       });
       if (widget.resume && !_charChosen && step == _Step.role) _enterPick();
-    });
-    widget.repo.players(widget.gameId).first.then((rows) {
-      final me = rows.where((p) => p['user_id'] == widget.repo.myId);
-      if (mounted && me.isNotEmpty) {
-        setState(() {
-          myCard = me.first['character_card'] as String;
-          _total = rows.length;
-        });
+      if (role == 'antagonis' && widget.antagonistCount == 2) {
+        widget.repo.terbisikPartner(widget.gameId).then((id) {
+          if (mounted) setState(() => _partnerId = id);
+        }).catchError((_) {});
       }
     });
+    _rosterSub = widget.repo.players(widget.gameId).listen((rows) {
+      if (!mounted) return;
+      final me = rows.where((p) => p['user_id'] == widget.repo.myId);
+      setState(() {
+        if (_roster.isEmpty && me.isNotEmpty) {
+          myCard = me.first['character_card'] as String;
+        }
+        _roster = rows;
+        _total = rows.length;
+      });
+    }, onError: (_) {});
 
     _sc.addListener(_onSceneTick);
     _sc.addStatusListener((s) {
       if (s == AnimationStatus.completed) _advance();
     });
-    if (!widget.resume) {
+    if (widget.startAtShuffling) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _toShuffling();
+      });
+    } else if (!widget.resume && !widget.startAtWaiting) {
       // Narasi dimulai lebih dulu; adegan baru berjalan begitu suaranya
       // benar-benar terdengar, supaya gambar dan kalimat sejajar dengan suara.
       _beginStory();
@@ -576,6 +609,7 @@ class _PrologueFlowState extends State<PrologueFlow>
     _waitTimer?.cancel();
     _gameSub?.cancel();
     _storySub?.cancel();
+    _rosterSub?.cancel();
     Sfx.I.release(this); // juga menghentikan narasi milik halaman ini
     _fx?.dispose();
     _outro.dispose();
@@ -624,6 +658,8 @@ class _PrologueFlowState extends State<PrologueFlow>
             else
               RoleReveal(
                 role: role,
+                antagonistCount: widget.antagonistCount,
+                partnerName: _partnerName,
                 cardPath: _roleCardPath(),
                 // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
                 // sebelum kartu gelapnya terungkap.

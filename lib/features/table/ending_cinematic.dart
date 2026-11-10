@@ -239,7 +239,7 @@ class _EndingCinematicState extends State<EndingCinematic>
 
   /// Hasil untuk pemain ini; null selama peran belum termuat.
   bool? _myWon;
-  Map<String, dynamic>? _antag; // {name, seed, card, username}
+  List<({String name, int seed, String? card, String? username})> _antags = [];
   bool _hapClimax = false;
   bool _hapTitle = false;
   bool _done = false;
@@ -270,9 +270,9 @@ class _EndingCinematicState extends State<EndingCinematic>
   bool get _atEnd {
     final v = _ctl.value;
     // Ada Si Terbisik untuk diungkap: tombol akhir menunggu adegannya.
-    if (_antag != null && v >= _revealAt) return _revealDone;
+    if (_antags.isNotEmpty && v >= _revealAt) return _revealDone;
     if (v >= 0.97) return true;
-    return v >= _revealAt && _revealReady && _antag == null;
+    return v >= _revealAt && _revealReady && _antags.isEmpty;
   }
 
   @override
@@ -296,7 +296,7 @@ class _EndingCinematicState extends State<EndingCinematic>
   // ---------- data ----------
 
   Future<void> _load() async {
-    Map<String, dynamic>? found;
+    final found = <({String name, int seed, String? card, String? username})>[];
     bool? myWon;
     try {
       final s = await widget.secrets;
@@ -317,24 +317,23 @@ class _EndingCinematicState extends State<EndingCinematic>
           try {
             uname = (await widget.usernames)[e.key];
           } catch (_) {}
-          found = {
-            'name': name,
-            'seed': (e.value['dark_seed'] as int?) ?? 0,
-            'card': card,
-            'username': uname,
-          };
-          break;
+          found.add((
+            name: name,
+            seed: (e.value['dark_seed'] as int?) ?? 0,
+            card: card,
+            username: uname,
+          ));
         }
       }
     } catch (_) {}
     if (!mounted) return;
     setState(() {
-      _antag = found;
+      _antags = found;
       _myWon = myWon;
       _revealReady = true;
     });
     // Timeline sempat menunggu data di titik pengungkapan.
-    if (found != null && !_ctl.isAnimating && _ctl.value < 1) {
+    if (found.isNotEmpty && !_ctl.isAnimating && _ctl.value < 1) {
       _ctl.forward();
     }
   }
@@ -385,7 +384,7 @@ class _EndingCinematicState extends State<EndingCinematic>
       HapticFeedback.lightImpact();
     }
     if (v >= _revealAt && _ctl.isAnimating) {
-      if (!_revealReady || _antag == null) {
+      if (!_revealReady || _antags.isEmpty) {
         _ctl.stop();
         setState(() {});
       }
@@ -732,7 +731,7 @@ class _EndingCinematicState extends State<EndingCinematic>
     final sp = _spec;
     final win = sp.good;
     final appear = _seg(t, 0.50, 0.62);
-    final out = _antag != null ? _smooth(_seg(t, 0.70, 0.76)) : 0.0;
+    final out = _antags.isNotEmpty ? _smooth(_seg(t, 0.70, 0.76)) : 0.0;
     if (appear <= 0 || out >= 1) return const SizedBox.shrink();
 
     final color = win ? EmbunColors.cream : const Color(0xFFE6D8F5);
@@ -830,19 +829,97 @@ class _EndingCinematicState extends State<EndingCinematic>
   }
 
   Widget _reveal(double t, double w, double h) {
-    final a = _antag;
-    if (a == null || t < _revealAt) return const SizedBox.shrink();
+    if (_antags.isEmpty || t < _revealAt) return const SizedBox.shrink();
+    void complete() {
+      if (mounted && !_revealDone) setState(() => _revealDone = true);
+    }
+
+    final a = _antags.first;
     return Positioned.fill(
-      child: _AntagReveal(
-        key: const ValueKey('antagReveal'),
-        name: a['name'] as String,
-        username: a['username'] as String?,
-        seed: a['seed'] as int,
-        card: a['card'] as String?,
-        onDone: () {
-          if (mounted && !_revealDone) setState(() => _revealDone = true);
-        },
-      ),
+      child: _antags.length == 1
+          ? _AntagReveal(
+              key: const ValueKey('antagReveal'),
+              name: a.name,
+              username: a.username,
+              seed: a.seed,
+              card: a.card,
+              onDone: complete,
+            )
+          : TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 1000),
+              onEnd: complete,
+              builder: (_, opacity, child) => Opacity(
+                opacity: opacity,
+                child: child,
+              ),
+              child: ColoredBox(
+                color: const Color(0xFF150F20),
+                child: SafeArea(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 66),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Dua Terbisik Terungkap',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 23,
+                              color: EmbunColors.mist,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final antag in _antags)
+                                Flexible(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CardArt(
+                                          path: darkCardPath(antag.seed),
+                                          width: math.min(w * 0.27, h * 0.29),
+                                          glow: EmbunColors.mist,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          antag.name,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: EmbunColors.cream,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        if (antag.username != null)
+                                          Text(
+                                            antag.username!,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Colors.white60),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

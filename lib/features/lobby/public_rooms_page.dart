@@ -17,15 +17,18 @@ enum _Sort { newest, busiest }
 
 class _Room {
   final String code, host;
-  final int players, ageS;
+  final int players, ageS, antagonistCount;
 
-  const _Room(this.code, this.host, this.players, this.ageS);
+  const _Room(
+    this.code, this.host, this.players, this.ageS, this.antagonistCount,
+  );
 
   factory _Room.from(Map<String, dynamic> row) => _Room(
     row['code'] as String,
     row['host_name'] as String,
     (row['players'] as num).toInt(),
     (row['age_s'] as num).toInt(),
+    (row['antagonist_count'] as int?) ?? 1,
   );
 }
 
@@ -608,6 +611,15 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
                           color: accent,
                         ),
                       ),
+                      if (room.antagonistCount == 2)
+                        Text(
+                          antagonistModeLabel(room.antagonistCount),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: EmbunColors.mist,
+                          ),
+                        ),
                       if (nearlyFull)
                         const Text(
                           'Hampir penuh',

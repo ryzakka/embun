@@ -14,6 +14,7 @@ import 'room_entry_view.dart';
 class WaitingRoomView extends StatefulWidget {
   final String code;
   final bool isPublic;
+  final int antagonistCount;
   final String hostId;
   final String? viewerId;
   final List<Map<String, dynamic>> players;
@@ -29,6 +30,7 @@ class WaitingRoomView extends StatefulWidget {
     super.key,
     required this.code,
     required this.isPublic,
+    required this.antagonistCount,
     required this.hostId,
     required this.viewerId,
     required this.players,
@@ -334,7 +336,7 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
     final viewerReady = widget.players.any(
       (p) => p['user_id'] == widget.viewerId && p['ready'] == true,
     );
-    final missing = kMinPlayers - count;
+    final missing = minPlayersFor(widget.antagonistCount) - count;
     final canStart = missing <= 0 && ready == count;
     final message = !available
         ? 'Memuat data pemain…'
@@ -361,6 +363,14 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                 color: EmbunColors.cream,
               ),
             ),
+            if (widget.antagonistCount == 2)
+              Text(
+                antagonistModeLabel(widget.antagonistCount),
+                style: const TextStyle(
+                  color: EmbunColors.mist,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             Text(
               '$ready siap',
               style: const TextStyle(

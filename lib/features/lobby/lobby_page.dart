@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../data/announcement_repository.dart';
 import '../../data/app_info.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
@@ -40,16 +41,25 @@ enum _Stage { title, menu, entry }
 class LobbyPage extends StatefulWidget {
   /// true = lewati layar judul (mis. kembali dari permainan).
   final bool startAtMenu;
-  const LobbyPage({super.key, this.startAtMenu = false});
+  final bool startAtCreate;
+  final WidgetBuilder? previewPanel;
+
+  const LobbyPage({
+    super.key,
+    this.startAtMenu = false,
+    this.startAtCreate = false,
+    this.previewPanel,
+  });
   @override
   State<LobbyPage> createState() => _LobbyPageState();
 }
 
 class _LobbyPageState extends State<LobbyPage>
-    with SingleTickerProviderStateMixin {
-  final repo = LobbyRepository();
-  final _gr = GameRepository();
-  final _news = AnnouncementRepository();
+    with TickerProviderStateMixin {
+  late final repo = EmbunData.maybeOf(context)?.lobby ?? LobbyRepository();
+  late final _gr = EmbunData.maybeOf(context)?.game ?? GameRepository();
+  late final _news =
+      EmbunData.maybeOf(context)?.announcements ?? AnnouncementRepository();
   final nameCtrl = TextEditingController();
   final codeCtrl = TextEditingController();
   String? gameId;
@@ -66,6 +76,7 @@ class _LobbyPageState extends State<LobbyPage>
   late _Stage _stage;
   bool _createPublic = false;
   int _createCycles = 4;
+  int _createAntagonists = 1;
   int _unreadNews = 0;
 
   /// Versi yang lebih baru dari aplikasi ini (dari entri "pembaruan"), beserta
@@ -87,8 +98,12 @@ class _LobbyPageState extends State<LobbyPage>
   @override
   void initState() {
     super.initState();
-    _stage = widget.startAtMenu ? _Stage.menu : _Stage.title;
-    if (widget.startAtMenu) {
+    _stage = widget.startAtCreate
+        ? _Stage.entry
+        : widget.startAtMenu
+        ? _Stage.menu
+        : _Stage.title;
+    if (_stage != _Stage.title) {
       _intro.value = 1;
     } else {
       _intro.forward();
@@ -128,7 +143,12 @@ class _LobbyPageState extends State<LobbyPage>
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => inPrologue
-                  ? PrologueFlow(gameId: id, repo: repo, resume: true)
+                  ? PrologueFlow(
+                      gameId: id,
+                      repo: repo,
+                      resume: true,
+                      antagonistCount: (g['antagonist_count'] as int?) ?? 1,
+                    )
                   : TablePage(gameId: id, role: role),
             ),
           );
@@ -147,7 +167,11 @@ class _LobbyPageState extends State<LobbyPage>
     setState(() => busy = true);
     try {
       final id = await repo.createGame(
-        name, randomProtagonist(), isPublic: _createPublic, cycles: _createCycles,
+        name,
+        randomProtagonist(),
+        isPublic: _createPublic,
+        cycles: _createCycles,
+        antagonistCount: _createAntagonists,
       );
       if (mounted) setState(() => gameId = id);
     } catch (e) {
@@ -342,9 +366,12 @@ class _LobbyPageState extends State<LobbyPage>
             nameCtrl: nameCtrl,
             isPublic: _createPublic,
             cycles: _createCycles,
+            antagonistCount: _createAntagonists,
             busy: busy,
             onVisibilityChanged: (value) => setState(() => _createPublic = value),
             onDurationChanged: (cycles) => setState(() => _createCycles = cycles),
+            onAntagonistCountChanged: (count) =>
+                setState(() => _createAntagonists = count),
             onCreate: _createRoom,
             onBack: () => setState(() => _stage = _Stage.menu),
           );
@@ -657,65 +684,7 @@ class _LobbyPageState extends State<LobbyPage>
     ),
   );
 
-  /// Pengaturan: Suara dan Efek Visual dalam satu dialog.
-  void _openSettings() {
-    HapticFeedback.selectionClick();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.all(20),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: OrnatePanel(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SectionHeader(icon: 'customization', title: 'Pengaturan'),
-                const SizedBox(height: 8),
-                ValueListenableBuilder<bool>(
-                  valueListenable: Sfx.I.muted,
-                  builder: (_, muted, _) => SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    secondary: const GameIcon('announcement', size: 32),
-                    value: !muted,
-                    onChanged: (v) => Sfx.I.muted.value = !v,
-                    title: const Text('Suara'),
-                    subtitle: const Text('Musik dan efek suara',
-                        style: TextStyle(fontSize: 11.5, color: Colors.white60)),
-                  ),
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: ShaderFx.enabled,
-                  builder: (_, on, _) => SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    secondary: const GameIcon('show', size: 32),
-                    value: on,
-                    onChanged: (v) => ShaderFx.enabled.value = v,
-                    title: const Text('Efek Visual'),
-                    subtitle: const Text(
-                        'Matikan bila perangkat terasa berat',
-                        style: TextStyle(fontSize: 11.5, color: Colors.white60)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                EmbunButton(
-                  label: 'Tutup',
-                  icon: 'silang',
-                  kind: EmbunButtonKind.secondary,
-                  height: 46,
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  void _openSettings() => showLobbySettings(context);
 
   /// Nomor versi kecil di pojok menu; diketuk membuka Pengumuman.
   Widget _versionFooter() => Positioned(
@@ -723,6 +692,11 @@ class _LobbyPageState extends State<LobbyPage>
     right: 12,
     child: InkWell(
       onTap: _openNews,
+      onLongPress: widget.previewPanel == null
+          ? null
+          : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: widget.previewPanel!),
+              ),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -998,7 +972,11 @@ class _LobbyPageState extends State<LobbyPage>
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || gameId != id) return;
               Navigator.of(context).pushReplacement(
-                ClothTransition.route(PrologueFlow(gameId: id, repo: repo)),
+                ClothTransition.route(PrologueFlow(
+                  gameId: id,
+                  repo: repo,
+                  antagonistCount: (game['antagonist_count'] as int?) ?? 1,
+                )),
               );
             });
           }
@@ -1011,6 +989,7 @@ class _LobbyPageState extends State<LobbyPage>
             return WaitingRoomView(
               code: game['code'] as String,
               isPublic: game['is_public'] == true,
+              antagonistCount: (game['antagonist_count'] as int?) ?? 1,
               hostId: game['host_id'] as String,
               viewerId: repo.myId,
               players: players,
@@ -1050,6 +1029,66 @@ class _LobbyPageState extends State<LobbyPage>
       _toast(errMsg(e));
     }
   }
+}
+
+/// Pengaturan: Suara dan Efek Visual dalam satu dialog.
+Future<void> showLobbySettings(BuildContext context) {
+  HapticFeedback.selectionClick();
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.all(20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: OrnatePanel(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SectionHeader(icon: 'customization', title: 'Pengaturan'),
+              const SizedBox(height: 8),
+              ValueListenableBuilder<bool>(
+                valueListenable: Sfx.I.muted,
+                builder: (_, muted, _) => SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const GameIcon('announcement', size: 32),
+                  value: !muted,
+                  onChanged: (v) => Sfx.I.muted.value = !v,
+                  title: const Text('Suara'),
+                  subtitle: const Text('Musik dan efek suara',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white60)),
+                ),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: ShaderFx.enabled,
+                builder: (_, on, _) => SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const GameIcon('show', size: 32),
+                  value: on,
+                  onChanged: (v) => ShaderFx.enabled.value = v,
+                  title: const Text('Efek Visual'),
+                  subtitle: const Text(
+                      'Matikan bila perangkat terasa berat',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white60)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              EmbunButton(
+                label: 'Tutup',
+                icon: 'silang',
+                kind: EmbunButtonKind.secondary,
+                height: 46,
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Satu butir menu utama: ikon medali + teks. Muncul bergantian dari kiri;

@@ -214,13 +214,25 @@ class _TutorialPageState extends State<TutorialPage>
     ),
     _Step(
       'Nyawa',
-      'Tiap pemain punya **$kStrikesMax nyawa**. Tuduhan pertama: '
+      'Di contoh mode klasik ini, tiap pemain punya **$kStrikesMax nyawa**. '
+          'Tuduhan pertama: '
           '**dikurung** sampai musyawarah berikutnya, tak bisa membeli atau '
           'menawar tukar. Tuduhan kedua: bila ia **Si Terbisik**, warga '
           'menang; bila warga, ia **keluar dari desa**. Bila pemain '
           'tersisa kurang dari $kMinPlayers, **Si Terbisik menang**.',
       EmbunColors.blood,
       (p) => const _LivesDemo(),
+    ),
+    _Step(
+      'Dua Terbisik',
+      'Host bisa memilih **Dua Terbisik** dengan minimal '
+          '**$kMinDuaTerbisikPlayers pemain** siap. Kedua Terbisik saling '
+          'kenal, bisa berunding di **Obrolan Terbisik**, dan berbagi '
+          '**satu serangan per malam biasa**. Untuk menang lewat penyingkiran, '
+          'Warga perlu mengalahkan keduanya.',
+      EmbunColors.mist,
+      (p) => const _Chip('Obrolan Terbisik · 1 serangan', EmbunColors.mist),
+      hasNarration: false,
     ),
     _Step(
       'Bagian Hayu',

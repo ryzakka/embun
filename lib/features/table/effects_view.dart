@@ -7,6 +7,7 @@ import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import 'hayu_reaction.dart';
 import 'parts_strip.dart';
 
 double _seg(double v, double a, double b) =>
@@ -53,10 +54,8 @@ Offset _bz(Offset p0, Offset c, Offset p1, double e) {
 ///    cahaya, pohon beralih ke gambar akhir, dan spanduk perubahan bersih
 ///    menghantam layar. Baru setelah itu tombol Lanjut muncul.
 ///
-/// Angka diambil dari label tiap efek (tanda +/- dan angkanya; bila tak
-/// ada, +1 untuk efek baik dan -1 untuk efek buruk). Bila jumlah akhirnya
-/// berbeda dengan angka akhir dari server (mis. efek yang disamarkan Topeng
-/// Warga atau batas 0-30), angka disetel ke nilai server pada akhir.
+/// Reaksi bagian Hayu membaca label publik. Angka akhir selalu mengikuti
+/// total yang diumumkan server.
 class EffectsView extends StatefulWidget {
   final GameRepository repo;
   final String gameId;
@@ -112,6 +111,12 @@ class _EffectsViewState extends State<EffectsView>
   bool _settled = false; // pohon sudah beralih ke gambar akhir
   bool _ready = false; // seluruh adegan selesai, tombol boleh muncul
   Timer? timer;
+  Timer? _recapTimer;
+  Timer? _finishTimer;
+  HayuReaction? _hayuReaction;
+  static const _reactionDuration = Duration(milliseconds: 1200);
+  static const _recapStart = Duration(milliseconds: 540);
+  late final AnimationController _hayuPulse;
 
   int _lastDelta = 0;
   int _flashIdx = -1;
@@ -136,6 +141,7 @@ class _EffectsViewState extends State<EffectsView>
   @override
   void initState() {
     super.initState();
+    _hayuPulse = AnimationController(vsync: this, duration: _reactionDuration);
     _final.addListener(() {
       if (!_settled && _final.value >= 0.30) {
         _settled = true;
@@ -162,42 +168,55 @@ class _EffectsViewState extends State<EffectsView>
       final all = await widget.repo.effects(widget.gameId, widget.day);
       final before = await widget.repo.leavesBefore(widget.gameId);
       if (!mounted) return;
-      var r = all;
-      int? covered; // perubahan daun dari efek yang sudah tampil di adegan lempar
-      if (widget.skipBound) {
-        final bound = [for (final x in all) if (x['card_seq'] != null) x];
-        if (bound.isNotEmpty) {
-          r = [for (final x in all) if (x['card_seq'] == null) x];
-          covered = bound.fold<int>(0, (a, x) => a + _leafOnly(x));
-        }
-      }
+      final covered = [
+        if (widget.skipBound)
+          for (final row in all)
+            if (row['card_seq'] != null) row,
+      ];
+      final r = covered.isEmpty
+          ? all
+          : [for (final row in all) if (row['card_seq'] == null) row];
+      final recap = HayuReaction.fromPublicRows(covered);
       setState(() {
         rows = r;
         loaded = true;
         _before = before;
-        // Hitungan awal dari server, bukan dari log (log tidak membawa angka).
         if (before != null) {
-          shown = (before + (covered ?? 0)).clamp(0, 30).toInt();
+          shown = (before + recap.gained - recap.lost).clamp(0, 30).toInt();
           imgLeaves = before;
         }
       });
-      if (r.isEmpty && covered != null && before != null &&
-          widget.finalLeaves != before) {
-        // Semua efek sudah terlihat di adegan lempar: tinggal Hayu berubah.
-        Future.delayed(const Duration(milliseconds: 700), () {
-          if (!mounted) return;
-          setState(() => shown = widget.finalLeaves);
-          _final.forward(from: 0);
-        });
-        return;
+      if (!recap.isEmpty) {
+        _recapTimer = Timer(_recapStart, () => _showHayuReaction(recap));
       }
       if (r.isEmpty) {
-        setState(() {
-          shown = widget.finalLeaves;
-          imgLeaves = widget.finalLeaves;
-          _settled = true;
-          _ready = true;
-        });
+        final transform = covered.isNotEmpty &&
+            before != null &&
+            widget.finalLeaves != before;
+        void finish() {
+          if (!mounted) return;
+          if (transform) {
+            _startFinal();
+          } else {
+            setState(() {
+              shown = widget.finalLeaves;
+              imgLeaves = widget.finalLeaves;
+              _settled = true;
+              _ready = true;
+            });
+          }
+        }
+
+        if (!recap.isEmpty || transform) {
+          _finishTimer = Timer(
+            recap.isEmpty
+                ? const Duration(milliseconds: 700)
+                : _recapStart + _reactionDuration,
+            finish,
+          );
+        } else {
+          finish();
+        }
         return;
       }
       setState(() => revealed = 1);
@@ -228,6 +247,9 @@ class _EffectsViewState extends State<EffectsView>
   @override
   void dispose() {
     timer?.cancel();
+    _recapTimer?.cancel();
+    _finishTimer?.cancel();
+    _hayuPulse.dispose();
     Sfx.I.release(this);
     _pulse.dispose();
     _hud.dispose();
@@ -236,31 +258,24 @@ class _EffectsViewState extends State<EffectsView>
     super.dispose();
   }
 
-  /// Perubahan daun yang tertulis eksplisit ("+N daun" / "-N daun"); selain
-  /// itu 0 (mis. "+2 perlindungan" bukan daun).
-  int _leafOnly(Map<String, dynamic> row) {
-    final m = RegExp(r'([+\-−–])\s*(\d+)\s*daun')
-        .firstMatch((row['label'] as String?) ?? '');
-    if (m == null) return 0;
-    final n = int.parse(m.group(2)!);
-    return m.group(1) == '+' ? n : -n;
+  void _showHayuReaction(HayuReaction reaction) {
+    if (!mounted || reaction.isEmpty) return;
+    setState(() => _hayuReaction = reaction);
+    _hayuPulse.forward(from: 0);
   }
 
-  /// Perubahan daun yang tertulis pada satu efek.
-  int _deltaOf(Map<String, dynamic> row) {
-    final label = (row['label'] as String?) ?? '';
-    final m = RegExp(r'([+\-−–])\s*(\d+)').firstMatch(label);
-    if (m != null) {
-      final n = int.parse(m.group(2)!);
-      return m.group(1) == '+' ? n : -n;
-    }
-    return row['kind'] == 'bad' ? -1 : 1;
+  void _startFinal() {
+    if (!mounted) return;
+    setState(() => shown = widget.finalLeaves);
+    _final.forward(from: 0);
   }
 
   void _arrive(Map<String, dynamic> row) {
     if (!mounted) return;
     final isBad = row['kind'] == 'bad';
-    final d = _deltaOf(row);
+    final reaction = HayuReaction.fromPublicRows([row]);
+    final d = reaction.gained - reaction.lost;
+    _showHayuReaction(reaction);
     _lastBad = isBad;
     _hits++;
     if (arrived > 0 && _streakBad == isBad) {
@@ -280,20 +295,12 @@ class _EffectsViewState extends State<EffectsView>
     }
     setState(() {
       arrived++;
-      if (_hasBefore) {
+      _lastDelta = d;
+      _flashIdx = -1;
+      if (_hasBefore && d != 0) {
         final prev = shown;
         shown = (shown + d).clamp(0, 30).toInt();
-        _lastDelta = shown == prev ? d : shown - prev;
-        _flashIdx = _lastDelta > 0 ? shown - 1 : shown;
-        if (arrived >= rows.length && shown != widget.finalLeaves) {
-          // Samakan dengan angka server (mis. efek yang disamarkan).
-          final fix = widget.finalLeaves - shown;
-          shown = widget.finalLeaves;
-          _lastDelta = fix;
-          _flashIdx = fix > 0 ? shown - 1 : shown;
-        }
-      } else {
-        _lastDelta = d;
+        if (shown != prev) _flashIdx = d > 0 ? shown - 1 : shown;
       }
       if (isBad) gray = true;
     });
@@ -303,9 +310,7 @@ class _EffectsViewState extends State<EffectsView>
       });
     }
     if (arrived >= rows.length) {
-      Future.delayed(const Duration(milliseconds: 900), () {
-        if (mounted) _final.forward(from: 0);
-      });
+      _finishTimer = Timer(_reactionDuration, _startFinal);
     }
   }
 
@@ -353,7 +358,7 @@ class _EffectsViewState extends State<EffectsView>
     final fin = widget.finalLeaves;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_pulse, _hud, _final, _t]),
+      animation: Listenable.merge([_pulse, _hud, _final, _hayuPulse, _t]),
       builder: (context, _) {
         final time = _t.value * 120;
         final p = _pulse.value;
@@ -406,7 +411,7 @@ class _EffectsViewState extends State<EffectsView>
                   duration: const Duration(milliseconds: 1100),
                   layoutBuilder: (cur, prev) => Stack(
                     fit: StackFit.expand,
-                    children: [...prev, if (cur != null) cur],
+                    children: [...prev, ?cur],
                   ),
                   child: GameImage(
                       key: ValueKey(path), path: path, cacheWidth: 1600),
@@ -525,6 +530,13 @@ class _EffectsViewState extends State<EffectsView>
                   ),
                 ),
               ),
+            if (_hayuPulse.isAnimating && _hayuReaction != null)
+              Positioned.fill(
+                child: HayuReactionLayer(
+                  reaction: _hayuReaction!,
+                  progress: _hayuPulse.value,
+                ),
+              ),
             ...bubbles,
             // spanduk perubahan bersih
             if (inFinal && _hasBefore)
@@ -544,7 +556,7 @@ class _EffectsViewState extends State<EffectsView>
               child: _hudBlock(W),
             ),
             // ledakan di hitungan daun saat angka berubah
-            if (_hud.isAnimating)
+            if (_hud.isAnimating && _lastDelta != 0)
               Positioned.fill(
                 child: IgnorePointer(
                   child: CustomPaint(
@@ -711,11 +723,18 @@ class _EffectsViewState extends State<EffectsView>
                 children: [
                   const GameIcon('hari', size: 36),
                   const SizedBox(width: 8),
-                  Text('Hasil persembahan hari ${widget.day}',
+                  Flexible(
+                    child: Text(
+                      'Hasil persembahan hari ${widget.day}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                          color: EmbunColors.gold)),
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                        color: EmbunColors.gold,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -869,7 +888,7 @@ class _EffectsViewState extends State<EffectsView>
         ? 'Hayu menghijau kembali'
         : loss
         ? 'Kabut menggerogoti Hayu'
-        : 'Tidak ada yang berubah malam ini';
+        : 'Jumlah daun tetap';
 
     return Opacity(
       opacity: op,

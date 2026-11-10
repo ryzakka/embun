@@ -3,8 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
+import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
+import '../../data/game_rules.dart';
+import '../../data/hayu_parts.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
@@ -965,13 +968,14 @@ class _HowToTab extends StatelessWidget {
     final good = _winCard('Warga menang', 'helaidaun', EmbunColors.leaf, const [
       'Daun Hayu mencapai **30**.',
       'Hari terakhir berakhir dengan daun **di atas batas** (12 hari: **20**).',
-      'Si Terbisik **tertangkap**.',
+      'Semua Terbisik **tersingkir**.',
     ]);
     final bad =
         _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
           'Daun Hayu **habis**.',
           'Hari terakhir berakhir dengan daun **di bawah batas**.',
-          'Desa **tinggal dua orang**.',
+          'Di mode klasik, desa **tinggal dua orang**.',
+          'Di mode Dua Terbisik, **semua Warga tersingkir**.',
         ]);
     return LayoutBuilder(
       builder: (context, c) {
@@ -1208,17 +1212,22 @@ class _HowToTab extends StatelessWidget {
             _step(
               2,
               'Tuduhan kedua: tertangkap atau keluar',
-              'Si Terbisik **tertangkap** dan warga menang. Warga '
-                  '**keluar dari desa**: perannya terbuka dan ia hanya '
-                  'bisa menonton.',
+              'Pemain yang tertuduh **keluar dari desa**. Warga menang '
+                  'lewat tuduhan bila semua Terbisik sudah tersingkir.',
               last: true,
             ),
             _bullet(
-              'Pemain tersisa kurang dari 3: **Si Terbisik menang**. '
-              'Pikirkan baik-baik sebelum menuduh orang yang sama dua '
-              'kali.',
+              'Pada mode klasik, **Si Terbisik menang** jika pemain '
+              'tersisa kurang dari $kMinPlayers.',
               dot: EmbunColors.blood,
               bold: EmbunColors.blood,
+            ),
+            _bullet(
+              '**Dua Terbisik** bisa dimulai dengan minimal '
+              '$kMinDuaTerbisikPlayers pemain. Mereka saling kenal, '
+              'punya obrolan rahasia, dan berbagi satu serangan per malam biasa.',
+              dot: EmbunColors.mist,
+              bold: EmbunColors.mist,
             ),
           ],
         ),
@@ -1515,7 +1524,8 @@ class _ItemsTabState extends State<_ItemsTab>
   String? error;
   bool loading = false;
   int faction = 0; // 0 = warga (baik), 1 = Si Terbisik (jahat)
-  int kindIdx = 0; // 0 = semua, 1..3 = jenis
+  String? kindFilter;
+  HayuPart? hayuFilter;
 
   @override
   bool get wantKeepAlive => true;
@@ -1527,13 +1537,14 @@ class _ItemsTabState extends State<_ItemsTab>
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
-    final repo = GameRepository();
+    final data = EmbunData.maybeOf(context);
+    final repo = data?.game ?? GameRepository();
     try {
       return await repo.cardDefs();
     } catch (_) {
       // Belum punya sesi? Tabelnya bisa meminta pengguna masuk. Coba sekali
       // dengan sesi anonim (sama seperti saat membuat/gabung ruangan).
-      await LobbyRepository().ensureSignedIn();
+      await (data?.lobby ?? LobbyRepository()).ensureSignedIn();
       return await repo.cardDefs();
     }
   }
@@ -1588,12 +1599,61 @@ class _ItemsTabState extends State<_ItemsTab>
             fallbackName: '${d['id']}',
             width: w,
             showCost: true,
+            showHayuTargets: true,
             badge: base ? 'Dasar' : null,
             onTap: () => showCardPreview(context, d, defs: defs),
           ),
         ),
         const SizedBox(height: 8),
         _caption('${d['name']}', dark ? EmbunColors.mist : EmbunColors.cream),
+      ],
+    );
+  }
+
+  Widget _hayuFilters(Color accent) {
+    Widget chip(HayuPart? part) => ChoiceChip(
+      key: ValueKey('hayu-filter-${part?.name ?? 'all'}'),
+      label: Text(part?.label ?? 'Semua bagian'),
+      avatar: part == null
+          ? null
+          : SizedBox.square(
+              dimension: 22,
+              child: GameImage(
+                path: sceneryPath('pohonindikator-${part.name}'),
+                fit: BoxFit.contain,
+                cacheWidth: 66,
+              ),
+            ),
+      selected: hayuFilter == part,
+      showCheckmark: false,
+      selectedColor: accent.withValues(alpha: 0.20),
+      side: BorderSide(
+        color: accent.withValues(alpha: hayuFilter == part ? 0.90 : 0.32),
+      ),
+      labelStyle: TextStyle(
+        color: hayuFilter == part ? EmbunColors.cream : Colors.white70,
+        fontSize: 12,
+        fontWeight: hayuFilter == part ? FontWeight.w800 : FontWeight.w600,
+      ),
+      onSelected: (_) => setState(() => hayuFilter = part),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: const Text(
+            'Bagian Hayu',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          ),
+        ),
+        Wrap(
+          spacing: 6,
+          children: [
+            chip(null),
+            for (final part in HayuPart.values) chip(part),
+          ],
+        ),
       ],
     );
   }
@@ -1615,21 +1675,26 @@ class _ItemsTabState extends State<_ItemsTab>
     final dark = faction == 1;
     final all = dark ? bad : good;
     final accent = dark ? EmbunColors.mist : EmbunColors.leaf;
-    int n(String g) =>
-        all.where((d) => _itemGroupOf(d['kind'] as String?) == g).length;
-    // Hanya kelompok yang ada pada fraksi ini.
-    final present = [
-      for (final g in _itemGroups)
+    final filter = hayuFilter;
+    final filtered = filter == null
+        ? all
+        : [for (final d in all) if (cardHayuParts(d).contains(filter)) d];
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final d in filtered) {
+      final group = _itemGroupOf(d['kind'] as String?);
+      (groups[group] ??= []).add(d);
+    }
+    int n(String g) => groups[g]?.length ?? 0;
+    final available = all.map((d) => _itemGroupOf(d['kind'] as String?)).toSet();
+    final present = [for (final g in _itemGroups) if (available.contains(g)) g];
+    final idx = kindFilter == null ? 0 : present.indexOf(kindFilter!) + 1;
+    final shown = [
+      for (final g in idx == 0 ? present : [present[idx - 1]])
         if (n(g) > 0) g,
     ];
-    final idx = kindIdx.clamp(0, present.length).toInt();
-    final shown = idx == 0 ? present : [present[idx - 1]];
 
     List<Map<String, dynamic>> inGroup(String g) {
-      final l = [
-        for (final d in all)
-          if (_itemGroupOf(d['kind'] as String?) == g) d,
-      ];
+      final l = groups[g]!;
       // Kombinasi: kartu lanjutan dulu, lalu kartu poin; sisanya menurut harga.
       l.sort((a, b) {
         final ak = a['kind'] == 'poin' ? 1 : 0;
@@ -1656,7 +1721,7 @@ class _ItemsTabState extends State<_ItemsTab>
           selected: faction,
           onSelect: (i) => setState(() {
             faction = i;
-            kindIdx = 0;
+            kindFilter = null;
           }),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1679,12 +1744,16 @@ class _ItemsTabState extends State<_ItemsTab>
                   'Semua',
                   for (final g in present) _itemGroupLabel[g] ?? g,
                 ],
-                counts: [all.length, for (final g in present) n(g)],
+                counts: [filtered.length, for (final g in present) n(g)],
                 selected: idx,
                 accent: accent,
-                onSelect: (i) => setState(() => kindIdx = i),
+                onSelect: (i) => setState(() {
+                  kindFilter = i == 0 ? null : present[i - 1];
+                }),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
+              _hayuFilters(accent),
+              const SizedBox(height: 14),
               for (final g in shown) ...[
                 _groupHeader(
                   _itemGroupIcon[g] ?? 'item',
@@ -1696,7 +1765,7 @@ class _ItemsTabState extends State<_ItemsTab>
                 () {
                   final list = inGroup(g);
                   return _Grid(
-                    key: ValueKey('$faction-$g-$idx'),
+                    key: ValueKey('$faction-$g-${hayuFilter?.name ?? 'all'}'),
                     count: list.length,
                     minCell: 120,
                     item: (i, w) => _tile(list[i], w, dark),
@@ -1704,13 +1773,16 @@ class _ItemsTabState extends State<_ItemsTab>
                 }(),
                 const SizedBox(height: 24),
               ],
-              if (all.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
+              if (shown.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
                     child: Text(
-                      'Tidak ada kartu.',
-                      style: TextStyle(color: Colors.white54),
+                      hayuFilter == null
+                          ? 'Tidak ada kartu.'
+                          : 'Tidak ada kartu yang cocok dengan filter ini.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white54),
                     ),
                   ),
                 ),
@@ -1761,11 +1833,12 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
-    final repo = GameRepository();
+    final data = EmbunData.maybeOf(context);
+    final repo = data?.game ?? GameRepository();
     try {
       return await repo.abilityDefs();
     } catch (_) {
-      await LobbyRepository().ensureSignedIn();
+      await (data?.lobby ?? LobbyRepository()).ensureSignedIn();
       return await repo.abilityDefs();
     }
   }

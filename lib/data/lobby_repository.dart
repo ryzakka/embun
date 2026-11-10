@@ -13,13 +13,20 @@ class LobbyRepository {
   }
 
   Future<String> createGame(String name, String card,
-      {bool isPublic = false, int cycles = 4}) async {
+      {bool isPublic = false, int cycles = 4, int antagonistCount = 1}) async {
     await ensureSignedIn();
-    return await _db.rpc('create_game', params: {
+    final params = {
       'p_name': name,
       'p_card': card,
       'p_public': isPublic,
       'p_cycles': cycles,
+    };
+    if (antagonistCount == 1) {
+      return await _db.rpc('create_game', params: params) as String;
+    }
+    return await _db.rpc('create_game_with_mode', params: {
+      ...params,
+      'p_antagonist_count': antagonistCount,
     }) as String;
   }
 
@@ -30,7 +37,15 @@ class LobbyRepository {
   /// Ruangan publik yang masih bisa dimasuki (lobi, belum penuh).
   Future<List<Map<String, dynamic>>> publicGames() async {
     await ensureSignedIn();
-    final rows = await _db.rpc('list_public_games') as List;
+    final List rows;
+    try {
+      rows = await _db.rpc('list_public_games_with_mode') as List;
+    } on PostgrestException catch (e) {
+      if (e.code != 'PGRST202') rethrow;
+      return List<Map<String, dynamic>>.from(
+        await _db.rpc('list_public_games') as List,
+      );
+    }
     return [for (final x in rows) Map<String, dynamic>.from(x as Map)];
   }
 
@@ -104,6 +119,9 @@ class LobbyRepository {
     if (rows.isEmpty) return null;
     return Map<String, dynamic>.from(rows.first['games'] as Map);
   }
+
+  Future<String?> terbisikPartner(String gameId) async =>
+      await _db.rpc('terbisik_partner', params: {'p_game': gameId}) as String?;
 
   Future<String?> myRole(String gameId) async =>
       (await mySecret(gameId))?['role'] as String?;

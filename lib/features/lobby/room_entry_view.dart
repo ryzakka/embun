@@ -92,9 +92,11 @@ class CreateRoomView extends StatefulWidget {
   final TextEditingController nameCtrl;
   final bool isPublic;
   final int cycles;
+  final int antagonistCount;
   final bool busy;
   final ValueChanged<bool> onVisibilityChanged;
   final ValueChanged<int> onDurationChanged;
+  final ValueChanged<int> onAntagonistCountChanged;
   final ValueChanged<String> onCreate;
   final VoidCallback onBack;
 
@@ -103,9 +105,11 @@ class CreateRoomView extends StatefulWidget {
     required this.nameCtrl,
     required this.isPublic,
     required this.cycles,
+    required this.antagonistCount,
     required this.busy,
     required this.onVisibilityChanged,
     required this.onDurationChanged,
+    required this.onAntagonistCountChanged,
     required this.onCreate,
     required this.onBack,
   });
@@ -292,6 +296,38 @@ class _CreateRoomViewState extends State<CreateRoomView> {
             ),
         ],
       ),
+      const SizedBox(height: 18),
+      _label('Jumlah antagonis'),
+      const SizedBox(height: 5),
+      Wrap(
+        spacing: 7,
+        runSpacing: 3,
+        children: [
+          for (final count in [1, 2])
+            ChoiceChip(
+              label: Text(antagonistModeLabel(count)),
+              showCheckmark: false,
+              selected: widget.antagonistCount == count,
+              selectedColor: EmbunColors.mist.withValues(alpha: 0.22),
+              side: roomEntryRule(
+                widget.antagonistCount == count
+                    ? EmbunColors.mist
+                    : Colors.white70,
+              ),
+              onSelected: widget.busy
+                  ? null
+                  : (_) => widget.onAntagonistCountChanged(count),
+            ),
+        ],
+      ),
+      if (widget.antagonistCount == 2)
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: Text(
+            'Mulai setelah minimal $kMinDuaTerbisikPlayers pemain siap.',
+            style: TextStyle(fontSize: 13, color: Colors.white70),
+          ),
+        ),
       if (showTarget) ...[const SizedBox(height: 10), _targetNote()],
     ],
   );
@@ -339,7 +375,8 @@ class _CreateRoomViewState extends State<CreateRoomView> {
           ),
           const SizedBox(height: 6),
           Text(
-            '$_days hari${widget.cycles == 4 ? ' (bawaan)' : ''} · $kMinPlayers–$kMaxPlayers pemain',
+            '$_days hari${widget.cycles == 4 ? ' (bawaan)' : ''} · '
+            '${minPlayersFor(widget.antagonistCount)}–$kMaxPlayers pemain',
             style: const TextStyle(
               color: EmbunColors.gold,
               fontWeight: FontWeight.w700,

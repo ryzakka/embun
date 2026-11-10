@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -77,11 +78,15 @@ Future<void> showChatSheet(
       required GameRepository repo,
       required String gameId,
       required List<Map<String, dynamic>> players,
+      ValueListenable<bool>? terbisikAccess,
+      String? partnerName,
     }) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF14221F),
+      backgroundColor: terbisikAccess == null
+          ? const Color(0xFF14221F)
+          : const Color(0xFF20172A),
       builder: (ctx) {
         final mq = MediaQuery.of(ctx);
         final inset = mq.viewInsets.bottom;
@@ -94,11 +99,35 @@ Future<void> showChatSheet(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionHeader(icon: 'discuss', title: 'Obrolan Desa'),
+                  if (terbisikAccess == null)
+                    const SectionHeader(icon: 'discuss', title: 'Obrolan Desa')
+                  else ...[
+                    const SectionHeader(icon: 'lock', title: 'Obrolan Terbisik'),
+                    const SizedBox(height: 4),
+                    Text(
+                      partnerName == null
+                          ? 'Kanal rahasia untuk Terbisik yang masih aktif.'
+                          : 'Kanal rahasia · Rekanmu $partnerName',
+                      style: const TextStyle(color: EmbunColors.mist),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Expanded(
-                    child: ChatPanel(
-                        repo: repo, gameId: gameId, players: players),
+                    child: terbisikAccess == null
+                        ? ChatPanel(repo: repo, gameId: gameId, players: players)
+                        : ValueListenableBuilder<bool>(
+                            valueListenable: terbisikAccess,
+                            builder: (_, allowed, _) => allowed
+                                ? ChatPanel(
+                                    repo: repo,
+                                    gameId: gameId,
+                                    players: players,
+                                    terbisik: true,
+                                  )
+                                : const Center(
+                                    child: Text('Obrolan Terbisik ditutup.'),
+                                  ),
+                          ),
                   ),
                 ],
               ),
@@ -117,12 +146,14 @@ class ChatPanel extends StatefulWidget {
   final String gameId;
   final List<Map<String, dynamic>> players;
   final bool lobby;
+  final bool terbisik;
   const ChatPanel({
     super.key,
     required this.repo,
     required this.gameId,
     required this.players,
     this.lobby = false,
+    this.terbisik = false,
   });
 
   @override
@@ -153,7 +184,12 @@ class _ChatPanelState extends State<ChatPanel> {
   @override
   void initState() {
     super.initState();
-    _sub = widget.repo.chat(widget.gameId).listen(_onData, onError: (_) {});
+    fx = !widget.terbisik;
+    _sub = widget.repo
+        .chat(widget.gameId, terbisik: widget.terbisik)
+        .listen(_onData, onError: (Object e) {
+      if (widget.terbisik && mounted) setState(() => err = errMsg(e));
+    });
     scroll.addListener(() {
       if (!scroll.hasClients) return;
       // Daftar dibalik: offset 0 = pesan terbaru di bawah.
@@ -247,7 +283,9 @@ class _ChatPanelState extends State<ChatPanel> {
     if (t.isEmpty) return;
     setState(() => err = null);
     try {
-      await widget.repo.sendMessage(widget.gameId, t);
+      await widget.repo.sendMessage(
+        widget.gameId, t, terbisik: widget.terbisik,
+      );
       _toLatest();
     } catch (e) {
       if (mounted) setState(() => err = errMsg(e));
@@ -435,7 +473,7 @@ class _ChatPanelState extends State<ChatPanel> {
                 const TextStyle(color: Colors.redAccent, fontSize: 12)),
           ),
         const SizedBox(height: 6),
-        if (!widget.lobby) ...[
+        if (!widget.lobby && !widget.terbisik) ...[
           SizedBox(
             height: 32,
             child: ListView(
@@ -465,34 +503,36 @@ class _ChatPanelState extends State<ChatPanel> {
           ),
           const SizedBox(height: 4),
         ],
-        SizedBox(
-          height: 34,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              for (final q in phrases)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ActionChip(
-                    label: Text(q, style: const TextStyle(fontSize: 12)),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _send(q),
+        if (!widget.terbisik)
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final q in phrases)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ActionChip(
+                      label: Text(q, style: const TextStyle(fontSize: 12)),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _send(q),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
         const SizedBox(height: 6),
         Row(
           children: [
-            IconButton(
-              tooltip: fx ? 'Matikan efek dramatis' : 'Nyalakan efek dramatis',
-              onPressed: _toggleFx,
-              icon: Opacity(
-                opacity: fx ? 1 : 0.4,
-                child: const GameIcon('showaddgraphic', size: 30),
+            if (!widget.terbisik)
+              IconButton(
+                tooltip: fx ? 'Matikan efek dramatis' : 'Nyalakan efek dramatis',
+                onPressed: _toggleFx,
+                icon: Opacity(
+                  opacity: fx ? 1 : 0.4,
+                  child: const GameIcon('showaddgraphic', size: 30),
+                ),
               ),
-            ),
             Expanded(
               child: TextField(
                 controller: ctrl,
@@ -503,7 +543,9 @@ class _ChatPanelState extends State<ChatPanel> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendTyped(),
                 decoration: InputDecoration(
-                  hintText: 'Tulis sesuatu...',
+                  hintText: widget.terbisik
+                      ? 'Pesan rahasia…'
+                      : 'Tulis sesuatu...',
                   counterText: '',
                   isDense: true,
                   filled: true,

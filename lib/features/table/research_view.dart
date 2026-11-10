@@ -491,13 +491,16 @@ class _ResearchViewState extends State<ResearchView> {
     final name = _name(item);
     final price = _price(item);
     final bought = item['bought'] == true;
+    final definition = _definition(item);
+    final targets = cardHayuTargetLabel(definition);
     final card = CardTile(
-      def: _definition(item),
+      def: definition,
       fallbackName: name,
       width: width,
       selected: selected && !short,
       dim: bought && !selected,
       bought: bought,
+      showHayuTargets: true,
     );
     final title = Text(
       name,
@@ -534,7 +537,10 @@ class _ResearchViewState extends State<ResearchView> {
     return Semantics(
       button: true,
       selected: selected,
-      label: bought ? '$name, terbeli' : '$name, $price $_currencyName',
+      label: [
+        bought ? '$name, terbeli' : '$name, $price $_currencyName',
+        ?targets,
+      ].join(', '),
       child: Material(
         type: MaterialType.transparency,
         child: Ink(
