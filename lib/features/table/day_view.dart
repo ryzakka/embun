@@ -15,7 +15,7 @@ import 'card_tile.dart';
 import 'day_chrome.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
-import 'player_status.dart';
+import 'guard_dialog.dart';
 
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
 
@@ -130,10 +130,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   );
 
   // Jam berdenyut untuk penggabungan kartu dan tawaran tukar.
-  late final AnimationController _t = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2600),
-  )..repeat();
+  late final AnimationController _t;
   double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
   late int tab = widget.initialTab.index;
   // Tab Gabung: kartu lanjutan dan kartu syarat (poin) yang diletakkan di
@@ -149,6 +146,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   bool _offersFailed = false;
   int _offersRequest = 0;
   List<Map<String, dynamic>> _guards = []; // perlindungan / cermin aktif
+  Timer? _guardTimer;
+  int _guardRequest = 0;
   bool busy = false;
 
   // Pembukaan toko: kartu dibagikan sebagai punggung, lalu berbalik. Hanya
@@ -178,8 +177,16 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _t = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
     _loadOffers();
     _loadGuards();
+    _guardTimer = Timer.periodic(
+      const Duration(seconds: 6),
+      (_) => _loadGuards(),
+    );
     widget.marketTick?.addListener(_loadOffers);
   }
 
@@ -194,6 +201,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _guardTimer?.cancel();
     _t.dispose();
     widget.marketTick?.removeListener(_loadOffers);
     _openTimer?.cancel();
@@ -230,8 +238,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _loadGuards() async {
-    final r = await widget.repo.myGuards(widget.gameId);
-    if (mounted) setState(() => _guards = r);
+    final request = ++_guardRequest;
+    try {
+      final r = await widget.repo.myGuards(widget.gameId);
+      if (mounted && request == _guardRequest) setState(() => _guards = r);
+    } catch (_) {
+      // Pertahankan indikator terakhir saat koneksi terputus sementara.
+    }
   }
 
   /// Kartu kuning di Meja: ketuk -> pratinjau dengan tombol "Pakai sekarang".
@@ -244,6 +257,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final def = widget.defs[h['card_id']];
     if (def == null) return;
     final bow = _isBow(def);
+    final effect = def['effect'];
+    final chooseGuard = effect is Map && effect['guard_target'] == true;
 
     // Kartu kuning warga di tangan Si Terbisik (hasil curian) tak bisa dipakai.
     if (widget.isAntag && def['side'] == 'warga') {
@@ -255,12 +270,24 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     await showCardPreview(
       context,
       def,
-      actionLabel: bow ? 'Bidik' : 'Pakai sekarang',
+      actionLabel: bow
+          ? 'Bidik'
+          : chooseGuard
+          ? 'Pilih yang dilindungi'
+          : 'Pakai sekarang',
       onAction: () async {
         String? target;
         if (bow) {
           if (!mounted) return;
           target = await showBowTargetDialog(
+            context,
+            players: widget.players,
+            myId: widget.repo.myId,
+          );
+          if (target == null) return;
+        } else if (chooseGuard) {
+          if (!mounted) return;
+          target = await showGuardTargetDialog(
             context,
             players: widget.players,
             myId: widget.repo.myId,
@@ -399,29 +426,72 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         .where((q) => ((q['until_day'] as int?) ?? 0) >= widget.day)
         .toList();
     if (active.isEmpty) return null;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          for (final q in active)
-            StatusTag(
-              text: switch (q['kind']) {
-                'mirror' => 'Cermin Kecil aktif',
-                'accuse' => 'Perisai Tuduhan aktif',
-                _ => 'Perisai Malam aktif',
-              },
-              color: EmbunColors.gold,
-              icon: switch (q['kind']) {
-                'mirror' => Icons.flip_rounded,
-                'accuse' => Icons.gavel_rounded,
-                _ => Icons.shield_rounded,
-              },
-              fontSize: 11,
+    final names = {
+      for (final player in widget.players)
+        player['user_id']: player['name'] ?? 'Pemain',
+    };
+    return LayoutBuilder(
+      builder: (context, box) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 90),
+          child: SingleChildScrollView(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final q in active)
+                  Container(
+                    constraints: BoxConstraints(maxWidth: box.maxWidth),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: EmbunColors.gold.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: EmbunColors.gold.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          switch (q['kind']) {
+                            'mirror' => Icons.flip_rounded,
+                            'accuse' => Icons.gavel_rounded,
+                            _ => Icons.shield_rounded,
+                          },
+                          size: 16,
+                          color: EmbunColors.gold,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            q['direction'] == 'outgoing'
+                                ? 'Menjaga ${names[q['user_id']] ?? 'pemain'}'
+                                  ' · sampai hari ${q['until_day']}'
+                                : '${switch (q['kind']) {
+                                    'mirror' => 'Cermin Kecil aktif',
+                                    'accuse' => 'Perisai Tuduhan aktif',
+                                    _ => 'Perisai Malam aktif',
+                                  }} · sampai hari ${q['until_day']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: EmbunColors.gold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

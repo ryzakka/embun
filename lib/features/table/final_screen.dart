@@ -7,6 +7,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import 'card_tile.dart';
+import 'endgame_aura.dart';
 import 'player_status.dart';
 
 double _seg(double v, double a, double b) =>
@@ -41,6 +42,23 @@ class _Award {
   final String uid;
   final String text;
   const _Award(this.title, this.icon, this.color, this.uid, this.text);
+
+  String get category => switch (title) {
+    'Dermawan Hayu' => 'Hayu',
+    'Dalang Kabut' || 'Bayang Lolos' => 'Kabut',
+    'Pembelanja Ulung' => 'Ekonomi',
+    _ => 'Sidang',
+  };
+}
+
+class _RankingCategory {
+  const _RankingCategory(this.label, this.title, this.icon, this.unit, this.rows);
+
+  final String label;
+  final String title;
+  final String icon;
+  final String unit;
+  final List<MapEntry<String, int>> rows;
 }
 
 class _Round {
@@ -82,6 +100,7 @@ class _Stats {
   final List<_Round> rounds;
   final List<MapEntry<String, int>> topCards;
   final List<_Award> awards;
+  final List<_RankingCategory> rankings;
   final List<_Day> chron;
   final List<_Acc> acc;
   final int spent;
@@ -97,6 +116,7 @@ class _Stats {
     required this.rounds,
     required this.topCards,
     required this.awards,
+    required this.rankings,
     required this.chron,
     required this.acc,
     required this.spent,
@@ -110,6 +130,7 @@ const _pageTitles = [
   'Kronik Desa',
   'Sidang Desa',
   'Cahaya & Kabut',
+  'Peringkat Pertandingan',
   'Gelar Para Pemain',
   'Para Pemain',
 ];
@@ -120,11 +141,12 @@ const _pageTabs = [
   'Kronik',
   'Sidang',
   'Persembahan',
+  'Peringkat',
   'Gelar',
   'Pemain',
 ];
-const _pageMs = [3400, 3000, 1050, 1100, 1100, 1100, 1200, 900];
-const _lastPage = 7;
+const _pageMs = [3800, 3000, 1050, 1100, 1100, 1100, 1600, 1600, 900];
+const _lastPage = 8;
 
 const _endReasonText = {
   'daun_penuh': 'Daun Hayu kembali penuh.',
@@ -145,8 +167,9 @@ const _endReasonText = {
 ///  3 Kronik Desa    garis waktu hari demi hari: persembahan, pembelian, sidang
 ///  4 Sidang Desa    batang suara tiap voting + ketepatan tiap pemain
 ///  5 Cahaya & Kabut tarik tambang kartu persembahan + kartu terbanyak
-///  6 Gelar          penghargaan yang dihitung dari catatan permainan
-///  7 Para Pemain    peran asli, nyawa, catatan lengkap, dan tombol kembali
+///  6 Peringkat      kontribusi tiap kategori, dengan peringkat seri
+///  7 Gelar          penghargaan per kategori dari catatan permainan
+///  8 Para Pemain    peran asli, nyawa, catatan lengkap, dan tombol kembali
 ///
 /// Gunakan tab, tombol bawah, atau geser isi untuk berganti bab.
 /// Semua statistik dihitung dari data game_recap + rahasia yang terbuka di
@@ -211,6 +234,8 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     vsync: this,
   );
   int _page = 0;
+  int _rankingCategory = 0;
+  String _awardCategory = 'Semua';
   bool _loadingSecrets = true;
   bool _loadingRecap = true;
   Map<String, Map<String, dynamic>> _secrets = {};
@@ -236,6 +261,15 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     HapticFeedback.heavyImpact();
     _loadSecrets();
     _loadRecap();
+  }
+
+  @override
+  void didUpdateWidget(covariant FinalResultScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_recap != null &&
+        (oldWidget.defs != widget.defs || oldWidget.players != widget.players)) {
+      _stats = _compute();
+    }
   }
 
   @override
@@ -369,10 +403,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       final uid = o['user_id'] as String;
       final cid = o['card_id'] as String;
       freq[cid] = (freq[cid] ?? 0) + 1;
-      if (widget.defs[cid]?['side'] == 'antagonis') {
+      final side = widget.defs[cid]?['side'];
+      if (side == 'antagonis') {
         bad++;
         badBy[uid] = (badBy[uid] ?? 0) + 1;
-      } else {
+      } else if (side == 'warga') {
         good++;
         goodBy[uid] = (goodBy[uid] ?? 0) + 1;
       }
@@ -398,7 +433,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         m[t] = (m[t] ?? 0) + weight;
       }
       voteN[d] = (voteN[d] ?? 0) + weight;
-      if (antagIds.isEmpty || antagIds.contains(uid)) continue;
+      if (_secrets[uid]?['role'] != 'warga') continue;
       final a = byDay.putIfAbsent(d, () => [0, 0, 0]);
       wargaVotes += weight;
       if (t == null) {
@@ -630,6 +665,41 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       }
     }
 
+    List<MapEntry<String, int>> ranked(Map<String, int> values) =>
+        values.entries.where((entry) => entry.value > 0).toList()..sort((a, b) {
+          final byValue = b.value.compareTo(a.value);
+          return byValue != 0 ? byValue : a.key.compareTo(b.key);
+        });
+    final rankings = [
+      _RankingCategory(
+        'Persembahan',
+        'Kontribusi Warga',
+        'donations',
+        'kartu baik',
+        ranked({
+          for (final e in goodBy.entries)
+            if (_secrets[e.key]?['role'] == 'warga') e.key: e.value,
+        }),
+      ),
+      _RankingCategory(
+        'Sidang',
+        'Ketepatan Tuduhan',
+        'vote',
+        'tuduhan tepat',
+        ranked(rightBy),
+      ),
+      _RankingCategory(
+        'Kabut',
+        'Kontribusi Terbisik',
+        'bulirhitam',
+        'kartu kabut',
+        ranked({
+          for (final e in badBy.entries)
+            if (antagIds.contains(e.key)) e.key: e.value,
+        }),
+      ),
+    ];
+
     final topCards = freq.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -645,6 +715,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       rounds: rounds,
       topCards: topCards.take(3).toList(),
       awards: awards,
+      rankings: rankings,
       chron: chron,
       acc: acc,
       spent: costBy.values.fold<int>(0, (a, b) => a + b),
@@ -685,6 +756,15 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               ),
             ),
           ),
+          if (_page == 0 || _page == 6 || _page == 7)
+            AnimatedBuilder(
+              animation: Listenable.merge([_pa, _loop]),
+              builder: (context, _) => EndgameAura(
+                color: _iWon ? EmbunColors.gold : EmbunColors.mist,
+                time: _reduceMotion ? 0 : _loop.value * 600,
+                progress: _reduceMotion ? 1 : _pa.value,
+              ),
+            ),
           // Daun habis: hantu murka menampakkan diri bergiliran di lembah.
           if (!_reduceMotion &&
               !_win &&
@@ -953,6 +1033,10 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             content = _loadingSecrets
                 ? _notice('Memuat peran pemain…', loading: true)
                 : _pFaction(t, box.maxWidth);
+          } else if ((_page == 6 || _page == 7) && _loadingSecrets) {
+            content = _notice('Memuat peran pemain…', loading: true);
+          } else if ((_page == 6 || _page == 7) && _secrets.isEmpty) {
+            content = _notice('Peran pemain diperlukan untuk menyusun peringkat dan gelar.');
           } else if (_loadingRecap) {
             content = _notice('Memuat statistik…', loading: true);
           } else if (_stats == null) {
@@ -963,13 +1047,20 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               3 => _pKronik(t),
               4 => _p2(t),
               5 => _p3(t),
+              6 => _pRankings(t),
               _ => _p4(t),
             };
           }
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: _page == 3 ? 750 : 1000),
+              constraints: BoxConstraints(
+                maxWidth: switch (_page) {
+                  3 => 750,
+                  6 || 7 => 720,
+                  _ => 1000,
+                },
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1026,6 +1117,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               title,
               style: TextStyle(
                 color: EmbunColors.cream,
+                shadows: [Shadow(color: resultColor.withValues(alpha: 0.5), blurRadius: 28)],
                 fontSize: wide && !compact ? 50 : 34,
                 fontWeight: FontWeight.w900,
                 height: 1.08,
@@ -2273,37 +2365,238 @@ class _FinalResultScreenState extends State<FinalResultScreen>
 
   // ------------------------------------------------------------ bab 4
 
-  Widget _p4(double t) {
-    final s = _stats!;
-    if (s.awards.isEmpty) {
-      return const Text(
-        'Tak ada yang menonjol kali ini.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white60),
-      );
-    }
-    final awards = [
-      for (var i = 0; i < s.awards.length; i++)
-        _awardRow(s.awards[i], _seg(t, 0.04 + 0.06 * i, 0.27 + 0.06 * i)),
-    ];
-    final split = (awards.length + 1) ~/ 2;
-    return _sideBySide(
-      Column(children: awards.take(split).toList()),
-      Column(children: awards.skip(split).toList()),
+  Widget _pRankings(double t) {
+    final category = _stats!.rankings[_rankingCategory];
+    final rows = category.rows;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            for (var i = 0; i < _stats!.rankings.length; i++)
+              ChoiceChip(
+                label: Text(_stats!.rankings[i].label),
+                selected: _rankingCategory == i,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _rankingCategory = i),
+              ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SectionHeader(icon: category.icon, title: category.title),
+        const SizedBox(height: 8),
+        const Text(
+          'Berdasarkan catatan pertandingan ini. Nilai seri berbagi peringkat.',
+          style: TextStyle(color: Colors.white54, fontSize: 11, height: 1.4),
+        ),
+        if (rows.isEmpty)
+          _notice('Belum ada ${category.unit} yang tercatat.')
+        else
+          for (var i = 0; i < rows.length; i++)
+            _up(
+              t,
+              0.03 + i * 0.05,
+              0.25 + i * 0.05,
+              _rankingRow(
+                rows[i],
+                1 + rows.where((entry) => entry.value > rows[i].value).length,
+                category.unit,
+              ),
+            ),
+      ],
     );
   }
 
-  Widget _awardRow(_Award a, double p) {
-    // Seperti cap ditekan: membesar lalu mendarat dengan sedikit memantul.
-    final e = Curves.easeOutBack.transform(p);
-    final op = _smooth(_seg(p, 0, 0.5));
+  Widget _rankingRow(MapEntry<String, int> entry, int rank, String unit) {
+    final color = switch (rank) {
+      1 => EmbunColors.gold,
+      2 => const Color(0xFFD8E4EA),
+      3 => const Color(0xFFD6AA86),
+      _ => const Color(0xFFABB8AE),
+    };
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: rank == 1 ? color.withValues(alpha: 0.09) : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withValues(alpha: rank == 1 ? 0.5 : 0.16),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 30,
+            child: Text(
+              '$rank'.padLeft(2, '0'),
+              style: TextStyle(
+                fontSize: 23,
+                color: color,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PlayerAvatar(
+            path: protagonistPath(_cardOf(entry.key) ?? 'default'),
+            size: 42,
+            ring: color,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _nameOf(entry.key),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$unit${entry.key == widget.myId ? ' · Kamu' : ''}',
+                  style: const TextStyle(fontSize: 11, color: Colors.white60),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${entry.value}',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _p4(double t) {
+    final awards = _stats!.awards;
+    if (awards.isEmpty) return _notice('Belum ada gelar yang memenuhi syarat.');
+    final visible = awards
+        .where(
+          (award) =>
+              _awardCategory == 'Semua' || award.category == _awardCategory,
+        )
+        .toList();
+    final featured =
+        visible.where((award) => award.uid == widget.myId).firstOrNull ??
+        visible.firstOrNull;
+    final others = visible.where((award) => award != featured).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 7,
+          runSpacing: 6,
+          children: [
+            for (final category in [
+              'Semua',
+              'Hayu',
+              'Sidang',
+              'Kabut',
+              'Ekonomi',
+            ])
+              ChoiceChip(
+                label: Text(category),
+                selected: _awardCategory == category,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _awardCategory = category),
+              ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        if (featured != null) ...[
+          _up(
+            t,
+            0.02,
+            0.35,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [
+                    featured.color.withValues(alpha: 0.18),
+                    const Color(0xB30C1A16),
+                  ],
+                ),
+                border: Border.all(
+                  color: featured.color.withValues(alpha: 0.55),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: featured.color.withValues(alpha: 0.09),
+                    blurRadius: 30,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    featured.uid == widget.myId
+                        ? 'GELARMU'
+                        : 'SOROTAN PERTANDINGAN',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white60,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  GameIcon(featured.icon, size: 48),
+                  const SizedBox(height: 10),
+                  Text(
+                    featured.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: featured.color,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _nameOf(featured.uid),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    featured.text,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < others.length; i++)
+            _awardRow(others[i], _seg(t, 0.04 + 0.04 * i, 0.24 + 0.04 * i)),
+        ] else
+          _notice('Belum ada gelar untuk kategori ini.'),
+      ],
+    );
+  }
+
+  Widget _awardRow(_Award award, double progress) {
+    final entrance = Curves.easeOutBack.transform(progress);
     return Opacity(
-      opacity: op,
+      opacity: _smooth(_seg(progress, 0, 0.5)),
       child: Transform.scale(
-        scale: _lerp(1.05, 1, e),
+        scale: _lerp(1.05, 1, entrance),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(border: Border(bottom: _rule(a.color))),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(border: Border(bottom: _rule(award.color))),
           child: Row(
             children: [
               Container(
@@ -2311,10 +2604,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: a.color.withValues(alpha: 0.18),
-                  border: Border.all(color: a.color),
+                  color: award.color.withValues(alpha: 0.14),
+                  border: Border.all(
+                    color: award.color.withValues(alpha: 0.65),
+                  ),
                 ),
-                child: Center(child: GameIcon(a.icon, size: 28)),
+                child: Center(child: GameIcon(award.icon, size: 26)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2322,45 +2617,38 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      a.title,
+                      _nameOf(award.uid),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      award.title,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
-                        color: a.color,
+                        color: award.color,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
-                      a.text,
+                      award.text,
                       style: const TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.white70,
+                        fontSize: 12,
+                        color: Colors.white60,
                         height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 62,
-                child: Column(
-                  children: [
-                    PlayerAvatar(
-                      path: protagonistPath(_cardOf(a.uid) ?? 'default'),
-                      size: 42,
-                      ring: a.color,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _nameOf(a.uid),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
+              const SizedBox(width: 10),
+              PlayerAvatar(
+                path: protagonistPath(_cardOf(award.uid) ?? 'default'),
+                size: 38,
+                ring: award.color,
               ),
             ],
           ),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
@@ -73,50 +75,22 @@ class PartsStrip extends StatelessWidget {
 
   Widget _metric({
     required Widget icon,
-    required String name,
     required String amount,
     required Color tone,
-    String? detail,
-    Widget? meter,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
+  }) => Row(
     children: [
-      Row(
-        children: [
-          icon,
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(name, style: dayCaption.copyWith(fontSize: 10)),
-                ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    amount,
-                    style: dayMetricValue.copyWith(fontSize: 15, color: tone),
-                  ),
-                ),
-              ],
-            ),
+      icon,
+      const SizedBox(width: 5),
+      Expanded(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            amount,
+            style: dayMetricValue.copyWith(fontSize: 15, color: tone),
           ),
-        ],
-      ),
-      if (detail != null)
-        Text(
-          detail,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: dayCaption.copyWith(fontSize: 9.5),
         ),
-      if (meter != null) ...[const SizedBox(height: 3), meter],
+      ),
     ],
   );
 
@@ -146,17 +120,18 @@ class PartsStrip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: LayoutBuilder(
           builder: (context, box) {
-            final size = box.maxWidth < 248 ? 20.0 : 24.0;
+            final size = box.maxWidth < 340 ? 30.0 : 38.0;
             final entries = [
               _metric(
-                icon: GameIcon('helaidaun', size: size),
-                name: 'Daun$delta',
+                icon: _HayuRing(
+                  value: effects.leaves.clamp(0, kLeavesMax) / kLeavesMax,
+                  tone: leafTone,
+                  size: size,
+                  mark: effects.winLeaves.clamp(0, kLeavesMax) / kLeavesMax,
+                  child: GameIcon('helaidaun', size: size * 0.64),
+                ),
                 amount: leaves,
                 tone: leafTone,
-                detail: effects.expandedRules ? effects.leafLevel.label : null,
-                meter: effects.expandedRules
-                    ? _leafMeter(effects, leafTone)
-                    : null,
               ),
               for (final (part, condition, amount) in [
                 ('akar', effects.akar, root),
@@ -164,20 +139,15 @@ class PartsStrip extends StatelessWidget {
                 ('tanah', effects.tanah, fog),
               ])
                 _metric(
-                  icon: PartBadge(part, condition.toneKey, size: size),
-                  name: partName(part),
+                  icon: _partRing(part, condition, size: size),
                   amount: amount,
                   tone: colorOf(condition.toneKey),
-                  detail: condition.score != null
-                      ? _partReading(condition)
-                      : null,
-                  meter: _partMeter(condition),
                 ),
             ];
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 5),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   for (var i = 0; i < entries.length; i++) ...[
                     if (i > 0) const SizedBox(width: 6),
@@ -197,80 +167,88 @@ String _partReading(HayuPartStatus part) => part.score == null
     ? part.label
     : '${hayuAmount(part.score!, signed: true)} · ${part.label}';
 
-Widget? _partMeter(HayuPartStatus part) {
-  final score = part.score;
-  return score == null
-      ? null
-      : _HayuMeter(
-          value: score / kHayuPartMax,
-          tone: PartsStrip.colorOf(part.toneKey),
-          centered: true,
-          mark: 0.5,
-        );
-}
+Widget _partRing(String name, HayuPartStatus part, {double size = 44}) =>
+    _HayuRing(
+      value: part.score == null
+          ? switch (part.condition) {
+              HayuCondition.subur => 0.5,
+              HayuCondition.biasa => 0.0,
+              HayuCondition.layu => -0.5,
+              HayuCondition.rusak => -1.0,
+            }
+          : part.score! / kHayuPartMax,
+      tone: PartsStrip.colorOf(part.toneKey),
+      size: size,
+      child: PartBadge(name, part.toneKey, size: size * 0.70),
+    );
 
-Widget _leafMeter(HayuEffects effects, Color tone) => _HayuMeter(
-  value: effects.leaves.clamp(0, kLeavesMax) / kLeavesMax,
-  tone: tone,
-  mark: effects.winLeaves.clamp(0, kLeavesMax) / kLeavesMax,
-);
-
-class _HayuMeter extends StatelessWidget {
-  const _HayuMeter({
+class _HayuRing extends StatelessWidget {
+  const _HayuRing({
     required this.value,
     required this.tone,
-    required this.mark,
-    this.centered = false,
+    required this.size,
+    required this.child,
+    this.mark,
   });
 
   final double value;
   final Color tone;
-  final double mark;
-  final bool centered;
+  final double size;
+  final Widget child;
+  final double? mark;
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: value, end: value),
+    tween: Tween(begin: 0, end: value.clamp(-1.0, 1.0)),
     duration: MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
-        : const Duration(milliseconds: 420),
+        : const Duration(milliseconds: 480),
     curve: Curves.easeOutCubic,
-    builder: (context, current, _) => SizedBox(
-      height: 5,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final width = box.maxWidth;
-          final origin = centered ? width / 2 : 0.0;
-          final extent = current * (width - origin);
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                const ColoredBox(color: Colors.white12),
-                if (extent != 0)
-                  Positioned(
-                    left: origin + (extent < 0 ? extent : 0),
-                    width: extent.abs(),
-                    top: 0,
-                    bottom: 0,
-                    child: ColoredBox(color: tone),
-                  ),
-                if (width >= 1)
-                  Positioned(
-                    left: (width * mark - 0.5).clamp(0.0, width - 1),
-                    width: 1,
-                    top: 0,
-                    bottom: 0,
-                    child: const ColoredBox(color: Colors.white70),
-                  ),
-              ],
-            ),
-          );
-        },
+    child: Center(child: child),
+    builder: (context, progress, child) => SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: _RingPainter(progress, tone, mark),
+        child: child,
       ),
     ),
   );
+}
+
+class _RingPainter extends CustomPainter {
+  const _RingPainter(this.value, this.tone, this.mark);
+
+  final double value;
+  final Color tone;
+  final double? mark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 2;
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.12);
+    canvas.drawCircle(center, radius, track);
+    final arc = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawArc(
+      arc,
+      -math.pi / 2,
+      value * math.pi * 2,
+      false,
+      track..color = tone,
+    );
+    final marker = mark ?? 0;
+    final angle = marker * math.pi * 2 - math.pi / 2;
+    final point = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+    canvas.drawCircle(point, 1.6, Paint()..color = const Color(0xFFECE3C2));
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.value != value || old.tone != tone || old.mark != mark;
 }
 
 /// Rincian Hayu dari kondisi publik dan, bila tersedia, laju pribadi pemain.
@@ -316,7 +294,7 @@ Future<void> showPartsSheet(
           Center(
             child: Text(
               effects.expandedRules
-                  ? 'Akar, Batang, dan Tanah bergerak dari −8 sampai +8. Garis tengah menandai 0. '
+                  ? 'Akar, Batang, dan Tanah bergerak dari −8 sampai +8. Cincin bergerak searah jarum jam untuk nilai positif dan berlawanan untuk nilai negatif. '
                         'Setiap dua persembahan, bagian yang belum Rusak atau Kritis bergeser satu poin ke 0.'
                   : 'Angka menunjukkan dampak dari kondisi saat ini.',
               textAlign: TextAlign.center,
@@ -346,13 +324,18 @@ Future<void> showPartsSheet(
             ),
           _PartCard(
             zoom: 'pohonindikator-zoomdedaunan',
-            badge: SizedBox(
-              width: 44,
-              height: 44,
-              child: GameImage(
-                path: sceneryPath('pohonindikator-daun'),
-                fit: BoxFit.contain,
-                cacheWidth: 132,
+            badge: _HayuRing(
+              size: 44,
+              value: effects.leaves.clamp(0, kLeavesMax) / kLeavesMax,
+              tone: leafTone,
+              mark: effects.winLeaves.clamp(0, kLeavesMax) / kLeavesMax,
+              child: Padding(
+                padding: const EdgeInsets.all(7),
+                child: GameImage(
+                  path: sceneryPath('pohonindikator-daun'),
+                  fit: BoxFit.contain,
+                  cacheWidth: 132,
+                ),
               ),
             ),
             title: 'Daun',
@@ -360,7 +343,6 @@ Future<void> showPartsSheet(
                 '${effects.leaves}/${effects.winLeaves}'
                 '${effects.expandedRules ? ' · ${effects.leafLevel.label}' : ''}',
             color: leafTone,
-            meter: effects.expandedRules ? _leafMeter(effects, leafTone) : null,
             desc: missing == 0
                 ? 'Target akhir tercapai. $kLeavesMax daun untuk menang langsung.'
                 : 'Kurang $missing daun untuk target akhir. '
@@ -379,10 +361,9 @@ Future<void> showPartsSheet(
           ),
           _PartCard(
             zoom: 'pohonindikator-zoomakar',
-            badge: PartBadge('akar', effects.akar.toneKey, size: 44),
+            badge: _partRing('akar', effects.akar),
             title: 'Akar',
             status: _partReading(effects.akar),
-            meter: _partMeter(effects.akar),
             color: PartsStrip.colorOf(effects.akar.toneKey),
             desc: effects.expandedRules
                 ? 'Tiap poin menggeser laju embun Warga sebesar 6 poin persentase setelah penalti laju.'
@@ -391,10 +372,9 @@ Future<void> showPartsSheet(
           ),
           _PartCard(
             zoom: 'pohonindikator-zoombatang',
-            badge: PartBadge('batang', effects.batang.toneKey, size: 44),
+            badge: _partRing('batang', effects.batang),
             title: 'Batang',
             status: _partReading(effects.batang),
-            meter: _partMeter(effects.batang),
             color: PartsStrip.colorOf(effects.batang.toneKey),
             desc: effects.expandedRules
                 ? 'Tiap dua poin menggeser satu perisai. Dihitung saat persembahan mulai, selama perlindungan belum dilucuti.'
@@ -403,10 +383,9 @@ Future<void> showPartsSheet(
           ),
           _PartCard(
             zoom: 'pohonindikator-zoomtanah',
-            badge: PartBadge('tanah', effects.tanah.toneKey, size: 44),
+            badge: _partRing('tanah', effects.tanah),
             title: 'Tanah',
             status: _partReading(effects.tanah),
-            meter: _partMeter(effects.tanah),
             color: PartsStrip.colorOf(effects.tanah.toneKey),
             desc: effects.expandedRules
                 ? 'Tiap dua poin menggeser satu kabut. Kabut dihitung dari kondisi awal persembahan.'
@@ -484,7 +463,6 @@ class _PartCard extends StatelessWidget {
   final Color color;
   final String desc;
   final String effect;
-  final Widget? meter;
   const _PartCard({
     required this.zoom,
     required this.badge,
@@ -493,7 +471,6 @@ class _PartCard extends StatelessWidget {
     required this.color,
     required this.desc,
     required this.effect,
-    this.meter,
   });
 
   @override
@@ -544,7 +521,6 @@ class _PartCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (meter != null) ...[const SizedBox(height: 6), meter!],
                       const SizedBox(height: 3),
                       Text(
                         desc,

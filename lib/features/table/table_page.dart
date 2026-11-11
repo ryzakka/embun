@@ -28,6 +28,7 @@ import 'eviction_verdict_scene.dart';
 import 'emote_panel.dart';
 import 'ending_cinematic.dart';
 import 'final_screen.dart';
+import 'game_cancelled_screen.dart';
 import 'offering_ceremony.dart';
 import 'offering_transition.dart';
 import 'offering_view.dart';
@@ -2212,7 +2213,6 @@ class _TablePageState extends State<TablePage> {
         : disguisedRate == null
         ? '—'
         : '${hayuAmount(disguisedRate, signed: true)}/hari';
-    final currencyLabel = showAsAntag ? 'BULIR HITAM' : 'TETES EMBUN';
     final balanceTone = showAsAntag
         ? const Color(0xFFE4CDFF)
         : const Color(0xFFFFDE8D);
@@ -2228,22 +2228,19 @@ class _TablePageState extends State<TablePage> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GameIcon(showAsAntag ? 'bulirhitam' : 'bulirembun', size: iconSize),
+            Semantics(
+              label: showAsAntag ? 'Bulir hitam' : 'Tetes embun',
+              child: GameIcon(
+                showAsAntag ? 'bulirhitam' : 'bulirembun',
+                size: iconSize,
+              ),
+            ),
             const SizedBox(width: 5),
             Flexible(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  balanceText(
-                    currencyLabel,
-                    dayOverline.copyWith(
-                      fontSize: 9,
-                      letterSpacing: 0.85,
-                      height: 1.1,
-                      color: balanceTone,
-                    ),
-                  ),
                   BalanceFx(
                     key: _balanceKey,
                     quiet: _quietBalance,
@@ -2464,145 +2461,14 @@ class _TablePageState extends State<TablePage> {
         onExit: () => _backToLobby(),
       );
     }
-    final sakura =
-    leaves >= 30 ? AssetCatalog.I.file(pohonDir, 'pohon0-sakura') : null;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Backdrop(
-            path: landscapePath(leaves), dark: !wargaMenang && !bubar, dim: 0.6),
-        SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      height: 48,
-                      child: GameImage(
-                          path: logoPath('logoteks-transparent'),
-                          fit: BoxFit.contain,
-                          cacheWidth: 600),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 260,
-                      child:
-                      TreePortrait(leaves: leaves, pathOverride: sakura),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      bubar
-                          ? 'Permainan disudahi'
-                          : wargaMenang
-                          ? 'Hayu mekar kembali!'
-                          : 'Hayu layu, desa kembali redup...',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    if (verdict != null)
-                      Text(verdict, textAlign: TextAlign.center),
-                    Text('Daun akhir: $leaves'),
-                    const SizedBox(height: 16),
-                    FutureBuilder<Map<String, Map<String, dynamic>>>(
-                      future: secretsFuture,
-                      builder: (context, s) {
-                        final secrets = s.data;
-                        if (secrets == null) return const SizedBox(height: 8);
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _antagReveal(secrets),
-                            if (!bubar) _recapSection(secrets),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    EmbunButton(
-                      label: 'Kembali ke balai',
-                      icon: 'home',
-                      onPressed: () => _backToLobby(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _antagReveal(Map<String, Map<String, dynamic>> secrets) {
-    final entries = secrets.entries.where((e) => e.value['role'] == 'antagonis');
-    return Column(
-      children: [
-        for (final e in entries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _revealedAntagonist(e.key, (e.value['dark_seed'] as int?) ?? 0),
-          ),
-      ],
-    );
-  }
-
-  Widget _revealedAntagonist(String antagId, int seed) {
-    final who = players.where((p) => p['user_id'] == antagId);
-    final name = who.isEmpty ? '?' : who.first['name'] as String;
-    // Kartu baik samaran yang selama ini dilihat pemain lain.
-    final disCard = who.isEmpty ? null : who.first['character_card'] as String?;
-    final disPath = disCard == null ? null : protagonistPath(disCard);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (disPath != null) ...[
-          Opacity(
-            opacity: 0.75,
-            child: CardArt(
-              path: disPath,
-              width: 70,
-              glow: const Color(0xFFFFD866),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Icon(Icons.arrow_forward_rounded,
-                size: 22, color: Color(0xFFB07CE8)),
-          ),
-        ],
-        CardArt(
-          path: darkCardPath(seed),
-          width: 90,
-          glow: const Color(0xFFB07CE8),
-        ),
-        const SizedBox(width: 16),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Si Terbisik ternyata...',
-                  style: TextStyle(color: Colors.white70)),
-              Text(name,
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold)),
-              if (disCard != null)
-                Text('menyamar sebagai ${characterTitle(disCard)}',
-                    style:
-                    const TextStyle(fontSize: 13, color: Colors.white60)),
-              if (usernames[antagId] != null)
-                Text('yaitu ${usernames[antagId]}',
-                    style:
-                    const TextStyle(fontSize: 16, color: Colors.white70)),
-            ],
-          ),
-        ),
-      ],
+    return GameCancelledScreen(
+      key: const ValueKey('cancelled'),
+      leaves: leaves,
+      day: day,
+      players: players,
+      reason: verdict,
+      secrets: secretsFuture!,
+      onExit: () => _backToLobby(),
     );
   }
 
