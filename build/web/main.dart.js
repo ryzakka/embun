@@ -924,7 +924,7 @@ a.j()
 return l},
 og(a){return new A.UA(a)},
 buA(a){var s,r,q,p,o,n,m
-$label0$0:for(s=a.length,r=0;r<6;++r){q=B.a0R[r]
+$label0$0:for(s=a.length,r=0;r<6;++r){q=B.a0Q[r]
 p=q.c
 o=p.length
 if(s<o)continue $label0$0
@@ -8112,7 +8112,7 @@ bvy(a,b,c){var s,r,q=A.m7(c)
 if(c<12)return q
 switch(a){case"day":s=c>=20?A.b0N(B.a3D,b):A.b0N(B.a41,b)
 break
-case"research":s=A.b0N(B.a2C,b)
+case"research":s=A.b0N(B.a2D,b)
 break
 case"discussion":r=A.a(["balaidesa-dalamsiang","sinarmataharikedalamrumah","kamarkayudesa","perpustakaantua"],t.s)
 if(c<20)r.push("hantu-perempuanbertopengdiatasrak*")
@@ -8124,7 +8124,7 @@ case"offering":s=A.hG(B.a2O)
 break
 default:s=null}return s==null?q:s},
 beZ(a){var s
-$label0$0:{if("sumur"===a){s=A.hG(B.a2E)
+$label0$0:{if("sumur"===a){s=A.hG(B.a2F)
 break $label0$0}if("rumah"===a){s=A.hG(B.a3Q)
 break $label0$0}s=null
 break $label0$0}return s},
@@ -8143,7 +8143,7 @@ o=o==null?null:o.h(0,p)
 o.toString
 m.push(o)}}return m},
 bfw(){var s,r,q,p,o,n="assets/bentang",m=A.a([],t.s)
-for(s=t.N,r=t.G,q=0;q<3;++q){p=B.a1B[q]
+for(s=t.N,r=t.G,q=0;q<3;++q){p=B.a1A[q]
 o=$.cz
 o=(o==null?new A.cj(A.w(s,r)):o).a.h(0,n)
 if((o==null?null:o.h(0,p))!=null){o=$.cz
@@ -8199,7 +8199,7 @@ r=A.f3(r,q,"")
 q=A.c_("(pria|wanita)$",!0,!1)
 p=A.f3(r,q,"")
 if(p==="peraga")return s?"Peragawati":"Peragawan"
-o=B.a6i.h(0,p)
+o=B.a6h.h(0,p)
 if(o!=null)return o
 if(p.length===0)return a
 n=new A.hc(new A.an(A.a(p.split("-"),t.s),new A.b17(),t.gD),new A.b18(),t.lJ).bh(0," ")
@@ -10243,7 +10243,7 @@ b5V(a,b){var s
 if(b)return B.fY
 if(a==null)return B.M
 s=new A.ir(a)
-return B.a2G[B.j.aw(s.j3(s,0,new A.b19()),6)]},
+return B.a2H[B.j.aw(s.j3(s,0,new A.b19()),6)]},
 b5S(a){var s=A.aw(a.h(0,"created_at"))
 s=A.T2(s==null?"":s)
 return s==null?new A.bZ(A.q1(0,0,!0),0,!0):s},
@@ -11513,7 +11513,7 @@ r.lg(0,s.aV())},
 bdi(a,b,c){var s=null,r=B.b.t(c,0,1),q=B.q.m(0.82),p=A.ai(14),o=A.be(b.m(0.85),1)
 return A.ah(A.al(s,A.u(a,s,1,B.S,s,s,A.ar(s,s,b,s,s,s,s,s,s,s,s,12.5,s,s,B.C,s,s,!0,s,0.3,s,s,s,s,s,s),s,s),B.n,s,s,new A.S(q,s,o,p,s,s,B.o),s,s,s,s,B.ob,s,s,s),r)},
 bfi(a,b,c,d,e,f){var s=A.aX(a,B.b_,t.w).w.a,r=A.b0A(d,s),q=A.b0A(f,s),p=Math.min(10,B.j.t(b,1,9)*2+2)
-A.be8(a,B.a1p,new A.b2c(r,q,e,p,c,c?B.r:B.h),1500)},
+A.be8(a,B.a1o,new A.b2c(r,q,e,p,c,c?B.r:B.h),1500)},
 b6k(a,b,c,d,e,f,g){var s=A.aX(a,B.b_,t.w).w.a,r=A.b0A(d,s),q=A.b0A(g,s),p=f===B.oY,o=p?1900:1500,n=p?B.a2_:B.a4w
 A.be8(a,n,new A.b26(s,c,r,q,f,e,b),o)},
 nf:function nf(a,b){this.a=a
@@ -26581,7 +26581,7 @@ r.toString
 A.ex(r)
 q=a.h(0,"swipeEdge")
 q.toString
-return new A.qM(s,r,B.a2m[A.bJ(q)])},
+return new A.qM(s,r,B.a2n[A.bJ(q)])},
 Jk:function Jk(a,b){this.a=a
 this.b=b},
 qM:function qM(a,b,c){this.a=a
@@ -30036,7 +30036,7 @@ t.Dn.a(a)
 s=J.bm(a)
 r=s.h(a,0)
 r.toString
-switch(B.a10[A.bJ(r)].a){case 0:s=s.hR(a,1)
+switch(B.a1_[A.bJ(r)].a){case 0:s=s.hR(a,1)
 r=s[0]
 r.toString
 A.bJ(r)
@@ -33035,7 +33035,7 @@ aj_:function aj_(){},
 akB:function akB(a,b){this.d=a
 this.w=b},
 ble(a){var s=new A.aha(a)
-return new A.o9(A.T(a.h(0,"id")),A.aw(a.h(0,"friendly_name")),B.c.we(B.a4m,new A.ah6(a),new A.ah7()),B.c.we(B.a2p,new A.ah8(a),new A.ah9()),s.$1("created_at"),s.$1("updated_at"))},
+return new A.o9(A.T(a.h(0,"id")),A.aw(a.h(0,"friendly_name")),B.c.we(B.a4m,new A.ah6(a),new A.ah7()),B.c.we(B.a2q,new A.ah8(a),new A.ah9()),s.$1("created_at"),s.$1("updated_at"))},
 mx:function mx(a,b){this.a=a
 this.b=b},
 l9:function l9(a,b){this.a=a
@@ -35950,7 +35950,7 @@ return b instanceof A.E1&&b.a.k(0,this.a)&&b.b===this.b},
 l(a){return"ColorFilter.mode("+this.a.l(0)+", "+this.b.l(0)+")"}}
 A.xE.prototype={
 gaxa(){var s,r,q=new Float32Array(20)
-for(s=this.a,r=0;r<20;++r)if(B.c.q(B.a0O,r))q[r]=s[r]/255
+for(s=this.a,r=0;r<20;++r)if(B.c.q(B.a0N,r))q[r]=s[r]/255
 else q[r]=s[r]
 return q},
 uM(){return $.bV.bI().ColorFilter.MakeMatrix(this.gaxa())},
@@ -37057,7 +37057,7 @@ l.push(new A.id(n[0],n[1],n[2],n[3],B.pb[m]))}return l},
 ee(a){var s,r,q=this.a
 q===$&&A.b()
 s=q.a.getGlyphPositionAtCoordinate(a.a,a.b)
-r=B.a2o[J.aD(s.affinity.value)]
+r=B.a2p[J.aD(s.affinity.value)]
 return new A.aV(J.aD(s.pos),r)},
 Uy(a){var s=this.a
 s===$&&A.b()
@@ -37399,7 +37399,7 @@ A.to.prototype={
 R(){return"CanvasKitVariant."+this.b}}
 A.ahp.prototype={
 gpb(){var s=this.b,r=s==null?null:s.canvasKitVariant
-return A.bla(B.a2D,r==null?"auto":r)},
+return A.bla(B.a2E,r==null?"auto":r)},
 ga6P(){var s=this.b
 s=s==null?null:s.canvasKitForceCpuOnly
 return s==null?!1:s},
@@ -39267,7 +39267,7 @@ switch(s.a){case"activateSystemCursor":q=a.ge0().b
 q=A.mH(new A.by(q,A.x(q).i("by<2>")))
 if(q!=null){if(q.w===$){q.ghu()
 q.w!==$&&A.aa()
-q.w=new A.aoD()}h=B.a6h.h(0,A.aw(m.h(0,"kind")))
+q.w=new A.aoD()}h=B.a6i.h(0,A.aw(m.h(0,"kind")))
 if(h==null)h="default"
 q=v.G
 if(h==="default")q.document.body.style.removeProperty("cursor")
@@ -39288,7 +39288,7 @@ if(e.b){q=t.f
 d=q.a(q.a(B.dD.ir(a2)).h(0,"data"))
 c=A.aw(d.h(0,"message"))
 if(c!=null&&c.length!==0){b=A.b40(d,"assertiveness")
-e.a.a6e(c,B.a1s[b==null?0:b])}}a.hf(a3,B.dD.cN(!0))
+e.a.a6e(c,B.a1r[b==null?0:b])}}a.hf(a3,B.dD.cN(!0))
 return
 case"flutter/navigation":q=a.ge0().b
 p=t.e8
@@ -43421,7 +43421,7 @@ m=A.bj(s.h(0,"fontWeightIndex"))
 l=m!=null?A.buP(m):"normal"
 r=A.iG(s.h(0,"fontSize"))
 if(r==null)r=null
-p=new A.ayE(new A.agh(r,l,A.aw(s.h(0,"fontFamily")),B.a1m[o],B.pb[n]))
+p=new A.ayE(new A.agh(r,l,A.aw(s.h(0,"fontFamily")),B.a1l[o],B.pb[n]))
 break
 case"TextInput.clearClient":p=B.NA
 break
@@ -48662,7 +48662,7 @@ if(r>255){if(s>b){q=this.a
 q.toString
 q.A(0,A.j9(a,b,s))}q=this.a
 q.toString
-q.A(0,A.j9(B.a15,0,1))
+q.A(0,A.j9(B.a14,0,1))
 b=s+1}}if(b<c)this.WF(a,b,c,!1)}}
 A.lD.prototype={
 A(a,b){this.fE(b,0,b.length,!1)},
@@ -51832,7 +51832,7 @@ s=r}q=this.a
 p=q.d
 if(p==null)p=A.bH().bu("assets/pohon","pohon"+A.aaV(q.c,9.99))
 q=A.ai(16)
-return A.aZ(new A.W(n,s,new A.aP(new A.S(o,o,A.be(B.eI,1),q,B.a1u,o,B.o),B.J,A.eR(A.ai(16),A.hr(new A.co(p,B.ay,B.k,1000,new A.b_(p,t._b)),B.eg,A.bek(),B.G,B.G,A.iJ())),o),o),o,o,o)},
+return A.aZ(new A.W(n,s,new A.aP(new A.S(o,o,A.be(B.eI,1),q,B.a1t,o,B.o),B.J,A.eR(A.ai(16),A.hr(new A.co(p,B.ay,B.k,1000,new A.b_(p,t._b)),B.eg,A.bek(),B.G,B.G,A.iJ())),o),o),o,o,o)},
 $S:109}
 A.ev.prototype={
 E(a){var s,r,q,p,o=this,n=null,m=o.d,l=A.be(o.e,2),k=o.c
@@ -52151,10 +52151,10 @@ E(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d=f.e==null,c=!d
 switch(f.f.a){case 0:s=B.a4u
 r=B.h
 break
-case 1:s=B.a2k
+case 1:s=B.a2l
 r=B.ap
 break
-case 2:s=B.a2r
+case 2:s=B.a2s
 r=B.x
 break
 default:r=e
@@ -52828,7 +52828,7 @@ if(b.b>=520)return new A.yF(A.a7(A.a([A.aq(s.a,1),B.b8,A.aq(s.b,1)],t.p),B.K,nul
 return A.J(A.a([s.a,B.aj,s.b],t.p),B.l,B.e,B.i)},
 $S:656}
 A.aKs.prototype={
-$1(a){return B.a2A[a]},
+$1(a){return B.a2B[a]},
 $S:69}
 A.we.prototype={}
 A.b0F.prototype={
@@ -53550,7 +53550,7 @@ n=B.q.m(0.4)
 m=p?B.h:B.eI
 l=new A.ay(m,p?2:1,B.A,-1)
 m=p?A.a([new A.bn(0,B.W,B.h.m(0.4),B.m,12)],r):i
-k=B.a1b[q]
+k=B.a1a[q]
 j=k.b
 if(j!=null)j=A.f9(j,q===2?B.r:B.h,i,i,22)
 else j=new A.am(k.a,26,i,i,i)
@@ -53613,7 +53613,7 @@ A.Bf.prototype={
 E(a){return new A.hW(13e3,!1,new A.aER(),null)}}
 A.aER.prototype={
 $3(a,b,c){var s=B.j.bm(B.j.t(B.b.bq(b*6),0,5))
-return A.J(A.a([new A.wg(s,null),B.c7,A.ns(s,B.a2s[s],B.h)],t.p),B.l,B.e,B.i)},
+return A.J(A.a([new A.wg(s,null),B.c7,A.ns(s,B.a2t[s],B.h)],t.p),B.l,B.e,B.i)},
 $C:"$3",
 $R:3,
 $S:47}
@@ -54192,7 +54192,7 @@ for(s=J.aS(a),r=null;s.u();){q=s.gP()
 if(!J.c(q.h(0,"kind"),"pembaruan"))continue
 q=A.aw(q.h(0,"version"))
 p=B.d.d9(q==null?"":q)
-if(p.length===0||A.Dv(p,"3.1.18")<=0)continue
+if(p.length===0||A.Dv(p,"3.1.19")<=0)continue
 if(r==null||A.Dv(p,r)>0)r=p}return r},
 aFj(a,b){var s,r,q,p,o=null
 for(s=J.aS(a),r=o;s.u();){q=s.gP()
@@ -54203,7 +54203,7 @@ q=A.aw(q.h(0,"body"))
 r=A.b65(q==null?"":q)
 if(r!=null)break}s=r!=null
 q=s?"Unduh pembaruannya di bawah ini.":"Muat ulang halaman atau perbarui aplikasimu."
-q=A.a([new A.or("info","Versi V"+b+" sudah tersedia (versimu V3.1.18). "+q,B.h,o)],t.p)
+q=A.a([new A.or("info","Versi V"+b+" sudah tersedia (versimu V3.1.19). "+q,B.h,o)],t.p)
 if(s)q.push(new A.R(B.vp,new A.ci("Unduh V"+b,o,new A.aBA(this,r),B.aN,!0,46,o),o))
 return new A.R(B.VV,A.J(q,B.K,B.e,B.i),o)},
 E(a){var s,r=null,q="assets/bentang",p=A.bH().bu(q,"balaidesa-dalamsiang")
@@ -54239,13 +54239,13 @@ if(r){a3=d.y.h(0,b)
 if(a3==null){a3=a1||a2||a6===0
 q=a3}else q=a3}else q=!1
 p=a?A.b65(a4):c
-o=a&&s.length!==0&&A.Dv(s,"3.1.18")>0
+o=a&&s.length!==0&&A.Dv(s,"3.1.19")>0
 a3=A.a([],t.s)
 if(s.length!==0){n="v"+s
-a3.push(A.Dv(s,"3.1.18")===0?n+" (terpasang)":n)}n=A.aw(a5.h(0,"published_at"))
+a3.push(A.Dv(s,"3.1.19")===0?n+" (terpasang)":n)}n=A.aw(a5.h(0,"published_at"))
 n=A.T2(n==null?"":n)
 m=n==null?c:n.abG()
-a3.push(m==null?"":""+A.b4l(m)+" "+B.a1d[A.b4o(m)-1]+" "+A.Hn(m))
+a3.push(m==null?"":""+A.b4l(m)+" "+B.a1c[A.b4o(m)-1]+" "+A.Hn(m))
 l=new A.an(a3,new A.aBl(),t.gD).bh(0,"  \xb7  ")
 a3=B.q.m(0.38)
 n=A.ai(16)
@@ -54521,7 +54521,7 @@ j.a=j.b=null
 for(i=J.aS(m);i.u();){l=i.gP()
 h=A.aw(J.bb(l,"version"))
 k=B.d.d9(h==null?"":h)
-if(J.bT(k)===0||A.Dv(k,"3.1.18")<=0)continue
+if(J.bT(k)===0||A.Dv(k,"3.1.19")<=0)continue
 h=j.b
 if(h==null||A.Dv(k,h)>0){j.b=k
 j.a=null}if(J.c(k,j.b))if(j.a==null){h=A.aw(J.bb(l,"body"))
@@ -54555,7 +54555,7 @@ o=o.a!=null?"Unduh V"+r:"Pembaruan V"+r
 o=A.BQ(1,a,"announcement",0,o,this.ga1p(),1)
 r=a?0:70
 q=t.p
-return new A.R(B.ih,A.J(A.a([o,new A.R(new A.D(r,0,0,0),A.a7(A.a([A.u("Versi baru \xb7 versimu V3.1.18",p,p,p,p,p,B.ajq,p,p),B.b8,A.eb(!1,p,!0,B.a8p,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aMG(this),p,p,p,p,p,p,p)],q),B.l,p,B.e,B.u,0,p),p)],q),s,B.e,B.u),p)},
+return new A.R(B.ih,A.J(A.a([o,new A.R(new A.D(r,0,0,0),A.a7(A.a([A.u("Versi baru \xb7 versimu V3.1.19",p,p,p,p,p,B.ajq,p,p),B.b8,A.eb(!1,p,!0,B.a8p,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aMG(this),p,p,p,p,p,p,p)],q),B.l,p,B.e,B.u,0,p),p)],q),s,B.e,B.u),p)},
 z0(){var s=0,r=A.q(t.H),q=this,p
 var $async$z0=A.r(function(a,b){if(a===1)return A.n(b,r)
 for(;;)switch(s){case 0:A.dh()
@@ -54633,7 +54633,7 @@ A.cf(s,!1).hc(A.Ei(B.JG,B.tP,t.H))},
 ayO(){var s=this.c
 s.toString
 return A.bfj(s)},
-aG5(){var s=this,r=null,q=s.cy&&s.c.ii(t.cY)==null?new A.aMI(s):r,p=A.ai(8),o=s.ch>0,n=o?"V3.1.18  \xb7  ada kabar baru":"V3.1.18"
+aG5(){var s=this,r=null,q=s.cy&&s.c.ii(t.cY)==null?new A.aMI(s):r,p=A.ai(8),o=s.ch>0,n=o?"V3.1.19  \xb7  ada kabar baru":"V3.1.19"
 return A.b4(8,A.eb(!1,p,!0,new A.R(B.vr,A.u(n,r,r,r,r,r,A.ar(r,r,o?B.h:B.b4,r,r,r,r,r,r,r,r,11.5,r,r,r,r,r,!0,r,1.2,r,r,r,B.pc,r,r),r,r),r),r,!0,r,r,r,r,r,r,r,r,r,q,s.ga1l(),r,r,r,r,r,r,r),r,r,r,12,r,r)},
 awA(){return A.bt(new A.aMe(this))},
 z4(a,b){return this.aA2(a,b)},
@@ -54850,7 +54850,7 @@ o=p*1.2
 n=t.p
 q=A.ah(A.bO(A.bD(B.k,new A.W(p*1.3,p,A.av(B.k,A.a([A.al(k,k,B.n,k,k,new A.S(k,k,k,k,k,new A.bB(B.k,0.5,B.z,k,0,A.a([B.h.m(0.18+0.12*r),B.h.m(0)],t.O),k,k),B.aM),k,o,k,k,k,k,k,o),new A.co(A.bH().bu("assets/logo","ikon-transparent"),B.cf,B.k,1000,k)],n),B.v,B.Z),k),0.88+0.12*q),new A.f(0,i*5)),q)
 i=l.d
-i=A.ah(A.bO(A.u("BALAI PERTEMUAN DESA V3.1.18",k,k,k,k,k,A.ar(k,k,B.h.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.l3,k,k),k,k),new A.f(0,(1-i)*10)),i)
+i=A.ah(A.bO(A.u("BALAI PERTEMUAN DESA V3.1.19",k,k,k,k,k,A.ar(k,k,B.h.m(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.l3,k,k),k,k),new A.f(0,(1-i)*10)),i)
 o=l.e
 p=j.cy
 m=p?"Mulai":"Memuat..."
@@ -55109,7 +55109,7 @@ s.ak()}}
 A.MW.prototype={}
 A.b2l.prototype={
 $1(a){var s,r=null,q=A.a([B.abQ,B.ag,B.amA,B.ae],t.p)
-for(s=0;s<2;++s)q.push(new A.R(B.ky,new A.a2s(B.a2i[s],r),r))
+for(s=0;s<2;++s)q.push(new A.R(B.ky,new A.a2s(B.a2j[s],r),r))
 q.push(B.cn)
 q.push(new A.ci("Tutup","silang",new A.b2k(a),B.bJ,!0,46,r))
 return A.l5(r,B.y,new A.bq(B.tl,A.uV(B.h,A.cF(A.J(q,B.K,B.e,B.u),r,B.L,r,r,r,r,r,B.T),B.cG),r),r,r,0,B.cT,B.de,r,r,r)},
@@ -55408,7 +55408,7 @@ A.aRj.prototype={
 $0(){return this.a.as=this.b},
 $S:0}
 A.aRm.prototype={
-$1(a){return B.a1x},
+$1(a){return B.a1w},
 $S:415}
 A.aRi.prototype={
 $0(){return this.a.yG(this.b.a,!0)},
@@ -56163,7 +56163,7 @@ case 2:return A.n(o.at(-1),r)}})
 return A.p($async$iN,r)},
 E(a){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=A.a([],t.HB)
 for(s=0;s<7;++s){r={}
-q=B.a0X[s]
+q=B.a0W[s]
 r.a=null
 p=q.a
 r.a=p
@@ -56367,8 +56367,8 @@ o=A.a([],t.t)
 for(m=0;m<5;++m){n=A.w(r,q)
 l=m===0
 n.n(0,"user_id",l?e:"preview-p"+m)
-n.n(0,"name",B.a2I[m])
-n.n(0,"character_card",B.a0N[m])
+n.n(0,"name",B.a2h[m])
+n.n(0,"character_card",B.a1C[m])
 n.n(0,"ready",l?a1:B.j.aw(m,2)===1)
 if(l)if(b)k=2
 else k=a0?1:0
@@ -58299,9 +58299,9 @@ break $label0$0}if(B.hI===a6){r=14
 break $label0$0}r=28
 break $label0$0}q=new A.eM()
 q.eQ(11)
-$label1$1:{if(B.hI===a6){s=B.a1k
+$label1$1:{if(B.hI===a6){s=B.a1j
 break $label1$1}if(s){s=B.a4b
-break $label1$1}s=B.a16
+break $label1$1}s=B.a15
 break $label1$1}for(p=this.c,o=p*0.35,n=this.f,m=s.length,l=a7.a,k=a6===B.hH,j=0;j<r;++j){i=q.au()
 h=q.au()
 g=k?0.05:0.02
@@ -59013,7 +59013,7 @@ $.A()
 p=A.a0()
 o=o.c
 s=(10+8*r+40*s)*2.5
-p.sby(new A.bB(B.k,0.5,B.z,null,0,A.a([B.p.m(q),B.h.m(q*0.55),B.h.m(0)],t.O),B.a1C,null).cA(A.cP(o,s)))
+p.sby(new A.bB(B.k,0.5,B.z,null,0,A.a([B.p.m(q),B.h.m(q*0.55),B.h.m(0)],t.O),B.a1B,null).cA(A.cP(o,s)))
 a.bH(o,s,p)},
 akW(a){var s,r,q,p,o,n,m,l,k=this.b,j=A.df(A.c1(k.f,0.45,0.7))
 if(j<=0)return
@@ -60023,7 +60023,7 @@ for(s=J.aS(this.a.e);s.u();){r=s.gP()
 if(J.c(r.h(0,"user_id"),a))return A.aw(r.h(0,"character_card"))}return null},
 E(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d=J.dC(f.a.e,new A.aDD(f)),c=A.a1(d,d.$ti.i("E.E")),b=f.amf(f.ay)
 if(f.a.f)s=B.a3K
-else s=b==null?B.a1c:A.a(["Aku curiga "+b,"Aku percaya "+b,b+", kamu beli apa?","Terima kasih, "+b+" \ud83d\ude4f"],t.s)
+else s=b==null?B.a1b:A.a(["Aku curiga "+b,"Aku percaya "+b,b+", kamu beli apa?","Terima kasih, "+b+" \ud83d\ude4f"],t.s)
 d=A.b2r(f.w)
 r=A.ac(d).i("cQ<1>")
 q=A.a1(new A.cQ(d,r),r.i("aM.E"))
@@ -60809,7 +60809,7 @@ d5.dJ(d4,m)
 k=d2*0.055
 j=k*0.8
 i=k*0.5
-for(q=d5.a,m=c9*40,h=k*0.62,g=k/2,f=A.ee(c9,0.05,0.28)*(1-A.ee(c9,0.45,0.7))>=0,e=j*0.5,d=k*0.3,c=k*1.2,n=n.w,b=0;b<4;++b){p=c7*B.a1l[b]
+for(q=d5.a,m=c9*40,h=k*0.62,g=k/2,f=A.ee(c9,0.05,0.28)*(1-A.ee(c9,0.45,0.7))>=0,e=j*0.5,d=k*0.3,c=k*1.2,n=n.w,b=0;b<4;++b){p=c7*B.a1k[b]
 a=A.aaQ(p,c7,c8)+2
 a0=p-g
 a1=a-j
@@ -61612,7 +61612,7 @@ $label0$0:{if(1===a){s=J.bT(j.a.y)
 break $label0$0}if(2===a){s=j.gaAD()
 break $label0$0}if(3===a){s=j.ga02().length
 break $label0$0}s=0
-break $label0$0}r=B.a2q[a]
+break $label0$0}r=B.a2r[a]
 q=s>0
 s=""+s
 p=A.u(s,i,i,i,i,i,i,i,i)
@@ -64594,7 +64594,7 @@ o=A.a0()
 o.sby(new A.bB(B.k,0.5,B.z,b1,0,A.a([B.r.m(0.55*p),B.r.m(0)],t.O),b1,b1).cA(A.cP(b2,r)))
 b4.bH(b2,r,o)}if(!b3&&b0.d<=0)return
 if(b3){b3=b0.r
-for(o=b3*0.3,b3=b3*1.4-o,n=b4.a,m=b2.a,l=b2.b,k=b0.d,j=0;j<3;++j){i=B.a2l[j]
+for(o=b3*0.3,b3=b3*1.4-o,n=b4.a,m=b2.a,l=b2.b,k=b0.d,j=0;j<3;++j){i=B.a2m[j]
 h=B.b.t((k-i)/(i+0.3-i),0,1)
 if(h<=0||h>=1)continue
 g=B.X.I(h)
@@ -65329,7 +65329,7 @@ q.B(new A.aIK(q,a))
 s=q.gPd()
 if(s.d!==a)s.a6d(a)
 s=q.ghU()
-s.e=A.cb(0,B.a0P[a],0)
+s.e=A.cb(0,B.a0O[a],0)
 r=q.c
 r.toString
 if(!A.aX(r,B.cA,t.w).w.ax)s.cR(0)},
@@ -68699,7 +68699,7 @@ p.drawCircle(a1*(m-0.15),a2*(0.62+0.08*o),l*0.18,k)
 k.delete()}j=new A.eM()
 j.eQ(3)
 i=Math.max(a1,a2)*0.55
-h=a4?B.a0I:B.a14
+h=a4?B.a0I:B.a13
 for(a4=a5.a,a5=a5.b,o=0;o<34;++o){q=j.au()
 m=j.au()
 l=j.au()
@@ -74007,7 +74007,7 @@ A.a3i.prototype={
 ae(){this.ao()
 $.ap.p3$.push(new A.aLG(this))},
 E(a){var s=null
-return A.cT(!1,B.U,!0,s,A.Yb(A.dz(!0,new A.bG(B.aT,s,s,new A.R(B.UT,A.hj(new A.aLF(),A.u("V3.1.18",s,s,s,s,s,A.ar(s,s,B.h.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.G,B.ef,s,s,new A.aI(0,1,t.Z),t.i),s),s),B.a5,!0)),B.n,B.bI,0,s,s,s,s,s,B.aO)}}
+return A.cT(!1,B.U,!0,s,A.Yb(A.dz(!0,new A.bG(B.aT,s,s,new A.R(B.UT,A.hj(new A.aLF(),A.u("V3.1.19",s,s,s,s,s,A.ar(s,s,B.h.m(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.G,B.ef,s,s,new A.aI(0,1,t.Z),t.i),s),s),B.a5,!0)),B.n,B.bI,0,s,s,s,s,s,B.aO)}}
 A.aLG.prototype={
 $1(a){return this.aco(a)},
 aco(a){var s=0,r=A.q(t.H),q,p=this,o
@@ -85404,7 +85404,7 @@ return s.b}}
 A.lT.prototype={
 R(){return"_ListTileSlot."+this.b}}
 A.a3r.prototype={
-gKZ(){return B.a2y},
+gKZ(){return B.a2z},
 QB(a){var s,r=this
 switch(a.a){case 0:s=r.d
 break
@@ -90020,7 +90020,7 @@ if(s!=null)s.j()
 r.ak()},
 Pe(){this.a.toString
 var s=t.s9
-s=A.a1(new A.ax(B.a18,new A.aV5(),s),s.i("aM.E"))
+s=A.a1(new A.ax(B.a17,new A.aV5(),s),s.i("aM.E"))
 this.f=A.bmc(s)},
 Nq(){var s,r=this
 if(r.x>0||r.d.f===0)return
@@ -108313,7 +108313,7 @@ q.b0()
 q.bF$.A(0,s.gaxz())
 s.e=q}return q},
 ga0g(){var s=this.f
-return s===$?this.f=new A.aGq(1,B.a1j,B.dz):s},
+return s===$?this.f=new A.aGq(1,B.a1i,B.dz):s},
 giL(){var s=this.z
 s=s==null?null:$.dl().d===s
 return s===!0},
@@ -133153,16 +133153,16 @@ B.a_Z=new A.cH(B.aL,B.bf,B.z,B.a3F,null,null)
 B.Mp=new A.S(null,null,null,null,B.a4a,B.a_Z,B.o)
 B.TG=new A.aP(B.Mp,B.J,null,null)
 B.RB=new A.i(1,0.16470588235294117,0.16470588235294117,0.18823529411764706,B.f)
-B.a2z=s([B.tW,B.RB],t.O)
-B.a0_=new A.cH(B.an,B.aT,B.z,B.a2z,null,null)
+B.a2A=s([B.tW,B.RB],t.O)
+B.a0_=new A.cH(B.an,B.aT,B.z,B.a2A,null,null)
 B.Ml=new A.S(null,null,null,null,null,B.a0_,B.o)
 B.TH=new A.aP(B.Ml,B.J,null,null)
 B.Q3=new A.i(0.7647058823529411,0.03529411764705882,0.09019607843137255,0.06666666666666667,B.f)
 B.Se=new A.i(0.18823529411764706,0.027450980392156862,0.07450980392156863,0.058823529411764705,B.f)
 B.Px=new A.i(0.9254901960784314,0.027450980392156862,0.07450980392156863,0.058823529411764705,B.f)
 B.a3Y=s([B.Q3,B.Se,B.Px],t.O)
-B.a11=s([0,0.42,1],t.n)
-B.a_Y=new A.cH(B.an,B.aT,B.z,B.a3Y,B.a11,null)
+B.a10=s([0,0.42,1],t.n)
+B.a_Y=new A.cH(B.an,B.aT,B.z,B.a3Y,B.a10,null)
 B.Mo=new A.S(null,null,null,null,null,B.a_Y,B.o)
 B.TI=new A.aP(B.Mo,B.J,null,null)
 B.Pa=new A.i(0.3764705882352941,0.06274509803921569,0.12549019607843137,0.09411764705882353,B.f)
@@ -133538,8 +133538,8 @@ B.Xd=new A.F3(0,"noOpinion")
 B.Xe=new A.F3(1,"enabled")
 B.is=new A.F3(2,"disabled")
 B.Xf=new A.Tx(null)
-B.a1r=s([0.2126,0.7152,0.0722,0,0,0.2126,0.7152,0.0722,0,0,0.2126,0.7152,0.0722,0,0,0,0,0,1,0],t.n)
-B.Xg=new A.fA(null,null,B.a1r,B.d5)
+B.a1q=s([0.2126,0.7152,0.0722,0,0,0.2126,0.7152,0.0722,0,0,0.2126,0.7152,0.0722,0,0,0,0,0,1,0],t.n)
+B.Xg=new A.fA(null,null,B.a1q,B.d5)
 B.Ru=new A.i(1,0.9607843137254902,0.9607843137254902,0.9607843137254902,B.f)
 B.QT=new A.i(1,0.9333333333333333,0.9333333333333333,0.9333333333333333,B.f)
 B.Pm=new A.i(1,0.7411764705882353,0.7411764705882353,0.7411764705882353,B.f)
@@ -133614,7 +133614,7 @@ B.l3=s([B.qh],t.r)
 B.aj7=new A.l(!0,B.h,null,null,null,null,20,B.V,null,0.8,null,null,null,null,null,null,null,null,null,null,null,null,B.l3,null,null,null)
 B.amF=new A.af("Pengumuman",null,B.aj7,null,null,null,B.S,1,null,null)
 B.eq=new A.l(!0,B.b6,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.an2=new A.af("Log pembaruan  \xb7  versimu V3.1.18",null,B.eq,null,null,null,null,null,null,null)
+B.an2=new A.af("Log pembaruan  \xb7  versimu V3.1.19",null,B.eq,null,null,null,null,null,null,null)
 B.a34=s([B.amF,B.an2],t.p)
 B.T7=new A.hM(B.T,B.e,B.i,B.B,null,B.c1,null,0,B.a34,null)
 B.Xp=new A.dg(1,B.aE,B.T7,null)
@@ -133972,12 +133972,12 @@ B.p7=new A.Gm(2,"mandatory")
 B.wU=new A.Gm(3,"endOfText")
 B.Sd=new A.i(1,0.10588235294117647,0.1803921568627451,0.16470588235294117,B.f)
 B.PB=new A.i(1,0.054901960784313725,0.09411764705882353,0.08627450980392157,B.f)
-B.a1y=s([B.Sd,B.PB],t.O)
-B.a_U=new A.cH(B.an,B.aT,B.z,B.a1y,null,null)
+B.a1x=s([B.Sd,B.PB],t.O)
+B.a_U=new A.cH(B.an,B.aT,B.z,B.a1x,null,null)
 B.QP=new A.i(1,0.16862745098039217,0.13333333333333333,0.20392156862745098,B.f)
 B.RA=new A.i(1,0.0784313725490196,0.06274509803921569,0.10588235294117647,B.f)
-B.a1n=s([B.QP,B.RA],t.O)
-B.a_V=new A.cH(B.an,B.aT,B.z,B.a1n,null,null)
+B.a1m=s([B.QP,B.RA],t.O)
+B.a_V=new A.cH(B.an,B.aT,B.z,B.a1m,null,null)
 B.Ov=new A.i(1,0.08235294117647059,0.1568627450980392,0.23137254901960785,B.f)
 B.Sm=new A.i(1,0.0392156862745098,0.09019607843137255,0.14901960784313725,B.f)
 B.a2U=s([B.Ov,B.Sm],t.O)
@@ -134012,28 +134012,27 @@ B.a0k=s([B.abh,B.abi,B.abj],A.aU("F<+(v,v,v,v)>"))
 B.a0o=s(["persembahan","sekali_pakai","penguat","siang","kombinasi","malam"],t.s)
 B.a0p=s([2,3,1],t.Y)
 B.a0I=s([B.d6,B.r],t.O)
-B.a0N=s(["pria-pelukis","pria-peselancar","pria-matamata","wanita-penatu","pria-penggembala"],t.s)
-B.a0O=s([4,9,14,19],t.Y)
-B.a0P=s([3800,3000,1050,1100,1100,1100,1600,1600,900],t.Y)
+B.a0N=s([4,9,14,19],t.Y)
+B.a0O=s([3800,3000,1050,1100,1100,1100,1600,1600,900],t.Y)
 B.a40=s([137,80,78,71,13,10,26,10],t._)
 B.a_6=new A.qf(0,"png")
 B.a_e=new A.mE(B.a_6,!1,0,"png")
 B.a_4=new A.oh(B.a40,B.a_e,0,"png")
 B.a44=s([71,73,70,56,55,97],t._)
 B.a_3=new A.oh(B.a44,B.kX,1,"gif87a")
-B.a2F=s([71,73,70,56,57,97],t._)
-B.a_2=new A.oh(B.a2F,B.kX,2,"gif89a")
+B.a2G=s([71,73,70,56,57,97],t._)
+B.a_2=new A.oh(B.a2G,B.kX,2,"gif89a")
 B.a0j=s([255,216,255],t._)
 B.a_7=new A.qf(2,"jpeg")
 B.a_i=new A.mE(B.a_7,!1,3,"jpeg")
 B.a_5=new A.oh(B.a0j,B.a_i,3,"jpeg")
-B.a1i=s([82,73,70,70,null,null,null,null,87,69,66,80],t._)
-B.a_1=new A.oh(B.a1i,B.wJ,4,"webp")
-B.a17=s([66,77],t._)
+B.a1h=s([82,73,70,70,null,null,null,null,87,69,66,80],t._)
+B.a_1=new A.oh(B.a1h,B.wJ,4,"webp")
+B.a16=s([66,77],t._)
 B.a_8=new A.qf(4,"bmp")
 B.a_g=new A.mE(B.a_8,!1,6,"bmp")
-B.a_0=new A.oh(B.a17,B.a_g,5,"bmp")
-B.a0R=s([B.a_4,B.a_3,B.a_2,B.a_5,B.a_1,B.a_0],A.aU("F<oh>"))
+B.a_0=new A.oh(B.a16,B.a_g,5,"bmp")
+B.a0Q=s([B.a_4,B.a_3,B.a_2,B.a_5,B.a_1,B.a_0],A.aU("F<oh>"))
 B.at6=new A.bE("Layar judul",0,"title")
 B.asU=new A.bE("Menu utama",1,"menu")
 B.at5=new A.bE("Buat ruangan",2,"create")
@@ -134110,19 +134109,19 @@ B.KB=new A.bE("Rekap dan statistik",60,"recap")
 B.Kp=new A.bE("Permainan dibubarkan",61,"cancelled")
 B.a42=s([B.rP,B.rN,B.KB,B.Kp],t.q6)
 B.aaX=new A.ae("Akhir permainan",B.a42)
-B.a0X=s([B.aav,B.aaQ,B.ab0,B.aaf,B.aaG,B.aaM,B.aaX],t.HB)
+B.a0W=s([B.aav,B.aaQ,B.ab0,B.aaf,B.aaG,B.aaM,B.aaX],t.HB)
 B.rA=new A.NU(0,"named")
 B.Ke=new A.NU(1,"anonymous")
-B.a10=s([B.rA,B.Ke],A.aU("F<NU>"))
+B.a1_=s([B.rA,B.Ke],A.aU("F<NU>"))
 B.x1=s([0,4,12,1,5,13,3,7,15],t.Y)
-B.a14=s([B.bu,B.tU],t.O)
-B.a15=s([65533],t.Y)
-B.a16=s([B.bu,B.jV],t.O)
+B.a13=s([B.bu,B.tU],t.O)
+B.a14=s([65533],t.Y)
+B.a15=s([B.bu,B.jV],t.O)
 B.arA=new A.a2H(null)
 B.aqT=new A.KO(null)
 B.arD=new A.Mg(null)
 B.aqK=new A.Kj(null)
-B.a18=s([B.arA,B.aqT,B.arD,B.aqK],t.p)
+B.a17=s([B.arA,B.aqT,B.arD,B.aqK],t.p)
 B.p8=s([6,12,18,24],t.Y)
 B.ab8=new A.dA("",B.wA,"Riset")
 B.abc=new A.dA("hari",null,"Hari")
@@ -134130,9 +134129,9 @@ B.ab7=new A.dA("",B.iv,"Malam")
 B.abd=new A.dA("helaidaun",null,"Persembahan")
 B.abb=new A.dA("discuss",null,"Musyawarah")
 B.abf=new A.dA("vote",null,"Voting")
-B.a1b=s([B.ab8,B.abc,B.ab7,B.abd,B.abb,B.abf],A.aU("F<+(h,c5?,h)>"))
-B.a1c=s(["Aku beli kartu baik \ud83c\udf3f","Aku belum beli apa-apa","Jangan buru-buru menuduh","Ada yang punya Lentera Lawas?","Siapa yang tadi memberi embun?"],t.s)
-B.a1d=s(["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"],t.s)
+B.a1a=s([B.ab8,B.abc,B.ab7,B.abd,B.abb,B.abf],A.aU("F<+(h,c5?,h)>"))
+B.a1b=s(["Aku beli kartu baik \ud83c\udf3f","Aku belum beli apa-apa","Jangan buru-buru menuduh","Ada yang punya Lentera Lawas?","Siapa yang tadi memberi embun?"],t.s)
+B.a1c=s(["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"],t.s)
 B.x2=s(["langit-malamberawan"],t.s)
 B.arH=new A.je(0,1)
 B.arM=new A.je(0.5,1)
@@ -134145,37 +134144,37 @@ B.arQ=new A.je(0.8875,0.25)
 B.arO=new A.je(0.925,0.5)
 B.arI=new A.je(0.9625,0.75)
 B.arJ=new A.je(1,1)
-B.a1j=s([B.arH,B.arM,B.arP,B.arR,B.arN,B.arL,B.arK,B.arQ,B.arO,B.arI,B.arJ],A.aU("F<je>"))
+B.a1i=s([B.arH,B.arM,B.arP,B.arR,B.arN,B.arL,B.arK,B.arQ,B.arO,B.arI,B.arJ],A.aU("F<je>"))
 B.Rv=new A.i(1,0.5411764705882353,0.3607843137254902,0.7529411764705882,B.f)
-B.a1k=s([B.r,B.Rv],t.O)
-B.a1l=s([0.5,0.61,0.73,0.85],t.n)
+B.a1j=s([B.r,B.Rv],t.O)
+B.a1k=s([0.5,0.61,0.73,0.85],t.n)
 B.ep=new A.oZ(0,"left")
 B.hl=new A.oZ(1,"right")
 B.jf=new A.oZ(3,"justify")
 B.bA=new A.oZ(4,"start")
 B.hm=new A.oZ(5,"end")
-B.a1m=s([B.ep,B.hl,B.F,B.jf,B.bA,B.hm],A.aU("F<oZ>"))
+B.a1l=s([B.ep,B.hl,B.F,B.jf,B.bA,B.hm],A.aU("F<oZ>"))
 B.x3=s([0.14,0.19,0.235,0.27],t.n)
 B.p9=s([0.68,0.8,0.92],t.n)
 B.a1U=s([2,1.13276676],t.n)
 B.a0q=s([2.18349805,1.20311921],t.n)
 B.a3x=s([2.33888662,1.28698796],t.n)
 B.a3C=s([2.48660575,1.36351941],t.n)
-B.a1v=s([2.62226596,1.44717976],t.n)
-B.a1A=s([2.7514899,1.53385819],t.n)
-B.a2B=s([3.36298265,1.98288283],t.n)
+B.a1u=s([2.62226596,1.44717976],t.n)
+B.a1z=s([2.7514899,1.53385819],t.n)
+B.a2C=s([3.36298265,1.98288283],t.n)
 B.a21=s([4.08649929,2.23811846],t.n)
-B.a2n=s([4.85481134,2.47563463],t.n)
-B.a1w=s([5.62945551,2.72948597],t.n)
+B.a2o=s([4.85481134,2.47563463],t.n)
+B.a1v=s([5.62945551,2.72948597],t.n)
 B.a1W=s([6.43023796,2.98020421],t.n)
-B.x4=s([B.a1U,B.a0q,B.a3x,B.a3C,B.a1v,B.a1A,B.a2B,B.a21,B.a2n,B.a1w,B.a1W],t.zg)
+B.x4=s([B.a1U,B.a0q,B.a3x,B.a3C,B.a1u,B.a1z,B.a2C,B.a21,B.a2o,B.a1v,B.a1W],t.zg)
 B.JR=new A.nf(0,A.b69())
 B.aqR=new A.nf(0.34,A.beM())
 B.aqN=new A.nf(0.62,A.CW())
-B.a1p=s([B.JR,B.aqR,B.aqN],t.kb)
-B.a1s=s([B.mW,B.mX],A.aU("F<Dx>"))
+B.a1o=s([B.JR,B.aqR,B.aqN],t.kb)
+B.a1r=s([B.mW,B.mX],A.aU("F<Dx>"))
 B.Mv=new A.bn(0,B.W,B.at,B.m,18)
-B.a1u=s([B.Mv],t.V)
+B.a1t=s([B.Mv],t.V)
 B.YY=new A.kl("Rusak",1,"rusak")
 B.YX=new A.kl("Rapuh",2,"rapuh")
 B.x5=s([B.wi,B.YY,B.YX,B.wk,B.wm,B.wo,B.wn,B.wj,B.wl],A.aU("F<kl>"))
@@ -134185,16 +134184,16 @@ B.a9w=new A.lr(B.KI,B.amS,null,t.QB)
 B.KJ=new A.lX(1,"busiest")
 B.anv=new A.af("Paling ramai",null,null,null,null,null,null,null,null,null)
 B.a9y=new A.lr(B.KJ,B.anv,null,t.QB)
-B.a1x=s([B.a9w,B.a9y],A.aU("F<kz<lX>>"))
-B.a2j=s(["lembah-hijau0"],t.s)
+B.a1w=s([B.a9w,B.a9y],A.aU("F<kz<lX>>"))
+B.a2k=s(["lembah-hijau0"],t.s)
 B.rv=new A.wx(0,"lush")
 B.KX=new A.c4(-0.4,0.3)
 B.L1=new A.c4(0.3,-0.2)
-B.asN=new A.pl("Dahulu, di lembah yang dikelilingi kabut,\nberdiri sebuah pohon tua bernama Hayu.",B.a2j,6500,B.rv,0,0,1,1.15,B.KX,B.L1)
-B.a2H=s(["rumahdesa-hijau"],t.s)
+B.asN=new A.pl("Dahulu, di lembah yang dikelilingi kabut,\nberdiri sebuah pohon tua bernama Hayu.",B.a2k,6500,B.rv,0,0,1,1.15,B.KX,B.L1)
+B.a2I=s(["rumahdesa-hijau"],t.s)
 B.KW=new A.c4(0.7,-0.4)
 B.KZ=new A.c4(-0.5,0.3)
-B.asM=new A.pl("Selama Hayu berdaun,\nsungai mengalir, buah bergelantungan,\ndan desa tidak pernah gelap.",B.a2H,6500,B.rv,0,0,1.14,1,B.KW,B.KZ)
+B.asM=new A.pl("Selama Hayu berdaun,\nsungai mengalir, buah bergelantungan,\ndan desa tidak pernah gelap.",B.a2I,6500,B.rv,0,0,1.14,1,B.KW,B.KZ)
 B.a29=s(["lembah-hijau1","lembah-hijau2","lembah-hijau3"],t.s)
 B.rw=new A.wx(1,"fading")
 B.L_=new A.c4(0.3,0.2)
@@ -134215,8 +134214,9 @@ B.L0=new A.c4(-0.2,0.2)
 B.L8=new A.c4(0.2,0)
 B.asP=new A.pl("Tetapi kabut tidak pernah pergi sendirian.\nIa membisiki satu orang dari desa itu\ndan menitipkan sebutir benih hitam di dadanya.",B.a2R,1e4,B.hI,0.8,1,1,1.2,B.L0,B.L8)
 B.iz=s([B.asN,B.asM,B.asR,B.asO,B.asQ,B.asP],A.aU("F<pl>"))
-B.a1B=s(["hantumurka-perempuanbungameraih","hantumurka-topengpria","hantumurka-wanitatopengjubah"],t.s)
-B.a1C=s([0,0.35,1],t.n)
+B.a1A=s(["hantumurka-perempuanbungameraih","hantumurka-topengpria","hantumurka-wanitatopengjubah"],t.s)
+B.a1B=s([0,0.35,1],t.n)
+B.a1C=s(["pria-pelukis","pria-perenang","pria-penyelam","wanita-penatu","pria-peternakperah"],t.s)
 B.cz=new A.ni(0,"label")
 B.cc=new A.ni(1,"avatar")
 B.dA=new A.ni(2,"deleteIcon")
@@ -134224,8 +134224,8 @@ B.a1D=s([B.cz,B.cc,B.dA],A.aU("F<ni>"))
 B.a2S=s([-1,1.5],t.n)
 B.a33=s([1,1.6],t.n)
 B.a2c=s([-0.5,2],t.n)
-B.a1z=s([0.55,2.1],t.n)
-B.a1E=s([B.a2S,B.a33,B.a2c,B.a1z],t.zg)
+B.a1y=s([0.55,2.1],t.n)
+B.a1E=s([B.a2S,B.a33,B.a2c,B.a1y],t.zg)
 B.a1F=s([0.32,0.42,0.54],t.n)
 B.YW=new A.mC(0.75,-1,1,2,"layu")
 B.a1G=s([B.wh,B.wg,B.YW,B.oZ],A.aU("F<mC>"))
@@ -134304,32 +134304,33 @@ B.Lz=new A.DK(2,"outer")
 B.ub=new A.i(0.09803921568627451,0,0,0,B.f)
 B.My=new A.bn(0.2,B.Lz,B.ub,B.m,11)
 B.a2g=s([B.My],t.V)
+B.a2h=s(["Pelukis","Perenang","Penyelam","Penatu","Peternak Perah"],t.s)
 B.asy=new A.MW("Sampahnya!","Bangun kamar, kelola limbah, atau timbun kost tetangga!","https://sampahnya.vercel.app/","logo-sampahnya")
 B.asx=new A.MW("Linguistic Hegemony","Buat bahasa, bangun kepercayaan, kuasai dunia!.","https://linguistify.vercel.app/","logo-linguistichegemony")
-B.a2i=s([B.asy,B.asx],A.aU("F<MW>"))
+B.a2j=s([B.asy,B.asx],A.aU("F<MW>"))
 B.SU=new A.i(1,0.08627450980392157,0.13725490196078433,0.12156862745098039,B.f)
 B.Rf=new A.i(1,0.047058823529411764,0.09019607843137255,0.0784313725490196,B.f)
-B.a2k=s([B.SU,B.Rf],t.O)
-B.a2l=s([0.3,0.4,0.5],t.n)
+B.a2l=s([B.SU,B.Rf],t.O)
+B.a2m=s([0.3,0.4,0.5],t.n)
 B.IA=new A.Jk(0,"left")
 B.IB=new A.Jk(1,"right")
-B.a2m=s([B.IA,B.IB],A.aU("F<Jk>"))
+B.a2n=s([B.IA,B.IB],A.aU("F<Jk>"))
 B.xc=s([0.3,1],t.n)
 B.bt=new A.Jv(0,"upstream")
-B.a2o=s([B.bt,B.E],A.aU("F<Jv>"))
+B.a2p=s([B.bt,B.E],A.aU("F<Jv>"))
 B.c_=new A.vS(0,"rtl")
 B.b2=new A.vS(1,"ltr")
 B.pb=s([B.c_,B.b2],A.aU("F<vS>"))
 B.Xu=new A.mx(0,"verified")
 B.Xv=new A.mx(1,"unverified")
-B.a2p=s([B.Xu,B.Xv,B.vZ],A.aU("F<mx>"))
-B.a2q=s(["Toko","Meja","Gabung","Balai"],t.s)
+B.a2q=s([B.Xu,B.Xv,B.vZ],A.aU("F<mx>"))
+B.a2r=s(["Toko","Meja","Gabung","Balai"],t.s)
 B.RC=new A.i(1,0.41568627450980394,0.13725490196078433,0.18823529411764706,B.f)
 B.Qe=new A.i(1,0.22745098039215686,0.06274509803921569,0.09803921568627451,B.f)
-B.a2r=s([B.RC,B.Qe],t.O)
+B.a2s=s([B.RC,B.Qe],t.O)
 B.qi=new A.cE(B.q,B.m,8)
 B.pc=s([B.qi],t.r)
-B.a2s=s(["Riset: awal hari biasa (mulai hari ke-2), beli kartu poin dan lanjutan","Hari: belanja, tukar kartu, dan mengobrol","Malam: Si Terbisik bisa menyerang","Persembahan: tiap 3 hari, kartu dipersembahkan anonim","Musyawarah: bicarakan siapa yang mencurigakan","Voting: tuduh satu orang"],t.s)
+B.a2t=s(["Riset: awal hari biasa (mulai hari ke-2), beli kartu poin dan lanjutan","Hari: belanja, tukar kartu, dan mengobrol","Malam: Si Terbisik bisa menyerang","Persembahan: tiap 3 hari, kartu dipersembahkan anonim","Musyawarah: bicarakan siapa yang mencurigakan","Voting: tuduh satu orang"],t.s)
 B.Ir=new A.di("swingwind1.mp3",0.6)
 B.qE=new A.di("swingwind2.mp3",0.6)
 B.Is=new A.di("swingwind3.mp3",0.6)
@@ -134339,27 +134340,26 @@ B.ev=new A.lT(0,"leading")
 B.d0=new A.lT(1,"title")
 B.ew=new A.lT(2,"subtitle")
 B.hF=new A.lT(3,"trailing")
-B.a2y=s([B.ev,B.d0,B.ew,B.hF],A.aU("F<lT>"))
+B.a2z=s([B.ev,B.d0,B.ew,B.hF],A.aU("F<lT>"))
 B.PO=new A.i(1,0.9686274509803922,0.7137254901960784,0.8235294117647058,B.f)
 B.Sv=new A.i(1,1,0.8274509803921568,0.8941176470588236,B.f)
 B.Rb=new A.i(1,0.9411764705882353,0.5607843137254902,0.7098039215686275,B.f)
 B.xd=s([B.PO,B.Sv,B.Rb],t.O)
-B.a2A=s([0,1,0,1,0,1,1],t.Y)
-B.a2C=s(["kedai-karturiset","kuali-racikan","perpustakaantua","mejaku"],t.s)
+B.a2B=s([0,1,0,1,0,1,1],t.Y)
+B.a2D=s(["kedai-karturiset","kuali-racikan","perpustakaantua","mejaku"],t.s)
 B.NW=new A.to(0,"auto")
 B.NX=new A.to(1,"full")
 B.NY=new A.to(2,"chromium")
-B.a2D=s([B.NW,B.NX,B.NY,B.e7],A.aU("F<to>"))
+B.a2E=s([B.NW,B.NX,B.NY,B.e7],A.aU("F<to>"))
 B.j3=new A.cE(B.q,B.m,4)
 B.xe=s([B.j3],t.r)
-B.a2E=s(["sumur-gelapmalam"],t.s)
+B.a2F=s(["sumur-gelapmalam"],t.s)
 B.Qi=new A.i(1,0.4980392156862745,0.8274509803921568,0.9686274509803922,B.f)
 B.Pg=new A.i(1,0.8784313725490196,0.6274509803921569,0.4980392156862745,B.f)
 B.PT=new A.i(1,0.8784313725490196,0.4980392156862745,0.6235294117647059,B.f)
 B.QL=new A.i(1,0.8274509803921568,0.8784313725490196,0.4980392156862745,B.f)
-B.a2G=s([B.Qi,B.H,B.Pg,B.r,B.PT,B.QL],t.O)
+B.a2H=s([B.Qi,B.H,B.Pg,B.r,B.PT,B.QL],t.O)
 B.pd=s([0.45,1],t.n)
-B.a2I=s(["Pelukis","Peselancar","Mata-mata","Penatu","Penggembala"],t.s)
 B.a2J=s(["Akhir Kisah","Barisan Akhir","Dalam Angka","Kronik Desa","Sidang Desa","Cahaya & Kabut","Peringkat Pertandingan","Gelar Para Pemain","Para Pemain"],t.s)
 B.d_=new A.ic(1,"fuchsia")
 B.a2K=s([B.bs,B.d_,B.aw,B.cJ,B.bZ,B.cK],A.aU("F<ic>"))
@@ -134495,9 +134495,9 @@ B.CJ=new A.jF(8,"symbolModifier")
 B.xp=s([B.fZ,B.h_,B.h0,B.h1,B.pE,B.pF,B.pG,B.pH,B.CJ],A.aU("F<jF>"))
 B.a4f=s(["alunalun-tiangberpita"],t.s)
 B.a1R=s([-0.3,-0.2,0.22],t.n)
-B.a1a=s([0.25,0.1,0.16],t.n)
+B.a19=s([0.25,0.1,0.16],t.n)
 B.a22=s([-0.05,0.38,0.12],t.n)
-B.a4g=s([B.a1R,B.a1a,B.a22],t.zg)
+B.a4g=s([B.a1R,B.a19,B.a22],t.zg)
 B.pj=s([!0,!1],t.HZ)
 B.a4j=s([-2.7,-1.8,-0.7,0.4,1.4,2.4],t.n)
 B.OZ=new A.i(0.14901960784313725,0,0,0,B.f)
@@ -134585,8 +134585,8 @@ B.pN={persembahan:0,sekali_pakai:1,penguat:2,siang:3,kombinasi:4,malam:5}
 B.Co=new A.ck(B.pN,["Persembahan","Sekali pakai","Penguat","Kartu kuning","Kombinasi","Serangan malam"],t.li)
 B.a60=new A.ck(B.pN,["donations","item","plus","item","plus","danger"],t.li)
 B.a61=new A.ck(B.pN,["Efek langsung saat dipersembahkan ke Hayu.","Alat periksa. Hasilnya hanya dilihat pemakainya.",u.s,"Khusus warga. Dipakai di Meja pada hari biasa, bukan dipersembahkan.","Kartu lanjutan harus digabung dengan kartu poin di tab Gabung sebelum bisa dipersembahkan.","Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya tahu ada serangan."],t.li)
-B.a7d={in:0,iw:1,ji:2,jw:3,mo:4,aam:5,adp:6,aue:7,ayx:8,bgm:9,bjd:10,ccq:11,cjr:12,cka:13,cmk:14,coy:15,cqu:16,drh:17,drw:18,gav:19,gfx:20,ggn:21,gti:22,guv:23,hrr:24,ibi:25,ilw:26,jeg:27,kgc:28,kgh:29,koj:30,krm:31,ktr:32,kvs:33,kwq:34,kxe:35,kzj:36,kzt:37,lii:38,lmm:39,meg:40,mst:41,mwj:42,myt:43,nad:44,ncp:45,nnx:46,nts:47,oun:48,pcr:49,pmc:50,pmu:51,ppa:52,ppr:53,pry:54,puz:55,sca:56,skk:57,tdu:58,thc:59,thx:60,tie:61,tkk:62,tlw:63,tmp:64,tne:65,tnf:66,tsf:67,uok:68,xba:69,xia:70,xkh:71,xsj:72,ybd:73,yma:74,ymt:75,yos:76,yuu:77}
-B.dc=new A.ck(B.a7d,["id","he","yi","jv","ro","aas","dz","ktz","nun","bcg","drl","rki","mom","cmr","xch","pij","quh","khk","prs","dev","vaj","gvr","nyc","duz","jal","opa","gal","oyb","tdf","kml","kwv","bmf","dtp","gdj","yam","tvd","dtp","dtp","raq","rmx","cir","mry","vaj","mry","xny","kdz","ngv","pij","vaj","adx","huw","phr","bfy","lcq","prt","pub","hle","oyb","dtp","tpo","oyb","ras","twm","weo","tyj","kak","prs","taj","ema","cax","acn","waw","suj","rki","lrr","mtm","zom","yug"],t.li)
+B.a7e={in:0,iw:1,ji:2,jw:3,mo:4,aam:5,adp:6,aue:7,ayx:8,bgm:9,bjd:10,ccq:11,cjr:12,cka:13,cmk:14,coy:15,cqu:16,drh:17,drw:18,gav:19,gfx:20,ggn:21,gti:22,guv:23,hrr:24,ibi:25,ilw:26,jeg:27,kgc:28,kgh:29,koj:30,krm:31,ktr:32,kvs:33,kwq:34,kxe:35,kzj:36,kzt:37,lii:38,lmm:39,meg:40,mst:41,mwj:42,myt:43,nad:44,ncp:45,nnx:46,nts:47,oun:48,pcr:49,pmc:50,pmu:51,ppa:52,ppr:53,pry:54,puz:55,sca:56,skk:57,tdu:58,thc:59,thx:60,tie:61,tkk:62,tlw:63,tmp:64,tne:65,tnf:66,tsf:67,uok:68,xba:69,xia:70,xkh:71,xsj:72,ybd:73,yma:74,ymt:75,yos:76,yuu:77}
+B.dc=new A.ck(B.a7e,["id","he","yi","jv","ro","aas","dz","ktz","nun","bcg","drl","rki","mom","cmr","xch","pij","quh","khk","prs","dev","vaj","gvr","nyc","duz","jal","opa","gal","oyb","tdf","kml","kwv","bmf","dtp","gdj","yam","tvd","dtp","dtp","raq","rmx","cir","mry","vaj","mry","xny","kdz","ngv","pij","vaj","adx","huw","phr","bfy","lcq","prt","pub","hle","oyb","dtp","tpo","oyb","ras","twm","weo","tyj","kak","prs","taj","ema","cax","acn","waw","suj","rki","lrr","mtm","zom","yug"],t.li)
 B.dt=new A.t(4294968065)
 B.qn=new A.aR(B.dt,!1,!1,!0,!1,B.a_)
 B.da=new A.t(4294968066)
@@ -135052,14 +135052,16 @@ B.abH=new A.he(B.ce,B.lK)
 B.abG=new A.he(B.dj,B.lK)
 B.q8=new A.he(B.bP,B.iZ)
 B.a64=new A.dJ([B.lV,B.Nt,B.lY,B.tt,B.adc,B.tt,B.I8,B.tv,B.I9,B.tA,B.HX,B.tD,B.m0,B.abF,B.m1,B.abE,B.lZ,B.abH,B.m_,B.abG,B.j4,B.q8,B.j7,B.lL],t.Fp)
-B.a7c={Abort:0,Again:1,AltLeft:2,AltRight:3,ArrowDown:4,ArrowLeft:5,ArrowRight:6,ArrowUp:7,AudioVolumeDown:8,AudioVolumeMute:9,AudioVolumeUp:10,Backquote:11,Backslash:12,Backspace:13,BracketLeft:14,BracketRight:15,BrightnessDown:16,BrightnessUp:17,BrowserBack:18,BrowserFavorites:19,BrowserForward:20,BrowserHome:21,BrowserRefresh:22,BrowserSearch:23,BrowserStop:24,CapsLock:25,Comma:26,ContextMenu:27,ControlLeft:28,ControlRight:29,Convert:30,Copy:31,Cut:32,Delete:33,Digit0:34,Digit1:35,Digit2:36,Digit3:37,Digit4:38,Digit5:39,Digit6:40,Digit7:41,Digit8:42,Digit9:43,DisplayToggleIntExt:44,Eject:45,End:46,Enter:47,Equal:48,Esc:49,Escape:50,F1:51,F10:52,F11:53,F12:54,F13:55,F14:56,F15:57,F16:58,F17:59,F18:60,F19:61,F2:62,F20:63,F21:64,F22:65,F23:66,F24:67,F3:68,F4:69,F5:70,F6:71,F7:72,F8:73,F9:74,Find:75,Fn:76,FnLock:77,GameButton1:78,GameButton10:79,GameButton11:80,GameButton12:81,GameButton13:82,GameButton14:83,GameButton15:84,GameButton16:85,GameButton2:86,GameButton3:87,GameButton4:88,GameButton5:89,GameButton6:90,GameButton7:91,GameButton8:92,GameButton9:93,GameButtonA:94,GameButtonB:95,GameButtonC:96,GameButtonLeft1:97,GameButtonLeft2:98,GameButtonMode:99,GameButtonRight1:100,GameButtonRight2:101,GameButtonSelect:102,GameButtonStart:103,GameButtonThumbLeft:104,GameButtonThumbRight:105,GameButtonX:106,GameButtonY:107,GameButtonZ:108,Help:109,Home:110,Hyper:111,Insert:112,IntlBackslash:113,IntlRo:114,IntlYen:115,KanaMode:116,KeyA:117,KeyB:118,KeyC:119,KeyD:120,KeyE:121,KeyF:122,KeyG:123,KeyH:124,KeyI:125,KeyJ:126,KeyK:127,KeyL:128,KeyM:129,KeyN:130,KeyO:131,KeyP:132,KeyQ:133,KeyR:134,KeyS:135,KeyT:136,KeyU:137,KeyV:138,KeyW:139,KeyX:140,KeyY:141,KeyZ:142,KeyboardLayoutSelect:143,Lang1:144,Lang2:145,Lang3:146,Lang4:147,Lang5:148,LaunchApp1:149,LaunchApp2:150,LaunchAssistant:151,LaunchControlPanel:152,LaunchMail:153,LaunchScreenSaver:154,MailForward:155,MailReply:156,MailSend:157,MediaFastForward:158,MediaPause:159,MediaPlay:160,MediaPlayPause:161,MediaRecord:162,MediaRewind:163,MediaSelect:164,MediaStop:165,MediaTrackNext:166,MediaTrackPrevious:167,MetaLeft:168,MetaRight:169,MicrophoneMuteToggle:170,Minus:171,NonConvert:172,NumLock:173,Numpad0:174,Numpad1:175,Numpad2:176,Numpad3:177,Numpad4:178,Numpad5:179,Numpad6:180,Numpad7:181,Numpad8:182,Numpad9:183,NumpadAdd:184,NumpadBackspace:185,NumpadClear:186,NumpadClearEntry:187,NumpadComma:188,NumpadDecimal:189,NumpadDivide:190,NumpadEnter:191,NumpadEqual:192,NumpadMemoryAdd:193,NumpadMemoryClear:194,NumpadMemoryRecall:195,NumpadMemoryStore:196,NumpadMemorySubtract:197,NumpadMultiply:198,NumpadParenLeft:199,NumpadParenRight:200,NumpadSubtract:201,Open:202,PageDown:203,PageUp:204,Paste:205,Pause:206,Period:207,Power:208,PrintScreen:209,PrivacyScreenToggle:210,Props:211,Quote:212,Resume:213,ScrollLock:214,Select:215,SelectTask:216,Semicolon:217,ShiftLeft:218,ShiftRight:219,ShowAllWindows:220,Slash:221,Sleep:222,Space:223,Super:224,Suspend:225,Tab:226,Turbo:227,Undo:228,WakeUp:229,ZoomToggle:230}
-B.a65=new A.ck(B.a7c,[458907,458873,458978,458982,458833,458832,458831,458834,458881,458879,458880,458805,458801,458794,458799,458800,786544,786543,786980,786986,786981,786979,786983,786977,786982,458809,458806,458853,458976,458980,458890,458876,458875,458828,458791,458782,458783,458784,458785,458786,458787,458788,458789,458790,65717,786616,458829,458792,458798,458793,458793,458810,458819,458820,458821,458856,458857,458858,458859,458860,458861,458862,458811,458863,458864,458865,458866,458867,458812,458813,458814,458815,458816,458817,458818,458878,18,19,392961,392970,392971,392972,392973,392974,392975,392976,392962,392963,392964,392965,392966,392967,392968,392969,392977,392978,392979,392980,392981,392982,392983,392984,392985,392986,392987,392988,392989,392990,392991,458869,458826,16,458825,458852,458887,458889,458888,458756,458757,458758,458759,458760,458761,458762,458763,458764,458765,458766,458767,458768,458769,458770,458771,458772,458773,458774,458775,458776,458777,458778,458779,458780,458781,787101,458896,458897,458898,458899,458900,786836,786834,786891,786847,786826,786865,787083,787081,787084,786611,786609,786608,786637,786610,786612,786819,786615,786613,786614,458979,458983,24,458797,458891,458835,458850,458841,458842,458843,458844,458845,458846,458847,458848,458849,458839,458939,458968,458969,458885,458851,458836,458840,458855,458963,458962,458961,458960,458964,458837,458934,458935,458838,458868,458830,458827,458877,458824,458807,458854,458822,23,458915,458804,21,458823,458871,786850,458803,458977,458981,787103,458808,65666,458796,17,20,458795,22,458874,65667,786994],t.eL)
+B.a7d={Abort:0,Again:1,AltLeft:2,AltRight:3,ArrowDown:4,ArrowLeft:5,ArrowRight:6,ArrowUp:7,AudioVolumeDown:8,AudioVolumeMute:9,AudioVolumeUp:10,Backquote:11,Backslash:12,Backspace:13,BracketLeft:14,BracketRight:15,BrightnessDown:16,BrightnessUp:17,BrowserBack:18,BrowserFavorites:19,BrowserForward:20,BrowserHome:21,BrowserRefresh:22,BrowserSearch:23,BrowserStop:24,CapsLock:25,Comma:26,ContextMenu:27,ControlLeft:28,ControlRight:29,Convert:30,Copy:31,Cut:32,Delete:33,Digit0:34,Digit1:35,Digit2:36,Digit3:37,Digit4:38,Digit5:39,Digit6:40,Digit7:41,Digit8:42,Digit9:43,DisplayToggleIntExt:44,Eject:45,End:46,Enter:47,Equal:48,Esc:49,Escape:50,F1:51,F10:52,F11:53,F12:54,F13:55,F14:56,F15:57,F16:58,F17:59,F18:60,F19:61,F2:62,F20:63,F21:64,F22:65,F23:66,F24:67,F3:68,F4:69,F5:70,F6:71,F7:72,F8:73,F9:74,Find:75,Fn:76,FnLock:77,GameButton1:78,GameButton10:79,GameButton11:80,GameButton12:81,GameButton13:82,GameButton14:83,GameButton15:84,GameButton16:85,GameButton2:86,GameButton3:87,GameButton4:88,GameButton5:89,GameButton6:90,GameButton7:91,GameButton8:92,GameButton9:93,GameButtonA:94,GameButtonB:95,GameButtonC:96,GameButtonLeft1:97,GameButtonLeft2:98,GameButtonMode:99,GameButtonRight1:100,GameButtonRight2:101,GameButtonSelect:102,GameButtonStart:103,GameButtonThumbLeft:104,GameButtonThumbRight:105,GameButtonX:106,GameButtonY:107,GameButtonZ:108,Help:109,Home:110,Hyper:111,Insert:112,IntlBackslash:113,IntlRo:114,IntlYen:115,KanaMode:116,KeyA:117,KeyB:118,KeyC:119,KeyD:120,KeyE:121,KeyF:122,KeyG:123,KeyH:124,KeyI:125,KeyJ:126,KeyK:127,KeyL:128,KeyM:129,KeyN:130,KeyO:131,KeyP:132,KeyQ:133,KeyR:134,KeyS:135,KeyT:136,KeyU:137,KeyV:138,KeyW:139,KeyX:140,KeyY:141,KeyZ:142,KeyboardLayoutSelect:143,Lang1:144,Lang2:145,Lang3:146,Lang4:147,Lang5:148,LaunchApp1:149,LaunchApp2:150,LaunchAssistant:151,LaunchControlPanel:152,LaunchMail:153,LaunchScreenSaver:154,MailForward:155,MailReply:156,MailSend:157,MediaFastForward:158,MediaPause:159,MediaPlay:160,MediaPlayPause:161,MediaRecord:162,MediaRewind:163,MediaSelect:164,MediaStop:165,MediaTrackNext:166,MediaTrackPrevious:167,MetaLeft:168,MetaRight:169,MicrophoneMuteToggle:170,Minus:171,NonConvert:172,NumLock:173,Numpad0:174,Numpad1:175,Numpad2:176,Numpad3:177,Numpad4:178,Numpad5:179,Numpad6:180,Numpad7:181,Numpad8:182,Numpad9:183,NumpadAdd:184,NumpadBackspace:185,NumpadClear:186,NumpadClearEntry:187,NumpadComma:188,NumpadDecimal:189,NumpadDivide:190,NumpadEnter:191,NumpadEqual:192,NumpadMemoryAdd:193,NumpadMemoryClear:194,NumpadMemoryRecall:195,NumpadMemoryStore:196,NumpadMemorySubtract:197,NumpadMultiply:198,NumpadParenLeft:199,NumpadParenRight:200,NumpadSubtract:201,Open:202,PageDown:203,PageUp:204,Paste:205,Pause:206,Period:207,Power:208,PrintScreen:209,PrivacyScreenToggle:210,Props:211,Quote:212,Resume:213,ScrollLock:214,Select:215,SelectTask:216,Semicolon:217,ShiftLeft:218,ShiftRight:219,ShowAllWindows:220,Slash:221,Sleep:222,Space:223,Super:224,Suspend:225,Tab:226,Turbo:227,Undo:228,WakeUp:229,ZoomToggle:230}
+B.a65=new A.ck(B.a7d,[458907,458873,458978,458982,458833,458832,458831,458834,458881,458879,458880,458805,458801,458794,458799,458800,786544,786543,786980,786986,786981,786979,786983,786977,786982,458809,458806,458853,458976,458980,458890,458876,458875,458828,458791,458782,458783,458784,458785,458786,458787,458788,458789,458790,65717,786616,458829,458792,458798,458793,458793,458810,458819,458820,458821,458856,458857,458858,458859,458860,458861,458862,458811,458863,458864,458865,458866,458867,458812,458813,458814,458815,458816,458817,458818,458878,18,19,392961,392970,392971,392972,392973,392974,392975,392976,392962,392963,392964,392965,392966,392967,392968,392969,392977,392978,392979,392980,392981,392982,392983,392984,392985,392986,392987,392988,392989,392990,392991,458869,458826,16,458825,458852,458887,458889,458888,458756,458757,458758,458759,458760,458761,458762,458763,458764,458765,458766,458767,458768,458769,458770,458771,458772,458773,458774,458775,458776,458777,458778,458779,458780,458781,787101,458896,458897,458898,458899,458900,786836,786834,786891,786847,786826,786865,787083,787081,787084,786611,786609,786608,786637,786610,786612,786819,786615,786613,786614,458979,458983,24,458797,458891,458835,458850,458841,458842,458843,458844,458845,458846,458847,458848,458849,458839,458939,458968,458969,458885,458851,458836,458840,458855,458963,458962,458961,458960,458964,458837,458934,458935,458838,458868,458830,458827,458877,458824,458807,458854,458822,23,458915,458804,21,458823,458871,786850,458803,458977,458981,787103,458808,65666,458796,17,20,458795,22,458874,65667,786994],t.eL)
 B.a6e=new A.dJ([0,"FontWeight.w100",1,"FontWeight.w200",2,"FontWeight.w300",3,"FontWeight.w400",4,"FontWeight.w500",5,"FontWeight.w600",6,"FontWeight.w700",7,"FontWeight.w800",8,"FontWeight.w900"],A.aU("dJ<v,h>"))
 B.CL={AVRInput:0,AVRPower:1,Accel:2,Accept:3,Again:4,AllCandidates:5,Alphanumeric:6,AltGraph:7,AppSwitch:8,ArrowDown:9,ArrowLeft:10,ArrowRight:11,ArrowUp:12,Attn:13,AudioBalanceLeft:14,AudioBalanceRight:15,AudioBassBoostDown:16,AudioBassBoostToggle:17,AudioBassBoostUp:18,AudioFaderFront:19,AudioFaderRear:20,AudioSurroundModeNext:21,AudioTrebleDown:22,AudioTrebleUp:23,AudioVolumeDown:24,AudioVolumeMute:25,AudioVolumeUp:26,Backspace:27,BrightnessDown:28,BrightnessUp:29,BrowserBack:30,BrowserFavorites:31,BrowserForward:32,BrowserHome:33,BrowserRefresh:34,BrowserSearch:35,BrowserStop:36,Call:37,Camera:38,CameraFocus:39,Cancel:40,CapsLock:41,ChannelDown:42,ChannelUp:43,Clear:44,Close:45,ClosedCaptionToggle:46,CodeInput:47,ColorF0Red:48,ColorF1Green:49,ColorF2Yellow:50,ColorF3Blue:51,ColorF4Grey:52,ColorF5Brown:53,Compose:54,ContextMenu:55,Convert:56,Copy:57,CrSel:58,Cut:59,DVR:60,Delete:61,Dimmer:62,DisplaySwap:63,Eisu:64,Eject:65,End:66,EndCall:67,Enter:68,EraseEof:69,Esc:70,Escape:71,ExSel:72,Execute:73,Exit:74,F1:75,F10:76,F11:77,F12:78,F13:79,F14:80,F15:81,F16:82,F17:83,F18:84,F19:85,F2:86,F20:87,F21:88,F22:89,F23:90,F24:91,F3:92,F4:93,F5:94,F6:95,F7:96,F8:97,F9:98,FavoriteClear0:99,FavoriteClear1:100,FavoriteClear2:101,FavoriteClear3:102,FavoriteRecall0:103,FavoriteRecall1:104,FavoriteRecall2:105,FavoriteRecall3:106,FavoriteStore0:107,FavoriteStore1:108,FavoriteStore2:109,FavoriteStore3:110,FinalMode:111,Find:112,Fn:113,FnLock:114,GoBack:115,GoHome:116,GroupFirst:117,GroupLast:118,GroupNext:119,GroupPrevious:120,Guide:121,GuideNextDay:122,GuidePreviousDay:123,HangulMode:124,HanjaMode:125,Hankaku:126,HeadsetHook:127,Help:128,Hibernate:129,Hiragana:130,HiraganaKatakana:131,Home:132,Hyper:133,Info:134,Insert:135,InstantReplay:136,JunjaMode:137,KanaMode:138,KanjiMode:139,Katakana:140,Key11:141,Key12:142,LastNumberRedial:143,LaunchApplication1:144,LaunchApplication2:145,LaunchAssistant:146,LaunchCalendar:147,LaunchContacts:148,LaunchControlPanel:149,LaunchMail:150,LaunchMediaPlayer:151,LaunchMusicPlayer:152,LaunchPhone:153,LaunchScreenSaver:154,LaunchSpreadsheet:155,LaunchWebBrowser:156,LaunchWebCam:157,LaunchWordProcessor:158,Link:159,ListProgram:160,LiveContent:161,Lock:162,LogOff:163,MailForward:164,MailReply:165,MailSend:166,MannerMode:167,MediaApps:168,MediaAudioTrack:169,MediaClose:170,MediaFastForward:171,MediaLast:172,MediaPause:173,MediaPlay:174,MediaPlayPause:175,MediaRecord:176,MediaRewind:177,MediaSkip:178,MediaSkipBackward:179,MediaSkipForward:180,MediaStepBackward:181,MediaStepForward:182,MediaStop:183,MediaTopMenu:184,MediaTrackNext:185,MediaTrackPrevious:186,MicrophoneToggle:187,MicrophoneVolumeDown:188,MicrophoneVolumeMute:189,MicrophoneVolumeUp:190,ModeChange:191,NavigateIn:192,NavigateNext:193,NavigateOut:194,NavigatePrevious:195,New:196,NextCandidate:197,NextFavoriteChannel:198,NextUserProfile:199,NonConvert:200,Notification:201,NumLock:202,OnDemand:203,Open:204,PageDown:205,PageUp:206,Pairing:207,Paste:208,Pause:209,PinPDown:210,PinPMove:211,PinPToggle:212,PinPUp:213,Play:214,PlaySpeedDown:215,PlaySpeedReset:216,PlaySpeedUp:217,Power:218,PowerOff:219,PreviousCandidate:220,Print:221,PrintScreen:222,Process:223,Props:224,RandomToggle:225,RcLowBattery:226,RecordSpeedNext:227,Redo:228,RfBypass:229,Romaji:230,STBInput:231,STBPower:232,Save:233,ScanChannelsToggle:234,ScreenModeNext:235,ScrollLock:236,Select:237,Settings:238,ShiftLevel5:239,SingleCandidate:240,Soft1:241,Soft2:242,Soft3:243,Soft4:244,Soft5:245,Soft6:246,Soft7:247,Soft8:248,SpeechCorrectionList:249,SpeechInputToggle:250,SpellCheck:251,SplitScreenToggle:252,Standby:253,Subtitle:254,Super:255,Symbol:256,SymbolLock:257,TV:258,TV3DMode:259,TVAntennaCable:260,TVAudioDescription:261,TVAudioDescriptionMixDown:262,TVAudioDescriptionMixUp:263,TVContentsMenu:264,TVDataService:265,TVInput:266,TVInputComponent1:267,TVInputComponent2:268,TVInputComposite1:269,TVInputComposite2:270,TVInputHDMI1:271,TVInputHDMI2:272,TVInputHDMI3:273,TVInputHDMI4:274,TVInputVGA1:275,TVMediaContext:276,TVNetwork:277,TVNumberEntry:278,TVPower:279,TVRadioService:280,TVSatellite:281,TVSatelliteBS:282,TVSatelliteCS:283,TVSatelliteToggle:284,TVTerrestrialAnalog:285,TVTerrestrialDigital:286,TVTimer:287,Tab:288,Teletext:289,Undo:290,Unidentified:291,VideoModeNext:292,VoiceDial:293,WakeUp:294,Wink:295,Zenkaku:296,ZenkakuHankaku:297,ZoomIn:298,ZoomOut:299,ZoomToggle:300}
 B.a6f=new A.ck(B.CL,[B.zX,B.zY,B.xD,B.xS,B.xT,B.yg,B.yh,B.lc,B.Bq,B.dt,B.da,B.db,B.du,B.xU,B.zQ,B.zR,B.zS,B.Bh,B.zT,B.zU,B.zV,B.zW,B.Bi,B.Bj,B.zr,B.zt,B.zs,B.c5,B.y5,B.y6,B.zJ,B.zK,B.zL,B.zM,B.zN,B.zO,B.zP,B.Br,B.y7,B.Bs,B.xV,B.iE,B.zZ,B.A_,B.pn,B.ze,B.A6,B.yi,B.A0,B.A1,B.A2,B.A3,B.A4,B.A5,B.yj,B.xW,B.yk,B.xK,B.xL,B.xM,B.B4,B.bY,B.A7,B.A8,B.yz,B.y8,B.eS,B.Bt,B.lb,B.xN,B.iD,B.iD,B.xO,B.xX,B.A9,B.yJ,B.yS,B.yT,B.yU,B.yV,B.yW,B.yX,B.yY,B.yZ,B.z_,B.z0,B.yK,B.z1,B.z2,B.z3,B.z4,B.z5,B.yL,B.yM,B.yN,B.yO,B.yP,B.yQ,B.yR,B.Aa,B.Ab,B.Ac,B.Ad,B.Ae,B.Af,B.Ag,B.Ah,B.Ai,B.Aj,B.Ak,B.Al,B.yl,B.xY,B.pm,B.xE,B.Bu,B.Bv,B.ym,B.yn,B.yo,B.yp,B.Am,B.An,B.Ao,B.yw,B.yx,B.yA,B.Bw,B.xZ,B.yd,B.yB,B.yC,B.eT,B.xF,B.Ap,B.po,B.Aq,B.yy,B.yD,B.yE,B.yF,B.C1,B.C2,B.Bx,B.zz,B.zu,B.zH,B.zv,B.zF,B.zI,B.zw,B.zx,B.zy,B.zG,B.zA,B.zB,B.zC,B.zD,B.zE,B.Ar,B.As,B.At,B.Au,B.y9,B.zf,B.zg,B.zh,B.Bz,B.Av,B.B5,B.Bg,B.Aw,B.Ax,B.Ay,B.Az,B.zi,B.AA,B.AB,B.AC,B.B6,B.B7,B.B8,B.B9,B.zj,B.Ba,B.zk,B.zl,B.Bk,B.Bl,B.Bn,B.Bm,B.yq,B.Bb,B.Bc,B.Bd,B.Be,B.zm,B.yr,B.AD,B.AE,B.ys,B.By,B.ld,B.AF,B.zn,B.iF,B.iG,B.Bf,B.xP,B.y_,B.AG,B.AH,B.AI,B.AJ,B.y0,B.AK,B.AL,B.AM,B.ya,B.yb,B.yt,B.zo,B.yc,B.yu,B.y1,B.AN,B.AO,B.AP,B.xQ,B.AQ,B.yG,B.AV,B.AW,B.zp,B.AR,B.AS,B.le,B.y2,B.AT,B.xJ,B.yv,B.z6,B.z7,B.z8,B.z9,B.za,B.zb,B.zc,B.zd,B.Bo,B.Bp,B.zq,B.AU,B.ye,B.AX,B.xG,B.xH,B.xI,B.AZ,B.BB,B.BC,B.BD,B.BE,B.BF,B.BG,B.BH,B.B_,B.BI,B.BJ,B.BK,B.BL,B.BM,B.BN,B.BO,B.BP,B.BQ,B.BR,B.BS,B.BT,B.B0,B.BU,B.BV,B.BW,B.BX,B.BY,B.BZ,B.C_,B.C0,B.la,B.AY,B.xR,B.xC,B.B1,B.BA,B.yf,B.B2,B.yH,B.yI,B.y3,B.y4,B.B3],A.aU("ck<h,t>"))
 B.a6g=new A.ck(B.CL,[4294970632,4294970633,4294967553,4294968577,4294968578,4294969089,4294969090,4294967555,4294971393,4294968065,4294968066,4294968067,4294968068,4294968579,4294970625,4294970626,4294970627,4294970882,4294970628,4294970629,4294970630,4294970631,4294970884,4294970885,4294969871,4294969873,4294969872,4294967304,4294968833,4294968834,4294970369,4294970370,4294970371,4294970372,4294970373,4294970374,4294970375,4294971394,4294968835,4294971395,4294968580,4294967556,4294970634,4294970635,4294968321,4294969857,4294970642,4294969091,4294970636,4294970637,4294970638,4294970639,4294970640,4294970641,4294969092,4294968581,4294969093,4294968322,4294968323,4294968324,4294970703,4294967423,4294970643,4294970644,4294969108,4294968836,4294968069,4294971396,4294967309,4294968325,4294967323,4294967323,4294968326,4294968582,4294970645,4294969345,4294969354,4294969355,4294969356,4294969357,4294969358,4294969359,4294969360,4294969361,4294969362,4294969363,4294969346,4294969364,4294969365,4294969366,4294969367,4294969368,4294969347,4294969348,4294969349,4294969350,4294969351,4294969352,4294969353,4294970646,4294970647,4294970648,4294970649,4294970650,4294970651,4294970652,4294970653,4294970654,4294970655,4294970656,4294970657,4294969094,4294968583,4294967558,4294967559,4294971397,4294971398,4294969095,4294969096,4294969097,4294969098,4294970658,4294970659,4294970660,4294969105,4294969106,4294969109,4294971399,4294968584,4294968841,4294969110,4294969111,4294968070,4294967560,4294970661,4294968327,4294970662,4294969107,4294969112,4294969113,4294969114,4294971905,4294971906,4294971400,4294970118,4294970113,4294970126,4294970114,4294970124,4294970127,4294970115,4294970116,4294970117,4294970125,4294970119,4294970120,4294970121,4294970122,4294970123,4294970663,4294970664,4294970665,4294970666,4294968837,4294969858,4294969859,4294969860,4294971402,4294970667,4294970704,4294970715,4294970668,4294970669,4294970670,4294970671,4294969861,4294970672,4294970673,4294970674,4294970705,4294970706,4294970707,4294970708,4294969863,4294970709,4294969864,4294969865,4294970886,4294970887,4294970889,4294970888,4294969099,4294970710,4294970711,4294970712,4294970713,4294969866,4294969100,4294970675,4294970676,4294969101,4294971401,4294967562,4294970677,4294969867,4294968071,4294968072,4294970714,4294968328,4294968585,4294970678,4294970679,4294970680,4294970681,4294968586,4294970682,4294970683,4294970684,4294968838,4294968839,4294969102,4294969868,4294968840,4294969103,4294968587,4294970685,4294970686,4294970687,4294968329,4294970688,4294969115,4294970693,4294970694,4294969869,4294970689,4294970690,4294967564,4294968588,4294970691,4294967569,4294969104,4294969601,4294969602,4294969603,4294969604,4294969605,4294969606,4294969607,4294969608,4294971137,4294971138,4294969870,4294970692,4294968842,4294970695,4294967566,4294967567,4294967568,4294970697,4294971649,4294971650,4294971651,4294971652,4294971653,4294971654,4294971655,4294970698,4294971656,4294971657,4294971658,4294971659,4294971660,4294971661,4294971662,4294971663,4294971664,4294971665,4294971666,4294971667,4294970699,4294971668,4294971669,4294971670,4294971671,4294971672,4294971673,4294971674,4294971675,4294967305,4294970696,4294968330,4294967297,4294970700,4294971403,4294968843,4294970701,4294969116,4294969117,4294968589,4294968590,4294970702],t.eL)
-B.a7k={alias:0,allScroll:1,basic:2,cell:3,click:4,contextMenu:5,copy:6,forbidden:7,grab:8,grabbing:9,help:10,move:11,none:12,noDrop:13,precise:14,progress:15,text:16,resizeColumn:17,resizeDown:18,resizeDownLeft:19,resizeDownRight:20,resizeLeft:21,resizeLeftRight:22,resizeRight:23,resizeRow:24,resizeUp:25,resizeUpDown:26,resizeUpLeft:27,resizeUpRight:28,resizeUpLeftDownRight:29,resizeUpRightDownLeft:30,verticalText:31,wait:32,zoomIn:33,zoomOut:34}
-B.a6h=new A.ck(B.a7k,["alias","all-scroll","default","cell","pointer","context-menu","copy","not-allowed","grab","grabbing","help","move","none","no-drop","crosshair","progress","text","col-resize","s-resize","sw-resize","se-resize","w-resize","ew-resize","e-resize","row-resize","n-resize","ns-resize","nw-resize","ne-resize","nwse-resize","nesw-resize","vertical-text","wait","zoom-in","zoom-out"],t.li)
+B.a7b={ilmuwan:0,mastersauna:1,matamata:2,nelayanlautdalam:3,pandaibesi:4,pemahatbatu:5,penambangemas:6,penari:7,pengukirkayu:8,penjelajah:9,peracik:10,peselancar:11,peternakkelinci:12,tukangdaging:13,pengajar:14,"bangsawan-bangsawan":15,"bangsawan-gouverneur":16,"bangsawan-pangeran":17,"bangsawan-puteri":18,buruhangkat:19,burungangkat:20,kriyawan:21,nelayanikan:22,pekebunteh:23,penenun:24,penjahit:25,perajintembikar:26,petanipadi:27,wargadesa:28,petanirumputlaut:29,"bangsawan-pangeranmelayu":30,"bangsawan-puterimelayu":31,"bangsawan-pangeranjawa":32,"bangsawan-puterijawa":33,"bangsawan-pangerantailan":34,"bangsawan-puteritailan":35,"bangsawan-pangeranasiatenggara":36,"bangsawan-puteriasiatenggara":37,"bangsawan-pangerantimurtengah":38,"bangsawan-puteritimurtengah":39,penggembala:40,pelukis:41,penatu:42,penjaga:43,pemburu:44,arsiparis:45,dokumentalis:46,jagawana:47,modellukis:48,nelayanbudidaya:49,nelayandemersal:50,nelayanpelagis:51,nelayanplasma:52,nelayantambak:53,olahragawan:54,peleografer:55,paleografer:56,pedagangbuah:57,tukanggalangan:58,pembudidayaikanhias:59,pembudidayamutiara:60,pemetikbuah:61,penebangkayu:62,pengrajintahu:63,pengrajintempe:64,penjagakebersihan:65,penjagapantai:66,penyadapkaret:67,penyadapnira:68,penyangraikopi:69,penyelam:70,penyulingherbal:71,perajinanyaman:72,perajinukiran:73,peramujamur:74,peramumadu:75,perenang:76,petambakgaram:77,petanihortikultura:78,petanipalawija:79,peternakpetelur:80,peternakbibit:81,peyernakbibit:82,peternakperah:83,peternakpedaging:84,kupukupumalam:85,tukangbangun:86,tukangbangunan:87,tukangbatu:88,tukangkayu:89,atlet:90,besi:91,guru:92,masak:93,montir:94,nelayan:95,pekebun:96,pekerja:97,pemadam:98,perajut:99,peramu:100,perawat:101,petani:102,petua:103,pianis:104,polisi:105,pustakawan:106,warga:107}
+B.a6h=new A.ck(B.a7b,["Ilmuwan Desa","Master Sauna","Mata-mata","Nelayan Laut Dalam","Pandai Besi","Pemahat Batu","Penambang Emas","Penari","Pengukir Kayu","Penjelajah","Peracik","Peselancar","Peternak Kelinci","Tukang Daging","Pengajar","Bangsawan","Gubernur","Pangeran","Puteri","Buruh Angkat","Buruh Angkat","Kriyawan","Nelayan","Pekebun Teh","Penenun","Penjahit","Perajin Tembikar","Petani Padi","Warga Desa","Petani Rumput Laut","Pangeran Melayu","Puteri Melayu","Pangeran Jawa","Puteri Jawa","Pangeran Tailan","Puteri Tailan","Pangeran Asia Tenggara","Puteri Asia Tenggara","Pangeran Timur Tengah","Puteri Timur Tengah","Penggembala","Pelukis","Penatu","Penjaga","Pemburu","Arsiparis","Dokumentalis","Jagawana","Model Lukis","Nelayan Budidaya","Nelayan Demersal","Nelayan Pelagis","Nelayan Plasma","Nelayan Tambak","Olahragawan","Paleografer","Paleografer","Pedagang Buah","Tukang Galangan","Pembudidaya Ikan Hias","Pembudidaya Mutiara","Pemetik Buah","Penebang Kayu","Pengrajin Tahu","Pengrajin Tempe","Penjaga Kebersihan","Penjaga Pantai","Penyadap Karet","Penyadap Nira","Penyangrai Kopi","Penyelam","Penyuling Herbal","Perajin Anyaman","Perajin Ukiran","Peramu Jamur","Peramu Madu","Perenang","Petambak Garam","Petani Hortikultura","Petani Palawija","Peternak Petelur","Peternak Bibit","Peternak Bibit","Peternak Perah","Peternak Pedaging","Kupu-kupu Malam","Tukang Bangunan","Tukang Bangunan","Tukang Batu","Tukang Kayu","Atlet","Pandai Besi","Guru","Juru Masak","Montir","Nelayan","Pekebun","Pekerja","Pemadam","Perajut","Peramu","Perawat","Petani","Petua","Pianis","Polisi","Pustakawan","Warga Desa"],t.li)
+B.a7l={alias:0,allScroll:1,basic:2,cell:3,click:4,contextMenu:5,copy:6,forbidden:7,grab:8,grabbing:9,help:10,move:11,none:12,noDrop:13,precise:14,progress:15,text:16,resizeColumn:17,resizeDown:18,resizeDownLeft:19,resizeDownRight:20,resizeLeft:21,resizeLeftRight:22,resizeRight:23,resizeRow:24,resizeUp:25,resizeUpDown:26,resizeUpLeft:27,resizeUpRight:28,resizeUpLeftDownRight:29,resizeUpRightDownLeft:30,verticalText:31,wait:32,zoomIn:33,zoomOut:34}
+B.a6i=new A.ck(B.a7l,["alias","all-scroll","default","cell","pointer","context-menu","copy","not-allowed","grab","grabbing","help","move","none","no-drop","crosshair","progress","text","col-resize","s-resize","sw-resize","se-resize","w-resize","ew-resize","e-resize","row-resize","n-resize","ns-resize","nw-resize","ne-resize","nwse-resize","nesw-resize","vertical-text","wait","zoom-in","zoom-out"],t.li)
 B.adr=new A.aR(B.c5,!1,!1,!1,!1,B.a_)
 B.acZ=new A.aR(B.c5,!1,!0,!1,!1,B.a_)
 B.acY=new A.aR(B.bY,!1,!1,!1,!1,B.a_)
@@ -135070,8 +135072,6 @@ B.adw=new A.aR(B.bY,!1,!0,!0,!1,B.a_)
 B.adm=new A.aR(B.bY,!1,!1,!0,!1,B.a_)
 B.Cq=new A.dJ([B.adr,B.a3,B.acZ,B.a3,B.acY,B.a3,B.acN,B.a3,B.adi,B.a3,B.ad9,B.a3,B.adw,B.a3,B.adm,B.a3],t.Fp)
 B.Cr=new A.dJ([2,12,4,20,6,24,8,26],A.aU("dJ<v,v>"))
-B.a7m={ilmuwan:0,mastersauna:1,matamata:2,nelayanlautdalam:3,pandaibesi:4,pemahatbatu:5,penambangemas:6,penari:7,pengukirkayu:8,penjelajah:9,peracik:10,peselancar:11,peternakkelinci:12,tukangdaging:13,pengajar:14,"bangsawan-bangsawan":15,"bangsawan-gouverneur":16,"bangsawan-pangeran":17,"bangsawan-puteri":18,buruhangkat:19,burungangkat:20,kriyawan:21,nelayanikan:22,pekebunteh:23,penenun:24,penjahit:25,perajintembikar:26,petanipadi:27,wargadesa:28,petanirumputlaut:29,"bangsawan-pangeranmelayu":30,"bangsawan-puterimelayu":31,"bangsawan-pangeranjawa":32,"bangsawan-puterijawa":33,"bangsawan-pangerantailan":34,"bangsawan-puteritailan":35,"bangsawan-pangeranasiatenggara":36,"bangsawan-puteriasiatenggara":37,"bangsawan-pangerantimurtengah":38,"bangsawan-puteritimurtengah":39,penggembala:40,pelukis:41,penatu:42,penjaga:43,pemburu:44,atlet:45,besi:46,guru:47,masak:48,montir:49,nelayan:50,pekebun:51,pekerja:52,pemadam:53,perajut:54,peramu:55,perawat:56,petani:57,petua:58,pianis:59,polisi:60,pustakawan:61,warga:62}
-B.a6i=new A.ck(B.a7m,["Ilmuwan Desa","Master Sauna","Mata-mata","Nelayan Laut Dalam","Pandai Besi","Pemahat Batu","Penambang Emas","Penari","Pengukir Kayu","Penjelajah","Peracik","Peselancar","Peternak Kelinci","Tukang Daging","Pengajar","Bangsawan","Gubernur","Pangeran","Puteri","Buruh Angkat","Buruh Angkat","Kriyawan","Nelayan","Pekebun Teh","Penenun","Penjahit","Perajin Tembikar","Petani Padi","Warga Desa","Petani Rumput Laut","Pangeran Melayu","Puteri Melayu","Pangeran Jawa","Puteri Jawa","Pangeran Tailan","Puteri Tailan","Pangeran Asia Tenggara","Puteri Asia Tenggara","Pangeran Timur Tengah","Puteri Timur Tengah","Penggembala","Pelukis","Penatu","Penjaga","Pemburu","Atlet","Pandai Besi","Guru","Juru Masak","Montir","Nelayan","Pekebun","Pekerja","Pemadam","Perajut","Peramu","Perawat","Petani","Petua","Pianis","Polisi","Pustakawan","Warga Desa"],t.li)
 B.a7p={type:0}
 B.a6j=new A.ck(B.a7p,["line"],t.li)
 B.a6l=new A.ck(B.cj,[],A.aU("ck<l6,I>"))
@@ -135091,75 +135091,75 @@ B.a0J=s([46,null,null,8589935150],t._)
 B.a0K=s([47,null,null,8589935151],t._)
 B.a0L=s([48,null,null,8589935152],t._)
 B.a0M=s([49,null,null,8589935153],t._)
-B.a0Q=s([50,null,null,8589935154],t._)
-B.a0S=s([51,null,null,8589935155],t._)
-B.a0T=s([52,null,null,8589935156],t._)
-B.a0U=s([53,null,null,8589935157],t._)
-B.a0V=s([54,null,null,8589935158],t._)
-B.a0W=s([55,null,null,8589935159],t._)
-B.a0Y=s([56,null,null,8589935160],t._)
-B.a1_=s([57,null,null,8589935161],t._)
-B.a2t=s([8589934852,8589934852,8589934853,null],t._)
+B.a0P=s([50,null,null,8589935154],t._)
+B.a0R=s([51,null,null,8589935155],t._)
+B.a0S=s([52,null,null,8589935156],t._)
+B.a0T=s([53,null,null,8589935157],t._)
+B.a0U=s([54,null,null,8589935158],t._)
+B.a0V=s([55,null,null,8589935159],t._)
+B.a0X=s([56,null,null,8589935160],t._)
+B.a0Z=s([57,null,null,8589935161],t._)
+B.a2u=s([8589934852,8589934852,8589934853,null],t._)
 B.a0u=s([4294967555,null,4294967555,null],t._)
 B.a0v=s([4294968065,null,null,8589935154],t._)
 B.a0w=s([4294968066,null,null,8589935156],t._)
 B.a0x=s([4294968067,null,null,8589935158],t._)
 B.a0y=s([4294968068,null,null,8589935160],t._)
 B.a0D=s([4294968321,null,null,8589935157],t._)
-B.a2u=s([8589934848,8589934848,8589934849,null],t._)
+B.a2v=s([8589934848,8589934848,8589934849,null],t._)
 B.a0t=s([4294967423,null,null,8589935150],t._)
 B.a0z=s([4294968069,null,null,8589935153],t._)
 B.a0s=s([4294967309,null,null,8589935117],t._)
 B.a0A=s([4294968070,null,null,8589935159],t._)
 B.a0E=s([4294968327,null,null,8589935152],t._)
-B.a2v=s([8589934854,8589934854,8589934855,null],t._)
+B.a2w=s([8589934854,8589934854,8589934855,null],t._)
 B.a0B=s([4294968071,null,null,8589935155],t._)
 B.a0C=s([4294968072,null,null,8589935161],t._)
-B.a2w=s([8589934850,8589934850,8589934851,null],t._)
-B.Cw=new A.dJ(["*",B.a0F,"+",B.a0G,"-",B.a0H,".",B.a0J,"/",B.a0K,"0",B.a0L,"1",B.a0M,"2",B.a0Q,"3",B.a0S,"4",B.a0T,"5",B.a0U,"6",B.a0V,"7",B.a0W,"8",B.a0Y,"9",B.a1_,"Alt",B.a2t,"AltGraph",B.a0u,"ArrowDown",B.a0v,"ArrowLeft",B.a0w,"ArrowRight",B.a0x,"ArrowUp",B.a0y,"Clear",B.a0D,"Control",B.a2u,"Delete",B.a0t,"End",B.a0z,"Enter",B.a0s,"Home",B.a0A,"Insert",B.a0E,"Meta",B.a2v,"PageDown",B.a0B,"PageUp",B.a0C,"Shift",B.a2w],A.aU("dJ<h,V<v?>>"))
-B.a0Z=s([B.xB,null,null,B.Ch],t.L)
+B.a2x=s([8589934850,8589934850,8589934851,null],t._)
+B.Cw=new A.dJ(["*",B.a0F,"+",B.a0G,"-",B.a0H,".",B.a0J,"/",B.a0K,"0",B.a0L,"1",B.a0M,"2",B.a0P,"3",B.a0R,"4",B.a0S,"5",B.a0T,"6",B.a0U,"7",B.a0V,"8",B.a0X,"9",B.a0Z,"Alt",B.a2u,"AltGraph",B.a0u,"ArrowDown",B.a0v,"ArrowLeft",B.a0w,"ArrowRight",B.a0x,"ArrowUp",B.a0y,"Clear",B.a0D,"Control",B.a2v,"Delete",B.a0t,"End",B.a0z,"Enter",B.a0s,"Home",B.a0A,"Insert",B.a0E,"Meta",B.a2w,"PageDown",B.a0B,"PageUp",B.a0C,"Shift",B.a2x],A.aU("dJ<h,V<v?>>"))
+B.a0Y=s([B.xB,null,null,B.Ch],t.L)
 B.a3t=s([B.C3,null,null,B.Ci],t.L)
 B.a1I=s([B.C4,null,null,B.Cj],t.L)
-B.a2x=s([B.C5,null,null,B.eV],t.L)
+B.a2y=s([B.C5,null,null,B.eV],t.L)
 B.a09=s([B.C6,null,null,B.Ck],t.L)
 B.a47=s([B.C7,null,null,B.pu],t.L)
 B.a3T=s([B.C8,null,null,B.iK],t.L)
-B.a19=s([B.C9,null,null,B.eW],t.L)
+B.a18=s([B.C9,null,null,B.eW],t.L)
 B.a4i=s([B.Ca,null,null,B.iL],t.L)
 B.a3R=s([B.Cb,null,null,B.eX],t.L)
-B.a13=s([B.Cc,null,null,B.pv],t.L)
+B.a12=s([B.Cc,null,null,B.pv],t.L)
 B.a0m=s([B.Cd,null,null,B.eY],t.L)
-B.a1q=s([B.Ce,null,null,B.iM],t.L)
+B.a1p=s([B.Ce,null,null,B.iM],t.L)
 B.a3v=s([B.Cf,null,null,B.eZ],t.L)
 B.a3B=s([B.Cg,null,null,B.iN],t.L)
-B.a1e=s([B.iI,B.iI,B.lg,null],t.L)
+B.a1d=s([B.iI,B.iI,B.lg,null],t.L)
 B.a48=s([B.lc,null,B.lc,null],t.L)
 B.a23=s([B.dt,null,null,B.eW],t.L)
 B.a24=s([B.da,null,null,B.eX],t.L)
 B.a25=s([B.db,null,null,B.eY],t.L)
 B.a4c=s([B.du,null,null,B.eZ],t.L)
 B.a3M=s([B.pn,null,null,B.pv],t.L)
-B.a1f=s([B.iH,B.iH,B.lf,null],t.L)
+B.a1e=s([B.iH,B.iH,B.lf,null],t.L)
 B.a2W=s([B.bY,null,null,B.eV],t.L)
 B.a26=s([B.eS,null,null,B.iK],t.L)
-B.a12=s([B.lb,null,null,B.pt],t.L)
+B.a11=s([B.lb,null,null,B.pt],t.L)
 B.a27=s([B.eT,null,null,B.iM],t.L)
 B.a3N=s([B.po,null,null,B.pu],t.L)
-B.a1g=s([B.iJ,B.iJ,B.lh,null],t.L)
+B.a1f=s([B.iJ,B.iJ,B.lh,null],t.L)
 B.a28=s([B.iF,null,null,B.iL],t.L)
 B.a3b=s([B.iG,null,null,B.iN],t.L)
-B.a1h=s([B.ej,B.ej,B.eU,null],t.L)
-B.a6o=new A.dJ(["*",B.a0Z,"+",B.a3t,"-",B.a1I,".",B.a2x,"/",B.a09,"0",B.a47,"1",B.a3T,"2",B.a19,"3",B.a4i,"4",B.a3R,"5",B.a13,"6",B.a0m,"7",B.a1q,"8",B.a3v,"9",B.a3B,"Alt",B.a1e,"AltGraph",B.a48,"ArrowDown",B.a23,"ArrowLeft",B.a24,"ArrowRight",B.a25,"ArrowUp",B.a4c,"Clear",B.a3M,"Control",B.a1f,"Delete",B.a2W,"End",B.a26,"Enter",B.a12,"Home",B.a27,"Insert",B.a3N,"Meta",B.a1g,"PageDown",B.a28,"PageUp",B.a3b,"Shift",B.a1h],A.aU("dJ<h,V<t?>>"))
+B.a1g=s([B.ej,B.ej,B.eU,null],t.L)
+B.a6o=new A.dJ(["*",B.a0Y,"+",B.a3t,"-",B.a1I,".",B.a2y,"/",B.a09,"0",B.a47,"1",B.a3T,"2",B.a18,"3",B.a4i,"4",B.a3R,"5",B.a12,"6",B.a0m,"7",B.a1p,"8",B.a3v,"9",B.a3B,"Alt",B.a1d,"AltGraph",B.a48,"ArrowDown",B.a23,"ArrowLeft",B.a24,"ArrowRight",B.a25,"ArrowUp",B.a4c,"Clear",B.a3M,"Control",B.a1e,"Delete",B.a2W,"End",B.a26,"Enter",B.a11,"Home",B.a27,"Insert",B.a3N,"Meta",B.a1f,"PageDown",B.a28,"PageUp",B.a3b,"Shift",B.a1g],A.aU("dJ<h,V<t?>>"))
 B.CM={persembahan:0,sekali_pakai:1,penguat:2,malam:3,siang:4,poin:5,lanjutan:6}
 B.Cx=new A.ck(B.CM,["donations","item","plus","danger","item","bulirembun","plus"],t.li)
 B.f0=new A.ck(B.CM,["Persembahan","Sekali pakai","Penguat","Serangan malam","Pakai di siang","Kartu poin","Kartu lanjutan"],t.li)
-B.a7g={KeyA:0,KeyB:1,KeyC:2,KeyD:3,KeyE:4,KeyF:5,KeyG:6,KeyH:7,KeyI:8,KeyJ:9,KeyK:10,KeyL:11,KeyM:12,KeyN:13,KeyO:14,KeyP:15,KeyQ:16,KeyR:17,KeyS:18,KeyT:19,KeyU:20,KeyV:21,KeyW:22,KeyX:23,KeyY:24,KeyZ:25,Digit1:26,Digit2:27,Digit3:28,Digit4:29,Digit5:30,Digit6:31,Digit7:32,Digit8:33,Digit9:34,Digit0:35,Minus:36,Equal:37,BracketLeft:38,BracketRight:39,Backslash:40,Semicolon:41,Quote:42,Backquote:43,Comma:44,Period:45,Slash:46}
-B.Cy=new A.ck(B.a7g,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","-","=","[","]","\\",";","'","`",",",".","/"],t.li)
+B.a7h={KeyA:0,KeyB:1,KeyC:2,KeyD:3,KeyE:4,KeyF:5,KeyG:6,KeyH:7,KeyI:8,KeyJ:9,KeyK:10,KeyL:11,KeyM:12,KeyN:13,KeyO:14,KeyP:15,KeyQ:16,KeyR:17,KeyS:18,KeyT:19,KeyU:20,KeyV:21,KeyW:22,KeyX:23,KeyY:24,KeyZ:25,Digit1:26,Digit2:27,Digit3:28,Digit4:29,Digit5:30,Digit6:31,Digit7:32,Digit8:33,Digit9:34,Digit0:35,Minus:36,Equal:37,BracketLeft:38,BracketRight:39,Backslash:40,Semicolon:41,Quote:42,Backquote:43,Comma:44,Period:45,Slash:46}
+B.Cy=new A.ck(B.a7h,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","-","=","[","]","\\",";","'","`",",",".","/"],t.li)
 B.pO={sekali_pakai:0,pasif:1}
 B.a6p=new A.ck(B.pO,["Tekan tombol kemampuan di bilah atas meja (Patuhilah Padaku: di layar voting). Hanya sekali.","Bekerja otomatis saat syaratnya terpenuhi."],t.li)
 B.a6q=new A.ck(B.pO,["item","plus"],t.li)
 B.Cz=new A.ck(B.pO,["Sekali pakai","Pasif"],t.li)
-B.a7b={Abort:0,Again:1,AltLeft:2,AltRight:3,ArrowDown:4,ArrowLeft:5,ArrowRight:6,ArrowUp:7,AudioVolumeDown:8,AudioVolumeMute:9,AudioVolumeUp:10,Backquote:11,Backslash:12,Backspace:13,BracketLeft:14,BracketRight:15,BrightnessDown:16,BrightnessUp:17,BrowserBack:18,BrowserFavorites:19,BrowserForward:20,BrowserHome:21,BrowserRefresh:22,BrowserSearch:23,BrowserStop:24,CapsLock:25,Comma:26,ContextMenu:27,ControlLeft:28,ControlRight:29,Convert:30,Copy:31,Cut:32,Delete:33,Digit0:34,Digit1:35,Digit2:36,Digit3:37,Digit4:38,Digit5:39,Digit6:40,Digit7:41,Digit8:42,Digit9:43,DisplayToggleIntExt:44,Eject:45,End:46,Enter:47,Equal:48,Escape:49,Esc:50,F1:51,F10:52,F11:53,F12:54,F13:55,F14:56,F15:57,F16:58,F17:59,F18:60,F19:61,F2:62,F20:63,F21:64,F22:65,F23:66,F24:67,F3:68,F4:69,F5:70,F6:71,F7:72,F8:73,F9:74,Find:75,Fn:76,FnLock:77,GameButton1:78,GameButton10:79,GameButton11:80,GameButton12:81,GameButton13:82,GameButton14:83,GameButton15:84,GameButton16:85,GameButton2:86,GameButton3:87,GameButton4:88,GameButton5:89,GameButton6:90,GameButton7:91,GameButton8:92,GameButton9:93,GameButtonA:94,GameButtonB:95,GameButtonC:96,GameButtonLeft1:97,GameButtonLeft2:98,GameButtonMode:99,GameButtonRight1:100,GameButtonRight2:101,GameButtonSelect:102,GameButtonStart:103,GameButtonThumbLeft:104,GameButtonThumbRight:105,GameButtonX:106,GameButtonY:107,GameButtonZ:108,Help:109,Home:110,Hyper:111,Insert:112,IntlBackslash:113,IntlRo:114,IntlYen:115,KanaMode:116,KeyA:117,KeyB:118,KeyC:119,KeyD:120,KeyE:121,KeyF:122,KeyG:123,KeyH:124,KeyI:125,KeyJ:126,KeyK:127,KeyL:128,KeyM:129,KeyN:130,KeyO:131,KeyP:132,KeyQ:133,KeyR:134,KeyS:135,KeyT:136,KeyU:137,KeyV:138,KeyW:139,KeyX:140,KeyY:141,KeyZ:142,KeyboardLayoutSelect:143,Lang1:144,Lang2:145,Lang3:146,Lang4:147,Lang5:148,LaunchApp1:149,LaunchApp2:150,LaunchAssistant:151,LaunchControlPanel:152,LaunchMail:153,LaunchScreenSaver:154,MailForward:155,MailReply:156,MailSend:157,MediaFastForward:158,MediaPause:159,MediaPlay:160,MediaPlayPause:161,MediaRecord:162,MediaRewind:163,MediaSelect:164,MediaStop:165,MediaTrackNext:166,MediaTrackPrevious:167,MetaLeft:168,MetaRight:169,MicrophoneMuteToggle:170,Minus:171,NonConvert:172,NumLock:173,Numpad0:174,Numpad1:175,Numpad2:176,Numpad3:177,Numpad4:178,Numpad5:179,Numpad6:180,Numpad7:181,Numpad8:182,Numpad9:183,NumpadAdd:184,NumpadBackspace:185,NumpadClear:186,NumpadClearEntry:187,NumpadComma:188,NumpadDecimal:189,NumpadDivide:190,NumpadEnter:191,NumpadEqual:192,NumpadMemoryAdd:193,NumpadMemoryClear:194,NumpadMemoryRecall:195,NumpadMemoryStore:196,NumpadMemorySubtract:197,NumpadMultiply:198,NumpadParenLeft:199,NumpadParenRight:200,NumpadSubtract:201,Open:202,PageDown:203,PageUp:204,Paste:205,Pause:206,Period:207,Power:208,PrintScreen:209,PrivacyScreenToggle:210,Props:211,Quote:212,Resume:213,ScrollLock:214,Select:215,SelectTask:216,Semicolon:217,ShiftLeft:218,ShiftRight:219,ShowAllWindows:220,Slash:221,Sleep:222,Space:223,Super:224,Suspend:225,Tab:226,Turbo:227,Undo:228,WakeUp:229,ZoomToggle:230}
+B.a7c={Abort:0,Again:1,AltLeft:2,AltRight:3,ArrowDown:4,ArrowLeft:5,ArrowRight:6,ArrowUp:7,AudioVolumeDown:8,AudioVolumeMute:9,AudioVolumeUp:10,Backquote:11,Backslash:12,Backspace:13,BracketLeft:14,BracketRight:15,BrightnessDown:16,BrightnessUp:17,BrowserBack:18,BrowserFavorites:19,BrowserForward:20,BrowserHome:21,BrowserRefresh:22,BrowserSearch:23,BrowserStop:24,CapsLock:25,Comma:26,ContextMenu:27,ControlLeft:28,ControlRight:29,Convert:30,Copy:31,Cut:32,Delete:33,Digit0:34,Digit1:35,Digit2:36,Digit3:37,Digit4:38,Digit5:39,Digit6:40,Digit7:41,Digit8:42,Digit9:43,DisplayToggleIntExt:44,Eject:45,End:46,Enter:47,Equal:48,Escape:49,Esc:50,F1:51,F10:52,F11:53,F12:54,F13:55,F14:56,F15:57,F16:58,F17:59,F18:60,F19:61,F2:62,F20:63,F21:64,F22:65,F23:66,F24:67,F3:68,F4:69,F5:70,F6:71,F7:72,F8:73,F9:74,Find:75,Fn:76,FnLock:77,GameButton1:78,GameButton10:79,GameButton11:80,GameButton12:81,GameButton13:82,GameButton14:83,GameButton15:84,GameButton16:85,GameButton2:86,GameButton3:87,GameButton4:88,GameButton5:89,GameButton6:90,GameButton7:91,GameButton8:92,GameButton9:93,GameButtonA:94,GameButtonB:95,GameButtonC:96,GameButtonLeft1:97,GameButtonLeft2:98,GameButtonMode:99,GameButtonRight1:100,GameButtonRight2:101,GameButtonSelect:102,GameButtonStart:103,GameButtonThumbLeft:104,GameButtonThumbRight:105,GameButtonX:106,GameButtonY:107,GameButtonZ:108,Help:109,Home:110,Hyper:111,Insert:112,IntlBackslash:113,IntlRo:114,IntlYen:115,KanaMode:116,KeyA:117,KeyB:118,KeyC:119,KeyD:120,KeyE:121,KeyF:122,KeyG:123,KeyH:124,KeyI:125,KeyJ:126,KeyK:127,KeyL:128,KeyM:129,KeyN:130,KeyO:131,KeyP:132,KeyQ:133,KeyR:134,KeyS:135,KeyT:136,KeyU:137,KeyV:138,KeyW:139,KeyX:140,KeyY:141,KeyZ:142,KeyboardLayoutSelect:143,Lang1:144,Lang2:145,Lang3:146,Lang4:147,Lang5:148,LaunchApp1:149,LaunchApp2:150,LaunchAssistant:151,LaunchControlPanel:152,LaunchMail:153,LaunchScreenSaver:154,MailForward:155,MailReply:156,MailSend:157,MediaFastForward:158,MediaPause:159,MediaPlay:160,MediaPlayPause:161,MediaRecord:162,MediaRewind:163,MediaSelect:164,MediaStop:165,MediaTrackNext:166,MediaTrackPrevious:167,MetaLeft:168,MetaRight:169,MicrophoneMuteToggle:170,Minus:171,NonConvert:172,NumLock:173,Numpad0:174,Numpad1:175,Numpad2:176,Numpad3:177,Numpad4:178,Numpad5:179,Numpad6:180,Numpad7:181,Numpad8:182,Numpad9:183,NumpadAdd:184,NumpadBackspace:185,NumpadClear:186,NumpadClearEntry:187,NumpadComma:188,NumpadDecimal:189,NumpadDivide:190,NumpadEnter:191,NumpadEqual:192,NumpadMemoryAdd:193,NumpadMemoryClear:194,NumpadMemoryRecall:195,NumpadMemoryStore:196,NumpadMemorySubtract:197,NumpadMultiply:198,NumpadParenLeft:199,NumpadParenRight:200,NumpadSubtract:201,Open:202,PageDown:203,PageUp:204,Paste:205,Pause:206,Period:207,Power:208,PrintScreen:209,PrivacyScreenToggle:210,Props:211,Quote:212,Resume:213,ScrollLock:214,Select:215,SelectTask:216,Semicolon:217,ShiftLeft:218,ShiftRight:219,ShowAllWindows:220,Slash:221,Sleep:222,Space:223,Super:224,Suspend:225,Tab:226,Turbo:227,Undo:228,WakeUp:229,ZoomToggle:230}
 B.FG=new A.M(458907)
 B.Fm=new A.M(458873)
 B.h8=new A.M(458978)
@@ -135390,13 +135390,13 @@ B.D4=new A.M(22)
 B.Fn=new A.M(458874)
 B.FT=new A.M(65667)
 B.Gl=new A.M(786994)
-B.CA=new A.ck(B.a7b,[B.FG,B.Fm,B.h8,B.ha,B.EM,B.EL,B.EK,B.EN,B.Fu,B.Fs,B.Ft,B.Em,B.Ej,B.Ec,B.Eh,B.Ei,B.FW,B.FV,B.Gg,B.Gk,B.Gh,B.Gf,B.Gj,B.Ge,B.Gi,B.f4,B.En,B.F4,B.h6,B.iU,B.Fz,B.Fp,B.Fo,B.EH,B.Ea,B.E1,B.E2,B.E3,B.E4,B.E5,B.E6,B.E7,B.E8,B.E9,B.FU,B.G4,B.EI,B.Eb,B.Eg,B.pT,B.pT,B.Eq,B.Ez,B.EA,B.EB,B.F7,B.F8,B.F9,B.Fa,B.Fb,B.Fc,B.Fd,B.Er,B.Fe,B.Ff,B.Fg,B.Fh,B.Fi,B.Es,B.Et,B.Eu,B.Ev,B.Ew,B.Ex,B.Ey,B.Fr,B.iT,B.D1,B.D7,B.Dg,B.Dh,B.Di,B.Dj,B.Dk,B.Dl,B.Dm,B.D8,B.D9,B.Da,B.Db,B.Dc,B.Dd,B.De,B.Df,B.Dn,B.Do,B.Dp,B.Dq,B.Dr,B.Ds,B.Dt,B.Du,B.Dv,B.Dw,B.Dx,B.Dy,B.Dz,B.DA,B.DB,B.Fk,B.EF,B.D_,B.EE,B.F3,B.Fw,B.Fy,B.Fx,B.DC,B.DD,B.DE,B.DF,B.DG,B.DH,B.DI,B.DJ,B.DK,B.DL,B.DM,B.DN,B.DO,B.DP,B.DQ,B.DR,B.DS,B.DT,B.DU,B.DV,B.DW,B.DX,B.DY,B.DZ,B.E_,B.E0,B.Gp,B.FB,B.FC,B.FD,B.FE,B.FF,B.G9,B.G8,B.Gd,B.Ga,B.G7,B.Gc,B.Gn,B.Gm,B.Go,B.G_,B.FY,B.FX,B.G5,B.FZ,B.G0,B.G6,B.G3,B.G1,B.G2,B.h9,B.iW,B.D6,B.Ef,B.FA,B.lv,B.F1,B.ET,B.EU,B.EV,B.EW,B.EX,B.EY,B.EZ,B.F_,B.F0,B.ER,B.FK,B.FQ,B.FR,B.Fv,B.F2,B.EO,B.ES,B.F6,B.FO,B.FN,B.FM,B.FL,B.FP,B.EP,B.FI,B.FJ,B.EQ,B.Fj,B.EJ,B.EG,B.Fq,B.ED,B.Eo,B.F5,B.EC,B.D5,B.FH,B.El,B.D3,B.lu,B.Fl,B.Gb,B.Ek,B.h7,B.iV,B.Gq,B.Ep,B.FS,B.Ee,B.D0,B.D2,B.Ed,B.D4,B.Fn,B.FT,B.Gl],A.aU("ck<h,M>"))
+B.CA=new A.ck(B.a7c,[B.FG,B.Fm,B.h8,B.ha,B.EM,B.EL,B.EK,B.EN,B.Fu,B.Fs,B.Ft,B.Em,B.Ej,B.Ec,B.Eh,B.Ei,B.FW,B.FV,B.Gg,B.Gk,B.Gh,B.Gf,B.Gj,B.Ge,B.Gi,B.f4,B.En,B.F4,B.h6,B.iU,B.Fz,B.Fp,B.Fo,B.EH,B.Ea,B.E1,B.E2,B.E3,B.E4,B.E5,B.E6,B.E7,B.E8,B.E9,B.FU,B.G4,B.EI,B.Eb,B.Eg,B.pT,B.pT,B.Eq,B.Ez,B.EA,B.EB,B.F7,B.F8,B.F9,B.Fa,B.Fb,B.Fc,B.Fd,B.Er,B.Fe,B.Ff,B.Fg,B.Fh,B.Fi,B.Es,B.Et,B.Eu,B.Ev,B.Ew,B.Ex,B.Ey,B.Fr,B.iT,B.D1,B.D7,B.Dg,B.Dh,B.Di,B.Dj,B.Dk,B.Dl,B.Dm,B.D8,B.D9,B.Da,B.Db,B.Dc,B.Dd,B.De,B.Df,B.Dn,B.Do,B.Dp,B.Dq,B.Dr,B.Ds,B.Dt,B.Du,B.Dv,B.Dw,B.Dx,B.Dy,B.Dz,B.DA,B.DB,B.Fk,B.EF,B.D_,B.EE,B.F3,B.Fw,B.Fy,B.Fx,B.DC,B.DD,B.DE,B.DF,B.DG,B.DH,B.DI,B.DJ,B.DK,B.DL,B.DM,B.DN,B.DO,B.DP,B.DQ,B.DR,B.DS,B.DT,B.DU,B.DV,B.DW,B.DX,B.DY,B.DZ,B.E_,B.E0,B.Gp,B.FB,B.FC,B.FD,B.FE,B.FF,B.G9,B.G8,B.Gd,B.Ga,B.G7,B.Gc,B.Gn,B.Gm,B.Go,B.G_,B.FY,B.FX,B.G5,B.FZ,B.G0,B.G6,B.G3,B.G1,B.G2,B.h9,B.iW,B.D6,B.Ef,B.FA,B.lv,B.F1,B.ET,B.EU,B.EV,B.EW,B.EX,B.EY,B.EZ,B.F_,B.F0,B.ER,B.FK,B.FQ,B.FR,B.Fv,B.F2,B.EO,B.ES,B.F6,B.FO,B.FN,B.FM,B.FL,B.FP,B.EP,B.FI,B.FJ,B.EQ,B.Fj,B.EJ,B.EG,B.Fq,B.ED,B.Eo,B.F5,B.EC,B.D5,B.FH,B.El,B.D3,B.lu,B.Fl,B.Gb,B.Ek,B.h7,B.iV,B.Gq,B.Ep,B.FS,B.Ee,B.D0,B.D2,B.Ed,B.D4,B.Fn,B.FT,B.Gl],A.aU("ck<h,M>"))
 B.a7r={"deleteBackward:":0,"deleteWordBackward:":1,"deleteToBeginningOfLine:":2,"deleteForward:":3,"deleteWordForward:":4,"deleteToEndOfLine:":5,"moveLeft:":6,"moveRight:":7,"moveForward:":8,"moveBackward:":9,"moveUp:":10,"moveDown:":11,"moveLeftAndModifySelection:":12,"moveRightAndModifySelection:":13,"moveUpAndModifySelection:":14,"moveDownAndModifySelection:":15,"moveWordLeft:":16,"moveWordRight:":17,"moveToBeginningOfParagraph:":18,"moveToEndOfParagraph:":19,"moveWordLeftAndModifySelection:":20,"moveWordRightAndModifySelection:":21,"moveParagraphBackwardAndModifySelection:":22,"moveParagraphForwardAndModifySelection:":23,"moveToLeftEndOfLine:":24,"moveToRightEndOfLine:":25,"moveToBeginningOfDocument:":26,"moveToEndOfDocument:":27,"moveToLeftEndOfLineAndModifySelection:":28,"moveToRightEndOfLineAndModifySelection:":29,"moveToBeginningOfDocumentAndModifySelection:":30,"moveToEndOfDocumentAndModifySelection:":31,"transpose:":32,"scrollToBeginningOfDocument:":33,"scrollToEndOfDocument:":34,"scrollPageUp:":35,"scrollPageDown:":36,"pageUpAndModifySelection:":37,"pageDownAndModifySelection:":38,"cancelOperation:":39,"insertTab:":40,"insertBacktab:":41}
 B.Ho=new A.oN(!1)
 B.Hp=new A.oN(!0)
 B.a6t=new A.ck(B.a7r,[B.nR,B.nU,B.nS,B.ia,B.ib,B.nT,B.fL,B.fM,B.fM,B.fL,B.fP,B.fQ,B.kD,B.kE,B.it,B.iu,B.kH,B.kI,B.eN,B.eO,B.vX,B.vY,B.vT,B.vU,B.eN,B.eO,B.fN,B.fO,B.vJ,B.vK,B.oO,B.oP,B.tH,B.Ho,B.Hp,B.q8,B.lL,B.kJ,B.kK,B.tv,B.tA,B.tD],A.aU("ck<h,bN>"))
-B.a7h={BU:0,DD:1,FX:2,TP:3,YD:4,ZR:5}
-B.dR=new A.ck(B.a7h,["MM","DE","FR","TL","YE","CD"],t.li)
+B.a7i={BU:0,DD:1,FX:2,TP:3,YD:4,ZR:5}
+B.dR=new A.ck(B.a7i,["MM","DE","FR","TL","YE","CD"],t.li)
 B.a8M=new A.M(458752)
 B.a8N=new A.M(458753)
 B.a8O=new A.M(458754)
@@ -135437,14 +135437,14 @@ B.a9l=new A.M(786989)
 B.a9m=new A.M(786990)
 B.a9n=new A.M(787065)
 B.a6u=new A.dJ([16,B.D_,17,B.D0,18,B.iT,19,B.D1,20,B.D2,21,B.D3,22,B.D4,23,B.D5,24,B.D6,65666,B.FS,65667,B.FT,65717,B.FU,392961,B.D7,392962,B.D8,392963,B.D9,392964,B.Da,392965,B.Db,392966,B.Dc,392967,B.Dd,392968,B.De,392969,B.Df,392970,B.Dg,392971,B.Dh,392972,B.Di,392973,B.Dj,392974,B.Dk,392975,B.Dl,392976,B.Dm,392977,B.Dn,392978,B.Do,392979,B.Dp,392980,B.Dq,392981,B.Dr,392982,B.Ds,392983,B.Dt,392984,B.Du,392985,B.Dv,392986,B.Dw,392987,B.Dx,392988,B.Dy,392989,B.Dz,392990,B.DA,392991,B.DB,458752,B.a8M,458753,B.a8N,458754,B.a8O,458755,B.a8P,458756,B.DC,458757,B.DD,458758,B.DE,458759,B.DF,458760,B.DG,458761,B.DH,458762,B.DI,458763,B.DJ,458764,B.DK,458765,B.DL,458766,B.DM,458767,B.DN,458768,B.DO,458769,B.DP,458770,B.DQ,458771,B.DR,458772,B.DS,458773,B.DT,458774,B.DU,458775,B.DV,458776,B.DW,458777,B.DX,458778,B.DY,458779,B.DZ,458780,B.E_,458781,B.E0,458782,B.E1,458783,B.E2,458784,B.E3,458785,B.E4,458786,B.E5,458787,B.E6,458788,B.E7,458789,B.E8,458790,B.E9,458791,B.Ea,458792,B.Eb,458793,B.pT,458794,B.Ec,458795,B.Ed,458796,B.Ee,458797,B.Ef,458798,B.Eg,458799,B.Eh,458800,B.Ei,458801,B.Ej,458803,B.Ek,458804,B.El,458805,B.Em,458806,B.En,458807,B.Eo,458808,B.Ep,458809,B.f4,458810,B.Eq,458811,B.Er,458812,B.Es,458813,B.Et,458814,B.Eu,458815,B.Ev,458816,B.Ew,458817,B.Ex,458818,B.Ey,458819,B.Ez,458820,B.EA,458821,B.EB,458822,B.EC,458823,B.lu,458824,B.ED,458825,B.EE,458826,B.EF,458827,B.EG,458828,B.EH,458829,B.EI,458830,B.EJ,458831,B.EK,458832,B.EL,458833,B.EM,458834,B.EN,458835,B.lv,458836,B.EO,458837,B.EP,458838,B.EQ,458839,B.ER,458840,B.ES,458841,B.ET,458842,B.EU,458843,B.EV,458844,B.EW,458845,B.EX,458846,B.EY,458847,B.EZ,458848,B.F_,458849,B.F0,458850,B.F1,458851,B.F2,458852,B.F3,458853,B.F4,458854,B.F5,458855,B.F6,458856,B.F7,458857,B.F8,458858,B.F9,458859,B.Fa,458860,B.Fb,458861,B.Fc,458862,B.Fd,458863,B.Fe,458864,B.Ff,458865,B.Fg,458866,B.Fh,458867,B.Fi,458868,B.Fj,458869,B.Fk,458871,B.Fl,458873,B.Fm,458874,B.Fn,458875,B.Fo,458876,B.Fp,458877,B.Fq,458878,B.Fr,458879,B.Fs,458880,B.Ft,458881,B.Fu,458885,B.Fv,458887,B.Fw,458888,B.Fx,458889,B.Fy,458890,B.Fz,458891,B.FA,458896,B.FB,458897,B.FC,458898,B.FD,458899,B.FE,458900,B.FF,458907,B.FG,458915,B.FH,458934,B.FI,458935,B.FJ,458939,B.FK,458960,B.FL,458961,B.FM,458962,B.FN,458963,B.FO,458964,B.FP,458967,B.a8Q,458968,B.FQ,458969,B.FR,458976,B.h6,458977,B.h7,458978,B.h8,458979,B.h9,458980,B.iU,458981,B.iV,458982,B.ha,458983,B.iW,786528,B.a8R,786529,B.a8S,786543,B.FV,786544,B.FW,786546,B.a8T,786547,B.a8U,786548,B.a8V,786549,B.a8W,786553,B.a8X,786554,B.a8Y,786563,B.a8Z,786572,B.a9_,786573,B.a90,786580,B.a91,786588,B.a92,786589,B.a93,786608,B.FX,786609,B.FY,786610,B.FZ,786611,B.G_,786612,B.G0,786613,B.G1,786614,B.G2,786615,B.G3,786616,B.G4,786637,B.G5,786639,B.a94,786661,B.a95,786819,B.G6,786820,B.a96,786822,B.a97,786826,B.G7,786829,B.a98,786830,B.a99,786834,B.G8,786836,B.G9,786838,B.a9a,786844,B.a9b,786846,B.a9c,786847,B.Ga,786850,B.Gb,786855,B.a9d,786859,B.a9e,786862,B.a9f,786865,B.Gc,786871,B.a9g,786891,B.Gd,786945,B.a9h,786947,B.a9i,786951,B.a9j,786952,B.a9k,786977,B.Ge,786979,B.Gf,786980,B.Gg,786981,B.Gh,786982,B.Gi,786983,B.Gj,786986,B.Gk,786989,B.a9l,786990,B.a9m,786994,B.Gl,787065,B.a9n,787081,B.Gm,787083,B.Gn,787084,B.Go,787101,B.Gp,787103,B.Gq],A.aU("dJ<v,M>"))
-B.a7i={"akar hayu menyegar":0,"akar hayu membusuk":1,"batang hayu menguat":2,"batang hayu retak":3,"tanah di kaki hayu menyubur":4,"tanah di kaki hayu tercemar":5}
+B.a7j={"akar hayu menyegar":0,"akar hayu membusuk":1,"batang hayu menguat":2,"batang hayu retak":3,"tanah di kaki hayu menyubur":4,"tanah di kaki hayu tercemar":5}
 B.aan=new A.ae(B.p_,!1)
 B.ab4=new A.ae(B.p_,!0)
 B.aaw=new A.ae(B.p0,!1)
 B.aag=new A.ae(B.p0,!0)
 B.aaT=new A.ae(B.p1,!1)
 B.aaZ=new A.ae(B.p1,!0)
-B.a6v=new A.ck(B.a7i,[B.aan,B.ab4,B.aaw,B.aag,B.aaT,B.aaZ],A.aU("ck<h,+(iT,K)>"))
+B.a6v=new A.ck(B.a7j,[B.aan,B.ab4,B.aaw,B.aag,B.aaT,B.aaZ],A.aU("ck<h,+(iT,K)>"))
 B.CB=new A.fb(B.W,10)
 B.a6w=new A.fb(B.W,14)
 B.a6x=new A.fb(B.W,18)
@@ -135774,8 +135774,8 @@ B.a9U=new A.Hq(null)
 B.a9V=new A.Ht(null)
 B.L7=new A.c4(-0.3,-0.3)
 B.SI=new A.i(1,0.027450980392156862,0.01568627450980392,0.058823529411764705,B.f)
-B.a1o=s([B.uH,B.SI],t.O)
-B.a9X=new A.bB(B.L7,0.5,B.z,null,0,B.a1o,null,null)
+B.a1n=s([B.uH,B.SI],t.O)
+B.a9X=new A.bB(B.L7,0.5,B.z,null,0,B.a1n,null,null)
 B.a9Y=new A.Hv(null,null,null,null,null,null,null,null,null)
 B.lA=new A.aT(14,14)
 B.H6=new A.aT(1,1)
@@ -136002,8 +136002,8 @@ B.HH=new A.eI("_InputDecoratorState.prefixIcon")
 B.hi=new A.IL(0,"none")
 B.HI=new A.IL(1,"valid")
 B.HJ=new A.IL(2,"invalid")
-B.a7e={mailto:0,tel:1,sms:2}
-B.aco=new A.f8(B.a7e,3,t.fF)
+B.a7f={mailto:0,tel:1,sms:2}
+B.aco=new A.f8(B.a7f,3,t.fF)
 B.qf=new A.eV([B.dw,B.ls,B.pQ],A.aU("eV<ot>"))
 B.acp=new A.eV([B.KG,B.rG,B.mJ],t.yk)
 B.acq=new A.eV([10,11,12,13,133,8232,8233],t.Ih)
@@ -136014,13 +136014,13 @@ B.HK=new A.f8(B.a7n,12,t.fF)
 B.acs=new A.eV([B.rS,B.rP,B.rN],t.yk)
 B.a76={"canvaskit.js":0}
 B.act=new A.f8(B.a76,1,t.fF)
-B.a7f={apk:0,aab:1,xapk:2,apks:3,exe:4,msi:5,dmg:6,pkg:7,ipa:8,zip:9,rar:10,"7z":11}
-B.acu=new A.f8(B.a7f,12,t.fF)
+B.a7g={apk:0,aab:1,xapk:2,apks:3,exe:4,msi:5,dmg:6,pkg:7,ipa:8,zip:9,rar:10,"7z":11}
+B.acu=new A.f8(B.a7g,12,t.fF)
 B.acv=new A.eV([B.dx,B.c6,B.bz,B.cH,B.cl],t.Lu)
-B.a7j={javascript:0}
-B.acw=new A.f8(B.a7j,1,t.fF)
-B.a7l={click:0,keyup:1,keydown:2,mouseup:3,mousedown:4,pointerdown:5,pointerup:6}
-B.acx=new A.f8(B.a7l,7,t.fF)
+B.a7k={javascript:0}
+B.acw=new A.f8(B.a7k,1,t.fF)
+B.a7m={click:0,keyup:1,keydown:2,mouseup:3,mousedown:4,pointerdown:5,pointerup:6}
+B.acx=new A.f8(B.a7m,7,t.fF)
 B.a77={jangan_bohong:0,pedagang:1,mata_suci:2,kamera_rekaan:3,arloji_khayal:4,jemari_magis:5,kunci_segel:6}
 B.qg=new A.f8(B.a77,7,t.fF)
 B.acy=new A.eV([B.bs,B.aw,B.d_],A.aU("eV<ic>"))
@@ -136248,8 +136248,8 @@ B.aeK=new A.lC("<asynchronous suspension>",-1,"","","",-1,-1,"","asynchronous su
 B.aeL=new A.lC("...",-1,"","","",-1,-1,"","...")
 B.T5=new A.bo(B.eG,null,null)
 B.Xa=new A.mu("Menghitung hasil...",null)
-B.a2h=s([B.T5,B.Xa],t.p)
-B.aeM=new A.fu(B.D,B.a4,B.v,B.a2h,null)
+B.a2i=s([B.T5,B.Xa],t.p)
+B.aeM=new A.fu(B.D,B.a4,B.v,B.a2i,null)
 B.jd=new A.iy(B.t)
 B.Ix=new A.Jb(0,"backButton")
 B.Iy=new A.Jb(2,"moreButton")
@@ -136886,8 +136886,8 @@ B.anI=new A.af("Kamu menonton dari luar desa",null,B.alC,B.F,null,null,null,null
 B.anJ=new A.af("Tidak ada efek tercatat.",null,B.hr,null,null,null,null,null,null,null)
 B.alm=new A.l(!0,B.H,null,null,null,null,14,B.C,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.anK=new A.af("Daun Hayu: 21 / 30",null,B.alm,null,null,null,null,null,null,null)
-B.a1t=s([B.hj],t.r)
-B.akz=new A.l(!0,B.M,null,null,null,null,18,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.a1t,null,null,null)
+B.a1s=s([B.hj],t.r)
+B.akz=new A.l(!0,B.M,null,null,null,null,18,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.a1s,null,null,null)
 B.anL=new A.af("daun",null,B.akz,null,null,null,null,null,null,null)
 B.anM=new A.af("Kamu dikurung: kartu ini diterima tanpa balasan.",null,B.qV,null,null,null,null,null,null,null)
 B.ahe=new A.l(!0,B.b6,null,null,null,null,13,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)

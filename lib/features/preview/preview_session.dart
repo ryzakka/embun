@@ -138,17 +138,17 @@ class PreviewSession
     };
     const names = [
       'Pelukis',
-      'Peselancar',
-      'Mata-mata',
+      'Perenang',
+      'Penyelam',
       'Penatu',
-      'Penggembala',
+      'Peternak Perah',
     ];
     const cards = [
       'pria-pelukis',
-      'pria-peselancar',
-      'pria-matamata',
+      'pria-perenang',
+      'pria-penyelam',
       'wanita-penatu',
-      'pria-penggembala',
+      'pria-peternakperah',
     ];
     _players
       ..clear()
@@ -161,10 +161,10 @@ class PreviewSession
             'ready': i == 0 ? locked : i % 2 == 1,
             'strikes': i == 0
                 ? (eliminated
-                      ? 2
-                      : jailed
-                      ? 1
-                      : 0)
+                ? 2
+                : jailed
+                ? 1
+                : 0)
                 : i % 2,
             if (i == 0 && jailed) 'jailed_day': day,
             if (i == 0 && jailed) 'jailed_until': day + 1,
@@ -211,7 +211,7 @@ class PreviewSession
   void _update() => _changes.add(null);
 
   Iterable<PreviewRow> _pool(String kind) => previewCards.values.where(
-    (d) => d['side'] == role && d['kind'] == kind && d['purchasable'] == true,
+        (d) => d['side'] == role && d['kind'] == kind && d['purchasable'] == true,
   );
 
   void _addCard(String id, {bool charged = false}) {
@@ -266,12 +266,12 @@ class PreviewSession
 
   @override
   Future<String> createGame(
-    String name,
-    String card, {
-    bool isPublic = false,
-    int cycles = 4,
-    int antagonistCount = 1,
-  }) async {
+      String name,
+      String card, {
+        bool isPublic = false,
+        int cycles = 4,
+        int antagonistCount = 1,
+      }) async {
     prepare(waitingRoom: true, antagonists: antagonistCount, role: role);
     _game.addAll({'is_public': isPublic, 'cycles': cycles});
     _players[0] = {...me, 'name': name, 'character_card': card};
@@ -423,7 +423,7 @@ class PreviewSession
         'role': i == 0
             ? role
             : (i == 1 && (!_dark || antagonistCount == 2)) ||
-                  (i == roster.length - 1 && !_dark && antagonistCount == 2)
+            (i == roster.length - 1 && !_dark && antagonistCount == 2)
             ? 'antagonis'
             : 'warga',
         'dark_seed': i,
@@ -460,7 +460,7 @@ class PreviewSession
   Future<PreviewRow> fuseCards(String gameId, String handId) async {
     final item = _hand.firstWhere((h) => h['id'] == handId);
     final points = _hand.indexWhere(
-      (h) => previewCards[h['card_id']]?['kind'] == 'poin',
+          (h) => previewCards[h['card_id']]?['kind'] == 'poin',
     );
     if (points < 0) throw StateError('Belum ada kartu poin.');
     item['charged'] = true;
@@ -474,10 +474,10 @@ class PreviewSession
 
   @override
   Future<void> submitOffering(
-    String gameId,
-    List<String> handIds, {
-    String? target,
-  }) async {
+      String gameId,
+      List<String> handIds, {
+        String? target,
+      }) async {
     _hand.removeWhere((h) => handIds.contains(h['id']));
     _ready(true);
   }
@@ -527,7 +527,7 @@ class PreviewSession
     else
       {
         'message':
-            'Desas-desus: kamu mendengar bahwa Penjahit adalah Si Terbisik.',
+        'Desas-desus: kamu mendengar bahwa Penjahit adalah Si Terbisik.',
       },
     {'message': 'Firasatmu tertuju pada Peselancar.'},
   ];
@@ -544,10 +544,10 @@ class PreviewSession
 
   @override
   Future<void> sendMessage(
-    String gameId,
-    String body, {
-    bool terbisik = false,
-  }) async {
+      String gameId,
+      String body, {
+        bool terbisik = false,
+      }) async {
     if (terbisik && (!_dark || antagonistCount != 2)) {
       throw StateError('Kanal ini khusus mode Dua Terbisik.');
     }
@@ -560,10 +560,10 @@ class PreviewSession
 
   @override
   Future<void> submitVote(
-    String gameId,
-    String? target, {
-    bool hammer = false,
-  }) async {
+      String gameId,
+      String? target, {
+        bool hammer = false,
+      }) async {
     _usedAbility = _usedAbility || hammer;
     _ready(true);
   }
@@ -644,10 +644,10 @@ class PreviewSession
 
   @override
   Future<void> respondTrade(
-    String tradeId,
-    bool accept, {
-    String? returnHand,
-  }) async {
+      String tradeId,
+      bool accept, {
+        String? returnHand,
+      }) async {
     final i = _trades.indexWhere((t) => t['id'] == tradeId);
     if (i < 0) return;
     if (accept) {
@@ -660,7 +660,7 @@ class PreviewSession
 
   @override
   Stream<List<PreviewRow>> villageEvents(String gameId) => _watch(
-    () => [
+        () => [
       {
         'id': 'preview-event',
         'day': day,
@@ -676,7 +676,7 @@ class PreviewSession
 
   @override
   Stream<List<PreviewRow>> presence(String gameId) => _watch(
-    () => [
+        () => [
       for (final p in roster) {'user_id': p['user_id'], 'last_seen': _stamp},
     ],
   );
@@ -744,10 +744,10 @@ class PreviewSession
 
   @override
   Future<PreviewRow> useDayCard(
-    String gameId,
-    String handId, {
-    String? target,
-  }) async {
+      String gameId,
+      String handId, {
+        String? target,
+      }) async {
     _hand.removeWhere((h) => h['id'] == handId);
     _update();
     return {
@@ -765,10 +765,10 @@ class PreviewSession
 
   @override
   Future<void> armNightCard(
-    String gameId, {
-    String? handId,
-    String? target,
-  }) async {
+      String gameId, {
+        String? handId,
+        String? target,
+      }) async {
     _nightPlan = handId == null
         ? null
         : {'hand_id': handId, 'target_id': target};
@@ -776,10 +776,10 @@ class PreviewSession
 
   @override
   Future<PreviewRow> useAbility(
-    String gameId, {
-    String? target,
-    String? option,
-  }) async {
+      String gameId, {
+        String? target,
+        String? option,
+      }) async {
     _usedAbility = true;
     return {'result': 'ok', 'message': 'Kemampuan dipakai dalam sesi contoh.'};
   }
@@ -819,7 +819,7 @@ class PreviewSession
       'kind': 'pengumuman',
       'title': 'Selamat datang di Desa Hayu',
       'body':
-          'Contoh pengumuman desa.\n\nJaga Hayu dan ajak warga bermusyawarah.',
+      'Contoh pengumuman desa.\n\nJaga Hayu dan ajak warga bermusyawarah.',
       'pinned': true,
       'published_at': _stamp,
     },
