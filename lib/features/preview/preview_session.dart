@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../data/announcement_repository.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../../data/game_rules.dart';
 import '../../data/lobby_repository.dart';
@@ -136,20 +137,20 @@ class PreviewSession
       'winner': winner,
       'end_reason': winner == 'warga' ? 'tertangkap' : null,
     };
-    const names = [
-      'Pelukis',
-      'Perenang',
-      'Penyelam',
-      'Penatu',
-      'Peternak Perah',
+    // Kartu diambil dari aset yang ada (tersebar merata), jadi tak perlu
+    // diubah saat kartu karakter diganti. Nama = judul kartunya.
+    final pria = AssetCatalog.I.stems(protagonisPriaDir);
+    final wanita = AssetCatalog.I.stems(protagonisWanitaDir);
+    String pick(List<String> l, int i) =>
+        l.isEmpty ? 'default' : l[i * l.length ~/ 4];
+    final cards = [
+      pick(pria, 0),
+      pick(pria, 1),
+      pick(pria, 2),
+      pick(wanita, 0),
+      pick(pria, 3),
     ];
-    const cards = [
-      'pria-pelukis',
-      'pria-perenang',
-      'pria-penyelam',
-      'wanita-penatu',
-      'pria-peternakperah',
-    ];
+    final names = [for (final c in cards) characterTitle(c)];
     _players
       ..clear()
       ..addAll([

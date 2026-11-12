@@ -104,96 +104,96 @@ enum _Screen {
 
 const _sections = [
   (
-    'Lobi dan ruangan',
-    [
-      _Screen.title,
-      _Screen.menu,
-      _Screen.create,
-      _Screen.join,
-      _Screen.publicRooms,
-      _Screen.waiting,
-      _Screen.news,
-      _Screen.settings,
-      _Screen.otherGames,
-    ],
+  'Lobi dan ruangan',
+  [
+    _Screen.title,
+    _Screen.menu,
+    _Screen.create,
+    _Screen.join,
+    _Screen.publicRooms,
+    _Screen.waiting,
+    _Screen.news,
+    _Screen.settings,
+    _Screen.otherGames,
+  ],
   ),
   (
-    'Panduan dan tutorial',
-    [
-      _Screen.tutorial,
-      _Screen.rules,
-      _Screen.characters,
-      _Screen.items,
-      _Screen.abilities,
-    ],
+  'Panduan dan tutorial',
+  [
+    _Screen.tutorial,
+    _Screen.rules,
+    _Screen.characters,
+    _Screen.items,
+    _Screen.abilities,
+  ],
   ),
   (
-    'Prolog',
-    [
-      _Screen.story,
-      _Screen.shuffle,
-      _Screen.character,
-      _Screen.role,
-      _Screen.omen,
-      _Screen.darkFace,
-      _Screen.prologueWait,
-    ],
+  'Prolog',
+  [
+    _Screen.story,
+    _Screen.shuffle,
+    _Screen.character,
+    _Screen.role,
+    _Screen.omen,
+    _Screen.darkFace,
+    _Screen.prologueWait,
+  ],
   ),
   (
-    'Meja dan fase permainan',
-    [
-      _Screen.market,
-      _Screen.hand,
-      _Screen.merge,
-      _Screen.hall,
-      _Screen.research,
-      _Screen.offering,
-      _Screen.ceremony,
-      _Screen.effects,
-      _Screen.discussion,
-      _Screen.voting,
-      _Screen.lockedVote,
-      _Screen.night,
-      _Screen.jailed,
-      _Screen.spectator,
-    ],
+  'Meja dan fase permainan',
+  [
+    _Screen.market,
+    _Screen.hand,
+    _Screen.merge,
+    _Screen.hall,
+    _Screen.research,
+    _Screen.offering,
+    _Screen.ceremony,
+    _Screen.effects,
+    _Screen.discussion,
+    _Screen.voting,
+    _Screen.lockedVote,
+    _Screen.night,
+    _Screen.jailed,
+    _Screen.spectator,
+  ],
   ),
   (
-    'Dialog dan panel',
-    [
-      _Screen.chat,
-      _Screen.secretChat,
-      _Screen.emotes,
-      _Screen.player,
-      _Screen.myInfo,
-      _Screen.ability,
-      _Screen.card,
-      _Screen.parts,
-      _Screen.nightPlan,
-      _Screen.bowTarget,
-    ],
+  'Dialog dan panel',
+  [
+    _Screen.chat,
+    _Screen.secretChat,
+    _Screen.emotes,
+    _Screen.player,
+    _Screen.myInfo,
+    _Screen.ability,
+    _Screen.card,
+    _Screen.parts,
+    _Screen.nightPlan,
+    _Screen.bowTarget,
+  ],
   ),
   (
-    'Adegan permainan',
-    [
-      _Screen.dawn,
-      _Screen.offeringIntro,
-      _Screen.jail,
-      _Screen.evict,
-      _Screen.revealVote,
-      _Screen.pump,
-      _Screen.burn,
-      _Screen.theft,
-      _Screen.mirror,
-      _Screen.shield,
-      _Screen.bowHit,
-      _Screen.bowMiss,
-      _Screen.finalBow,
-    ],
+  'Adegan permainan',
+  [
+    _Screen.dawn,
+    _Screen.offeringIntro,
+    _Screen.jail,
+    _Screen.evict,
+    _Screen.revealVote,
+    _Screen.pump,
+    _Screen.burn,
+    _Screen.theft,
+    _Screen.mirror,
+    _Screen.shield,
+    _Screen.bowHit,
+    _Screen.bowMiss,
+    _Screen.finalBow,
+  ],
   ),
   (
-    'Akhir permainan',
-    [_Screen.ending, _Screen.endingDark, _Screen.recap, _Screen.cancelled],
+  'Akhir permainan',
+  [_Screen.ending, _Screen.endingDark, _Screen.recap, _Screen.cancelled],
   ),
 ];
 
@@ -387,7 +387,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                   hint: 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat wajah gelapmu.',
                   options: [
                     for (final stem
-                        in AssetCatalog.I.stems(antagonisDir).take(3))
+                    in AssetCatalog.I.stems(antagonisDir).take(3))
                       PickOption(
                         AssetCatalog.I.file(antagonisDir, stem),
                         'Wajah gelap',
@@ -482,9 +482,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         );
         return _isDialog(screen)
             ? _DialogPreview(
-                show: (ctx) => _showDialog(ctx, screen),
-                child: table,
-              )
+          show: (ctx) => _showDialog(ctx, screen),
+          child: table,
+        )
             : table;
     }
   }
@@ -608,13 +608,13 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     final sections = [
       for (final (title, screens) in _sections)
         (
-          title,
-          screens
-              .where(
-                (screen) =>
-                    '$title ${screen.label}'.toLowerCase().contains(_query),
-              )
-              .toList(),
+        title,
+        screens
+            .where(
+              (screen) =>
+              '$title ${screen.label}'.toLowerCase().contains(_query),
+        )
+            .toList(),
         ),
     ];
     return Scaffold(
@@ -790,7 +790,12 @@ class _JoinPreviewState extends State<_JoinPreview> {
     nameCtrl: _name,
     codeCtrl: _code,
     onJoin: (code) async {
-      await widget.session.joinGame(code, _name.text, 'pria-pelukis');
+      final pria = AssetCatalog.I.stems(protagonisPriaDir);
+      await widget.session.joinGame(
+        code,
+        _name.text,
+        pria.isEmpty ? 'default' : pria.first,
+      );
       return null;
     },
     onCreate: () {},
