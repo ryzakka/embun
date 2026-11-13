@@ -1454,6 +1454,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                           p,
                           _moodOf(p.id),
                           height: heroBox.maxHeight,
+                          width: math.min(box.maxWidth * .88, 460.0),
                         ),
                       ),
                       Padding(
@@ -1464,7 +1465,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   );
                 }
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 16, 0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -1472,8 +1473,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                         _phonePortrait(
                           p,
                           _moodOf(p.id),
-                          height: heroBox.maxHeight - 8,
-                          width: (box.maxWidth * .30).clamp(78.0, 130.0),
+                          height: heroBox.maxHeight,
+                          width: (box.maxWidth * .46).clamp(136.0, 230.0),
+                          zoom: 1.18,
                         ),
                         const SizedBox(width: 12),
                       ] else if (tiny) ...[
@@ -2106,8 +2108,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   );
 
   // Tata letak khusus ponsel. Jalur desktop tetap memakai panggung semula.
-  bool _compactLayout(BoxConstraints box) =>
-      box.maxWidth < 760 || (box.maxWidth < 1000 && box.maxHeight < 500);
+  bool _compactLayout(BoxConstraints box) => box.maxWidth < 1000;
 
   Widget _phoneHeader(_Place p, String? place, int? seconds) => Padding(
     padding: const EdgeInsets.fromLTRB(8, 6, 12, 4),
@@ -2330,30 +2331,88 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         AssetCatalog.I.file(folder, 'popupchar-pro-${stem}tanya');
   }
 
+  /// Figur ponsel mengisi panggung dari lebar, bukan dikecilkan mengikuti
+  /// tinggi. Bingkai memotong tubuh bagian bawah dan menyatukannya dengan
+  /// pijakan bercahaya; tidak menampilkan stiker kecil di tengah udara.
   Widget _phonePortrait(
       _Place p,
       String mood, {
         required double height,
         double? width,
+        double zoom = 1,
       }) {
     final art = _phonePopup(p.id, mood);
     if (art == null) return const SizedBox.shrink();
     return SizedBox(
+      key: ValueKey('phone-portrait-${p.id}-$mood'),
       height: height,
       width: width,
       child: IgnorePointer(
-        child: ClipRect(
-          child: AnimatedSwitcher(
-            duration: _reduced
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            child: GameImage(
-              key: ValueKey(art),
-              path: art,
-              fit: BoxFit.contain,
-              alignment: Alignment.bottomCenter,
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final frameWidth = math.min(box.maxWidth, 460.0);
+            final figureWidth = frameWidth * zoom;
+            final figureHeight = math.max(box.maxHeight, figureWidth * 1.28);
+            return ClipRect(
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  Positioned(
+                    bottom: 0,
+                    width: frameWidth,
+                    height: 30,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          radius: .75,
+                          colors: [
+                            _glow(p).withValues(alpha: .26),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    width: frameWidth,
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (bounds) => const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0, .80, 1],
+                        colors: [Colors.white, Colors.white, Color(0x00FFFFFF)],
+                      ).createShader(bounds),
+                      child: ClipRect(
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          minWidth: figureWidth,
+                          maxWidth: figureWidth,
+                          minHeight: figureHeight,
+                          maxHeight: figureHeight,
+                          child: AnimatedSwitcher(
+                            duration: _reduced
+                                ? Duration.zero
+                                : const Duration(milliseconds: 220),
+                            child: SizedBox.expand(
+                              key: ValueKey(art),
+                              child: GameImage(
+                                path: art,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -2484,105 +2543,106 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           children: [
             Expanded(
               child: LayoutBuilder(
-                builder: (context, copyBox) {
-                  final bigPortrait = copyBox.maxHeight >= 350;
+                builder: (context, scene) {
+                  final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
                   final art = _phonePopup(p.id, 'tanya');
-                  final headline = Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _text(
-                        'TUJUAN ${_index + 1} / ${_places.length}',
-                        size: 10,
-                        spacing: 1.4,
-                        color: _accent,
-                        weight: FontWeight.w800,
-                        lift: true,
+                  final spacious = scene.maxHeight >= 300 && scale <= 1.35;
+                  final copy = Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _text(
+                          'TUJUAN ${_index + 1} / ${_places.length}',
+                          size: 10,
+                          spacing: 1.4,
+                          color: _accent,
+                          weight: FontWeight.w800,
+                          lift: true,
+                        ),
+                        const SizedBox(height: 7),
+                        _title(p.name, size: spacious ? 30 : 24, lift: true),
+                        const SizedBox(height: 7),
+                        _text(p.tagline, size: 13, lift: true),
+                        if (!short && scene.maxHeight >= 400) ...[
+                          const SizedBox(height: 7),
+                          _text(
+                            _description(p),
+                            size: 12,
+                            color: Colors.white70,
+                            lift: true,
+                          ),
+                        ],
+                        if (p.id == 'pondok') ...[
+                          const SizedBox(height: 8),
+                          _text(
+                            needLetter
+                                ? 'Butuh ${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'}'
+                                : '${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'} siap dipakai',
+                            size: 12,
+                            color: needLetter
+                                ? EmbunColors.blood
+                                : EmbunColors.leaf,
+                            lift: true,
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                  Widget figure(double height) => Align(
+                    alignment: Alignment.bottomCenter,
+                    child: _greet(
+                      _phonePortrait(
+                        p,
+                        'tanya',
+                        height: height,
+                        width: math.min(scene.maxWidth * .92, 440.0),
                       ),
-                      const SizedBox(height: 8),
-                      _title(p.name, size: bigPortrait ? 30 : 24, lift: true),
-                      const SizedBox(height: 8),
-                      _text(
-                        p.tagline,
-                        size: 13,
-                        color: EmbunColors.cream,
-                        lift: true,
+                    ),
+                  );
+                  final composition = spacious
+                      ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      copy,
+                      Expanded(
+                        child: art == null
+                            ? const SizedBox.shrink()
+                            : LayoutBuilder(
+                          builder: (context, slot) =>
+                              figure(slot.maxHeight),
+                        ),
                       ),
                     ],
+                  )
+                      : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        copy,
+                        if (art != null && scene.maxHeight >= 200)
+                          figure(
+                            (scene.maxHeight * .8).clamp(200.0, 320.0),
+                          ),
+                      ],
+                    ),
                   );
                   return GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onHorizontalDragEnd: (d) {
-                      final speed = d.primaryVelocity ?? 0;
+                    onHorizontalDragEnd: (details) {
+                      final speed = details.primaryVelocity ?? 0;
                       if (speed < -250) {
                         _step(1);
                       } else if (speed > 250) {
                         _step(-1);
                       }
                     },
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (bigPortrait && art != null) ...[
-                            _greet(
-                              _phonePortrait(
-                                p,
-                                'tanya',
-                                height: math.min(230, copyBox.maxHeight * .48),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (!bigPortrait && art != null)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(child: headline),
-                                const SizedBox(width: 10),
-                                _greet(
-                                  _phonePortrait(
-                                    p,
-                                    'tanya',
-                                    height: 120,
-                                    width: 92,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            headline,
-                          if (!short) ...[
-                            const SizedBox(height: 12),
-                            _text(
-                              _description(p),
-                              size: 12,
-                              color: Colors.white70,
-                              lift: true,
-                            ),
-                          ],
-                          if (p.id == 'pondok') ...[
-                            const SizedBox(height: 10),
-                            _text(
-                              needLetter
-                                  ? 'Butuh ${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'}'
-                                  : '${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'} siap dipakai',
-                              size: 12,
-                              color: needLetter
-                                  ? EmbunColors.blood
-                                  : EmbunColors.leaf,
-                              lift: true,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                    child: composition,
                   );
                 },
               ),
             ),
-            const SizedBox(height: 6),
             _phoneRail(short: short),
             const SizedBox(height: 8),
             _button(
