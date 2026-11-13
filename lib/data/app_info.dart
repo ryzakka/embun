@@ -8,7 +8,7 @@ class AppInfo {
   AppInfo._();
 
   static const version =
-  String.fromEnvironment('APP_VERSION', defaultValue: '3.1.21');
+  String.fromEnvironment('APP_VERSION', defaultValue: '3.1.22');
 
   /// Untuk ditampilkan: "V2.6.0".
   static const tag = 'V$version';

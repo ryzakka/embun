@@ -2,7 +2,7 @@ name: Embun
 description: "Menjaga Hayu Menjauhkan si Terbisik."
 publish_to: 'none'
 
-version: 2.7.17+1
+version: 3.1.22+1
 
 environment:
   sdk: ^3.10.8

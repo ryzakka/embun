@@ -201,7 +201,9 @@ class _ResearchViewState extends State<ResearchView> {
         final split = box.maxWidth >= (short ? 510 : 700);
         final compact = box.maxHeight < 425;
         final hasOffers = _error == null && selected != null;
-        final finish = _finishControl();
+        final Widget? finish = widget.onReturn == null
+            ? _finishControl()
+            : null;
         final controls = hasOffers ? _categories(groups, category) : null;
         final finishInHeader = split || !hasOffers;
         final Widget content;
@@ -264,6 +266,32 @@ class _ResearchViewState extends State<ResearchView> {
 
   Widget _toolbar({required bool inline, Widget? controls, Widget? finish}) {
     final quota = _error == null && _items != null ? '$_left/$_limit' : '–';
+    if (widget.onReturn != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(4, 6, 4, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Bekal persembahan',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text(
+                  'Jatah $quota',
+                  style: TextStyle(color: _accent, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ?controls,
+          ],
+        ),
+      );
+    }
     return Container(
       decoration: tableEdge(_accent),
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
@@ -688,7 +716,9 @@ class _ResearchViewState extends State<ResearchView> {
 
     if (side) {
       return Container(
-        decoration: tableEdge(_accent, vertical: true),
+        decoration: widget.onReturn == null
+            ? tableEdge(_accent, vertical: true)
+            : null,
         padding: const EdgeInsets.fromLTRB(12, 5, 4, 6),
         child: LayoutBuilder(
           builder: (context, box) {
@@ -723,7 +753,9 @@ class _ResearchViewState extends State<ResearchView> {
       );
     }
     return Container(
-      decoration: tableEdge(_accent, top: true),
+      decoration: widget.onReturn == null
+          ? tableEdge(_accent, top: true)
+          : null,
       padding: const EdgeInsets.fromLTRB(4, 2, 4, 5),
       child: Column(
         mainAxisSize: MainAxisSize.min,

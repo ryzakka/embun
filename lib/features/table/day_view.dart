@@ -16,6 +16,7 @@ import 'day_chrome.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
 import 'guard_dialog.dart';
+import 'village_card_picker.dart';
 
 double _c(double v) => v.clamp(0.0, 1.0).toDouble();
 
@@ -619,20 +620,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       _toast('Kamu tidak punya kartu untuk ditukar');
       return;
     }
-    final pick = await showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(
-          'Tukar ${_cardName(t['give_card_id'] as String)} dengan...',
-        ),
-        children: [
-          for (final h in tradable)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, h['id'] as String),
-              child: Text(_cardName(h['card_id'] as String)),
-            ),
-        ],
-      ),
+    final pick = await showVillageCardPicker(
+      context,
+      title: 'Balasan untuk ${_cardName(t['give_card_id'] as String)}',
+      options: [
+        for (final h in tradable) VillageCardOption.item(h, widget.defs),
+      ],
+      confirmLabel: 'Terima dan tukar kartu',
     );
     if (pick == null || !mounted) return;
     await _run(
@@ -2393,6 +2387,21 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
+      if (widget.venueMode && widget.initialTab == DayTab.merge) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Aktifkan kartu',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+            ),
+            Expanded(child: _gabungBody(minW: box.maxWidth > 600 ? 76 : 88)),
+          ],
+        );
+      }
       if (widget.venueMode) {
         return _handPage(widget.initialTab.index, wide: box.maxWidth > 700);
       }

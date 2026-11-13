@@ -8,6 +8,9 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'day_view.dart';
 import 'research_view.dart';
+import 'village_card_picker.dart';
+import 'village_exchange_view.dart';
+import 'clinic_entry_scene.dart';
 
 typedef VillageRow = Map<String, dynamic>;
 
@@ -91,7 +94,8 @@ const _places = [
 
 class _VillageVisitViewState extends State<VillageVisitView> {
   VillageRow? _status;
-  String? _error, _target, _offerTarget, _offerHand;
+  String? _error, _target;
+  bool _clinicGate = false;
   int _index = 0;
   int _revision = 0;
   bool _busy = false, _loading = false, _finished = false;
@@ -124,7 +128,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   }
 
   Future<void> _load() async {
-    if (_loading || _busy) return;
+    if (_loading || _busy || _clinicGate) return;
     _loading = true;
     final revision = _revision;
     try {
@@ -142,8 +146,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     }
   }
 
-  Future<void> _act(Future<VillageRow> Function() action) async {
-    if (_busy || _waiting) return;
+  Future<bool> _act(Future<VillageRow> Function() action) async {
+    if (_busy || _waiting) return false;
     _revision++;
     setState(() {
       _busy = true;
@@ -153,15 +157,19 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       final next = await action();
       if (mounted) setState(() => _status = next);
       widget.onHandChanged?.call();
+      return true;
     } catch (e) {
       if (mounted) setState(() => _error = errMsg(e));
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _leave() =>
-      _act(() => widget.repo.leaveVillagePlace(widget.gameId));
+  Future<void> _leave() async {
+    await _act(() => widget.repo.leaveVillagePlace(widget.gameId));
+  }
+
   Future<void> _finish() async {
     await _act(() async {
       await widget.repo.finishVillageVisits(widget.gameId);
@@ -204,62 +212,84 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       fontWeight: weight,
     ),
   );
-  Widget _service(IconData icon, String title, List<Widget> children) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 560),
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.all(20),
+  Widget _service(IconData icon, String title, List<Widget> children) =>
+      ListView(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 18),
         children: [
-          Icon(icon, size: 44, color: _accent),
-          const SizedBox(height: 18),
-          _text(title, size: 26, weight: FontWeight.w800),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(icon, size: 22, color: _accent),
+              const SizedBox(width: 10),
+              Expanded(child: _text(title, size: 24, weight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 22),
           ...children,
         ],
-      ),
-    ),
-  );
-  Widget _gap() => const SizedBox(height: 16);
-
+      );
+  Widget _gap() => const SizedBox(height: 18);
   Widget _well() {
     final bonus = _number('well_bonus', 0),
         step = _number('well_step', .15),
-        cap = _number('well_cap', 1.5);
-    final cost = _number('well_cost', 8);
+        cap = _number('well_cap', 1.5),
+        cost = _number('well_cost', 8);
+    final next = (bonus + (widget.isAntag ? -step : step)).clamp(-cap, cap);
     final capped = widget.isAntag ? bonus <= -cap : bonus >= cap;
-    final change = widget.isAntag ? -step : step;
-    final next = (bonus + change).clamp(-cap, cap);
     return _service(
       Icons.water_drop_outlined,
-      widget.isAntag ? 'Kotori sumur' : 'Rawat sumur desa',
+      widget.isAntag ? 'Cemari sumur' : 'Rawat sumur desa',
       [
-        _text('Laju bersama', color: Colors.white70),
         _text(
-          '${_signed(bonus)} / hari',
-          size: 40,
+          'LAJU BERSAMA',
+          size: 10,
+          color: Colors.white60,
+          weight: FontWeight.w800,
+        ),
+        _text(
+          _signed(bonus),
+          size: 52,
           color: bonus < 0 ? EmbunColors.blood : EmbunColors.leaf,
           weight: FontWeight.w800,
         ),
+        _text('embun / bulir hitam per hari', size: 12, color: Colors.white70),
         _gap(),
-        _text(
-          'Berlaku bagi seluruh pemain sampai permainan berakhir, termasuk Si Terbisik.',
+        const Divider(color: Color(0x339C8442)),
+        _gap(),
+        Row(
+          children: [
+            Icon(
+              widget.isAntag ? Icons.trending_down : Icons.trending_up,
+              color: _accent,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _text('Setelah tindakanmu', size: 12, color: Colors.white60),
+                  _text(
+                    '${_signed(next)} / hari',
+                    size: 24,
+                    weight: FontWeight.w800,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         _gap(),
         _text(
-          'Setelah tindakanmu: ${_signed(next)} / hari',
-          weight: FontWeight.bold,
-        ),
-        _text(
-          'Biaya $cost • Batas ${_signed(-cap)} sampai ${_signed(cap)}',
+          'Efek menetap hingga gim berakhir, untuk seluruh pemain dan kedua fraksi.',
           size: 12,
           color: Colors.white70,
         ),
         _gap(),
         if (_used)
           _text(
-            'Tindakan sumur sudah dilakukan pada kunjungan ini.',
+            'Sumbangan tercatat',
+            size: 18,
             color: EmbunColors.leaf,
+            weight: FontWeight.w800,
           )
         else
           _button(
@@ -270,98 +300,181 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 ? null
                 : () => _act(() => widget.repo.contributeWell(widget.gameId)),
           ),
+        const SizedBox(height: 10),
+        _text(
+          'Batas ${_signed(-cap)} hingga ${_signed(cap)} · 1 tindakan per kunjungan',
+          size: 11,
+          color: Colors.white54,
+        ),
       ],
     );
+  }
+
+  Future<void> _choosePatient(
+    List<VillageRow> patients,
+    String? selected,
+  ) async {
+    if (_busy || _used) return;
+    final id = await showVillageCardPicker(
+      context,
+      title: 'Siapa yang akan dirawat?',
+      options: [
+        for (final p in patients)
+          VillageCardOption.player(p, myId: widget.repo.myId),
+      ],
+      selected: selected,
+      confirmLabel: 'Rawat pemain ini',
+    );
+    if (mounted && id != null) setState(() => _target = id);
   }
 
   Widget _clinic() {
     final patients = widget.players
         .where((p) => p['out_day'] == null && ((p['strikes'] as int?) ?? 0) > 0)
         .toList();
-    final ids = patients.map((p) => p['user_id'] as String).toSet();
-    final target = ids.contains(_target)
-        ? _target
-        : ids.contains(widget.repo.myId)
-        ? widget.repo.myId
-        : ids.firstOrNull;
+    final patient =
+        patients.where((p) => p['user_id'] == _target).firstOrNull ??
+        patients.where((p) => p['user_id'] == widget.repo.myId).firstOrNull ??
+        patients.firstOrNull;
+    final target = patient?['user_id'] as String?;
     final fee = target != null && target != widget.repo.myId
         ? _number('care_other_fee', 12)
         : 0;
-    return _service(Icons.local_hospital_outlined, 'Pondok Perawatan', [
-      _text(
-        widget.isAntag
-            ? 'Pasang jebakan rahasia untuk satu pengunjung lain.'
-            : 'Serahkan Surat Dokter untuk memulihkan satu nyawa.',
-      ),
-      _gap(),
-      if (widget.isAntag) ...[
-        _text(
-          'Jebakan menetap sampai terkena. Satu pengunjung selain pemasang akan kehilangan 1 nyawa. Korban dipilih saat semua kunjungan berakhir.',
-        ),
-        _gap(),
-        if (_status?['own_trap_waiting'] == true)
-          _text('Jebakanmu masih menunggu pengunjung.', color: _accent),
-      ] else ...[
-        if (patients.isEmpty)
-          _text('Semua pemain yang masih di desa memiliki nyawa penuh.')
-        else
-          DropdownButtonFormField<String>(
-            key: ValueKey('patient-$target'),
-            initialValue: target,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Penerima perawatan'),
-            items: [
-              for (final p in patients)
-                DropdownMenuItem(
-                  value: p['user_id'] as String,
-                  child: Text(
-                    '${p['name']}${p['user_id'] == widget.repo.myId ? ' · Kamu' : ''}',
+    final trapWaiting = _status?['own_trap_waiting'] == true;
+    return _service(
+      Icons.local_hospital_outlined,
+      widget.isAntag ? 'Titipkan jebakan' : 'Pilih perawatan',
+      [
+        if (widget.isAntag) ...[
+          Center(
+            child: VillageChoiceCard(
+              option: VillageCardOption(
+                id: _letter,
+                title: 'Surat Keterangan Sakit',
+                path: cardArtPath(widget.defs[_letter]),
+                subtitle: '−1 nyawa · satu pengunjung',
+              ),
+              width: 138,
+            ),
+          ),
+          _gap(),
+          _text(
+            trapWaiting
+                ? 'Jebakanmu menunggu pengunjung'
+                : 'Satu surat, satu jebakan',
+            size: 20,
+            color: trapWaiting ? _accent : EmbunColors.cream,
+            weight: FontWeight.w800,
+          ),
+          const SizedBox(height: 8),
+          _text(
+            'Tetap terpasang sampai seorang pengunjung lain terkena. Kamu tidak menjadi korban jebakanmu sendiri.',
+            size: 13,
+            color: Colors.white70,
+          ),
+        ] else if (patient != null) ...[
+          LayoutBuilder(
+            builder: (context, box) {
+              final cardW = box.maxWidth < 330 ? 105.0 : 128.0;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  VillageChoiceCard(
+                    option: VillageCardOption.player(
+                      patient,
+                      myId: widget.repo.myId,
+                    ),
+                    width: cardW,
+                    selected: true,
+                    onTap: _busy || _used
+                        ? null
+                        : () => _choosePatient(patients, target),
                   ),
-                ),
-            ],
-            onChanged: _busy || _used
-                ? null
-                : (id) => setState(() => _target = id),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _text(
+                          'PENERIMA',
+                          size: 10,
+                          color: Colors.white60,
+                          weight: FontWeight.w800,
+                        ),
+                        const SizedBox(height: 8),
+                        _text(
+                          '+1 nyawa',
+                          size: 26,
+                          color: EmbunColors.leaf,
+                          weight: FontWeight.w800,
+                        ),
+                        const SizedBox(height: 12),
+                        _text(
+                          fee == 0
+                              ? 'Tanpa biaya tambahan'
+                              : 'Biaya tambahan $fee',
+                          size: 13,
+                        ),
+                        if (!_used)
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _choosePatient(patients, target),
+                            child: const Text('Ganti pemain'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ] else
+          _text(
+            'Semua pemain yang masih di desa memiliki nyawa penuh.',
+            size: 16,
           ),
         _gap(),
+        const Divider(color: Color(0x339C8442)),
+        const SizedBox(height: 12),
+        if (_used) ...[
+          _text(
+            widget.isAntag ? 'Jebakan terpasang' : 'Perawatan dijadwalkan',
+            size: 20,
+            color: EmbunColors.leaf,
+            weight: FontWeight.w800,
+          ),
+          const SizedBox(height: 8),
+          _text(
+            'Hasil diumumkan setelah semua pemain selesai menjelajah.',
+            size: 12,
+            color: Colors.white70,
+          ),
+        ] else
+          _button(
+            widget.isAntag ? 'Pasang jebakan' : 'Konfirmasi perawatan',
+            _busy ||
+                    _ticket == null ||
+                    (!widget.isAntag &&
+                        (target == null || widget.balance < fee)) ||
+                    (widget.isAntag && trapWaiting)
+                ? null
+                : () => _act(
+                    () => widget.repo.useClinicLetter(
+                      widget.gameId,
+                      _ticket!['id'] as String,
+                      target: widget.isAntag ? null : target,
+                    ),
+                  ),
+          ),
+        const SizedBox(height: 10),
         _text(
-          'Biaya tambahan: $fee. Perawatan diproses sebelum jebakan ketika kunjungan selesai.',
-          size: 13,
-          color: Colors.white70,
+          'Surat habis saat layanan dikonfirmasi. Pemulihan diselesaikan sebelum jebakan.',
+          size: 11,
+          color: Colors.white54,
         ),
       ],
-      _gap(),
-      if (_used)
-        _text(
-          'Surat telah digunakan. Hasil diumumkan setelah semua pemain selesai.',
-          color: EmbunColors.leaf,
-        )
-      else
-        _button(
-          widget.isAntag
-              ? 'Gunakan surat · Pasang jebakan'
-              : 'Gunakan surat · Pulihkan 1 nyawa',
-          _busy ||
-                  _ticket == null ||
-                  (!widget.isAntag &&
-                      (target == null || widget.balance < fee)) ||
-                  (widget.isAntag && _status?['own_trap_waiting'] == true)
-              ? null
-              : () => _act(
-                  () => widget.repo.useClinicLetter(
-                    widget.gameId,
-                    _ticket!['id'] as String,
-                    target: widget.isAntag ? null : target,
-                  ),
-                ),
-        ),
-      if (_ticket == null && !_used)
-        _text(
-          'Beli ${widget.isAntag ? 'Surat Keterangan Sakit' : 'Surat Dokter'} di Pasar Riset.',
-          size: 12,
-          color: Colors.white70,
-        ),
-    ]);
+    );
   }
 
   DayView _desk(DayTab tab) => DayView(
@@ -392,115 +505,145 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     isAntag: widget.isAntag,
     onHandChanged: widget.onHandChanged,
   );
-  Widget _hall() {
-    final cards = widget.hand
-        .where(
-          (h) =>
-              h['card_id'] != 'embun_samaran' &&
-              widget.defs[h['card_id']]?['kind'] != 'malam',
-        )
-        .toList();
-    final others = widget.players
-        .where((p) => p['user_id'] != widget.repo.myId && p['out_day'] == null)
-        .toList();
-    final selectedHand = cards.any((h) => h['id'] == _offerHand)
-        ? _offerHand
-        : null;
-    final selectedTarget = others.any((p) => p['user_id'] == _offerTarget)
-        ? _offerTarget
-        : null;
-    return Column(
-      children: [
-        if (_free)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: _text(
-              'Kunjungan undangan · Tanpa memakai jatah. Kembali untuk melanjutkan tempat sebelumnya.',
-              size: 12,
-              color: _accent,
-            ),
+  Widget _hall() => VillageExchangeView(
+    key: ValueKey('hall-${_visit?['id']}'),
+    repo: widget.repo,
+    gameId: widget.gameId,
+    day: widget.day,
+    hand: widget.hand,
+    defs: widget.defs,
+    players: widget.players,
+    trades: widget.trades,
+    invitationId: _visit?['invitation_id'] as String?,
+    jailed: widget.jailed,
+    busy: _busy,
+    onAction: (task) => _act(() async {
+      await task();
+      return widget.repo.villageStatus(widget.gameId);
+    }),
+  );
+  void _enterPlace(String place) {
+    if (_busy || _waiting) return;
+    if (place == 'pondok') {
+      setState(() => _clinicGate = true);
+      return;
+    }
+    _act(() => widget.repo.enterVillagePlace(widget.gameId, place));
+  }
+
+  Widget _stage(String place, Widget content) => LayoutBuilder(
+    builder: (context, box) {
+      final side =
+          box.maxWidth >= 820 || (box.maxWidth >= 600 && box.maxHeight < 400);
+      final broad = place == 'riset' || place == 'bengkel';
+      final panel = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xD90B1B16), Color(0xF00B1B16)],
           ),
-        if (!_free && !widget.jailed)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  children: [
-                    SizedBox(
-                      width: 240,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey('offer-target-$selectedTarget'),
-                        initialValue: selectedTarget,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Tawarkan kepada',
+          border: Border.all(color: _accent.withValues(alpha: .22)),
+        ),
+        child: Padding(padding: const EdgeInsets.all(14), child: content),
+      );
+      if (side) {
+        final width =
+            (box.maxWidth *
+                    (broad
+                        ? .64
+                        : place == 'balai'
+                        ? .48
+                        : .41))
+                .clamp(
+                  broad ? 380.0 : 320.0,
+                  broad
+                      ? 900.0
+                      : place == 'balai'
+                      ? 620.0
+                      : 480.0,
+                );
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            28,
+            12,
+            box.maxWidth > 1000 ? 28 : 12,
+            8,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 22, bottom: 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _text(
+                          'KUNJUNGAN MALAM',
+                          size: 10,
+                          color: _accent,
+                          weight: FontWeight.w800,
                         ),
-                        items: [
-                          for (final p in others)
-                            DropdownMenuItem(
-                              value: p['user_id'] as String,
-                              child: Text(p['name'] as String),
-                            ),
-                        ],
-                        onChanged: _busy
-                            ? null
-                            : (id) => setState(() => _offerTarget = id),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 240,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey('offer-card-$selectedHand'),
-                        initialValue: selectedHand,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Kartu yang kamu tawarkan',
+                        const SizedBox(height: 10),
+                        _text(
+                          _places.firstWhere((p) => p.$1 == place).$2,
+                          size: box.maxHeight < 300 ? 22 : 34,
+                          weight: FontWeight.w800,
                         ),
-                        items: [
-                          for (final h in cards)
-                            DropdownMenuItem(
-                              value: h['id'] as String,
-                              child: Text(
-                                widget.defs[h['card_id']]?['name'] as String? ??
-                                    'Kartu',
-                              ),
-                            ),
-                        ],
-                        onChanged: _busy
-                            ? null
-                            : (id) => setState(() => _offerHand = id),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _button(
-                    'Kirim tawaran',
-                    _busy || selectedHand == null || selectedTarget == null
-                        ? null
-                        : () => _act(() async {
-                            await widget.repo.proposeTrade(
-                              widget.gameId,
-                              selectedTarget,
-                              selectedHand,
-                            );
-                            return widget.repo.villageStatus(widget.gameId);
-                          }),
                   ),
                 ),
-              ],
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: width,
+                  height: broad
+                      ? null
+                      : (place == 'sumur'
+                                ? 450.0
+                                : place == 'pondok'
+                                ? 490.0
+                                : 540.0)
+                            .clamp(0.0, box.maxHeight - 20),
+                  child: panel,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      final desired = switch (place) {
+        'sumur' => 430.0,
+        'pondok' => 460.0,
+        'balai' => 550.0,
+        'riset' => 580.0,
+        _ => 560.0,
+      };
+      final height = desired.clamp(
+        0.0,
+        (box.maxHeight - 36).clamp(0.0, double.infinity),
+      );
+      return Column(
+        children: [
+          const Expanded(child: SizedBox()),
+          SizedBox(
+            height: height,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: panel,
             ),
           ),
-        Expanded(child: _desk(DayTab.hall)),
-      ],
-    );
-  }
+        ],
+      );
+    },
+  );
 
   Widget _interior(String place) => switch (place) {
     'riset' => ResearchView(
@@ -613,14 +756,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                       : _index == 3 && _ticket == null
                       ? 'Perlu surat perawatan'
                       : 'Masuk · 1 kunjungan',
-                  _busy || !allowed
-                      ? null
-                      : () => _act(
-                          () => widget.repo.enterVillagePlace(
-                            widget.gameId,
-                            p.$1,
-                          ),
-                        ),
+                  _busy || !allowed ? null : () => _enterPlace(p.$1),
                 ),
               ),
               const SizedBox(width: 12),
@@ -734,7 +870,16 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             duration: const Duration(milliseconds: 400),
             child: SizedBox.expand(
               key: ValueKey(bg),
-              child: GameImage(path: bg),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: place != null && box.maxWidth < 600
+                      ? (box.maxHeight * .46).clamp(220.0, 400.0)
+                      : box.maxHeight,
+                  child: GameImage(path: bg),
+                ),
+              ),
             ),
           ),
           DecoratedBox(
@@ -743,9 +888,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  EmbunColors.bg.withValues(alpha: .6),
-                  EmbunColors.bg.withValues(alpha: place == null ? .4 : .92),
-                  EmbunColors.bg.withValues(alpha: .97),
+                  EmbunColors.bg.withValues(alpha: .42),
+                  EmbunColors.bg.withValues(alpha: place == null ? .22 : .06),
+                  EmbunColors.bg.withValues(alpha: .75),
                 ],
               ),
             ),
@@ -841,7 +986,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                       ? const Center(child: CircularProgressIndicator())
                       : place == null
                       ? _picker(box.maxWidth > 760)
-                      : _interior(place),
+                      : _stage(place, _interior(place)),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -869,6 +1014,33 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               ],
             ),
           ),
+          if (_clinicGate)
+            Positioned.fill(
+              child: ClinicEntryScene(
+                letter:
+                    widget.defs[_letter] ??
+                    {
+                      'id': _letter,
+                      'kind': 'perawatan',
+                      'side': widget.isAntag ? 'antagonis' : 'warga',
+                      'name': widget.isAntag
+                          ? 'Surat Keterangan Sakit'
+                          : 'Surat Dokter',
+                    },
+                dark: widget.isAntag,
+                onSubmit: () =>
+                    widget.repo.enterVillagePlace(widget.gameId, 'pondok'),
+                onCancel: () => setState(() => _clinicGate = false),
+                onEntered: (status) {
+                  if (mounted) {
+                    setState(() {
+                      _status = status;
+                      _clinicGate = false;
+                    });
+                  }
+                },
+              ),
+            ),
         ],
       ),
     );
