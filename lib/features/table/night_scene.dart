@@ -137,14 +137,29 @@ class _NightSceneState extends State<NightScene>
 
     // Getar tiap baris muncul: berat untuk serangan, ringan untuk yang lain.
     for (var i = 0; i < _lines.length; i++) {
+      // Suara + getar dampak disinkronkan ke saat benturan di layar.
+      final imp = _impacts[i];
+      if (imp != null) {
+        final hitMs = (_lineStart(i) + imp.hit * kNightImpactMs).round();
+        _timers.add(Timer(Duration(milliseconds: hitMs), () {
+          if (!mounted) return;
+          final sound = imp.sound;
+          if (sound != null) Sfx.I.play(sound, owner: this, tag: 'impact');
+          if (imp.applied) {
+            HapticFeedback.heavyImpact();
+            Future.delayed(const Duration(milliseconds: 120),
+                HapticFeedback.mediumImpact);
+          } else {
+            HapticFeedback.lightImpact();
+          }
+        }));
+      }
       _timers.add(Timer(Duration(milliseconds: _lineStart(i).round()), () {
         if (!mounted) return;
         final k = _lines[i]['kind'];
         final impact = _impacts[i];
         if (impact != null) {
-          final sound = impact.sound;
-          if (sound != null) Sfx.I.play(sound, owner: this, tag: 'impact');
-          if (impact.applied) HapticFeedback.mediumImpact();
+          HapticFeedback.selectionClick();
         } else if (k == 'attack') {
           // Pengumuman serangan: sama untuk semua pemain (tanpa sasaran/jenis).
           Sfx.I.play(Snd.slashPedang, owner: this, tag: 'slash');
@@ -189,7 +204,7 @@ class _NightSceneState extends State<NightScene>
     final impact = _impacts[index];
     final text = '${impact?.title ?? ''} ${line['text']}';
     final base = readMs(text, min: 1700, max: 5200).toDouble();
-    if (impact != null) return base + 560;
+    if (impact != null) return math.max(base + 560, kNightImpactMs + 300.0);
     return line['kind'] == 'attack' ? base + 500 : base;
   }
 
@@ -301,13 +316,29 @@ class _NightSceneState extends State<NightScene>
             final atkEcho = _attackIdx < 0 ? 0.0 : pulse(atkAt + 80, 1100);
             final atkSecond = _attackIdx < 0 ? 0.0 : pulse(atkAt + 260, 380);
             final atkSince = _attackIdx < 0 ? -1.0 : (ms - atkAt);
-            final shakeAmp =
-                20 * atkPulse + 8 * atkSecond + 3 * atkEcho + 3 * privPulse;
+            // Adegan dampak layar penuh (hasil pribadi).
+            final act = _starts.lastIndexWhere((s) => s <= ms);
+            final imp = act >= 0 ? _impacts[act] : null;
+            final impAt = act >= 0 ? _starts[act] : 0.0;
+            final impP =
+            imp == null ? 0.0 : _seg(ms, impAt, impAt + kNightImpactMs);
+            final impPower = imp?.shakePower ?? 0.0;
+            final impPulse = imp == null
+                ? 0.0
+                : pulse(impAt + imp.hit * kNightImpactMs, 450);
+
+            final shakeAmp = 20 * atkPulse +
+                8 * atkSecond +
+                3 * atkEcho +
+                3 * privPulse +
+                26 * impPower * impPulse;
             final t = ms / 1000;
             final shake = Offset(math.sin(t * 95) * shakeAmp,
                 math.cos(t * 81) * shakeAmp * 0.7);
-            final tilt = math.sin(t * 61) * 0.012 * (atkPulse + atkSecond);
-            final punch = 0.09 * atkPulse + 0.03 * atkSecond;
+            final tilt = math.sin(t * 61) * 0.012 * (atkPulse + atkSecond) +
+                math.sin(t * 57) * 0.014 * impPower * impPulse;
+            final punch =
+                0.09 * atkPulse + 0.03 * atkSecond + 0.045 * impPower * impPulse;
 
             final fadeIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
             final fadeOut =
@@ -377,6 +408,15 @@ class _NightSceneState extends State<NightScene>
                   offset: shake * 1.3,
                   child: SafeArea(child: _content(ms, atkPulse, attack)),
                 ),
+
+                // Adegan dampak layar penuh: panah, perisai, api, dll.
+                if (imp != null && impP > 0 && impP < 1)
+                  NightImpactStage(
+                    key: ValueKey('impact-$act'),
+                    impact: imp,
+                    progress: impP,
+                    cardArt: cardArtPath(widget.defs[imp.card]),
+                  ),
 
                 // Kilatan.
                 // Putih menyilaukan sesaat, lalu merah darah, lalu berdenyut.
@@ -576,8 +616,6 @@ class _NightSceneState extends State<NightScene>
           key: ValueKey(l['id']),
           impact: impact,
           message: text,
-          progress: _seg(ms, _lineStart(i), _lineStart(i) + 1650),
-          cardArt: cardArtPath(card),
           cardName: card?['name'] as String?,
           active: active,
         ),

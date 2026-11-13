@@ -154,6 +154,40 @@ class NightImpact {
     NightImpactEffect.theft => const Color(0xFFC1ABEF),
   };
 
+  /// Saat benturan, sebagai pecahan (0..1) dari [kNightImpactMs].
+  double get hit => !applied
+      ? 0.32
+      : switch (effect) {
+    NightImpactEffect.bowHit ||
+    NightImpactEffect.bowFinal ||
+    NightImpactEffect.bowMiss => 0.50,
+    NightImpactEffect.mirror ||
+    NightImpactEffect.shield ||
+    NightImpactEffect.guard => 0.46,
+    NightImpactEffect.pump => 0.86,
+    NightImpactEffect.burn => 0.30,
+    NightImpactEffect.theft => actor ? 0.62 : 0.30,
+    NightImpactEffect.clinicHeal => 0.36,
+    NightImpactEffect.clinicTrap => 0.36,
+  };
+
+  /// Kekuatan guncangan layar saat benturan.
+  double get shakePower => !applied
+      ? 0.2
+      : switch (effect) {
+    NightImpactEffect.bowFinal => 1.5,
+    NightImpactEffect.bowHit => actor ? 0.9 : 1.3,
+    NightImpactEffect.bowMiss => 0.6,
+    NightImpactEffect.mirror ||
+    NightImpactEffect.shield ||
+    NightImpactEffect.guard => 0.8,
+    NightImpactEffect.pump => 0.4,
+    NightImpactEffect.burn => 0.7,
+    NightImpactEffect.theft => 0.6,
+    NightImpactEffect.clinicHeal => 0.35,
+    NightImpactEffect.clinicTrap => 1.2,
+  };
+
   Snd? get sound => !applied
       ? null
       : switch (effect) {
@@ -173,18 +207,14 @@ class NightImpact {
 class NightImpactReport extends StatelessWidget {
   final NightImpact impact;
   final String message;
-  final double progress;
   final bool active;
-  final String? cardArt;
   final String? cardName;
 
   const NightImpactReport({
     super.key,
     required this.impact,
     required this.message,
-    required this.progress,
     required this.active,
-    this.cardArt,
     this.cardName,
   });
 
@@ -260,25 +290,62 @@ class NightImpactReport extends StatelessWidget {
                 style: TextStyle(color: color, fontWeight: FontWeight.w800),
               ),
             ),
-          if (active)
-            NightImpactVisual(
-              impact: impact,
-              progress: progress,
-              cardArt: cardArt,
-            ),
         ],
       ),
     );
   }
 }
 
-/// Ilustrasi hasil pribadi. Menggunakan satu garis waktu dengan laporan malam.
-class NightImpactVisual extends StatelessWidget {
+// ===========================================================================
+// Adegan dampak LAYAR PENUH
+// ===========================================================================
+
+/// Lama (ms) satu adegan dampak layar penuh.
+const int kNightImpactMs = 2200;
+
+double _cl(double v) => v < 0 ? 0.0 : (v > 1 ? 1.0 : v);
+
+double _range(double t, double start, double end) =>
+    ((t - start) / (end - start)).clamp(0.0, 1.0).toDouble();
+
+double _lerpD(double a, double b, double t) => a + (b - a) * t;
+
+double _hash(int i, int k) {
+  final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+  return v - v.floorToDouble();
+}
+
+Offset _quad(Offset a, Offset c, Offset b, double t) {
+  final k = 1 - t;
+  return a * (k * k) + c * (2 * k * t) + b * (t * t);
+}
+
+double _cardW(Size s) => math.min(s.width * 0.42, 190.0);
+
+double _theftFlight(double p) =>
+    Curves.easeInOutCubic.transform(_range(p, 0.28, 0.62));
+
+Offset _theftPos(Size s, bool actor, double t) {
+  final a = Offset(s.width * 0.82, s.height * 0.16);
+  final b = Offset(s.width * 0.5, s.height * 0.66);
+  final c = Offset(s.width * 0.97, s.height * 0.60);
+  return actor ? _quad(a, c, b, t) : _quad(b, c, a, t);
+}
+
+double _theftAngle(bool actor, double t) =>
+    (actor ? -1.0 : 1.0) * 0.55 * math.sin(t * math.pi) + 0.18 * t;
+
+double _theftScale(bool actor, double t) =>
+    actor ? _lerpD(0.7, 1.05, t) : _lerpD(1.05, 0.4, t);
+
+/// Adegan dampak yang memenuhi seluruh layar, digambar di atas isi adegan
+/// malam. [progress] 0..1 selama [kNightImpactMs].
+class NightImpactStage extends StatelessWidget {
   final NightImpact impact;
   final double progress;
   final String? cardArt;
 
-  const NightImpactVisual({
+  const NightImpactStage({
     super.key,
     required this.impact,
     required this.progress,
@@ -287,493 +354,1013 @@ class NightImpactVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = MediaQuery.disableAnimationsOf(context) ? 0.78 : progress;
-    final color = impact.color;
-    final card = cardArt;
-    final isBurn = impact.effect == NightImpactEffect.burn;
-    final isTheft = impact.effect == NightImpactEffect.theft;
-    final travel = Curves.easeInOut.transform(_range(p, 0.22, 0.84));
-    final cardX = isTheft ? (impact.actor ? -1.0 : 1.0) * 58 * travel : 0.0;
-    final cardY = isTheft ? -10 * travel : -6 * travel;
-    final cardAlpha = isBurn ? 1 - _range(p, 0.34, 0.82) : 1.0;
+    final p = MediaQuery.disableAnimationsOf(context) ? 0.7 : progress;
+    final m = 1 - _range(p, 0.86, 1.0);
+    final usesCard = impact.applied &&
+        (impact.effect == NightImpactEffect.burn ||
+            impact.effect == NightImpactEffect.theft);
     return ExcludeSemantics(
-      child: SizedBox(
-        height: 112,
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: RadialGradient(
-                  radius: 0.64,
-                  colors: [
-                    color.withValues(alpha: 0.16),
-                    const Color(0x00202738),
-                  ],
+      child: IgnorePointer(
+        child: SizedBox.expand(
+          child: LayoutBuilder(builder: (context, box) {
+            final size = Size(box.maxWidth, box.maxHeight);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                if (usesCard) _cardWidget(size, p, m),
+                CustomPaint(
+                  painter: _StagePainter(impact, p, m),
+                  size: size,
                 ),
-              ),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _cardWidget(Size s, double p, double m) {
+    final cw = _cardW(s);
+    final art = cardArt;
+    final Widget face = art == null
+        ? const GameIcon('mydeck2', size: 110)
+        : CardArt(path: art, width: cw, glow: impact.color);
+    if (impact.effect == NightImpactEffect.burn) {
+      final appear = Curves.easeOutBack.transform(_range(p, 0.0, 0.22));
+      final burnt = _range(p, 0.30, 0.82);
+      final jitter = math.sin(p * 160) * 5 * (burnt * (1 - burnt) * 4);
+      final alpha = _range(p, 0.0, 0.1) * (1 - _range(p, 0.62, 0.84));
+      final tint = Color.lerp(Colors.white, const Color(0xFF241006), burnt)!;
+      return Positioned(
+        left: s.width / 2 - cw / 2 + jitter,
+        top: s.height * 0.40 - cw * 0.7,
+        width: cw,
+        child: Opacity(
+          opacity: _cl(alpha),
+          child: Transform.scale(
+            scale: 0.55 + 0.45 * appear,
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(tint, BlendMode.modulate),
+              child: face,
             ),
-            if (!impact.applied)
-              const Center(child: GameIcon('silang', size: 34))
-            else ...[
-              if (isBurn || isTheft)
-                Center(
-                  child: Transform.translate(
-                    offset: Offset(cardX, cardY),
-                    child: Transform.rotate(
-                      angle: (isTheft ? 0.24 : 0.07) * travel,
-                      child: Opacity(
-                        opacity: cardAlpha,
-                        child: card == null
-                            ? const GameIcon('mydeck2', size: 43)
-                            : CardArt(path: card, width: 39, glow: color),
-                      ),
-                    ),
-                  ),
-                ),
-              CustomPaint(painter: _ImpactPainter(impact, p)),
-            ],
-          ],
+          ),
+        ),
+      );
+    }
+    final t = _theftFlight(p);
+    final pos = _theftPos(s, impact.actor, t);
+    final appear = _range(p, 0.0, 0.14);
+    final fade = impact.actor ? 1.0 : 1 - _range(p, 0.60, 0.80);
+    final bob = t == 0 ? math.sin(p * 30) * 5 : 0.0;
+    return Positioned(
+      left: pos.dx - cw / 2,
+      top: pos.dy - cw * 0.7 + bob,
+      width: cw,
+      child: Opacity(
+        opacity: _cl(appear * fade),
+        child: Transform.rotate(
+          angle: _theftAngle(impact.actor, t),
+          child: Transform.scale(
+            scale: _theftScale(impact.actor, t),
+            child: face,
+          ),
         ),
       ),
     );
   }
 }
 
-double _range(double t, double start, double end) =>
-    ((t - start) / (end - start)).clamp(0.0, 1.0).toDouble();
-
-class _ImpactPainter extends CustomPainter {
+class _StagePainter extends CustomPainter {
   final NightImpact impact;
-  final double progress;
+  final double p;
+  final double m;
 
-  const _ImpactPainter(this.impact, this.progress);
+  const _StagePainter(this.impact, this.p, this.m);
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Ruang animasi tetap utuh pada ponsel dan desktop.
-    final scale = math.min(size.width / 242, size.height / 96);
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.scale(scale);
+    final f = _Fx(canvas, size, impact.color, p, m);
+    if (!impact.applied) {
+      _fxNull(f, impact);
+      return;
+    }
     switch (impact.effect) {
       case NightImpactEffect.clinicHeal:
+        _fxHeal(f, impact);
       case NightImpactEffect.clinicTrap:
-        _clinic(canvas);
+        _fxTrap(f, impact);
       case NightImpactEffect.bowHit:
       case NightImpactEffect.bowFinal:
       case NightImpactEffect.bowMiss:
-        _bow(canvas);
+        _fxBow(f, impact);
       case NightImpactEffect.mirror:
       case NightImpactEffect.shield:
       case NightImpactEffect.guard:
-        _ward(canvas);
+        _fxWard(f, impact);
       case NightImpactEffect.pump:
-        _drops(canvas);
+        _fxPump(f, impact);
       case NightImpactEffect.burn:
+        _fxBurn(f, impact);
       case NightImpactEffect.theft:
-        _cards(canvas);
+        _fxTheft(f, impact);
     }
-  }
-
-  void _clinic(Canvas canvas) {
-    final p = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
-    final heal = impact.effect == NightImpactEffect.clinicHeal;
-    canvas.drawCircle(Offset.zero, 18 + 22 * p, _ink((1 - p) * .75, width: 3));
-    final ink = Paint()
-      ..color = impact.color.withValues(alpha: .95)
-      ..strokeWidth = 9
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(-18, 0), const Offset(18, 0), ink);
-    if (heal) canvas.drawLine(const Offset(0, -18), const Offset(0, 18), ink);
-    for (var i = 0; i < 8; i++) {
-      final angle = i * math.pi / 4;
-      final distance = 25 + 24 * p;
-      canvas.drawCircle(
-        Offset(math.cos(angle) * distance, math.sin(angle) * distance),
-        2.5,
-        _ink(1 - p, width: 2),
-      );
-    }
-  }
-
-  Paint _ink(double opacity, {double width = 2}) => Paint()
-    ..color = impact.color.withValues(alpha: opacity.clamp(0.0, 1.0))
-    ..strokeCap = StrokeCap.round
-    ..strokeWidth = width
-    ..style = PaintingStyle.stroke;
-
-  void _ring(Canvas canvas, Offset center, double p, double radius) {
-    canvas.drawCircle(center, 7 + radius * p, _ink(0.65 * (1 - p)));
-  }
-
-  Paint _glow(double opacity, {double width = 6, double blur = 6}) => Paint()
-    ..color = impact.color.withValues(alpha: opacity.clamp(0.0, 1.0))
-    ..strokeCap = StrokeCap.round
-    ..strokeWidth = width
-    ..style = PaintingStyle.stroke
-    ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
-
-  Paint _fill(double opacity, {Color? color, double blur = 0}) => Paint()
-    ..color = (color ?? impact.color).withValues(alpha: opacity.clamp(0.0, 1.0))
-    ..style = PaintingStyle.fill
-    ..maskFilter = blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null;
-
-  double _h(int i, int k) {
-    final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
-    return v - v.floorToDouble();
-  }
-
-  double _lerpD(double a, double b, double t) => a + (b - a) * t;
-
-  /// Cincin kejut: lingkar berpendar + inti terang.
-  void _shock(Canvas canvas, Offset c, double p, double radius) {
-    if (p <= 0 || p >= 1) return;
-    final e = Curves.easeOutCubic.transform(p);
-    final a = 1 - p;
-    canvas.drawCircle(
-        c, 6 + radius * e, _glow(0.6 * a, width: 8 * a + 2, blur: 6));
-    canvas.drawCircle(
-      c,
-      6 + radius * e,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * a + 0.6
-        ..color = Colors.white.withValues(alpha: 0.85 * a),
-    );
-  }
-
-  /// Semburan garis radial + kilatan cahaya.
-  void _burst(
-      Canvas canvas,
-      Offset c,
-      double p, {
-        int n = 12,
-        double reach = 36,
-        double flash = 20,
-      }) {
-    if (p <= 0 || p >= 1) return;
-    final e = Curves.easeOutCubic.transform(p);
-    final a = 1 - p;
-    canvas.drawCircle(c, flash * (0.6 + 0.8 * e), _fill(0.6 * a * a, blur: 10));
-    canvas.drawCircle(
-        c, flash * 0.35 * a, _fill(0.9 * a, color: Colors.white, blur: 3));
-    for (var i = 0; i < n; i++) {
-      final ang = (i + _h(i, 3) * 0.6) * 2 * math.pi / n;
-      final dir = Offset(math.cos(ang), math.sin(ang));
-      final len = 6 + 12 * _h(i, 5);
-      final r1 = 6 + reach * (0.5 + 0.5 * _h(i, 7)) * e;
-      canvas.drawLine(
-        c + dir * math.max(4.0, r1 - len * (1 - p)),
-        c + dir * r1,
-        _ink(a, width: 2.2 * a + 0.6),
-      );
-    }
-  }
-
-  void _arrow(
-      Canvas canvas,
-      Offset tip,
-      double direction,
-      double opacity, {
-        double trail = 0,
-      }) {
-    final tail = tip - Offset(45 * direction, 0);
-    if (trail > 0) {
-      canvas.drawLine(
-        tail,
-        tail - Offset(trail * direction, 0),
-        _glow(opacity * 0.5, width: 6, blur: 5),
-      );
-      for (final y in [-3.5, 3.5]) {
-        canvas.drawLine(
-          tail - Offset(6 * direction, y),
-          tail - Offset(trail * 0.7 * direction, y),
-          _ink(opacity * 0.4, width: 1),
-        );
-      }
-    }
-    canvas.drawLine(tail, tip, _ink(opacity * 0.23, width: 7));
-    canvas.drawLine(tail, tip, _ink(opacity, width: 2));
-    canvas.drawCircle(tip, 5, _fill(opacity * 0.8, blur: 4));
-    for (final y in [-7.0, 7.0]) {
-      canvas.drawLine(tip, tip - Offset(12 * direction, y), _ink(opacity));
-      canvas.drawLine(tail, tail + Offset(9 * direction, y / 2), _ink(opacity));
-    }
-  }
-
-  void _bow(Canvas canvas) {
-    final miss = impact.effect == NightImpactEffect.bowMiss;
-    final fin = impact.effect == NightImpactEffect.bowFinal;
-    final face = impact.actor ? 1.0 : -1.0;
-    // Anak panah melesat makin cepat lalu menghantam.
-    final t = Curves.easeInCubic.transform(_range(progress, 0, 0.48));
-    final back = Curves.easeInOut.transform(_range(progress, 0.43, 0.80));
-    final hit = _range(progress, 0.46, 1.0);
-    final shake = hit > 0 && hit < 0.4 && !miss
-        ? math.sin(hit * 140) * 5 * (1 - hit / 0.4)
-        : 0.0;
-    final target = Offset(66 * face + shake, -4);
-    final tip = Offset((-90 + 156 * t - (miss ? 146 * back : 0)) * face, -4);
-
-    // Bidikan: cincin mengunci sasaran sebelum panah tiba.
-    final lock = _range(progress, 0, 0.46);
-    final lockA = (0.25 + 0.5 * lock) * (miss ? 1.0 : 1 - hit * 0.6);
-    final r = 15 + 8 * (1 - lock);
-    canvas.drawCircle(target, r, _ink(lockA, width: 1.4));
-    canvas.drawCircle(target, 7, _ink(lockA * 0.8, width: 1));
-    for (final d in const [
-      Offset(1, 0),
-      Offset(-1, 0),
-      Offset(0, 1),
-      Offset(0, -1),
-    ]) {
-      canvas.drawLine(
-          target + d * (r + 3), target + d * (r + 9), _ink(lockA, width: 1.4));
-    }
-
-    if (hit > 0) {
-      if (!miss) {
-        _burst(canvas, target, hit,
-            n: fin ? 22 : 14, reach: fin ? 54 : 40, flash: fin ? 32 : 22);
-        _shock(canvas, target, _range(hit, 0, 0.8), fin ? 58 : 40);
-        _shock(canvas, target, _range(hit, 0.15, 1), fin ? 80 : 56);
-        if (fin) {
-          // Tanda silang di sasaran terakhir.
-          final xa = _range(hit, 0.1, 0.3) * (1 - _range(hit, 0.7, 1));
-          for (final s in [-1.0, 1.0]) {
-            canvas.drawLine(target + Offset(-10, -10 * s),
-                target + Offset(10, 10 * s), _glow(xa, width: 5, blur: 4));
-            canvas.drawLine(target + Offset(-10, -10 * s),
-                target + Offset(10, 10 * s), _ink(xa, width: 2));
-          }
-        }
-      } else {
-        _burst(canvas, target - Offset(14 * face, 0), _range(hit, 0, 0.6),
-            n: 8, reach: 24, flash: 14);
-      }
-    }
-    if (miss && progress > 0.65) {
-      final rp = _range(progress, 0.65, 1);
-      final origin = Offset(-80 * face, -4);
-      _burst(canvas, origin, rp, n: 10, reach: 30, flash: 16);
-      _shock(canvas, origin, rp, 34);
-    }
-    if (miss || progress < 0.68) {
-      _arrow(
-        canvas,
-        tip,
-        miss && back > 0 ? -face : face,
-        1 - _range(progress, miss ? 0.88 : 0.50, miss ? 1 : 0.68),
-        trail: 70 * (1 - _range(progress, 0.40, 0.50)),
-      );
-    }
-  }
-
-  void _ward(Canvas canvas) {
-    final mirror = impact.effect == NightImpactEffect.mirror;
-    final guard = impact.effect == NightImpactEffect.guard;
-    if (guard) {
-      final travel = Curves.easeOutCubic.transform(_range(progress, 0, 0.35));
-      canvas.drawLine(
-        const Offset(-75, 0),
-        const Offset(55, 0),
-        _ink(0.16, width: 1),
-      );
-      canvas.drawCircle(const Offset(-75, 0), 9, _ink(0.5));
-      // Jejak cahaya perisai yang meluncur.
-      canvas.drawLine(
-        const Offset(-75, 0),
-        Offset(-65 + 115 * travel, 0),
-        _glow(0.45 * (1 - travel), width: 10, blur: 7),
-      );
-      canvas.translate(-65 + 115 * travel, 0);
-    }
-    final face = impact.actor || guard ? 1.0 : -1.0;
-    final arrival = _range(progress, 0, 0.4);
-    final bounce = _range(progress, 0.4, 0.88);
-    final outline = mirror
-        ? (Path()
-      ..moveTo(0, -28)
-      ..lineTo(23, 0)
-      ..lineTo(0, 28)
-      ..lineTo(-23, 0)
-      ..close())
-        : (Path()
-      ..moveTo(0, -27)
-      ..lineTo(23, -18)
-      ..quadraticBezierTo(24, 11, 0, 28)
-      ..quadraticBezierTo(-24, 11, -23, -18)
-      ..close());
-
-    // Aura berdenyut di belakang pelindung.
-    final pulse = 0.5 + 0.5 * math.sin(progress * 22);
-    canvas.drawCircle(
-      Offset.zero,
-      34 + 5 * pulse + 6 * bounce,
-      _fill(0.16 + 0.12 * pulse + 0.2 * math.sin(bounce * math.pi), blur: 12),
-    );
-    canvas.drawPath(outline, _ink(0.19, width: 9));
-    canvas.drawPath(outline, _glow(0.5, width: 5, blur: 5));
-    canvas.drawPath(outline, _ink(0.9, width: 1.9));
-    // Riak kerangka yang melebar saat dihantam.
-    final rip = _range(progress, 0.38, 0.95);
-    if (rip > 0 && rip < 1) {
-      canvas.save();
-      canvas.scale(1 + 0.55 * Curves.easeOutCubic.transform(rip));
-      canvas.drawPath(outline, _ink(0.6 * (1 - rip), width: 1.4));
-      canvas.restore();
-    }
-    if (mirror) {
-      canvas.drawLine(const Offset(-7, 13), const Offset(7, -13), _ink(0.55));
-      // Kilau di permukaan cermin saat terkena.
-      final shine = math.sin(math.pi * _range(progress, 0.36, 0.7));
-      if (shine > 0) {
-        canvas.drawLine(const Offset(-16, 10), const Offset(16, -10),
-            _glow(0.9 * shine, width: 4, blur: 3));
-        canvas.drawLine(
-            const Offset(-16, 10),
-            const Offset(16, -10),
-            Paint()
-              ..color = Colors.white.withValues(alpha: shine)
-              ..strokeWidth = 1.5
-              ..strokeCap = StrokeCap.round);
-      }
-    }
-    final x = (22 + 77 * (1 - arrival) + (mirror ? 77 * bounce : 0)) * face;
-    final opacity = mirror ? 1 - _range(progress, 0.78, 1) : 1 - bounce;
-    // Sinar serangan berpendar; setelah dipantulkan makin tebal.
-    final beamW = mirror && bounce > 0 ? 6.0 : 4.0;
-    canvas.drawLine(
-      Offset(x, 0),
-      Offset(x + 30 * face, 0),
-      _glow(opacity * 0.6, width: beamW + 5, blur: 5),
-    );
-    canvas.drawLine(
-      Offset(x, 0),
-      Offset(x + 22 * face, 0),
-      _ink(opacity, width: beamW),
-    );
-    // Hantaman: kilatan, cincin, dan percikan.
-    final contact = Offset(20 * face, 0);
-    _burst(canvas, contact, _range(progress, 0.38, 0.9),
-        n: 14, reach: 34, flash: 22);
-    _shock(canvas, contact, bounce, 36);
-    _shock(canvas, contact, _range(progress, 0.5, 1), 52);
-  }
-
-  void _drops(Canvas canvas) {
-    final face = impact.actor ? 1.0 : -1.0;
-    final dest = Offset(80 * face, 11);
-    final absorb = _range(progress, 0.3, 1);
-    final swell = math.sin(absorb * math.pi);
-
-    // Bola penyerap di tujuan membesar, dengan pusaran partikel.
-    canvas.drawCircle(dest, 8 + 12 * swell, _fill(0.35 * swell, blur: 9));
-    for (var i = 0; i < 8; i++) {
-      final ang = absorb * 7 + i * math.pi / 4;
-      final rad = 28 * (1 - absorb) + 4;
-      canvas.drawCircle(
-        dest + Offset(math.cos(ang), math.sin(ang) * 0.7) * rad,
-        1.8,
-        _fill(0.9 * swell, color: Colors.white),
-      );
-    }
-
-    for (var i = 0; i < 10; i++) {
-      final t = _range(progress, i * 0.05, 0.64 + i * 0.04);
-      final alpha = math.sin(math.pi * t);
-      if (alpha <= 0) continue;
-      Offset pos(double tt) => Offset(
-        (-86 + tt * 172) * face,
-        11 - math.sin(tt * math.pi) * (19 + i * 2),
-      );
-      // Ekor tetes: bintik pudar di belakang.
-      for (var k = 1; k <= 3; k++) {
-        final tt = (t - k * 0.04).clamp(0.0, 1.0);
-        canvas.drawCircle(
-            pos(tt), 3.2 - k * 0.7, _fill(alpha * (0.4 - 0.1 * k)));
-      }
-      final p = pos(t);
-      canvas.drawCircle(
-          p + const Offset(0, 1), 9, _fill(alpha * 0.35, blur: 6));
-      final drop = Path()
-        ..moveTo(p.dx, p.dy - 6)
-        ..quadraticBezierTo(p.dx + 8, p.dy + 4, p.dx, p.dy + 5)
-        ..quadraticBezierTo(p.dx - 8, p.dy + 4, p.dx, p.dy - 6);
-      canvas.drawPath(drop, _fill(alpha));
-      canvas.drawCircle(p + const Offset(-1.8, 0), 1.3,
-          _fill(alpha * 0.9, color: Colors.white));
-    }
-    _shock(canvas, dest, _range(progress, 0.32, 1), 24);
-    _burst(canvas, dest, _range(progress, 0.72, 1),
-        n: 9, reach: 24, flash: 14);
-  }
-
-  void _cards(Canvas canvas) {
-    final burn = impact.effect == NightImpactEffect.burn;
-    final t = _range(progress, 0.16, 0.94);
-    final swell = math.sin(math.pi * t);
-    if (burn) {
-      // Panas: cahaya membesar di belakang kartu.
-      canvas.drawCircle(
-          const Offset(0, -4), 26 + 22 * t, _fill(0.35 * swell, blur: 16));
-      for (var i = 0; i < 18; i++) {
-        final op = swell * (0.55 + 0.025 * i);
-        final x = (i - 8.5) * (2.4 + t * 5.2);
-        final y = 26 - t * (36 + (i * 13) % 38);
-        final s = 0.8 + 0.7 * _h(i, 2);
-        final flame = Path()
-          ..moveTo(x, y + 9 * s)
-          ..quadraticBezierTo(x - 7 * s, y + 2 * s, x + 1 * s, y - 10 * s)
-          ..quadraticBezierTo(x - 1 * s, y - 2 * s, x + 6 * s, y + 4 * s)
-          ..quadraticBezierTo(x + 7 * s, y + 10 * s, x, y + 9 * s);
-        canvas.drawPath(flame, _fill(op * 0.4, blur: 5));
-        canvas.drawPath(flame, _fill(op));
-      }
-      // Bara kecil yang melayang naik.
-      for (var i = 0; i < 16; i++) {
-        final u = _range(t, _h(i, 4) * 0.4, 0.55 + 0.45 * _h(i, 6));
-        if (u <= 0 || u >= 1) continue;
-        final x = (_h(i, 1) - 0.5) * 76 + math.sin(u * 7 + i) * 6;
-        final y = 18 - u * (54 + 26 * _h(i, 8));
-        canvas.drawCircle(
-          Offset(x, y),
-          1 + 1.6 * _h(i, 9) * (1 - u),
-          _fill(math.sin(u * math.pi) * 0.9),
-        );
-      }
-    } else {
-      final dir = impact.actor ? -1.0 : 1.0;
-      final dest = Offset(dir * 58, -10);
-      // Garis sambar berpendar + kerlip partikel di sepanjang lintasan.
-      for (var i = 0; i < 12; i++) {
-        final opacity = swell * (0.6 + 0.03 * i);
-        final x = (i - 5.5) * (3 + t * 7);
-        final y = (i % 5 - 2) * 9 - t * 14;
-        final move = dir * t * 40;
-        canvas.drawLine(Offset(x + move, y), Offset(x + move - 16 * dir, y),
-            _glow(opacity * 0.5, width: 4, blur: 3));
-        canvas.drawLine(Offset(x + move, y), Offset(x + move - 14 * dir, y),
-            _ink(opacity, width: 1.5));
-      }
-      for (var i = 0; i < 14; i++) {
-        final u = _range(t, i * 0.04, 0.55 + i * 0.03);
-        if (u <= 0 || u >= 1) continue;
-        final px = _lerpD(-dir * 20, dest.dx, u) + math.sin(u * 9 + i) * 5;
-        final py = _lerpD(0, dest.dy, u) + math.cos(u * 8 + i) * 8;
-        canvas.drawCircle(Offset(px, py), 1.2 + 1.8 * _h(i, 3) * (1 - u),
-            _fill(math.sin(u * math.pi), color: Colors.white));
-      }
-      _burst(canvas, dest, _range(progress, 0.78, 1),
-          n: 10, reach: 28, flash: 14);
-    }
-    _shock(canvas, Offset.zero, t, burn ? 43 : 32);
-    _shock(canvas, Offset.zero, _range(t, 0.2, 1), burn ? 62 : 46);
   }
 
   @override
-  bool shouldRepaint(covariant _ImpactPainter oldDelegate) =>
-      oldDelegate.impact != impact || oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _StagePainter old) =>
+      old.p != p || old.m != m || old.impact != impact;
+}
+
+/// Kotak perkakas menggambar: semua gambar ikut memudar lewat [m] dan
+/// ukuran mengikuti layar lewat [u].
+class _Fx {
+  final Canvas c;
+  final Size s;
+  final Color col;
+  final double p;
+  final double m;
+
+  _Fx(this.c, this.s, this.col, this.p, this.m);
+
+  double get w => s.width;
+  double get h => s.height;
+  double get u => s.shortestSide / 360;
+  double get diag => math.sqrt(w * w + h * h);
+
+  Color tone(Color? color, double a) =>
+      (color ?? col).withValues(alpha: _cl(a * m));
+
+  Paint stroke(
+      double a, {
+        double width = 2,
+        double blur = 0,
+        Color? color,
+        bool add = false,
+      }) =>
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = width
+        ..color = tone(color, a)
+        ..blendMode = add ? BlendMode.plus : BlendMode.srcOver
+        ..maskFilter = blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null;
+
+  Paint fill(
+      double a, {
+        double blur = 0,
+        Color? color,
+        bool add = false,
+      }) =>
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = tone(color, a)
+        ..blendMode = add ? BlendMode.plus : BlendMode.srcOver
+        ..maskFilter = blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null;
+
+  /// Kilatan seluruh layar yang meredup cepat.
+  void flash(double at, {double len = 0.10, double peak = 0.8, Color? color}) {
+    if (p < at) return;
+    final a = peak * math.exp(-(p - at) / len * 3);
+    if (a < 0.01) return;
+    c.drawRect(Offset.zero & s, fill(a, color: color ?? Colors.white));
+  }
+
+  /// Gelap di tepi layar.
+  void vignette(double strength, {Color? color}) {
+    if (strength <= 0.005) return;
+    final base = color ?? Colors.black;
+    final r = Offset.zero & s;
+    c.drawRect(
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          radius: 0.95,
+          colors: [base.withValues(alpha: 0), tone(base, strength)],
+          stops: const [0.45, 1.0],
+        ).createShader(r),
+    );
+  }
+
+  /// Pita hitam sinematik di atas dan bawah.
+  void bars(double amount) {
+    if (amount <= 0.01) return;
+    final bh = h * 0.075 * amount;
+    final paint = Paint()..color = Colors.black.withValues(alpha: _cl(0.92 * m));
+    c.drawRect(Rect.fromLTWH(0, 0, w, bh), paint);
+    c.drawRect(Rect.fromLTWH(0, h - bh, w, bh), paint);
+  }
+
+  /// Bola cahaya: lingkar luar, tubuh, dan inti putih.
+  void orb(Offset o, double r, double a, {Color? color}) {
+    if (r <= 0.5 || a <= 0) return;
+    c.drawCircle(o, r * 2.0, fill(0.30 * a, blur: r * 0.9, color: color, add: true));
+    c.drawCircle(o, r, fill(0.65 * a, blur: r * 0.25, color: color, add: true));
+    c.drawCircle(o, r * 0.45, fill(0.95 * a, color: Colors.white, add: true));
+  }
+
+  /// Cincin kejut yang melebar sampai [maxR].
+  void shock(
+      Offset o,
+      double at,
+      double maxR, {
+        double width = 18,
+        Color? color,
+        double len = 0.34,
+      }) {
+    final t = _range(p, at, at + len);
+    if (t <= 0 || t >= 1) return;
+    final e = Curves.easeOutCubic.transform(t);
+    final a = 1 - t;
+    final r = 10 + maxR * e;
+    c.drawCircle(o, r,
+        stroke(0.55 * a, width: width * a * u + 3, blur: 10, color: color, add: true));
+    c.drawCircle(
+        o, r, stroke(0.9 * a, width: 1.5 + 3 * a, color: Colors.white, add: true));
+  }
+
+  /// Garis cahaya memancar ke segala arah.
+  void rays(
+      Offset o,
+      double at, {
+        int n = 28,
+        double len = 0.30,
+        double reachFactor = 0.7,
+        Color? color,
+      }) {
+    final t = _range(p, at, at + len);
+    if (t <= 0 || t >= 1) return;
+    final e = Curves.easeOutCubic.transform(t);
+    final a = 1 - t;
+    for (var i = 0; i < n; i++) {
+      final ang = (i + _hash(i, 1) * 0.8) * 2 * math.pi / n;
+      final d = Offset(math.cos(ang), math.sin(ang));
+      final reach = diag * reachFactor * (0.35 + 0.65 * _hash(i, 2)) * e;
+      c.drawLine(
+        o + d * (20 * u + reach * 0.35),
+        o + d * (20 * u + reach),
+        stroke(0.8 * a,
+            width: (1 + 3 * _hash(i, 3)) * a + 0.6,
+            color: i.isEven ? Colors.white : color,
+            add: true),
+      );
+    }
+  }
+
+  /// Percikan yang terlempar lalu jatuh (gravity negatif = naik).
+  void sparks(
+      Offset o,
+      double at, {
+        int n = 40,
+        double len = 0.55,
+        double spread = 1.0,
+        double gravity = 140,
+        int seed = 0,
+        Color? color,
+      }) {
+    final t = _range(p, at, at + len);
+    if (t <= 0 || t >= 1) return;
+    final e = Curves.easeOutCubic.transform(t);
+    for (var i = 0; i < n; i++) {
+      final ang = _hash(i + seed, 7) * 2 * math.pi;
+      final sp = (0.18 + 0.75 * _hash(i + seed, 8)) * diag * 0.6 * spread;
+      final pos = o +
+          Offset(
+            math.cos(ang) * sp * e,
+            math.sin(ang) * sp * e +
+                gravity * u * t * t * (0.5 + _hash(i + seed, 9)),
+          );
+      final r = (1 + 2.6 * _hash(i + seed, 10)) * (1 - t) * u + 0.6;
+      c.drawCircle(
+        pos,
+        r,
+        fill(0.95 * (1 - t), color: i % 3 == 0 ? Colors.white : color, add: true),
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Panah
+// ---------------------------------------------------------------------------
+
+void _arrowShape(_Fx f, Offset tip, double dir, double speed) {
+  final c = f.c;
+  final u = f.u;
+  final len = 150 * u;
+  final tail = tip - Offset(len * dir, 0);
+  if (speed > 0.02) {
+    final trailLen = f.w * 0.5 * speed;
+    c.drawLine(tail, tail - Offset(trailLen * dir, 0),
+        f.stroke(0.5, width: 14 * u, blur: 10 * u, add: true));
+    c.drawLine(tail, tail - Offset(trailLen * dir, 0),
+        f.stroke(0.8, width: 3 * u, color: Colors.white, add: true));
+    for (var i = 0; i < 6; i++) {
+      final y = (i - 2.5) * 22 * u;
+      final l = trailLen * (0.4 + 0.5 * _hash(i, 3));
+      c.drawLine(
+        tail + Offset(-18 * u * dir, y),
+        tail + Offset(-(18 * u + l) * dir, y),
+        f.stroke(0.45 * speed, width: 1.6 * u + 0.4, add: true),
+      );
+    }
+  }
+  c.drawLine(tail, tip, f.stroke(0.35, width: 12 * u, blur: 6 * u, add: true));
+  c.drawLine(tail, tip, f.stroke(1, width: 3.5 * u, color: Colors.white));
+  final head = Path()
+    ..moveTo(tip.dx + 16 * u * dir, tip.dy)
+    ..lineTo(tip.dx - 6 * u * dir, tip.dy - 11 * u)
+    ..lineTo(tip.dx - 6 * u * dir, tip.dy + 11 * u)
+    ..close();
+  c.drawPath(head, f.fill(1, color: Colors.white));
+  c.drawPath(head, f.fill(0.5, blur: 6 * u, add: true));
+  for (final y in [-1.0, 1.0]) {
+    c.drawLine(
+      tail + Offset(26 * u * dir, 0),
+      tail - Offset(6 * u * dir, y * 13 * u),
+      f.stroke(1, width: 2.5 * u),
+    );
+  }
+}
+
+void _fxBow(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final miss = imp.effect == NightImpactEffect.bowMiss;
+  final fin = imp.effect == NightImpactEffect.bowFinal;
+  final dir = imp.actor ? 1.0 : -1.0;
+  const hitT = 0.50;
+  final target = Offset(imp.actor ? w * 0.74 : w * 0.5, h * 0.40);
+  final startX = imp.actor ? -w * 0.2 : w * 1.2;
+
+  f.vignette(0.6 * _range(p, 0, 0.18));
+  f.bars(Curves.easeOut.transform(_range(p, 0, 0.12)));
+
+  // Bidikan mengunci sasaran.
+  final lock = Curves.easeOutCubic.transform(_range(p, 0.04, 0.40));
+  final reA = (p < hitT ? 1.0 : 1 - _range(p, hitT, hitT + 0.1)) *
+      _range(p, 0.04, 0.12);
+  if (reA > 0.01) {
+    final rr = (110 - 62 * lock) * u;
+    c.drawCircle(target, rr, f.stroke(0.85 * reA, width: 2 * u + 1, add: true));
+    c.drawCircle(target, rr * 0.45, f.stroke(0.7 * reA, width: 1.2 * u + 0.6));
+    final spin = lock * 1.6;
+    for (var i = 0; i < 4; i++) {
+      final ang = spin + i * math.pi / 2;
+      final d = Offset(math.cos(ang), math.sin(ang));
+      c.drawLine(target + d * (rr + 6 * u), target + d * (rr + 26 * u),
+          f.stroke(0.9 * reA, width: 3 * u + 1, add: true));
+    }
+    f.orb(target, (4 + 3 * math.sin(p * 60)) * u, reA);
+  }
+
+  // Garis kecepatan melintasi layar.
+  final fwd = Curves.easeInCubic.transform(_range(p, 0.28, hitT));
+  if (fwd > 0 && p < hitT + 0.02) {
+    for (var i = 0; i < 16; i++) {
+      final y = h * (0.08 + 0.84 * _hash(i, 21));
+      final len = w * (0.25 + 0.5 * _hash(i, 22));
+      final x0 = w * _hash(i, 23);
+      c.drawLine(Offset(x0, y), Offset(x0 - dir * len * fwd, y),
+          f.stroke(0.35 * fwd, width: 1.4 * u + 0.4, color: Colors.white, add: true));
+    }
+  }
+
+  // Anak panah.
+  final contactX = target.dx - dir * 36 * u;
+  final backT =
+  miss ? Curves.easeInCubic.transform(_range(p, 0.56, 0.84)) : 0.0;
+  final double tipX;
+  if (miss) {
+    tipX = backT > 0
+        ? _lerpD(contactX, startX, backT)
+        : _lerpD(startX, contactX, fwd);
+  } else {
+    tipX = _lerpD(startX, target.dx, fwd);
+  }
+  final speed = backT > 0
+      ? backT * 0.8 + 0.2
+      : (fwd > 0 && fwd < 1 ? fwd : 0.0);
+  if (p >= 0.28 && (!miss || backT < 1)) {
+    final wob = (!miss && p >= hitT)
+        ? math.sin(p * 220) * 7 * u * (1 - _range(p, hitT, hitT + 0.2))
+        : 0.0;
+    _arrowShape(f, Offset(tipX, target.dy + wob), miss && backT > 0 ? -dir : dir,
+        (p < hitT || backT > 0) ? speed : 0.0);
+  }
+
+  if (!miss) {
+    f.flash(hitT, peak: fin ? 0.95 : 0.8, len: 0.12);
+    f.flash(hitT + 0.012, color: imp.color, peak: 0.5, len: 0.25);
+    f.shock(target, hitT, f.diag * (fin ? 1.0 : 0.8), width: 26);
+    f.shock(target, hitT + 0.07, f.diag * (fin ? 0.8 : 0.6), width: 16);
+    f.rays(target, hitT, n: fin ? 44 : 30);
+    f.sparks(target, hitT, n: fin ? 90 : 55, gravity: 220);
+    final coreR = 90 *
+        u *
+        Curves.easeOut.transform(_range(p, hitT, hitT + 0.08)) *
+        (1 - _range(p, hitT + 0.05, hitT + 0.3));
+    f.orb(target, coreR, 1);
+    if (!imp.actor && p >= hitT) {
+      f.vignette(0.65 * math.exp(-(p - hitT) * 3.5), color: imp.color);
+    }
+    if (fin) {
+      final xs = Curves.easeOutCubic.transform(_range(p, hitT + 0.02, hitT + 0.14));
+      if (xs > 0) {
+        for (final sg in [-1.0, 1.0]) {
+          final a0 = Offset(target.dx - w * 0.45, target.dy - sg * h * 0.38);
+          final b0 = Offset(target.dx + w * 0.45, target.dy + sg * h * 0.38);
+          final e = Offset.lerp(a0, b0, xs)!;
+          c.drawLine(a0, e, f.stroke(0.6, width: 24 * u, blur: 14 * u, add: true));
+          c.drawLine(a0, e, f.stroke(1, width: 4 * u, color: Colors.white));
+        }
+      }
+    }
+  } else {
+    final dp = Offset(contactX, target.dy);
+    f.flash(hitT, peak: 0.5, len: 0.12);
+    f.shock(dp, hitT, f.diag * 0.5, width: 18);
+    f.rays(dp, hitT, n: 20);
+    f.sparks(dp, hitT, n: 40);
+    final edge = Offset(imp.actor ? 0 : w, target.dy);
+    f.flash(0.84, peak: 0.35, len: 0.15, color: imp.color);
+    f.shock(edge, 0.84, f.diag * 0.7, width: 20);
+    f.sparks(edge, 0.84, n: 50, spread: 0.8, seed: 5);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cermin, perisai, penjagaan
+// ---------------------------------------------------------------------------
+
+Path _emblem(double r, bool mirror) {
+  if (mirror) {
+    return Path()
+      ..moveTo(0, -r * 1.05)
+      ..lineTo(r * 0.78, 0)
+      ..lineTo(0, r * 1.05)
+      ..lineTo(-r * 0.78, 0)
+      ..close();
+  }
+  return Path()
+    ..moveTo(0, -r)
+    ..lineTo(r * 0.82, -r * 0.62)
+    ..quadraticBezierTo(r * 0.86, r * 0.42, 0, r * 1.02)
+    ..quadraticBezierTo(-r * 0.86, r * 0.42, -r * 0.82, -r * 0.62)
+    ..close();
+}
+
+void _fxWard(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final mirror = imp.effect == NightImpactEffect.mirror;
+  final guard = imp.effect == NightImpactEffect.guard;
+  const hitT = 0.46;
+  final dirB = imp.actor ? 1.0 : -1.0;
+  final startX = imp.actor ? -w * 0.2 : w * 1.2;
+  final center = Offset(w * 0.5, h * 0.40);
+  final appear = Curves.easeOutBack.transform(_range(p, 0, 0.26));
+  final punch = p < hitT ? 0.0 : math.exp(-(p - hitT) * 9);
+
+  f.vignette(0.4 * _range(p, 0, 0.2));
+
+  var pos = center;
+  if (guard) {
+    final tr = Curves.easeOutCubic.transform(_range(p, 0, 0.3));
+    pos = Offset(_lerpD(-w * 0.15, center.dx, tr), center.dy);
+    if (tr < 1) {
+      c.drawLine(Offset(-w * 0.15, center.dy), pos,
+          f.stroke(0.5 * (1 - tr) + 0.1, width: 26 * u, blur: 14 * u, add: true));
+    }
+  }
+  final r = 92 * u * (0.2 + 0.8 * appear) * (1 + 0.14 * punch);
+
+  // Aura + cincin tanda berputar.
+  c.drawCircle(pos, r * 1.7, f.fill(0.20 + 0.22 * punch, blur: r * 0.7, add: true));
+  final tickR = r * 1.38;
+  final tickA = _cl(appear);
+  for (var i = 0; i < 28; i++) {
+    final ang = i * 2 * math.pi / 28 + p * 2.2;
+    final d = Offset(math.cos(ang), math.sin(ang));
+    final len = (i % 4 == 0 ? 14 : 7) * u;
+    c.drawLine(pos + d * tickR, pos + d * (tickR + len),
+        f.stroke(0.7 * tickA, width: 2 * u + 0.5, add: true));
+  }
+
+  // Lambang.
+  final path = _emblem(r, mirror).shift(pos);
+  c.drawPath(path, f.fill(0.12 + 0.14 * punch, add: true));
+  c.drawPath(path, f.stroke(0.55, width: 14 * u, blur: 9 * u, add: true));
+  c.drawPath(path, f.stroke(0.95, width: 3.2 * u, color: Colors.white));
+  c.drawPath(_emblem(r * 0.72, mirror).shift(pos), f.stroke(0.5, width: 1.6 * u));
+  if (mirror) {
+    final sx = _lerpD(-r, r, (p * 1.4) % 1.0);
+    c.drawLine(pos + Offset(sx - 14 * u, r * 0.9), pos + Offset(sx + 14 * u, -r * 0.9),
+        f.stroke(0.5, width: 5 * u, blur: 3 * u, color: Colors.white, add: true));
+  }
+
+  // Serangan masuk.
+  const warm = Color(0xFFFF8A7A);
+  final contact = pos - Offset(dirB * r * 0.95, 0);
+  if (p < hitT) {
+    final inT = Curves.easeIn.transform(_range(p, 0.16, hitT));
+    final head = Offset(_lerpD(startX, contact.dx, inT), pos.dy);
+    final tail = head - Offset(dirB * w * 0.45, 0);
+    c.drawLine(tail, head, f.stroke(0.55, width: 30 * u, blur: 14 * u, color: warm, add: true));
+    c.drawLine(tail, head, f.stroke(1, width: 6 * u, color: Colors.white));
+  }
+
+  // Benturan.
+  f.flash(hitT, peak: 0.5, len: 0.12);
+  f.flash(hitT + 0.01, color: imp.color, peak: 0.55, len: 0.22);
+  f.shock(contact, hitT, f.diag * 0.9, width: 26);
+  f.shock(pos, hitT + 0.05, f.diag * 0.7, width: 18);
+  f.rays(contact, hitT, n: 28);
+  f.sparks(contact, hitT, n: 60, gravity: 120);
+
+  if (mirror) {
+    if (p >= hitT) {
+      final rT = Curves.easeIn.transform(_range(p, hitT + 0.02, 0.82));
+      final head = Offset(_lerpD(contact.dx, startX, rT), pos.dy);
+      final tail = head + Offset(dirB * w * 0.5 * math.min(1.0, rT * 3 + 0.2), 0);
+      c.drawLine(tail, head, f.stroke(0.7, width: 34 * u, blur: 14 * u, add: true));
+      c.drawLine(tail, head, f.stroke(1, width: 7 * u, color: Colors.white));
+    }
+    final edge = Offset(imp.actor ? 0 : w, pos.dy);
+    f.flash(0.82, peak: 0.4, len: 0.15, color: imp.color);
+    f.shock(edge, 0.82, f.diag * 0.7, width: 22);
+    f.sparks(edge, 0.82, n: 50, spread: 0.8, seed: 9);
+  } else if (p >= hitT) {
+    // Serangan pecah jadi serpihan; retakan cahaya di lambang.
+    final t = _range(p, hitT, hitT + 0.5);
+    final base = dirB > 0 ? math.pi : 0.0;
+    for (var i = 0; i < 16; i++) {
+      final ang = base + (_hash(i, 31) - 0.5) * 2.2;
+      final dist = (40 + 220 * _hash(i, 32)) * u * Curves.easeOutCubic.transform(t);
+      final q = contact + Offset(math.cos(ang), math.sin(ang)) * dist;
+      final a = 1 - t;
+      c.drawLine(
+        q,
+        q + Offset(math.cos(ang + 1.2), math.sin(ang + 1.2)) * ((10 + 14 * _hash(i, 33)) * u),
+        f.stroke(0.9 * a, width: 3 * u, color: Colors.white, add: true),
+      );
+    }
+    for (var i = 0; i < 7; i++) {
+      final ang = (_hash(i, 35) - 0.5) * 2.4 + (dirB > 0 ? 0.0 : math.pi);
+      final len = r * (0.5 + 0.8 * _hash(i, 36)) * Curves.easeOut.transform(_range(t, 0, 0.4));
+      c.drawLine(contact, contact + Offset(math.cos(ang), math.sin(ang)) * len,
+          f.stroke(0.8 * (1 - t), width: 3 * u, blur: 2 * u, add: true));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Embun tersedot
+// ---------------------------------------------------------------------------
+
+void _fxPump(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final actor = imp.actor;
+  final s0 = actor ? Offset(w * 0.08, h * 0.82) : Offset(w * 0.5, h * 0.48);
+  final d0 = actor ? Offset(w * 0.74, h * 0.34) : Offset(w * 1.05, h * 0.10);
+  final absorb = _range(p, 0.30, 0.86);
+  final swell = math.sin(absorb * math.pi);
+
+  f.vignette(0.45 * _range(p, 0, 0.2));
+  f.vignette(0.30 * _range(p, 0.1, 0.4), color: imp.color);
+
+  // Gelembung embun melayang di seluruh layar.
+  final amb = _range(p, 0, 0.2);
+  for (var i = 0; i < 40; i++) {
+    final t = (p * 0.6 + _hash(i, 61)) % 1.0;
+    final x = _hash(i, 62) * w + math.sin(t * 8 + i) * 14 * u;
+    final y = h * (1.1 - t * 1.2);
+    final r = (2 + 4 * _hash(i, 63)) * u;
+    c.drawCircle(Offset(x, y), r,
+        f.fill(0.28 * math.sin(math.pi * t) * amb, color: Colors.white, add: true));
+  }
+
+  // Pusaran di tujuan.
+  for (var k = 0; k < 4; k++) {
+    final rr = (40 + k * 34) * u * (0.4 + swell);
+    final dirK = k.isEven ? 1.0 : -1.0;
+    c.drawArc(
+      Rect.fromCircle(center: d0, radius: rr),
+      p * 8 * dirK + k,
+      1.7,
+      false,
+      f.stroke(0.55 * swell, width: 3 * u + 0.5, add: true),
+    );
+  }
+
+  // Tetes embun mengalir melengkung.
+  final jit = actor ? 60.0 : 130.0;
+  for (var i = 0; i < 34; i++) {
+    final t = _range(p, 0.02 + i * 0.017, 0.62 + i * 0.017);
+    if (t <= 0 || t >= 1) continue;
+    final src = s0 + Offset((_hash(i, 64) - 0.5) * jit * u * 2, (_hash(i, 65) - 0.5) * jit * u * 2);
+    final ctrl = Offset.lerp(src, d0, 0.5)! - Offset(0, h * (0.22 + 0.12 * _hash(i, 66)));
+    final e = Curves.easeInOut.transform(t);
+    final pos = _quad(src, ctrl, d0, e);
+    final nxt = _quad(src, ctrl, d0, math.min(1.0, e + 0.02));
+    final ang = math.atan2(nxt.dy - pos.dy, nxt.dx - pos.dx);
+    final a = math.sin(math.pi * t);
+    for (var k = 1; k <= 5; k++) {
+      final tp = _quad(src, ctrl, d0, math.max(0.0, e - k * 0.03));
+      c.drawCircle(tp, (4 - k * 0.6) * u, f.fill(a * (0.5 - 0.08 * k), add: true));
+    }
+    final rd = 7 * u;
+    c.save();
+    c.translate(pos.dx, pos.dy);
+    c.rotate(ang);
+    final tail = Path()
+      ..moveTo(-3.2 * rd, 0)
+      ..lineTo(0, -0.95 * rd)
+      ..lineTo(0, 0.95 * rd)
+      ..close();
+    c.drawCircle(Offset.zero, rd * 1.9, f.fill(0.35 * a, blur: rd * 0.9, add: true));
+    c.drawCircle(Offset.zero, rd, f.fill(a));
+    c.drawPath(tail, f.fill(a));
+    c.drawCircle(Offset(rd * 0.3, -rd * 0.3), rd * 0.3, f.fill(0.9 * a, color: Colors.white));
+    c.restore();
+  }
+
+  // Bola penyerap.
+  final pulse = 5 * u * math.sin(p * 50);
+  f.orb(d0, (10 + 62 * absorb) * u * (1 - _range(p, 0.88, 0.96)) + pulse * absorb, absorb);
+
+  f.flash(0.86, peak: 0.35, len: 0.14, color: imp.color);
+  f.shock(d0, 0.86, f.diag * 0.8, width: 22);
+  f.shock(d0, 0.90, f.diag * 0.55, width: 14);
+  f.rays(d0, 0.86, n: 24);
+  f.sparks(d0, 0.86, n: 50, spread: 0.8, gravity: 80);
+}
+
+// ---------------------------------------------------------------------------
+// Kartu terbakar
+// ---------------------------------------------------------------------------
+
+void _fxBurn(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final cw = _cardW(f.s);
+  final ch = cw * 1.4;
+  final center = Offset(w * 0.5, h * 0.40);
+  final rect = Rect.fromCenter(center: center, width: cw, height: ch);
+  final heat = Curves.easeOut.transform(_range(p, 0.22, 0.5));
+  final burnT = _range(p, 0.30, 0.82);
+  const orange = Color(0xFFFF7A2A);
+
+  f.vignette(0.55 * _range(p, 0, 0.2));
+  f.vignette(0.55 * heat, color: const Color(0xFFFF5A1A));
+  c.drawCircle(center, cw * (0.9 + 0.6 * heat),
+      f.fill(0.35 * heat, blur: cw * 0.35, color: orange, add: true));
+
+  // Dinding api dari dasar layar.
+  if (heat > 0.01) {
+    final maxH = h * 0.62 * heat;
+    for (var layer = 0; layer < 2; layer++) {
+      final path = Path()..moveTo(0, h);
+      const step = 7.0;
+      final lift = layer == 0 ? 1.0 : 0.62;
+      for (var x = 0.0; x <= w + step; x += step) {
+        final n = 0.55 +
+            0.25 * math.sin(x * 0.045 + p * 26 + layer * 1.7) +
+            0.20 * math.sin(x * 0.11 - p * 41 + layer * 2.9);
+        path.lineTo(x, h - maxH * lift * math.max(0.1, n));
+      }
+      path.lineTo(w + step, h);
+      path.close();
+      final cols = layer == 0
+          ? [const Color(0xFFFF6A1F), const Color(0xFFD0261C), const Color(0xFFD0261C)]
+          : [const Color(0xFFFFF0B0), const Color(0xFFFFA330), const Color(0xFFFF6A1F)];
+      final alphas = layer == 0 ? [0.85, 0.55, 0.0] : [0.95, 0.7, 0.0];
+      c.drawPath(
+        path,
+        Paint()
+          ..blendMode = layer == 0 ? BlendMode.srcOver : BlendMode.plus
+          ..shader = LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              for (var k = 0; k < 3; k++) f.tone(cols[k], alphas[k]),
+            ],
+          ).createShader(Rect.fromLTWH(0, h - maxH - 1, w, maxH + 1)),
+      );
+    }
+  }
+
+  // Garis bakar menjalar naik di kartu.
+  if (burnT > 0 && burnT < 1) {
+    final y = rect.bottom - burnT * ch;
+    final line = Path()..moveTo(rect.left - 10 * u, y);
+    for (var i = 0; i <= 16; i++) {
+      final x = rect.left - 10 * u + (cw + 20 * u) * i / 16;
+      line.lineTo(x, y + math.sin(i * 1.9 + p * 70) * 5 * u);
+    }
+    c.drawPath(line, f.stroke(0.8, width: 18 * u, blur: 10 * u, color: orange, add: true));
+    c.drawPath(line, f.stroke(1, width: 3.5 * u, color: const Color(0xFFFFF2B0)));
+    for (var i = 0; i < 12; i++) {
+      final fx = rect.left + cw * (i + 0.5) / 12;
+      final fh = (22 + 30 * _hash(i, 41)) * u * (0.6 + 0.4 * math.sin(p * 60 + i * 2));
+      final flame = Path()
+        ..moveTo(fx - 7 * u, y)
+        ..quadraticBezierTo(fx - 3 * u, y - fh * 0.5, fx, y - fh)
+        ..quadraticBezierTo(fx + 3 * u, y - fh * 0.5, fx + 7 * u, y)
+        ..close();
+      c.drawPath(flame, f.fill(0.9, color: orange, add: true));
+    }
+  }
+
+  // Bara api naik.
+  for (var i = 0; i < 70; i++) {
+    final t = (p * 1.2 + _hash(i, 42)) % 1.0;
+    final x = _hash(i, 43) * w + math.sin(t * 9 + i) * 18 * u;
+    final y = h * (1.05 - t * 1.15 * (0.5 + 0.5 * _hash(i, 44)));
+    final r = (1 + 2.5 * _hash(i, 45)) * u * (1 - t);
+    c.drawCircle(
+      Offset(x, y),
+      r,
+      f.fill(heat * (1 - t), color: i % 3 == 0 ? const Color(0xFFFFE08A) : orange, add: true),
+    );
+  }
+
+  // Abu jatuh setelah kartu hangus.
+  for (var i = 0; i < 40; i++) {
+    final t = _range(p, 0.55 + _hash(i, 46) * 0.1, 1.0);
+    if (t <= 0) continue;
+    final x = center.dx + (_hash(i, 47) - 0.5) * cw * 1.2 + math.sin(t * 6 + i) * 16 * u;
+    final y = center.dy - ch * 0.3 + t * h * 0.5 * (0.6 + _hash(i, 48));
+    c.drawRect(
+      Rect.fromCenter(center: Offset(x, y), width: 4 * u * (1 + _hash(i, 49)), height: 2.5 * u),
+      f.fill(0.7 * (1 - t), color: const Color(0xFF3A3340)),
+    );
+  }
+
+  f.flash(0.30, color: orange, peak: 0.5, len: 0.12);
+  f.shock(center, 0.30, f.diag * 0.6, color: orange, width: 20);
+  f.flash(0.80, color: orange, peak: 0.45, len: 0.12);
+  f.shock(center, 0.80, f.diag * 0.9, color: orange, width: 26);
+  f.rays(center, 0.80, n: 30, color: orange);
+  f.sparks(center, 0.80, n: 80, gravity: -80, color: orange);
+}
+
+// ---------------------------------------------------------------------------
+// Kartu dicuri
+// ---------------------------------------------------------------------------
+
+void _fxTheft(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, c = f.c;
+  final actor = imp.actor;
+  final t = _theftFlight(p);
+  final cw = _cardW(f.s);
+  final ch = cw * 1.4;
+  final startP = _theftPos(f.s, actor, 0);
+  final endP = _theftPos(f.s, actor, 1);
+
+  f.vignette(0.55 * _range(p, 0, 0.2));
+  f.vignette(0.35 * _range(p, 0.05, 0.3), color: imp.color);
+
+  // Pusaran menarik di titik asal kartu.
+  final pullA = _range(p, 0.05, 0.3) * (1 - _range(p, 0.4, 0.6));
+  if (pullA > 0.01) {
+    for (var k = 0; k < 3; k++) {
+      final rr = (60 + k * 30) * u * (1.3 - pullA * 0.3);
+      c.drawArc(
+        Rect.fromCircle(center: startP, radius: rr),
+        p * 7 * (k.isEven ? 1 : -1) + k * 2,
+        1.8,
+        false,
+        f.stroke(0.6 * pullA, width: 3 * u + 0.5, add: true),
+      );
+    }
+  }
+
+  // Bayangan sisa kartu di sepanjang lintasan.
+  final trailFade = 1 - _range(p, 0.62, 0.75);
+  if (t > 0) {
+    for (var k = 1; k <= 8; k++) {
+      final tt = t - k * 0.045;
+      if (tt <= 0) continue;
+      final pos = _theftPos(f.s, actor, tt);
+      final a = (1 - k / 9) * 0.5 * trailFade;
+      final sc = _theftScale(actor, tt);
+      c.save();
+      c.translate(pos.dx, pos.dy);
+      c.rotate(_theftAngle(actor, tt));
+      final rr = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: cw * 0.9 * sc, height: ch * 0.9 * sc),
+        Radius.circular(10 * u),
+      );
+      c.drawRRect(rr, f.stroke(a, width: 3 * u, blur: 3 * u, add: true));
+      c.restore();
+    }
+  }
+
+  // Pita asap berkelok mengikuti kartu.
+  if (t > 0.01 && t < 0.995) {
+    for (var r = 0; r < 3; r++) {
+      final path = Path();
+      final t0 = math.max(0.0, t - 0.35);
+      const steps = 28;
+      for (var i = 0; i <= steps; i++) {
+        final tt = _lerpD(t0, t, i / steps);
+        final a = _theftPos(f.s, actor, tt);
+        final b = _theftPos(f.s, actor, math.min(1.0, tt + 0.01));
+        final dx = b.dx - a.dx, dy = b.dy - a.dy;
+        final len = math.max(0.001, math.sqrt(dx * dx + dy * dy));
+        final off = math.sin(tt * 16 + p * 25 + r * 2.1) * (16 + 8 * r) * u;
+        final q = a + Offset(-dy / len, dx / len) * off;
+        if (i == 0) {
+          path.moveTo(q.dx, q.dy);
+        } else {
+          path.lineTo(q.dx, q.dy);
+        }
+      }
+      c.drawPath(path, f.stroke(0.55, width: 3 * u, blur: 2 * u, add: true));
+    }
+  }
+
+  // Dirampas dari titik asal.
+  f.flash(0.28, peak: 0.55, len: 0.12, color: imp.color);
+  f.shock(startP, 0.28, f.diag * 0.55, width: 18);
+  f.rays(startP, 0.28, n: 22);
+  f.sparks(startP, 0.28, n: 40);
+  if (!actor && p >= 0.28) {
+    f.vignette(0.45 * math.exp(-(p - 0.28) * 3.0), color: const Color(0xFFFF4A5A));
+  }
+
+  // Tiba di tujuan.
+  f.flash(0.62, peak: 0.4, len: 0.14, color: imp.color);
+  f.shock(endP, 0.62, f.diag * 0.7, width: 20);
+  f.rays(endP, 0.62, n: 26);
+  f.sparks(endP, 0.62, n: 60, spread: 0.8, gravity: 100, seed: 3);
+}
+
+// ---------------------------------------------------------------------------
+// Klinik: pemulihan & jebakan
+// ---------------------------------------------------------------------------
+
+void _fxHeal(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final center = Offset(w * 0.5, h * 0.40);
+  const hitT = 0.36;
+  final punch = p < hitT ? 0.0 : math.exp(-(p - hitT) * 8);
+
+  f.vignette(0.4 * _range(p, 0, 0.2));
+  f.vignette(0.35 * _range(p, 0.1, 0.4), color: imp.color);
+
+  // Sinar cahaya dari bawah.
+  final rayA = _range(p, 0.05, 0.4);
+  for (var i = 0; i < 9; i++) {
+    final x = w * (i + 0.5) / 9;
+    final sway = math.sin(p * 3 + i) * 20 * u;
+    c.drawLine(
+      Offset(x, h * 1.05),
+      Offset(x + (i - 4) * 24 * u + sway, -h * 0.05),
+      f.stroke(0.16 * rayA * (0.6 + 0.4 * math.sin(p * 8 + i * 1.3)),
+          width: 40 * u, blur: 26 * u, add: true),
+    );
+  }
+
+  // Tanda tambah raksasa.
+  final appear = Curves.easeOutBack.transform(_range(p, 0.06, 0.34));
+  final r = 80 * u * appear * (1 + 0.12 * punch);
+  if (r > 1) {
+    final th = r * 0.36;
+    Path plus(double k) => Path()
+      ..addRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center, width: r * 2 * k, height: th * 2 * k),
+          Radius.circular(th * 0.5 * k)))
+      ..addRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center, width: th * 2 * k, height: r * 2 * k),
+          Radius.circular(th * 0.5 * k)));
+    c.drawCircle(center, r * 2, f.fill(0.25 + 0.25 * punch, blur: r * 0.8, add: true));
+    c.drawPath(plus(1.0), f.fill(0.8, blur: 10 * u, add: true));
+    c.drawPath(plus(1.0), f.fill(0.9));
+    c.drawPath(plus(0.7), f.fill(0.95, color: Colors.white));
+  }
+
+  f.flash(hitT, color: imp.color, peak: 0.6, len: 0.14);
+  f.shock(center, hitT, f.diag * 0.8, width: 22);
+  f.shock(center, 0.50, f.diag * 0.7, width: 18);
+  f.shock(center, 0.64, f.diag * 0.6, width: 14);
+  f.rays(center, hitT, n: 30);
+
+  // Tanda tambah kecil naik ke seluruh layar.
+  final on = _range(p, 0.16, 0.3);
+  for (var i = 0; i < 42; i++) {
+    final t = (p * 1.15 + _hash(i, 51)) % 1.0;
+    final x = _hash(i, 52) * w;
+    final y = h * (1.05 - t * 1.2);
+    final sz = (5 + 9 * _hash(i, 53)) * u;
+    final a = math.sin(math.pi * t) * 0.85 * on;
+    final colr = i % 3 == 0 ? Colors.white : null;
+    final pa = f.stroke(a, width: 2 * u + 0.6, color: colr, add: true);
+    c.drawLine(Offset(x - sz, y), Offset(x + sz, y), pa);
+    c.drawLine(Offset(x, y - sz), Offset(x, y + sz), pa);
+  }
+}
+
+void _fxTrap(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  const hitT = 0.36;
+  final seam = Offset(w * 0.5, h * 0.5);
+
+  f.vignette(0.6 * _range(p, 0, 0.18));
+  f.bars(Curves.easeOut.transform(_range(p, 0, 0.1)));
+
+  final k = Curves.easeInCubic.transform(_range(p, 0.12, hitT));
+  final bounce = p >= hitT
+      ? math.sin((p - hitT) * 45) * math.exp(-(p - hitT) * 10) * 0.03
+      : 0.0;
+  final topEdge = _lerpD(-h * 0.12, h * 0.5 - 4 * u, k) - bounce * h;
+  final botEdge = _lerpD(h * 1.12, h * 0.5 + 4 * u, k) + bounce * h;
+  const teeth = 9;
+  final tw = w / teeth;
+  final th = h * 0.09;
+
+  final top = Path()
+    ..moveTo(0, topEdge - h)
+    ..lineTo(w, topEdge - h)
+    ..lineTo(w, topEdge);
+  for (var i = teeth - 1; i >= 0; i--) {
+    top
+      ..lineTo(i * tw + tw * 0.5, topEdge + th)
+      ..lineTo(i * tw, topEdge);
+  }
+  top.close();
+  final bot = Path()
+    ..moveTo(0, botEdge + h)
+    ..lineTo(w, botEdge + h)
+    ..lineTo(w, botEdge);
+  for (var i = teeth; i >= 0; i--) {
+    bot
+      ..lineTo(i * tw, botEdge - th)
+      ..lineTo(i * tw - tw * 0.5, botEdge);
+  }
+  bot.close();
+  const jaw = Color(0xFF2A0A10);
+  for (final path in [top, bot]) {
+    c.drawPath(path, f.fill(0.94, color: jaw));
+    c.drawPath(path, f.stroke(0.9, width: 4 * u, blur: 5 * u, add: true));
+    c.drawPath(path, f.stroke(0.9, width: 1.6 * u, color: Colors.white));
+  }
+
+  f.flash(hitT, peak: 0.9, len: 0.10);
+  f.flash(hitT + 0.01, color: imp.color, peak: 0.6, len: 0.22);
+  f.shock(seam, hitT, f.diag, width: 30);
+  f.shock(seam, hitT + 0.07, f.diag * 0.7, width: 18);
+  f.rays(seam, hitT, n: 40);
+  for (var i = 0; i < 3; i++) {
+    f.sparks(Offset(w * (0.15 + 0.35 * i), seam.dy), hitT,
+        n: 40, gravity: 200, seed: i * 13);
+  }
+  if (p >= hitT) {
+    f.vignette(0.7 * math.exp(-(p - hitT) * 2.5), color: imp.color);
+    // Retakan menjalar dari garis rahang.
+    final grow = Curves.easeOutCubic.transform(_range(p, hitT, hitT + 0.15));
+    for (var i = 0; i < 8; i++) {
+      final path = Path()..moveTo(seam.dx, seam.dy);
+      var x = seam.dx, y = seam.dy;
+      final ang = (i / 8) * 2 * math.pi + _hash(i, 71);
+      const steps = 8;
+      final len = f.diag * 0.5 * grow / steps;
+      for (var s = 0; s < steps; s++) {
+        final a = ang + (_hash(i * 9 + s, 72) - 0.5) * 0.9;
+        x += math.cos(a) * len;
+        y += math.sin(a) * len;
+        path.lineTo(x, y);
+      }
+      c.drawPath(path, f.stroke(0.7, width: 8 * u, blur: 6 * u, add: true));
+      c.drawPath(path, f.stroke(0.9, width: 1.8 * u, color: Colors.white));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tak ada dampak
+// ---------------------------------------------------------------------------
+
+void _fxNull(_Fx f, NightImpact imp) {
+  final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
+  final center = Offset(w * 0.5, h * 0.40);
+  f.vignette(0.5 * _range(p, 0, 0.25));
+  final shrink = Curves.easeInCubic.transform(_range(p, 0, 0.34));
+  final radius = _lerpD(f.diag * 0.55, 64 * u, shrink);
+  c.drawCircle(center, radius,
+      f.stroke(0.6 * (1 - shrink * 0.3), width: 4 * u, blur: 6 * u, add: true));
+  c.drawCircle(center, radius, f.stroke(0.8, width: 1.5 * u + 0.5, color: Colors.white));
+
+  final xa = Curves.easeOut.transform(_range(p, 0.30, 0.44));
+  if (xa > 0) {
+    final shake = p > 0.34 ? math.sin(p * 180) * 5 * u * (1 - _range(p, 0.34, 0.5)) : 0.0;
+    for (final sg in [-1.0, 1.0]) {
+      final a = center + Offset(-50 * u + shake, -50 * u * sg);
+      final b = center + Offset(50 * u + shake, 50 * u * sg);
+      final e = Offset.lerp(a, b, xa)!;
+      c.drawLine(a, e, f.stroke(0.5, width: 22 * u, blur: 12 * u, add: true));
+      c.drawLine(a, e, f.stroke(1, width: 5 * u, color: Colors.white));
+    }
+  }
+  f.shock(center, 0.34, f.diag * 0.35, width: 8);
+  f.sparks(center, 0.34, n: 24, spread: 0.5, gravity: 160);
 }
