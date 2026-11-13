@@ -1271,18 +1271,20 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   final art = c.maxWidth >= 200
                       ? _popup(p.id, _moodOf(p.id))
                       : null;
-                  // Ruang lega: karakter menyisakan tempat untuk ucapannya.
-                  final roomy = c.maxWidth >= 520 && box.maxHeight >= 500;
-                  final h = c.maxHeight * .97;
-                  final w = math.min(c.maxWidth * (roomy ? .74 : 1.0), h * .88);
+                  // Karakter besar berdiri di kiri, sejajar tepi bawah.
+                  final h = c.maxHeight * 1.0;
+                  final w = math.min(c.maxWidth * .92, h * .9);
+                  // Ucapan muncul di sisi kanan kepala bila ada ruang.
+                  final voiceLeft = w * .78;
+                  final voiceRoom = c.maxWidth - voiceLeft - 8;
+                  final showVoice =
+                      art != null && voiceRoom >= 220 && c.maxHeight >= 360;
                   return Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // Karakter berdiri besar di belakang teks dan sedikit
-                      // menyelinap ke balik panel layanan.
                       if (art != null)
                         Positioned(
-                          right: -w * .04,
+                          left: -w * .04,
                           bottom: 0,
                           width: w,
                           height: h,
@@ -1293,31 +1295,33 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                               intro: false,
                               reduced: _reduced,
                             ),
-                            from: const Offset(60, 0),
+                            from: const Offset(-60, 0),
                             delay: .45,
                           ),
                         ),
-                      _enter(
-                        Align(
-                          alignment: art == null
-                              ? Alignment.bottomLeft
-                              : Alignment.topLeft,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              right: 22,
-                              bottom: 28,
-                              top: art == null ? 0 : 8,
+                      if (showVoice)
+                        Positioned(
+                          left: voiceLeft,
+                          top: 28,
+                          child: _enter(
+                            _voiceBubble(
+                              p.id,
+                              maxWidth: math.min(voiceRoom, 340.0),
                             ),
-                            child: _hero(
-                              p,
-                              compact: false,
-                              tall: box.maxHeight >= 300,
-                              voice: roomy && art != null,
-                            ),
+                            from: const Offset(24, 0),
+                            delay: .8,
                           ),
                         ),
-                        from: const Offset(-24, 0),
-                        delay: .2,
+                      // Papan nama di kaki karakter.
+                      Positioned(
+                        left: 4,
+                        right: 12,
+                        bottom: 10,
+                        child: _enter(
+                          _hero(p, compact: true),
+                          from: const Offset(0, 16),
+                          delay: .25,
+                        ),
                       ),
                     ],
                   );
@@ -1355,9 +1359,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     },
   );
 
-  /// Layar sempit: karakter berdiri di atas lembar layanan. Lembar dapat
-  /// diturunkan (tinggal pegangan + kepala layanan) sehingga karakter tampil
-  /// hampir seluruh badan dan latar terlihat penuh; semuanya bergeser mulus.
+  /// Layar sempit: karakter berdiri di kiri di atas lembar layanan, papan nama
+  /// di sebelah kanannya. Lembar dapat diturunkan sehingga karakter tampil
+  /// hampir seluruh badan (dan papan nama pindah ke kakinya).
   Widget _stageCompact(_Place p, Widget content, BoxConstraints box) {
     final open = _sheetOpen;
     final desired = switch (p.id) {
@@ -1369,7 +1373,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     };
     // Tinggi bawaan dibatasi supaya karakter tetap punya ruang di layar ponsel.
     final cap = math.max(box.maxHeight * .64, 340.0);
-    final sheetH = math.min(desired, cap)
+    final sheetH = math
+        .min(desired, cap)
         .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
         .toDouble();
     final shown = open ? sheetH : math.min(78.0, sheetH);
@@ -1377,10 +1382,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final dur = _reduced ? Duration.zero : const Duration(milliseconds: 480);
     const curve = Curves.easeOutCubic;
     final art = avail >= 130 ? _popup(p.id, _moodOf(p.id)) : null;
-    // Bagian karakter yang tampak di atas lembar; sisanya terselip di baliknya.
-    final visible = math.max(0.0, math.min(avail - 6, open ? 260.0 : 560.0));
-    final h = visible / (open ? .66 : .92);
-    final w = math.min(box.maxWidth * (open ? .5 : .8), h * .8);
+    final visible = math.max(0.0, math.min(avail - 6, open ? 280.0 : 560.0));
+    final h = visible / (open ? .68 : .92);
+    final w = math.min(box.maxWidth * (open ? .56 : .82), h * .8);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -1388,7 +1392,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           AnimatedPositioned(
             duration: dur,
             curve: curve,
-            right: 8,
+            left: -w * .06,
             bottom: shown - (h - visible),
             width: w,
             height: h,
@@ -1400,7 +1404,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 intro: false,
                 reduced: _reduced,
               ),
-              from: const Offset(0, 50),
+              from: const Offset(-50, 0),
               delay: .45,
             ),
           ),
@@ -1408,12 +1412,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           AnimatedPositioned(
             duration: dur,
             curve: curve,
-            left: 20,
-            right: 20,
+            left: art != null && open ? w * .86 : 20,
+            right: 16,
             bottom: shown + 14,
             child: _enter(
               _hero(p, compact: true),
-              from: const Offset(0, 14),
+              from: const Offset(24, 0),
               delay: .2,
             ),
           ),
@@ -2065,10 +2069,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                     : const Duration(milliseconds: 500),
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    // Cahaya mengikuti karakter: kanan di pemilih dan layar
-                    // sempit, kiri-tengah di panggung lebar.
+                    // Cahaya mengikuti karakter: kanan di pemilih, kiri di dalam tempat.
                     center: Alignment(
-                      place == null || box.maxWidth < 820 ? .5 : -.25,
+                      place == null ? .5 : -.5,
                       -.2,
                     ),
                     radius: 1.0,
