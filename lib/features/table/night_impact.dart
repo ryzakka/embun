@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -340,7 +341,7 @@ double _theftScale(bool actor, double t) =>
 
 /// Adegan dampak yang memenuhi seluruh layar, digambar di atas isi adegan
 /// malam. [progress] 0..1 selama [kNightImpactMs].
-class NightImpactStage extends StatelessWidget {
+class NightImpactStage extends StatefulWidget {
   final NightImpact impact;
   final double progress;
   final String? cardArt;
@@ -353,8 +354,39 @@ class NightImpactStage extends StatelessWidget {
   });
 
   @override
+  State<NightImpactStage> createState() => _NightImpactStageState();
+}
+
+class _NightImpactStageState extends State<NightImpactStage> {
+  ui.FragmentShader? _fire; // lapisan api layar
+  ui.FragmentShader? _mask; // topeng disolusi kartu
+
+  NightImpact get impact => widget.impact;
+
+  @override
+  void initState() {
+    super.initState();
+    if (impact.applied && impact.effect == NightImpactEffect.burn) {
+      _BurnShader.load().then((prog) {
+        if (!mounted || prog == null) return;
+        setState(() {
+          _fire = prog.fragmentShader();
+          _mask = prog.fragmentShader();
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _fire?.dispose();
+    _mask?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final p = MediaQuery.disableAnimationsOf(context) ? 0.7 : progress;
+    final p = MediaQuery.disableAnimationsOf(context) ? 0.7 : widget.progress;
     final m = 1 - _range(p, 0.86, 1.0);
     final usesCard = impact.applied &&
         (impact.effect == NightImpactEffect.burn ||
@@ -369,7 +401,7 @@ class NightImpactStage extends StatelessWidget {
               children: [
                 if (usesCard) _cardWidget(size, p, m),
                 CustomPaint(
-                  painter: _StagePainter(impact, p, m),
+                  painter: _StagePainter(impact, p, m, _fire),
                   size: size,
                 ),
               ],
@@ -382,29 +414,51 @@ class NightImpactStage extends StatelessWidget {
 
   Widget _cardWidget(Size s, double p, double m) {
     final cw = _cardW(s);
-    final art = cardArt;
+    final art = widget.cardArt;
     final Widget face = art == null
         ? const GameIcon('mydeck2', size: 110)
         : CardArt(path: art, width: cw, glow: impact.color);
     if (impact.effect == NightImpactEffect.burn) {
+      final ch = cw * 1.4;
       final appear = Curves.easeOutBack.transform(_range(p, 0.0, 0.22));
       final burnt = _range(p, 0.30, 0.82);
       final jitter = math.sin(p * 160) * 5 * (burnt * (1 - burnt) * 4);
-      final alpha = _range(p, 0.0, 0.1) * (1 - _range(p, 0.62, 0.84));
-      final tint = Color.lerp(Colors.white, const Color(0xFF241006), burnt)!;
+      var alpha = _range(p, 0.0, 0.1);
+      Widget body = SizedBox(width: cw, height: ch, child: Center(child: face));
+      final mask = _mask;
+      if (mask != null) {
+        // Kartu terlarut oleh derau mengikuti garis bakar (burn.frag, mode 1).
+        body = ShaderMask(
+          blendMode: BlendMode.modulate,
+          shaderCallback: (b) {
+            _burnUniforms(mask,
+                size: b.size,
+                time: p * kNightImpactMs / 1000,
+                heat: 0,
+                burn: burnt,
+                card: Offset.zero & b.size,
+                mode: 1,
+                fade: 1);
+            return mask;
+          },
+          child: body,
+        );
+      } else {
+        // Cadangan bila shader tidak bisa dimuat.
+        alpha *= 1 - _range(p, 0.62, 0.84);
+        final tint = Color.lerp(Colors.white, const Color(0xFF241006), burnt)!;
+        body = ColorFiltered(
+          colorFilter: ColorFilter.mode(tint, BlendMode.modulate),
+          child: body,
+        );
+      }
       return Positioned(
         left: s.width / 2 - cw / 2 + jitter,
-        top: s.height * 0.40 - cw * 0.7,
+        top: s.height * 0.40 - ch / 2,
         width: cw,
         child: Opacity(
           opacity: _cl(alpha),
-          child: Transform.scale(
-            scale: 0.55 + 0.45 * appear,
-            child: ColorFiltered(
-              colorFilter: ColorFilter.mode(tint, BlendMode.modulate),
-              child: face,
-            ),
-          ),
+          child: Transform.scale(scale: 0.55 + 0.45 * appear, child: body),
         ),
       );
     }
@@ -431,12 +485,53 @@ class NightImpactStage extends StatelessWidget {
   }
 }
 
+/// Memuat shaders/burn.frag sekali saja; null bila gagal (ada cadangan).
+class _BurnShader {
+  static Future<ui.FragmentProgram?>? _program;
+
+  static Future<ui.FragmentProgram?> load() => _program ??= _read();
+
+  static Future<ui.FragmentProgram?> _read() async {
+    try {
+      return await ui.FragmentProgram.fromAsset('shaders/burn.frag');
+    } catch (e) {
+      debugPrint('burn.frag gagal dimuat: $e');
+      return null;
+    }
+  }
+}
+
+void _burnUniforms(
+    ui.FragmentShader sh, {
+      required Size size,
+      required double time,
+      required double heat,
+      required double burn,
+      required Rect card,
+      required double mode,
+      required double fade,
+    }) {
+  sh
+    ..setFloat(0, size.width)
+    ..setFloat(1, size.height)
+    ..setFloat(2, time)
+    ..setFloat(3, heat)
+    ..setFloat(4, burn)
+    ..setFloat(5, card.left)
+    ..setFloat(6, card.top)
+    ..setFloat(7, card.width)
+    ..setFloat(8, card.height)
+    ..setFloat(9, mode)
+    ..setFloat(10, fade);
+}
+
 class _StagePainter extends CustomPainter {
   final NightImpact impact;
   final double p;
   final double m;
+  final ui.FragmentShader? burn;
 
-  const _StagePainter(this.impact, this.p, this.m);
+  const _StagePainter(this.impact, this.p, this.m, this.burn);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -461,7 +556,7 @@ class _StagePainter extends CustomPainter {
       case NightImpactEffect.pump:
         _fxPump(f, impact);
       case NightImpactEffect.burn:
-        _fxBurn(f, impact);
+        _fxBurn(f, impact, burn);
       case NightImpactEffect.theft:
         _fxTheft(f, impact);
     }
@@ -469,7 +564,7 @@ class _StagePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StagePainter old) =>
-      old.p != p || old.m != m || old.impact != impact;
+      old.p != p || old.m != m || old.impact != impact || old.burn != burn;
 }
 
 /// Kotak perkakas menggambar: semua gambar ikut memudar lewat [m] dan
@@ -999,7 +1094,7 @@ void _fxPump(_Fx f, NightImpact imp) {
 // Kartu terbakar
 // ---------------------------------------------------------------------------
 
-void _fxBurn(_Fx f, NightImpact imp) {
+void _fxBurn(_Fx f, NightImpact imp, ui.FragmentShader? shader) {
   final p = f.p, u = f.u, w = f.w, h = f.h, c = f.c;
   final cw = _cardW(f.s);
   final ch = cw * 1.4;
@@ -1014,8 +1109,23 @@ void _fxBurn(_Fx f, NightImpact imp) {
   c.drawCircle(center, cw * (0.9 + 0.6 * heat),
       f.fill(0.35 * heat, blur: cw * 0.35, color: orange, add: true));
 
-  // Dinding api dari dasar layar.
-  if (heat > 0.01) {
+  // Api: shader burn.frag (mode 0); poligon sederhana bila shader tak ada.
+  if (shader != null) {
+    _burnUniforms(shader,
+        size: f.s,
+        time: p * kNightImpactMs / 1000,
+        heat: heat,
+        burn: burnT,
+        card: rect,
+        mode: 0,
+        fade: f.m);
+    c.drawRect(
+      Offset.zero & f.s,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
+  } else if (heat > 0.01) {
     final maxH = h * 0.62 * heat;
     for (var layer = 0; layer < 2; layer++) {
       final path = Path()..moveTo(0, h);
@@ -1049,7 +1159,7 @@ void _fxBurn(_Fx f, NightImpact imp) {
   }
 
   // Garis bakar menjalar naik di kartu.
-  if (burnT > 0 && burnT < 1) {
+  if (shader == null && burnT > 0 && burnT < 1) {
     final y = rect.bottom - burnT * ch;
     final line = Path()..moveTo(rect.left - 10 * u, y);
     for (var i = 0; i <= 16; i++) {
