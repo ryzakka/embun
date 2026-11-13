@@ -110,6 +110,7 @@ class HayuIncome {
     required this.leavesBonus,
     required this.cycleBonus,
     required this.isAntagonist,
+    this.villageBonus = 0,
   }) : minimumAdjustment = math.max(1 - (rate - penalty), 0),
        akarChange = math.max(rate - penalty, 1) * (akarMultiplier - 1);
 
@@ -121,16 +122,18 @@ class HayuIncome {
   final double leavesBonus;
   final int cycleBonus;
   final bool isAntagonist;
+  final double villageBonus;
 
   String get currency => isAntagonist ? 'bulir hitam' : 'embun';
 
-  double get total =>
+  double get _production =>
       rate -
       penalty +
       minimumAdjustment +
       akarChange +
       leavesBonus +
-      cycleBonus;
+      villageBonus;
+  double get total => math.max(_production, 0.0) + cycleBonus;
 
   List<(String, num)> get components => [
     ('Laju dasar', rate),
@@ -138,6 +141,8 @@ class HayuIncome {
     if (minimumAdjustment != 0) ('Batas minimum', minimumAdjustment),
     if (akarChange != 0) ('Efek Akar', akarChange),
     if (leavesBonus != 0) ('Bonus Daun Hayu', leavesBonus),
+    if (villageBonus != 0) ('Sumur Desa', villageBonus),
+    if (_production < 0) ('Batas laju nol', -_production),
     if (cycleBonus != 0) ('Awal siklus', cycleBonus),
   ];
 }
@@ -208,6 +213,8 @@ class HayuEffects {
                   ? 5
                   : 0,
               isAntagonist: isAntagonist,
+              villageBonus:
+                  (game['village_rate_bonus'] as num?)?.toDouble() ?? 0,
             )
           : null,
     );

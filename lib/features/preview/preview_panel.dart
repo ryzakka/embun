@@ -22,6 +22,7 @@ import '../table/day_transition.dart';
 import '../table/day_view.dart';
 import '../table/emote_panel.dart';
 import '../table/eviction_verdict_scene.dart';
+import '../table/guard_dialog.dart';
 import '../table/jail_verdict_scene.dart';
 import '../table/my_info_sheet.dart';
 import '../table/night_plan_dialog.dart';
@@ -60,7 +61,10 @@ enum _Screen {
   hand('Meja kartu'),
   merge('Gabung kartu'),
   hall('Balai · Tawaran tukar'),
-  research('Pasar Riset'),
+  village('Kunjungan · Pilih tujuan'),
+  well('Kunjungan · Sumur Desa'),
+  clinic('Kunjungan · Pondok Perawatan'),
+  research('Kunjungan · Pasar Riset'),
   offering('Pilih kartu persembahan'),
   ceremony('Adegan melempar persembahan'),
   effects('Hasil persembahan dan reaksi Hayu'),
@@ -80,6 +84,7 @@ enum _Screen {
   parts('Kondisi bagian Hayu'),
   nightPlan('Rencana serangan malam'),
   bowTarget('Sasaran Busur Terakhir'),
+  guardTarget('Perisai · Pilih penerima'),
   dawn('Peralihan fajar'),
   offeringIntro('Peralihan ke persembahan'),
   jail('Vonis kurungan'),
@@ -90,6 +95,7 @@ enum _Screen {
   theft('Serangan · Curi kartu'),
   mirror('Serangan · Pantulan cermin'),
   shield('Serangan · Perlindungan'),
+  guard('Serangan · Menjaga teman'),
   bowHit('Serangan · Panah mengenai Terbisik'),
   bowMiss('Serangan · Panah salah sasaran'),
   finalBow('Serangan · Panah penentu'),
@@ -104,96 +110,101 @@ enum _Screen {
 
 const _sections = [
   (
-  'Lobi dan ruangan',
-  [
-    _Screen.title,
-    _Screen.menu,
-    _Screen.create,
-    _Screen.join,
-    _Screen.publicRooms,
-    _Screen.waiting,
-    _Screen.news,
-    _Screen.settings,
-    _Screen.otherGames,
-  ],
+    'Lobi dan ruangan',
+    [
+      _Screen.title,
+      _Screen.menu,
+      _Screen.create,
+      _Screen.join,
+      _Screen.publicRooms,
+      _Screen.waiting,
+      _Screen.news,
+      _Screen.settings,
+      _Screen.otherGames,
+    ],
   ),
   (
-  'Panduan dan tutorial',
-  [
-    _Screen.tutorial,
-    _Screen.rules,
-    _Screen.characters,
-    _Screen.items,
-    _Screen.abilities,
-  ],
+    'Panduan dan tutorial',
+    [
+      _Screen.tutorial,
+      _Screen.rules,
+      _Screen.characters,
+      _Screen.items,
+      _Screen.abilities,
+    ],
   ),
   (
-  'Prolog',
-  [
-    _Screen.story,
-    _Screen.shuffle,
-    _Screen.character,
-    _Screen.role,
-    _Screen.omen,
-    _Screen.darkFace,
-    _Screen.prologueWait,
-  ],
+    'Prolog',
+    [
+      _Screen.story,
+      _Screen.shuffle,
+      _Screen.character,
+      _Screen.role,
+      _Screen.omen,
+      _Screen.darkFace,
+      _Screen.prologueWait,
+    ],
   ),
   (
-  'Meja dan fase permainan',
-  [
-    _Screen.market,
-    _Screen.hand,
-    _Screen.merge,
-    _Screen.hall,
-    _Screen.research,
-    _Screen.offering,
-    _Screen.ceremony,
-    _Screen.effects,
-    _Screen.discussion,
-    _Screen.voting,
-    _Screen.lockedVote,
-    _Screen.night,
-    _Screen.jailed,
-    _Screen.spectator,
-  ],
+    'Meja dan fase permainan',
+    [
+      _Screen.market,
+      _Screen.hand,
+      _Screen.merge,
+      _Screen.hall,
+      _Screen.village,
+      _Screen.well,
+      _Screen.clinic,
+      _Screen.research,
+      _Screen.offering,
+      _Screen.ceremony,
+      _Screen.effects,
+      _Screen.discussion,
+      _Screen.voting,
+      _Screen.lockedVote,
+      _Screen.night,
+      _Screen.jailed,
+      _Screen.spectator,
+    ],
   ),
   (
-  'Dialog dan panel',
-  [
-    _Screen.chat,
-    _Screen.secretChat,
-    _Screen.emotes,
-    _Screen.player,
-    _Screen.myInfo,
-    _Screen.ability,
-    _Screen.card,
-    _Screen.parts,
-    _Screen.nightPlan,
-    _Screen.bowTarget,
-  ],
+    'Dialog dan panel',
+    [
+      _Screen.chat,
+      _Screen.secretChat,
+      _Screen.emotes,
+      _Screen.player,
+      _Screen.myInfo,
+      _Screen.ability,
+      _Screen.card,
+      _Screen.parts,
+      _Screen.nightPlan,
+      _Screen.bowTarget,
+      _Screen.guardTarget,
+    ],
   ),
   (
-  'Adegan permainan',
-  [
-    _Screen.dawn,
-    _Screen.offeringIntro,
-    _Screen.jail,
-    _Screen.evict,
-    _Screen.revealVote,
-    _Screen.pump,
-    _Screen.burn,
-    _Screen.theft,
-    _Screen.mirror,
-    _Screen.shield,
-    _Screen.bowHit,
-    _Screen.bowMiss,
-    _Screen.finalBow,
-  ],
+    'Adegan permainan',
+    [
+      _Screen.dawn,
+      _Screen.offeringIntro,
+      _Screen.jail,
+      _Screen.evict,
+      _Screen.revealVote,
+      _Screen.pump,
+      _Screen.burn,
+      _Screen.theft,
+      _Screen.mirror,
+      _Screen.shield,
+      _Screen.guard,
+      _Screen.bowHit,
+      _Screen.bowMiss,
+      _Screen.finalBow,
+    ],
   ),
   (
-  'Akhir permainan',
-  [_Screen.ending, _Screen.endingDark, _Screen.recap, _Screen.cancelled],
+    'Akhir permainan',
+    [_Screen.ending, _Screen.endingDark, _Screen.recap, _Screen.cancelled],
   ),
 ];
 
@@ -262,14 +273,22 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       _Screen.nightPlan ||
       _Screen.omen ||
       _Screen.darkFace => 'antagonis',
-      _Screen.ability || _Screen.bowTarget => 'warga',
+      _Screen.ability ||
+      _Screen.bowTarget ||
+      _Screen.guardTarget ||
+      _Screen.guard => 'warga',
       _ => _dark ? 'antagonis' : 'warga',
     };
     _session.prepare(
       role: role,
       antagonists: screen == _Screen.secretChat ? 2 : _antagonists,
       phase: switch (screen) {
-        _Screen.research => 'research',
+        _Screen.village ||
+        _Screen.well ||
+        _Screen.clinic ||
+        _Screen.research ||
+        _Screen.merge ||
+        _Screen.hall => 'visits',
         _Screen.offering => 'offering',
         _Screen.ceremony || _Screen.effects => 'effects',
         _Screen.discussion => 'discussion',
@@ -295,6 +314,16 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       locked: screen == _Screen.lockedVote,
     );
 
+    final place = switch (screen) {
+      _Screen.well => 'sumur',
+      _Screen.clinic => 'pondok',
+      _Screen.research => 'riset',
+      _Screen.merge => 'bengkel',
+      _Screen.hall => 'balai',
+      _ => null,
+    };
+    if (place != null) await _session.enterVillagePlace(_gameId, place);
+    if (!mounted) return;
     if (screen == _Screen.otherGames) {
       await showMoreGames(context);
       return;
@@ -316,7 +345,10 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         void close() => Navigator.of(routeContext).pop();
         final page = _page(screen, close);
         return switch (screen) {
-          _Screen.market || _Screen.hand || _Screen.merge || _Screen.hall => page,
+          _Screen.market ||
+          _Screen.hand ||
+          _Screen.merge ||
+          _Screen.hall => page,
           _ => _PreviewFrame(onClose: close, child: page),
         };
       },
@@ -384,10 +416,11 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                 child: CardPick(
                   dark: true,
                   title: 'Pilih Wajah Gelapmu',
-                  hint: 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat wajah gelapmu.',
+                  hint:
+                      'Pilih satu kartu tertutup. Hanya kamu yang akan melihat wajah gelapmu.',
                   options: [
                     for (final stem
-                    in AssetCatalog.I.stems(antagonisDir).take(3))
+                        in AssetCatalog.I.stems(antagonisDir).take(3))
                       PickOption(
                         AssetCatalog.I.file(antagonisDir, stem),
                         'Wajah gelap',
@@ -443,6 +476,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       case _Screen.theft:
       case _Screen.mirror:
       case _Screen.shield:
+      case _Screen.guard:
       case _Screen.bowHit:
       case _Screen.bowMiss:
       case _Screen.finalBow:
@@ -482,9 +516,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         );
         return _isDialog(screen)
             ? _DialogPreview(
-          show: (ctx) => _showDialog(ctx, screen),
-          child: table,
-        )
+                show: (ctx) => _showDialog(ctx, screen),
+                child: table,
+              )
             : table;
     }
   }
@@ -500,6 +534,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     _Screen.parts,
     _Screen.nightPlan,
     _Screen.bowTarget,
+    _Screen.guardTarget,
   }.contains(screen);
 
   Future<void> _showDialog(BuildContext context, _Screen screen) async {
@@ -598,6 +633,8 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         );
       case _Screen.bowTarget:
         await showBowTargetDialog(context, players: s.roster, myId: s.myId);
+      case _Screen.guardTarget:
+        await showGuardTargetDialog(context, players: s.roster, myId: s.myId);
       default:
         return;
     }
@@ -608,13 +645,13 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     final sections = [
       for (final (title, screens) in _sections)
         (
-        title,
-        screens
-            .where(
-              (screen) =>
-              '$title ${screen.label}'.toLowerCase().contains(_query),
-        )
-            .toList(),
+          title,
+          screens
+              .where(
+                (screen) =>
+                    '$title ${screen.label}'.toLowerCase().contains(_query),
+              )
+              .toList(),
         ),
     ];
     return Scaffold(
@@ -790,12 +827,7 @@ class _JoinPreviewState extends State<_JoinPreview> {
     nameCtrl: _name,
     codeCtrl: _code,
     onJoin: (code) async {
-      final pria = AssetCatalog.I.stems(protagonisPriaDir);
-      await widget.session.joinGame(
-        code,
-        _name.text,
-        pria.isEmpty ? 'default' : pria.first,
-      );
+      await widget.session.joinGame(code, _name.text, 'pria-pelukis');
       return null;
     },
     onCreate: () {},

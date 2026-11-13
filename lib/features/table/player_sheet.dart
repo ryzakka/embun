@@ -15,43 +15,46 @@ import 'player_status.dart';
 /// Ponsel: lembar naik dari bawah selebar layar. Desktop/tablet: lembar
 /// dipusatkan dengan lebar maksimum 560 supaya tidak melar.
 Future<void> showPlayerSheet(
-    BuildContext context, {
-      required GameRepository repo,
-      required String gameId,
-      required Map<String, dynamic> player,
-      required List<Map<String, dynamic>> hand,
-      required Map<String, Map<String, dynamic>> defs,
-      required double balance,
-      required bool socialOpen,
-      required int day,
-      required bool iAmJailed,
-      /// Dipanggil setelah embun berhasil diberikan (sasaran, jumlah).
-      void Function(String targetId, int amount)? onGiveEmbun,
-      /// Dipanggil setelah tawaran tukar terkirim (sasaran, baris kartu).
-      void Function(String targetId, Map<String, dynamic> hand)? onOfferCard,
-    }) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      barrierColor: Colors.black.withValues(alpha: 0.65),
-      constraints: const BoxConstraints(maxWidth: 560),
-      builder: (_) => _PlayerSheet(
-        repo: repo,
-        gameId: gameId,
-        player: player,
-        hand: hand,
-        defs: defs,
-        balance: balance,
-        socialOpen: socialOpen,
-        day: day,
-        iAmJailed: iAmJailed,
-        onGiveEmbun: onGiveEmbun,
-        onOfferCard: onOfferCard,
-      ),
-    );
+  BuildContext context, {
+  required GameRepository repo,
+  required String gameId,
+  required Map<String, dynamic> player,
+  required List<Map<String, dynamic>> hand,
+  required Map<String, Map<String, dynamic>> defs,
+  required double balance,
+  required bool socialOpen,
+  bool tradingOpen = true,
+  required int day,
+  required bool iAmJailed,
+
+  /// Dipanggil setelah embun berhasil diberikan (sasaran, jumlah).
+  void Function(String targetId, int amount)? onGiveEmbun,
+
+  /// Dipanggil setelah tawaran tukar terkirim (sasaran, baris kartu).
+  void Function(String targetId, Map<String, dynamic> hand)? onOfferCard,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  barrierColor: Colors.black.withValues(alpha: 0.65),
+  constraints: const BoxConstraints(maxWidth: 560),
+  builder: (_) => _PlayerSheet(
+    repo: repo,
+    gameId: gameId,
+    player: player,
+    hand: hand,
+    defs: defs,
+    balance: balance,
+    socialOpen: socialOpen,
+    tradingOpen: tradingOpen,
+    day: day,
+    iAmJailed: iAmJailed,
+    onGiveEmbun: onGiveEmbun,
+    onOfferCard: onOfferCard,
+  ),
+);
 
 class _PlayerSheet extends StatefulWidget {
   final GameRepository repo;
@@ -61,6 +64,7 @@ class _PlayerSheet extends StatefulWidget {
   final Map<String, Map<String, dynamic>> defs;
   final double balance;
   final bool socialOpen;
+  final bool tradingOpen;
   final int day;
   final bool iAmJailed;
   final void Function(String targetId, int amount)? onGiveEmbun;
@@ -73,6 +77,7 @@ class _PlayerSheet extends StatefulWidget {
     required this.defs,
     required this.balance,
     required this.socialOpen,
+    required this.tradingOpen,
     required this.day,
     required this.iAmJailed,
     this.onGiveEmbun,
@@ -121,11 +126,12 @@ class _PlayerSheetState extends State<_PlayerSheet> {
     final mq = MediaQuery.of(context);
     final short = mq.size.height < 480; // ponsel miring
     final card = widget.player['character_card'] as String;
-    final tradable =
-    widget.hand
-        .where((h) =>
-    h['card_id'] != 'embun_samaran' &&
-        widget.defs[h['card_id']]?['kind'] != 'malam')
+    final tradable = widget.hand
+        .where(
+          (h) =>
+              h['card_id'] != 'embun_samaran' &&
+              widget.defs[h['card_id']]?['kind'] != 'malam',
+        )
         .toList();
     final medal = short ? 46.0 : 56.0;
 
@@ -139,7 +145,9 @@ class _PlayerSheetState extends State<_PlayerSheet> {
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         border: Border.all(
-            color: EmbunColors.goldDim.withValues(alpha: 0.55), width: 1.2),
+          color: EmbunColors.goldDim.withValues(alpha: 0.55),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: EmbunColors.gold.withValues(alpha: 0.16),
@@ -166,15 +174,19 @@ class _PlayerSheetState extends State<_PlayerSheet> {
             height: 2,
             child: busy
                 ? const LinearProgressIndicator(
-              color: EmbunColors.gold,
-              backgroundColor: Colors.transparent,
-            )
+                    color: EmbunColors.gold,
+                    backgroundColor: Colors.transparent,
+                  )
                 : null,
           ),
           Flexible(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                  16, 8, 16, 16 + mq.padding.bottom + mq.viewInsets.bottom),
+                16,
+                8,
+                16,
+                16 + mq.padding.bottom + mq.viewInsets.bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,7 +201,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     const NoticeStrip(
                       icon: 'lock',
                       text:
-                      'Memberi embun dan menukar kartu hanya bisa di hari biasa.',
+                          'Memberi embun dan menukar kartu hanya bisa di hari biasa.',
                       accent: EmbunColors.goldDim,
                     )
                   else ...[
@@ -198,12 +210,20 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     if (widget.iAmJailed)
                       const NoticeStrip(
                         icon: 'lock',
-                        text: 'Kamu dikurung: kartu hanya bisa kamu terima, '
+                        text:
+                            'Kamu dikurung: kartu hanya bisa kamu terima, '
                             'tidak bisa kamu tawarkan.',
                         accent: EmbunColors.blood,
                       )
+                    else if (widget.tradingOpen)
+                      _trade(tradable)
                     else
-                      _trade(tradable),
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text(
+                          'Tukar kartu saat kunjungan malam di Balai Pertukaran.',
+                        ),
+                      ),
                   ],
                   AnimatedSize(
                     duration: const Duration(milliseconds: 200),
@@ -236,8 +256,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
             Colors.transparent,
           ],
         ),
-        border:
-        Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.28)),
+        border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -258,9 +277,10 @@ class _PlayerSheetState extends State<_PlayerSheet> {
               ring: EmbunColors.gold,
               // Subur bila nyawa penuh dan bebas; layu bila nyawa berkurang,
               // dikurung, atau sudah keluar.
-              wreath: (!isOut(widget.player) &&
-                  !_targetJailed &&
-                  livesLeft(widget.player) >= kMaxStrikes)
+              wreath:
+                  (!isOut(widget.player) &&
+                      !_targetJailed &&
+                      livesLeft(widget.player) >= kMaxStrikes)
                   ? 'subur'
                   : 'layu',
             ),
@@ -290,10 +310,11 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     LivesRow(lives: livesLeft(widget.player), size: 16),
                     if (_targetJailed)
                       const StatusTag(
-                          text: 'Dikurung',
-                          color: EmbunColors.blood,
-                          asset: 'lock',
-                          fontSize: 11),
+                        text: 'Dikurung',
+                        color: EmbunColors.blood,
+                        asset: 'lock',
+                        fontSize: 11,
+                      ),
                   ],
                 ),
               ],
@@ -339,10 +360,13 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                 onTap: busy
                     ? null
                     : () => _run(
-                      () => widget.repo
-                      .sendEmote(widget.gameId, e, target: _uid),
-                  closeWith: '$e terkirim ke $_name',
-                ),
+                        () => widget.repo.sendEmote(
+                          widget.gameId,
+                          e,
+                          target: _uid,
+                        ),
+                        closeWith: '$e terkirim ke $_name',
+                      ),
               ),
           ],
         ),
@@ -360,8 +384,10 @@ class _PlayerSheetState extends State<_PlayerSheet> {
             icon: 'bulirembun',
             title: 'Beri embun',
             iconSize: 28,
-            trailing: Text('saldo ${widget.balance.floor()}',
-                style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            trailing: Text(
+              'saldo ${widget.balance.floor()}',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -374,13 +400,10 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                   size: medal,
                   onTap: busy || widget.balance < n
                       ? null
-                      : () => _run(
-                        () async {
-                      await widget.repo.giveEmbun(widget.gameId, _uid, n);
-                      widget.onGiveEmbun?.call(_uid, n);
-                    },
-                    closeWith: 'Kamu memberi $_name $n embun',
-                  ),
+                      : () => _run(() async {
+                          await widget.repo.giveEmbun(widget.gameId, _uid, n);
+                          widget.onGiveEmbun?.call(_uid, n);
+                        }, closeWith: 'Kamu memberi $_name $n embun'),
                 ),
             ],
           ),
@@ -404,11 +427,14 @@ class _PlayerSheetState extends State<_PlayerSheet> {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: EmbunColors.goldDim.withValues(alpha: 0.5)),
     ),
-    child: Text(text,
-        style: const TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: EmbunColors.gold)),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        color: EmbunColors.gold,
+      ),
+    ),
   );
 
   Widget _trade(List<Map<String, dynamic>> tradable) {
@@ -436,9 +462,9 @@ class _PlayerSheetState extends State<_PlayerSheet> {
               onTap: busy
                   ? null
                   : () => setState(() {
-                tradeOpen = !tradeOpen;
-                if (!tradeOpen) _pickCard = null;
-              }),
+                      tradeOpen = !tradeOpen;
+                      if (!tradeOpen) _pickCard = null;
+                    }),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
@@ -446,20 +472,25 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     const GameIcon('barter', size: 30),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Tukar kartu',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.4,
-                              color: EmbunColors.gold)),
+                      child: Text(
+                        'Tukar kartu',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
                     ),
                     _countChip('${tradable.length} kartu'),
                     const SizedBox(width: 4),
                     AnimatedRotation(
                       turns: tradeOpen ? 0.5 : 0,
                       duration: const Duration(milliseconds: 220),
-                      child: const Icon(Icons.expand_more_rounded,
-                          color: EmbunColors.gold),
+                      child: const Icon(
+                        Icons.expand_more_rounded,
+                        color: EmbunColors.gold,
+                      ),
                     ),
                   ],
                 ),
@@ -472,11 +503,14 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     ? 'Tidak ada kartu yang bisa ditukar.'
                     : _targetJailed
                     ? '$_name sedang dikurung, jadi ia hanya bisa menerima. '
-                    'Kartu ini diberikan tanpa balasan.'
+                          'Kartu ini diberikan tanpa balasan.'
                     : 'Pilih kartu yang kamu tawarkan. $_name memilih kartu '
-                    'balasannya sendiri.',
+                          'balasannya sendiri.',
                 style: const TextStyle(
-                    fontSize: 12, height: 1.35, color: Colors.white60),
+                  fontSize: 12,
+                  height: 1.35,
+                  color: Colors.white60,
+                ),
               ),
               if (tradable.isEmpty)
                 const Padding(
@@ -505,8 +539,9 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                           count: groups[id]!.length,
                           onTap: busy
                               ? null
-                              : () => setState(() =>
-                          _pickCard = id == picked ? null : id),
+                              : () => setState(
+                                  () => _pickCard = id == picked ? null : id,
+                                ),
                         ),
                       );
                     },
@@ -525,81 +560,85 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                   child: picked == null
                       ? const SizedBox(width: double.infinity)
                       : Container(
-                    key: ValueKey(picked),
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          EmbunColors.gold.withValues(alpha: 0.14),
-                          Colors.black.withValues(alpha: 0.25),
-                        ],
-                      ),
-                      border: Border.all(
-                          color: EmbunColors.gold.withValues(alpha: 0.55)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                (pickedDef?['name'] as String?) ?? picked,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: EmbunColors.gold),
-                              ),
+                          key: ValueKey(picked),
+                          margin: const EdgeInsets.only(top: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                EmbunColors.gold.withValues(alpha: 0.14),
+                                Colors.black.withValues(alpha: 0.25),
+                              ],
                             ),
-                            if (kindLabel[pickedDef?['kind']] != null)
-                              _countChip(kindLabel[pickedDef?['kind']]!),
-                          ],
-                        ),
-                        if (((pickedDef?['description'] as String?) ?? '')
-                            .isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            pickedDef!['description'] as String,
-                            style: const TextStyle(
-                                fontSize: 12.5,
-                                height: 1.35,
-                                color: Colors.white70),
+                            border: Border.all(
+                              color: EmbunColors.gold.withValues(alpha: 0.55),
+                            ),
                           ),
-                        ],
-                        const SizedBox(height: 12),
-                        EmbunButton(
-                          label: _targetJailed
-                              ? 'Berikan ke $_name'
-                              : 'Tawarkan ke $_name',
-                          icon: 'kirim',
-                          expand: true,
-                          onPressed: busy
-                              ? null
-                              : () {
-                            final h = groups[picked]!.first;
-                            _run(
-                                  () async {
-                                await widget.repo.proposeTrade(
-                                    widget.gameId,
-                                    _uid,
-                                    h['id'] as String);
-                                widget.onOfferCard?.call(_uid, h);
-                              },
-                              closeWith: _targetJailed
-                                  ? 'Kartu diberikan ke $_name'
-                                  : 'Tawaran dikirim ke $_name',
-                            );
-                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      (pickedDef?['name'] as String?) ?? picked,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: EmbunColors.gold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (kindLabel[pickedDef?['kind']] != null)
+                                    _countChip(kindLabel[pickedDef?['kind']]!),
+                                ],
+                              ),
+                              if (((pickedDef?['description'] as String?) ?? '')
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  pickedDef!['description'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.35,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                              EmbunButton(
+                                label: _targetJailed
+                                    ? 'Berikan ke $_name'
+                                    : 'Tawarkan ke $_name',
+                                icon: 'kirim',
+                                expand: true,
+                                onPressed: busy
+                                    ? null
+                                    : () {
+                                        final h = groups[picked]!.first;
+                                        _run(
+                                          () async {
+                                            await widget.repo.proposeTrade(
+                                              widget.gameId,
+                                              _uid,
+                                              h['id'] as String,
+                                            );
+                                            widget.onOfferCard?.call(_uid, h);
+                                          },
+                                          closeWith: _targetJailed
+                                              ? 'Kartu diberikan ke $_name'
+                                              : 'Tawaran dikirim ke $_name',
+                                        );
+                                      },
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ],
@@ -623,9 +662,14 @@ class _PlayerSheetState extends State<_PlayerSheet> {
         const GameIcon('alert', size: 17),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(message,
-              style: const TextStyle(
-                  color: EmbunColors.blood, fontSize: 12.5, height: 1.3)),
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: EmbunColors.blood,
+              fontSize: 12.5,
+              height: 1.3,
+            ),
+          ),
         ),
       ],
     ),

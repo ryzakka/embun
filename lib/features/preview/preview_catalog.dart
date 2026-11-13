@@ -6,7 +6,33 @@ Map<String, Map<String, dynamic>> _index(String json) => {
     row['id'] as String: row,
 };
 
-final previewCards = _index(_cardsJson);
+final previewCards = _index(_cardsJson)
+  ..addAll({
+    'surat_dokter': {
+      'id': 'surat_dokter',
+      'side': 'warga',
+      'name': 'Surat Dokter',
+      'kind': 'perawatan',
+      'cost': 10,
+      'purchasable': true,
+      'description':
+          'Tiket Pondok Perawatan. Pulihkan 1 nyawa sendiri, atau bayar 12 tambahan untuk merawat pemain lain.',
+      'effect': {'clinic': 'heal'},
+      'art': 'pro-suratdokter',
+    },
+    'surat_sakit': {
+      'id': 'surat_sakit',
+      'side': 'antagonis',
+      'name': 'Surat Keterangan Sakit',
+      'kind': 'perawatan',
+      'cost': 14,
+      'purchasable': true,
+      'description':
+          'Pasang satu jebakan tersembunyi di pondok. Bertahan sampai seorang pengunjung lain terkena dan kehilangan 1 nyawa.',
+      'effect': {'clinic': 'trap'},
+      'art': 'anta-suratsakit',
+    },
+  });
 const _cardsJson = r'''
 [
   {"id":"air_suci","side":"warga","name":"Air Suci","kind":"persembahan","cost":6,"purchasable":true,"description":"+1 daun, tanah Hayu menyubur dan mengusir 1 ulat senyap yang tertunda.","effect":{"tanah":1,"leaves":1,"cure_worms":1},"art":"airsuci"},
@@ -71,7 +97,7 @@ const _cardsJson = r'''
   {"id":"penyamaran","side":"antagonis","name":"Kambing Hitam","kind":"malam","cost":14,"purchasable":true,"description":"Disiapkan di hari biasa, dipakai saat malam tiba: tuduhan mayoritas pertama atas dirimu dialihkan ke satu warga yang memilihmu dan belum pernah dituduh; ia yang dikurung dan menanggung tuduhannya. Berlaku sampai terpakai.","effect":{"night":"escape"},"art":"pakaianpenyamaran"},
   {"id":"penyiram","side":"warga","name":"Penyiram Tanaman","kind":"persembahan","cost":3,"purchasable":true,"description":"Akar Hayu menyegar dan kamu mendapat +1 embun.","effect":{"akar":1,"self_gain":1},"art":"penyiramtanaman"},
   {"id":"perisai_tuduhan","side":"warga","name":"Perisai Tuduhan","kind":"siang","cost":14,"purchasable":true,"description":"Pakai di hari biasa: tuduhan mayoritas berikutnya atas dirimu dibatalkan sepenuhnya, tanpa nyawa hilang, tanpa kurungan, dan Hayu tidak kehilangan daun. Lenyap sendiri di akhir sesi bila tak ada yang menuduhmu.","effect":{"day":"guard","guard":"accuse"},"art":"perisaituduhan"},
-  {"id":"perlindungan_malam","side":"warga","name":"Perisai Malam","kind":"siang","cost":10,"purchasable":true,"description":"Simpan, atau pakai di hari biasa: menahan setiap serangan malam yang menyasarmu sampai akhir sesi ini. Lenyap sendiri bila tak ada yang menyerang.","effect":{"day":"guard","guard":"shield"},"art":"perlindunganmalam"},
+  {"id":"perlindungan_malam","side":"warga","name":"Perisai Malam","kind":"siang","cost":10,"purchasable":true,"description":"Pakai di hari biasa untuk dirimu atau satu pemain lain. Menahan setiap serangan malam yang menyasar penerima sampai akhir sesi. Nama penjaga tetap rahasia. Penjaga mendapat laporan saat perisainya menahan serangan.","effect":{"day":"guard","guard":"shield","guard_target":true},"art":"perlindunganmalam"},
   {"id":"pindai_salah","side":"antagonis","name":"Fitnah","kind":"malam","cost":14,"purchasable":true,"description":"Disiapkan di hari biasa, dipakai saat malam tiba: satu pemain pilihan mendapat 1 suara tambahan dari kabut pada voting berikutnya.","effect":{"night":"fitnah","needs_target":true},"art":"pindaisalah"},
   {"id":"pita_doa","side":"warga","name":"Kain Kotak Hijau","kind":"persembahan","cost":3,"purchasable":true,"description":"Perlindungan pohon +1 semalam.","effect":{"shield":1},"art":"kainkotakhijau"},
   {"id":"poin_dna","side":"antagonis","name":"Poin DNA","kind":"poin","cost":12,"purchasable":true,"description":"Bahan penggabung (1 pakai). Di Meja (hari biasa), gabungkan dengan satu Kartu Rekayasa agar kartu itu aktif dan bisa dipersembahkan. Habis sekali pakai. Tidak bisa dipersembahkan sendiri.","effect":{"poin":1},"art":"rekayasa-poindna"},

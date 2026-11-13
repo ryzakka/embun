@@ -2,13 +2,47 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'server_clock.dart';
 
 class GameRepository {
+  Future<Map<String, dynamic>> _visitRpc(
+    String name,
+    String gameId, [
+    Map<String, dynamic> extra = const {},
+  ]) async {
+    final result = await _db.rpc(name, params: {'p_game': gameId, ...extra});
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> villageStatus(String gameId) =>
+      _visitRpc('village_visit_status', gameId);
+  Future<Map<String, dynamic>> enterVillagePlace(
+    String gameId,
+    String place, {
+    String? invitation,
+  }) => _visitRpc('enter_village_place', gameId, {
+    'p_place': place,
+    'p_invitation': invitation,
+  });
+  Future<Map<String, dynamic>> leaveVillagePlace(String gameId) =>
+      _visitRpc('leave_village_place', gameId);
+  Future<Map<String, dynamic>> contributeWell(String gameId) =>
+      _visitRpc('contribute_village_well', gameId);
+  Future<Map<String, dynamic>> useClinicLetter(
+    String gameId,
+    String handId, {
+    String? target,
+  }) => _visitRpc('use_clinic_letter', gameId, {
+    'p_hand_id': handId,
+    'p_target': target,
+  });
+  Future<void> finishVillageVisits(String gameId) =>
+      _db.rpc('finish_village_visits', params: {'p_game': gameId});
+
   final _db = Supabase.instance.client;
   String get myId => _db.auth.currentUser!.id;
 
   Future<Map<String, Map<String, dynamic>>> cardDefs() async {
     final rows = await _db.from('card_definitions').select();
     return {
-      for (final r in rows) r['id'] as String: Map<String, dynamic>.from(r)
+      for (final r in rows) r['id'] as String: Map<String, dynamic>.from(r),
     };
   }
 
@@ -28,11 +62,11 @@ class GameRepository {
       .stream(primaryKey: ['game_id', 'user_id'])
       .eq('game_id', gameId)
       .map((rows) {
-    for (final r in rows) {
-      if (r['user_id'] == myId) return r;
-    }
-    return null;
-  });
+        for (final r in rows) {
+          if (r['user_id'] == myId) return r;
+        }
+        return null;
+      });
 
   Stream<List<Map<String, dynamic>>> myHand(String gameId) => _db
       .from('hand_cards')
@@ -58,21 +92,24 @@ class GameRepository {
   /// Gabungkan kartu lanjutan (Regenerasi / Rekayasa) dengan satu kartu poin
   /// di tangan. Hasil: {message, hand_id}. Kartu menjadi aktif (charged).
   Future<Map<String, dynamic>> fuseCards(String gameId, String handId) async {
-    final r = await _db.rpc('fuse_cards',
-        params: {'p_game': gameId, 'p_hand_id': handId});
+    final r = await _db.rpc(
+      'fuse_cards',
+      params: {'p_game': gameId, 'p_hand_id': handId},
+    );
     return Map<String, dynamic>.from(r as Map);
   }
 
   Future<void> finishDay(String gameId, {String? card}) =>
       _db.rpc('finish_day', params: {'p_game': gameId, 'p_card': card});
 
-  Future<void> submitOffering(String gameId, List<String> handIds,
-      {String? target}) =>
-      _db.rpc('submit_offering', params: {
-        'p_game': gameId,
-        'p_hand_ids': handIds,
-        'p_target': target,
-      });
+  Future<void> submitOffering(
+    String gameId,
+    List<String> handIds, {
+    String? target,
+  }) => _db.rpc(
+    'submit_offering',
+    params: {'p_game': gameId, 'p_hand_ids': handIds, 'p_target': target},
+  );
 
   Future<List<Map<String, dynamic>>> effects(String gameId, int day) async {
     // Kolom delta/leaves_after sengaja tidak diminta (dan dicabut hak
@@ -140,7 +177,7 @@ class GameRepository {
           .eq('game_id', gameId)
           .eq('day', day);
       return {
-        for (final r in rows) r['user_id'] as String: r['n_cards'] as int
+        for (final r in rows) r['user_id'] as String: r['n_cards'] as int,
       };
     } catch (_) {
       return {};
@@ -161,8 +198,7 @@ class GameRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> privateLogs(
-      String gameId, int day) async {
+  Future<List<Map<String, dynamic>>> privateLogs(String gameId, int day) async {
     final rows = await _db
         .from('private_logs')
         .select()
@@ -176,28 +212,37 @@ class GameRepository {
   Future<void> advanceAfterEffects(String gameId) =>
       _db.rpc('advance_after_effects', params: {'p_game': gameId});
 
-  Stream<List<Map<String, dynamic>>> chat(String gameId, {bool terbisik = false}) => _db
+  Stream<List<Map<String, dynamic>>> chat(
+    String gameId, {
+    bool terbisik = false,
+  }) => _db
       .from(terbisik ? 'terbisik_messages' : 'chat_messages')
       .stream(primaryKey: ['id'])
       .eq('game_id', gameId)
       .order('created_at');
 
-  Future<void> sendMessage(String gameId, String body, {bool terbisik = false}) =>
-      _db.rpc(terbisik ? 'send_terbisik_message' : 'send_message',
-          params: {'p_game': gameId, 'p_body': body});
+  Future<void> sendMessage(
+    String gameId,
+    String body, {
+    bool terbisik = false,
+  }) => _db.rpc(
+    terbisik ? 'send_terbisik_message' : 'send_message',
+    params: {'p_game': gameId, 'p_body': body},
+  );
 
   Future<void> readyToVote(String gameId) =>
       _db.rpc('ready_to_vote', params: {'p_game': gameId});
 
   /// [hammer] = pakai Patuhilah Padaku (suara bernilai 2). Hanya sah bila
   /// pemain memegang kemampuannya dan [target] tidak kosong.
-  Future<void> submitVote(String gameId, String? target,
-      {bool hammer = false}) =>
-      _db.rpc('submit_vote', params: {
-        'p_game': gameId,
-        'p_target': target,
-        'p_hammer': hammer,
-      });
+  Future<void> submitVote(
+    String gameId,
+    String? target, {
+    bool hammer = false,
+  }) => _db.rpc(
+    'submit_vote',
+    params: {'p_game': gameId, 'p_target': target, 'p_hammer': hammer},
+  );
 
   /// Detak jantung + penegakan tenggat fase.
   Future<void> tick(String gameId) {
@@ -214,8 +259,9 @@ class GameRepository {
     final r = await _db.rpc('server_now');
     final t1 = DateTime.now();
     final server = DateTime.parse(r as String);
-    ServerClock.offset =
-        server.difference(t0.add(Duration(microseconds: t1.difference(t0).inMicroseconds ~/ 2)));
+    ServerClock.offset = server.difference(
+      t0.add(Duration(microseconds: t1.difference(t0).inMicroseconds ~/ 2)),
+    );
   }
 
   Stream<List<Map<String, dynamic>>> emotes(String gameId) => _db
@@ -225,8 +271,10 @@ class GameRepository {
       .order('created_at');
 
   Future<void> sendEmote(String gameId, String emoji, {String? target}) =>
-      _db.rpc('send_emote',
-          params: {'p_game': gameId, 'p_emoji': emoji, 'p_target': target});
+      _db.rpc(
+        'send_emote',
+        params: {'p_game': gameId, 'p_emoji': emoji, 'p_target': target},
+      );
 
   // ---- v2 ----
   Future<Map<String, dynamic>> researchStock(String gameId) async {
@@ -244,19 +292,27 @@ class GameRepository {
       _db.rpc('buy_card', params: {'p_game': gameId, 'p_card': card});
 
   Future<void> giveEmbun(String gameId, String to, int amount) => _db.rpc(
-      'give_embun',
-      params: {'p_game': gameId, 'p_to': to, 'p_amount': amount});
+    'give_embun',
+    params: {'p_game': gameId, 'p_to': to, 'p_amount': amount},
+  );
 
-  Future<void> proposeTrade(String gameId, String to, String handId) =>
-      _db.rpc('propose_trade',
-          params: {'p_game': gameId, 'p_to': to, 'p_hand_id': handId});
+  Future<void> proposeTrade(String gameId, String to, String handId) => _db.rpc(
+    'propose_trade',
+    params: {'p_game': gameId, 'p_to': to, 'p_hand_id': handId},
+  );
 
-  Future<void> respondTrade(String tradeId, bool accept, {String? returnHand}) =>
-      _db.rpc('respond_trade', params: {
-        'p_trade': tradeId,
-        'p_accept': accept,
-        'p_return_hand': returnHand,
-      });
+  Future<void> respondTrade(
+    String tradeId,
+    bool accept, {
+    String? returnHand,
+  }) => _db.rpc(
+    'respond_trade',
+    params: {
+      'p_trade': tradeId,
+      'p_accept': accept,
+      'p_return_hand': returnHand,
+    },
+  );
 
   Stream<List<Map<String, dynamic>>> villageEvents(String gameId) => _db
       .from('village_events')
@@ -265,10 +321,8 @@ class GameRepository {
       .order('created_at');
 
   /// RLS hanya menyerahkan tawaran yang melibatkan pemain ini.
-  Stream<List<Map<String, dynamic>>> trades(String gameId) => _db
-      .from('trade_offers')
-      .stream(primaryKey: ['id'])
-      .eq('game_id', gameId);
+  Stream<List<Map<String, dynamic>>> trades(String gameId) =>
+      _db.from('trade_offers').stream(primaryKey: ['id']).eq('game_id', gameId);
 
   Stream<List<Map<String, dynamic>>> presence(String gameId) => _db
       .from('player_presence')
@@ -282,7 +336,7 @@ class GameRepository {
         .select('user_id, username')
         .eq('game_id', gameId);
     return {
-      for (final r in rows) r['user_id'] as String: r['username'] as String
+      for (final r in rows) r['user_id'] as String: r['username'] as String,
     };
   }
 
@@ -336,7 +390,10 @@ class GameRepository {
 
   // ---- serangan malam ----
   /// Laporan malam hari [day]: pengumuman untuk semua + baris pribadi milikku.
-  Future<List<Map<String, dynamic>>> nightReports(String gameId, int day) async {
+  Future<List<Map<String, dynamic>>> nightReports(
+    String gameId,
+    int day,
+  ) async {
     final rows = await _db
         .from('night_reports')
         .select()
@@ -359,24 +416,32 @@ class GameRepository {
   }
 
   /// Memakai kartu kuning (hari biasa). Hasil: {mode, message}.
-  Future<Map<String, dynamic>> useDayCard(String gameId, String handId,
-      {String? target}) async {
-    final r = await _db.rpc('use_day_card',
-        params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target});
+  Future<Map<String, dynamic>> useDayCard(
+    String gameId,
+    String handId, {
+    String? target,
+  }) async {
+    final r = await _db.rpc(
+      'use_day_card',
+      params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target},
+    );
     return Map<String, dynamic>.from(r as Map);
   }
 
-  /// Perlindungan / cermin yang sedang aktif milikku. Kosong bila gagal.
+  /// Perlindungan milikku dan pemain yang sedang kujaga.
   Future<List<Map<String, dynamic>>> myGuards(String gameId) async {
     try {
+      final rows = await _db.rpc('my_guard_status', params: {'p_game': gameId});
+      return List<Map<String, dynamic>>.from(rows as List);
+    } on PostgrestException catch (error) {
+      // Tetap mendukung server yang belum memasang migrasi penjagaan.
+      if (error.code != 'PGRST202' && error.code != '42883') rethrow;
       final rows = await _db
           .from('player_guards')
           .select()
           .eq('game_id', gameId)
           .eq('user_id', myId);
       return List<Map<String, dynamic>>.from(rows);
-    } catch (_) {
-      return [];
     }
   }
 
@@ -387,22 +452,29 @@ class GameRepository {
 
   /// Siapkan kartu serangan malam. Tanpa [handId] = batalkan rencana.
   Future<void> armNightCard(String gameId, {String? handId, String? target}) =>
-      _db.rpc('arm_night_card',
-          params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target});
+      _db.rpc(
+        'arm_night_card',
+        params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target},
+      );
 
   // ---- kemampuan warga ----
   Future<Map<String, Map<String, dynamic>>> abilityDefs() async {
     final rows = await _db.from('ability_definitions').select();
     return {
-      for (final r in rows) r['id'] as String: Map<String, dynamic>.from(r)
+      for (final r in rows) r['id'] as String: Map<String, dynamic>.from(r),
     };
   }
 
   /// Memakai kemampuan sekali pakai. Hasil: {result, message, ...}.
-  Future<Map<String, dynamic>> useAbility(String gameId,
-      {String? target, String? option}) async {
-    final r = await _db.rpc('use_ability',
-        params: {'p_game': gameId, 'p_target': target, 'p_option': option});
+  Future<Map<String, dynamic>> useAbility(
+    String gameId, {
+    String? target,
+    String? option,
+  }) async {
+    final r = await _db.rpc(
+      'use_ability',
+      params: {'p_game': gameId, 'p_target': target, 'p_option': option},
+    );
     return Map<String, dynamic>.from(r as Map);
   }
 

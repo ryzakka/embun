@@ -11,9 +11,12 @@ enum NightImpactEffect {
   bowMiss,
   mirror,
   shield,
+  guard,
   pump,
   burn,
   theft,
+  clinicHeal,
+  clinicTrap,
 }
 
 class NightImpact {
@@ -22,6 +25,7 @@ class NightImpact {
   final bool applied;
   final num? delta;
   final String? card;
+  final String? targetName;
 
   const NightImpact._(
     this.effect, {
@@ -29,6 +33,7 @@ class NightImpact {
     required this.applied,
     this.delta,
     this.card,
+    this.targetName,
   });
 
   static NightImpact? fromReport(Map<String, dynamic> report) {
@@ -44,13 +49,19 @@ class NightImpact {
       'bow_miss' => NightImpactEffect.bowMiss,
       'mirror' => NightImpactEffect.mirror,
       'shield' => NightImpactEffect.shield,
+      'guard' => NightImpactEffect.guard,
       'pump' => NightImpactEffect.pump,
       'burn' => NightImpactEffect.burn,
       'theft' => NightImpactEffect.theft,
+      'clinic_heal' => NightImpactEffect.clinicHeal,
+      'clinic_trap' => NightImpactEffect.clinicTrap,
       _ => null,
     };
     if (effect == null ||
-        (data['view'] != 'actor' && data['view'] != 'target')) {
+        (data['view'] != 'actor' &&
+            data['view'] != 'target' &&
+            !(effect == NightImpactEffect.guard &&
+                data['view'] == 'guardian'))) {
       return null;
     }
     final delta = data['delta'];
@@ -61,6 +72,9 @@ class NightImpact {
       applied: data['applied'] != false,
       delta: delta is num ? delta : null,
       card: card is String ? card : null,
+      targetName: data['target_name'] is String
+          ? data['target_name'] as String
+          : null,
     );
   }
 
@@ -74,6 +88,10 @@ class NightImpact {
       };
     }
     return switch (effect) {
+      NightImpactEffect.clinicHeal =>
+        actor ? 'Perawatanmu berhasil' : 'Nyawamu pulih',
+      NightImpactEffect.clinicTrap =>
+        actor ? 'Jebakan pondok terpicu' : 'Jebakan di pondok',
       NightImpactEffect.bowHit =>
         actor ? 'Panah mengenai sasaran' : 'Kamu terkena panah',
       NightImpactEffect.bowFinal =>
@@ -83,6 +101,7 @@ class NightImpact {
         actor ? 'Seranganmu dipantulkan' : 'Cermin Kecil memantulkan serangan',
       NightImpactEffect.shield =>
         actor ? 'Seranganmu tertahan' : 'Perisai Malam menahan serangan',
+      NightImpactEffect.guard => 'Penjagaanmu berhasil',
       NightImpactEffect.pump =>
         actor ? 'Embun berhasil disedot' : 'Embunmu tersedot',
       NightImpactEffect.burn =>
@@ -93,14 +112,26 @@ class NightImpact {
   }
 
   String? get amount {
+    if (!applied) return null;
+    if (effect == NightImpactEffect.guard ||
+        effect == NightImpactEffect.shield) {
+      return '1 serangan tertahan';
+    }
+    if (effect == NightImpactEffect.burn) return '1 kartu terbakar';
+    if (effect == NightImpactEffect.theft) {
+      return actor ? '+1 kartu' : '−1 kartu';
+    }
     final value = delta;
-    if (!applied || value == null || value == 0) return null;
+    if (value == null || value == 0) return null;
     final magnitude = value.abs();
     final number = magnitude
         .toStringAsFixed(magnitude % 1 == 0 ? 0 : 1)
         .replaceAll('.', ',');
     final unit = switch (effect) {
-      NightImpactEffect.bowHit || NightImpactEffect.bowMiss => 'nyawa',
+      NightImpactEffect.bowHit => actor ? 'nyawa sasaran' : 'nyawa',
+      NightImpactEffect.bowMiss ||
+      NightImpactEffect.clinicHeal ||
+      NightImpactEffect.clinicTrap => actor ? 'nyawa sasaran' : 'nyawa',
       NightImpactEffect.mirror => 'bulir hitam',
       NightImpactEffect.pump => actor ? 'bulir hitam' : 'tetes embun',
       _ => null,
@@ -109,12 +140,15 @@ class NightImpact {
   }
 
   Color get color => switch (effect) {
+    NightImpactEffect.clinicHeal => const Color(0xFF8DE7B7),
+    NightImpactEffect.clinicTrap => const Color(0xFFFF9384),
     NightImpactEffect.bowHit || NightImpactEffect.bowFinal =>
       actor ? const Color(0xFFFFD78B) : const Color(0xFFFF9384),
     NightImpactEffect.bowMiss ||
     NightImpactEffect.burn => const Color(0xFFFF9E70),
     NightImpactEffect.mirror => const Color(0xFFCCB7FF),
     NightImpactEffect.shield => const Color(0xFFAAD9FF),
+    NightImpactEffect.guard => const Color(0xFF8DE7B7),
     NightImpactEffect.pump =>
       actor ? const Color(0xFFD7ADF5) : const Color(0xFF84E0E6),
     NightImpactEffect.theft => const Color(0xFFC1ABEF),
@@ -126,7 +160,11 @@ class NightImpact {
           NightImpactEffect.bowHit ||
           NightImpactEffect.bowFinal ||
           NightImpactEffect.bowMiss => Snd.slashCahaya,
-          NightImpactEffect.mirror || NightImpactEffect.shield => Snd.clickTung,
+          NightImpactEffect.mirror ||
+          NightImpactEffect.shield ||
+          NightImpactEffect.guard ||
+          NightImpactEffect.clinicHeal => Snd.clickTung,
+          NightImpactEffect.clinicTrap => Snd.slashCahaya,
           NightImpactEffect.pump || NightImpactEffect.theft => Snd.swingWind2,
           NightImpactEffect.burn => Snd.swingFire1,
         };
@@ -197,6 +235,14 @@ class NightImpactReport extends StatelessWidget {
               height: 1.16,
             ),
           ),
+          if (impact.targetName case final name?)
+            Padding(
+              padding: const EdgeInsets.only(top: 7, bottom: 3),
+              child: Text(
+                'Kamu → $name',
+                style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              ),
+            ),
           const SizedBox(height: 5),
           Text(
             message,
@@ -312,18 +358,43 @@ class _ImpactPainter extends CustomPainter {
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(scale);
     switch (impact.effect) {
+      case NightImpactEffect.clinicHeal:
+      case NightImpactEffect.clinicTrap:
+        _clinic(canvas);
       case NightImpactEffect.bowHit:
       case NightImpactEffect.bowFinal:
       case NightImpactEffect.bowMiss:
         _bow(canvas);
       case NightImpactEffect.mirror:
       case NightImpactEffect.shield:
+      case NightImpactEffect.guard:
         _ward(canvas);
       case NightImpactEffect.pump:
         _drops(canvas);
       case NightImpactEffect.burn:
       case NightImpactEffect.theft:
         _cards(canvas);
+    }
+  }
+
+  void _clinic(Canvas canvas) {
+    final p = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
+    final heal = impact.effect == NightImpactEffect.clinicHeal;
+    canvas.drawCircle(Offset.zero, 18 + 22 * p, _ink((1 - p) * .75, width: 3));
+    final ink = Paint()
+      ..color = impact.color.withValues(alpha: .95)
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(-18, 0), const Offset(18, 0), ink);
+    if (heal) canvas.drawLine(const Offset(0, -18), const Offset(0, 18), ink);
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      final distance = 25 + 24 * p;
+      canvas.drawCircle(
+        Offset(math.cos(angle) * distance, math.sin(angle) * distance),
+        2.5,
+        _ink(1 - p, width: 2),
+      );
     }
   }
 
@@ -373,7 +444,19 @@ class _ImpactPainter extends CustomPainter {
 
   void _ward(Canvas canvas) {
     final mirror = impact.effect == NightImpactEffect.mirror;
-    final face = impact.actor ? 1.0 : -1.0;
+    if (impact.effect == NightImpactEffect.guard) {
+      final travel = Curves.easeOutCubic.transform(_range(progress, 0, 0.35));
+      canvas.drawLine(
+        const Offset(-75, 0),
+        const Offset(55, 0),
+        _ink(0.16, width: 1),
+      );
+      canvas.drawCircle(const Offset(-75, 0), 9, _ink(0.5));
+      canvas.translate(-65 + 115 * travel, 0);
+    }
+    final face = impact.actor || impact.effect == NightImpactEffect.guard
+        ? 1.0
+        : -1.0;
     final arrival = _range(progress, 0, 0.4);
     final bounce = _range(progress, 0.4, 0.88);
     final outline = mirror

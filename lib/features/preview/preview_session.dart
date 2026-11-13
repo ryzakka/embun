@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../../data/announcement_repository.dart';
-import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../../data/game_rules.dart';
 import '../../data/lobby_repository.dart';
@@ -20,9 +19,95 @@ class PreviewSession
   static const gameId = 'preview-game';
   static const roomCode = 'HAYUU';
 
+  final List<PreviewRow> _visits = [];
+  double _wellBonus = 0;
+  bool _trapWaiting = false;
+  @override
+  Future<PreviewRow> villageStatus(String gameId) async => {
+    'limit': 2,
+    'used': _visits.where((v) => v['invitation_id'] == null).length,
+    'current': _visits.where((v) => v['closed_at'] == null).lastOrNull,
+    'well_cost': 8,
+    'well_step': .15,
+    'well_cap': 1.5,
+    'well_bonus': _wellBonus,
+    'care_other_fee': 12,
+    'own_trap_waiting': _trapWaiting,
+  };
+  @override
+  Future<PreviewRow> enterVillagePlace(
+    String gameId,
+    String place, {
+    String? invitation,
+  }) async {
+    final state = await villageStatus(gameId);
+    if (invitation == null && (state['used'] as int) >= 2) {
+      throw StateError('Dua kunjungan sudah terpakai');
+    }
+    if (place == 'pondok' &&
+        !_hand.any(
+          (h) => h['card_id'] == (_dark ? 'surat_sakit' : 'surat_dokter'),
+        )) {
+      throw StateError('Perlu surat perawatan');
+    }
+    _visits.add({
+      'id': 'visit-${++_sequence}',
+      'day': day,
+      'place': place,
+      'invitation_id': invitation,
+      'action_used': false,
+    });
+    return villageStatus(gameId);
+  }
+
+  @override
+  Future<PreviewRow> leaveVillagePlace(String gameId) async {
+    final v = _visits.where((v) => v['closed_at'] == null).lastOrNull;
+    if (v != null) v['closed_at'] = _stamp;
+    return villageStatus(gameId);
+  }
+
+  @override
+  Future<PreviewRow> contributeWell(String gameId) async {
+    final v = _visits.where((v) => v['closed_at'] == null).last;
+    if (v['action_used'] == true || v['place'] != 'sumur' || _balance < 8) {
+      throw StateError('Tindakan tidak tersedia');
+    }
+    _balance -= 8;
+    _wellBonus = (_wellBonus + (_dark ? -.15 : .15)).clamp(-1.5, 1.5);
+    _game['village_rate_bonus'] = _wellBonus;
+    v['action_used'] = true;
+    _update();
+    return villageStatus(gameId);
+  }
+
+  @override
+  Future<PreviewRow> useClinicLetter(
+    String gameId,
+    String handId, {
+    String? target,
+  }) async {
+    final v = _visits.where((v) => v['closed_at'] == null).last;
+    if (v['action_used'] == true || v['place'] != 'pondok') {
+      throw StateError('Layanan sudah digunakan');
+    }
+    if (!_dark && target != myId) _balance -= 12;
+    _trapWaiting = _dark;
+    _hand.removeWhere((h) => h['id'] == handId);
+    v['action_used'] = true;
+    _update();
+    return villageStatus(gameId);
+  }
+
+  @override
+  Future<void> finishVillageVisits(String gameId) async {
+    _ready(true);
+  }
+
   final _changes = StreamController<void>.broadcast();
   final List<PreviewRow> _players = [];
   final List<PreviewRow> _hand = [];
+  final List<PreviewRow> _guards = [];
   final List<PreviewRow> _chat = [];
   final List<PreviewRow> _secretChat = [];
   final List<PreviewRow> _emotes = [];
@@ -100,6 +185,8 @@ class PreviewSession
           ? 'lobby'
           : 'playing',
       'phase': phase,
+      'visits_enabled': phase == 'visits',
+      'village_rate_bonus': 0,
       'day': waitingRoom
           ? 0
           : winner != null
@@ -137,20 +224,20 @@ class PreviewSession
       'winner': winner,
       'end_reason': winner == 'warga' ? 'tertangkap' : null,
     };
-    // Kartu diambil dari aset yang ada (tersebar merata), jadi tak perlu
-    // diubah saat kartu karakter diganti. Nama = judul kartunya.
-    final pria = AssetCatalog.I.stems(protagonisPriaDir);
-    final wanita = AssetCatalog.I.stems(protagonisWanitaDir);
-    String pick(List<String> l, int i) =>
-        l.isEmpty ? 'default' : l[i * l.length ~/ 4];
-    final cards = [
-      pick(pria, 0),
-      pick(pria, 1),
-      pick(pria, 2),
-      pick(wanita, 0),
-      pick(pria, 3),
+    const names = [
+      'Pelukis',
+      'Peselancar',
+      'Mata-mata',
+      'Penatu',
+      'Penggembala',
     ];
-    final names = [for (final c in cards) characterTitle(c)];
+    const cards = [
+      'pria-pelukis',
+      'pria-peselancar',
+      'pria-matamata',
+      'wanita-penatu',
+      'pria-penggembala',
+    ];
     _players
       ..clear()
       ..addAll([
@@ -162,10 +249,10 @@ class PreviewSession
             'ready': i == 0 ? locked : i % 2 == 1,
             'strikes': i == 0
                 ? (eliminated
-                ? 2
-                : jailed
-                ? 1
-                : 0)
+                      ? 2
+                      : jailed
+                      ? 1
+                      : 0)
                 : i % 2,
             if (i == 0 && jailed) 'jailed_day': day,
             if (i == 0 && jailed) 'jailed_until': day + 1,
@@ -173,15 +260,27 @@ class PreviewSession
             'joined_at': _stamp,
           },
       ]);
+    _visits.clear();
+    _wellBonus = 0;
+    _trapWaiting = false;
+    _guards.clear();
     _hand.clear();
     final base = _dark ? 'embun_samaran' : 'embun_biasa';
     _addCard(base);
-    for (final kind in ['persembahan', 'poin', 'lanjutan', 'siang', 'malam']) {
+    for (final kind in [
+      'persembahan',
+      'poin',
+      'lanjutan',
+      'siang',
+      'malam',
+      'perawatan',
+    ]) {
       final pool = _pool(kind).where((d) => d['id'] != base);
       for (final d in pool.take(kind == 'persembahan' ? 3 : 2)) {
         _addCard(d['id'] as String);
       }
     }
+    if (!_dark) _addCard('perlindungan_malam');
     _bought.clear();
     _researched.clear();
     _chat
@@ -212,7 +311,7 @@ class PreviewSession
   void _update() => _changes.add(null);
 
   Iterable<PreviewRow> _pool(String kind) => previewCards.values.where(
-        (d) => d['side'] == role && d['kind'] == kind && d['purchasable'] == true,
+    (d) => d['side'] == role && d['kind'] == kind && d['purchasable'] == true,
   );
 
   void _addCard(String id, {bool charged = false}) {
@@ -243,6 +342,8 @@ class PreviewSession
     _game = {
       ..._game,
       'phase': phase,
+      'visits_enabled': phase == 'visits',
+      'village_rate_bonus': 0,
       if (nextDay != null) 'day': nextDay,
       'phase_deadline': DateTime.now()
           .toUtc()
@@ -267,12 +368,12 @@ class PreviewSession
 
   @override
   Future<String> createGame(
-      String name,
-      String card, {
-        bool isPublic = false,
-        int cycles = 4,
-        int antagonistCount = 1,
-      }) async {
+    String name,
+    String card, {
+    bool isPublic = false,
+    int cycles = 4,
+    int antagonistCount = 1,
+  }) async {
     prepare(waitingRoom: true, antagonists: antagonistCount, role: role);
     _game.addAll({'is_public': isPublic, 'cycles': cycles});
     _players[0] = {...me, 'name': name, 'character_card': card};
@@ -424,7 +525,7 @@ class PreviewSession
         'role': i == 0
             ? role
             : (i == 1 && (!_dark || antagonistCount == 2)) ||
-            (i == roster.length - 1 && !_dark && antagonistCount == 2)
+                  (i == roster.length - 1 && !_dark && antagonistCount == 2)
             ? 'antagonis'
             : 'warga',
         'dark_seed': i,
@@ -461,7 +562,7 @@ class PreviewSession
   Future<PreviewRow> fuseCards(String gameId, String handId) async {
     final item = _hand.firstWhere((h) => h['id'] == handId);
     final points = _hand.indexWhere(
-          (h) => previewCards[h['card_id']]?['kind'] == 'poin',
+      (h) => previewCards[h['card_id']]?['kind'] == 'poin',
     );
     if (points < 0) throw StateError('Belum ada kartu poin.');
     item['charged'] = true;
@@ -475,10 +576,10 @@ class PreviewSession
 
   @override
   Future<void> submitOffering(
-      String gameId,
-      List<String> handIds, {
-        String? target,
-      }) async {
+    String gameId,
+    List<String> handIds, {
+    String? target,
+  }) async {
     _hand.removeWhere((h) => handIds.contains(h['id']));
     _ready(true);
   }
@@ -528,7 +629,7 @@ class PreviewSession
     else
       {
         'message':
-        'Desas-desus: kamu mendengar bahwa Penjahit adalah Si Terbisik.',
+            'Desas-desus: kamu mendengar bahwa Penjahit adalah Si Terbisik.',
       },
     {'message': 'Firasatmu tertuju pada Peselancar.'},
   ];
@@ -545,10 +646,10 @@ class PreviewSession
 
   @override
   Future<void> sendMessage(
-      String gameId,
-      String body, {
-        bool terbisik = false,
-      }) async {
+    String gameId,
+    String body, {
+    bool terbisik = false,
+  }) async {
     if (terbisik && (!_dark || antagonistCount != 2)) {
       throw StateError('Kanal ini khusus mode Dua Terbisik.');
     }
@@ -561,10 +662,10 @@ class PreviewSession
 
   @override
   Future<void> submitVote(
-      String gameId,
-      String? target, {
-        bool hammer = false,
-      }) async {
+    String gameId,
+    String? target, {
+    bool hammer = false,
+  }) async {
     _usedAbility = _usedAbility || hammer;
     _ready(true);
   }
@@ -595,10 +696,14 @@ class PreviewSession
   @override
   Future<PreviewRow> researchStock(String gameId) async => {
     'items': [
-      for (final d in [..._pool('poin'), ..._pool('lanjutan')])
+      for (final d in [
+        ..._pool('poin'),
+        ..._pool('lanjutan'),
+        ..._pool('perawatan'),
+      ])
         {
           'card_id': d['id'],
-          'price': d['cost'],
+          'price': ((d['cost'] as num) * 1.2).ceil(),
           'bought': _researched.contains(d['id']),
         },
     ],
@@ -645,10 +750,10 @@ class PreviewSession
 
   @override
   Future<void> respondTrade(
-      String tradeId,
-      bool accept, {
-        String? returnHand,
-      }) async {
+    String tradeId,
+    bool accept, {
+    String? returnHand,
+  }) async {
     final i = _trades.indexWhere((t) => t['id'] == tradeId);
     if (i < 0) return;
     if (accept) {
@@ -661,7 +766,7 @@ class PreviewSession
 
   @override
   Stream<List<PreviewRow>> villageEvents(String gameId) => _watch(
-        () => [
+    () => [
       {
         'id': 'preview-event',
         'day': day,
@@ -677,7 +782,7 @@ class PreviewSession
 
   @override
   Stream<List<PreviewRow>> presence(String gameId) => _watch(
-        () => [
+    () => [
       for (final p in roster) {'user_id': p['user_id'], 'last_seen': _stamp},
     ],
   );
@@ -726,11 +831,22 @@ class PreviewSession
       'kind': 'private',
       'user_id': myId,
       'scene': 'impact',
-      'text': actor ? 'Aksimu mengenai sasaran.' : 'Serangan malam mengenaimu.',
+      'text': effect == 'guard'
+          ? 'Perisai yang kamu pasang untuk ${other['name']} menahan serangan malam.'
+          : effect == 'shield'
+          ? 'Perisai Malam menahan serangan yang menyasarmu.'
+          : actor
+          ? 'Aksimu mengenai sasaran.'
+          : 'Serangan malam mengenaimu.',
       'impact': {
         'effect': effect,
-        'view': actor ? 'actor' : 'target',
-        'delta': effect == 'pump' ? 6 : 1,
+        'view': effect == 'guard'
+            ? 'guardian'
+            : actor
+            ? 'actor'
+            : 'target',
+        if (effect == 'guard') 'target_name': other['name'],
+        'delta': effect == 'pump' ? (actor ? 6 : -6) : -1,
         if (effect == 'burn' || effect == 'theft') 'card': 'air_suci',
       },
     },
@@ -745,11 +861,38 @@ class PreviewSession
 
   @override
   Future<PreviewRow> useDayCard(
-      String gameId,
-      String handId, {
-        String? target,
-      }) async {
-    _hand.removeWhere((h) => h['id'] == handId);
+    String gameId,
+    String handId, {
+    String? target,
+  }) async {
+    final hand = _hand.firstWhere((h) => h['id'] == handId);
+    final effect = previewCards[hand['card_id']]?['effect'];
+    if (effect is Map && effect['day'] == 'guard') {
+      final targetId = effect['guard_target'] == true ? target ?? myId : myId;
+      final player = _players.firstWhere((p) => p['user_id'] == targetId);
+      if (_guards.any(
+        (g) => g['user_id'] == targetId && g['kind'] == effect['guard'],
+      )) {
+        throw StateError(
+          'Perlindungan sejenis masih aktif pada pemain pilihanmu',
+        );
+      }
+      _guards.add({
+        'user_id': targetId,
+        'kind': effect['guard'],
+        'until_day': ((day - 1) ~/ 3 + 1) * 3,
+        'direction': targetId == myId ? 'self' : 'outgoing',
+      });
+      _hand.remove(hand);
+      _update();
+      return {
+        'mode': 'guard',
+        'message': targetId == myId
+            ? 'Perlindunganmu aktif sampai akhir sesi ini.'
+            : 'Perisai Malam menjaga ${player['name']} sampai akhir sesi ini.',
+      };
+    }
+    _hand.remove(hand);
     _update();
     return {
       'mode': 'preview',
@@ -758,7 +901,7 @@ class PreviewSession
   }
 
   @override
-  Future<List<PreviewRow>> myGuards(String gameId) async => [];
+  Future<List<PreviewRow>> myGuards(String gameId) async => List.of(_guards);
 
   @override
   Future<void> nightContinue(String gameId) async =>
@@ -766,10 +909,10 @@ class PreviewSession
 
   @override
   Future<void> armNightCard(
-      String gameId, {
-        String? handId,
-        String? target,
-      }) async {
+    String gameId, {
+    String? handId,
+    String? target,
+  }) async {
     _nightPlan = handId == null
         ? null
         : {'hand_id': handId, 'target_id': target};
@@ -777,10 +920,10 @@ class PreviewSession
 
   @override
   Future<PreviewRow> useAbility(
-      String gameId, {
-        String? target,
-        String? option,
-      }) async {
+    String gameId, {
+    String? target,
+    String? option,
+  }) async {
     _usedAbility = true;
     return {'result': 'ok', 'message': 'Kemampuan dipakai dalam sesi contoh.'};
   }
@@ -820,7 +963,7 @@ class PreviewSession
       'kind': 'pengumuman',
       'title': 'Selamat datang di Desa Hayu',
       'body':
-      'Contoh pengumuman desa.\n\nJaga Hayu dan ajak warga bermusyawarah.',
+          'Contoh pengumuman desa.\n\nJaga Hayu dan ajak warga bermusyawarah.',
       'pinned': true,
       'published_at': _stamp,
     },

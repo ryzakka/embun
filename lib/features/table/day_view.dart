@@ -61,6 +61,8 @@ class DayView extends StatefulWidget {
   final int priceMod;
   final int extraBuy;
   final DayTab initialTab;
+  final bool venueMode;
+  final bool visitsEnabled;
 
   /// Naik tiap kali pasar perlu dimuat ulang dari luar (mis. Pedagang Ulung).
   final ValueListenable<int>? marketTick;
@@ -101,6 +103,8 @@ class DayView extends StatefulWidget {
     required this.priceMod,
     required this.extraBuy,
     this.initialTab = DayTab.market,
+    this.venueMode = false,
+    this.visitsEnabled = false,
     this.marketTick,
     required this.hand,
     required this.defs,
@@ -138,8 +142,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   // "Tempatkan" ditekan.
   String? _fuseAdv;
   String? _fusePoin;
-  late int _deskTab =
-      widget.initialTab == DayTab.market ? _tabMeja : widget.initialTab.index;
+  late int _deskTab = widget.initialTab == DayTab.market
+      ? _tabMeja
+      : widget.initialTab.index;
   _Mode _lastMode = _Mode.phone;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
@@ -181,6 +186,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 2600),
     )..repeat();
+    if (widget.venueMode) return;
     _loadOffers();
     _loadGuards();
     _guardTimer = Timer.periodic(
@@ -327,6 +333,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   /// Buka Gabung dan tempatkan kartu pilihan bila ada.
   void _openGabung([String? advCardId]) {
+    if (widget.visitsEnabled && !widget.venueMode) {
+      _toast('Kunjungi Bengkel Desa pada malam sebelum persembahan.');
+      return;
+    }
     if (advCardId != null) setState(() => _fuseAdv = advCardId);
     _goTab(_tabGabung);
   }
@@ -352,7 +362,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       context,
       def,
       defs: widget.defs,
-      actionLabel: 'Buka tab Gabung',
+      actionLabel: widget.visitsEnabled ? 'Bengkel Desa' : 'Buka tab Gabung',
       onAction: () async {
         if (mounted) _openGabung(h['card_id'] as String);
       },
@@ -472,7 +482,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                           child: Text(
                             q['direction'] == 'outgoing'
                                 ? 'Menjaga ${names[q['user_id']] ?? 'pemain'}'
-                                  ' · sampai hari ${q['until_day']}'
+                                      ' · sampai hari ${q['until_day']}'
                                 : '${switch (q['kind']) {
                                     'mirror' => 'Cermin Kecil aktif',
                                     'accuse' => 'Perisai Tuduhan aktif',
@@ -1249,14 +1259,20 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     'siang' => 0,
     'lanjutan' || 'poin' => 1,
     'malam' => 2,
+    'perawatan' => 4,
     _ => 3,
   };
 
   static const _mejaGroupInfo = [
     ('item', 'Pakai di siang', 'Ketuk kartu untuk memakainya saat itu juga.'),
-    ('plus', 'Kombinasi', 'Gabungkan di tab Gabung, lalu persembahkan.'),
+    ('plus', 'Kombinasi', 'Aktifkan dengan kartu poin sebelum dipersembahkan.'),
     ('danger', 'Serangan malam', 'Dilancarkan saat malam tiba.'),
     ('donations', 'Untuk persembahan', 'Dipersembahkan di malam persembahan.'),
+    (
+      'item',
+      'Tiket perawatan',
+      'Gunakan di Pondok Perawatan saat kunjungan malam.',
+    ),
   ];
 
   /// Kartu yang sama (dan berstatus sama) ditumpuk jadi satu, dengan lencana
@@ -1351,7 +1367,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     if (dormant == 0 && poin == 0) return null;
     final ready = dormant > 0 && poin > 0;
     final String text;
-    if (ready) {
+    if (widget.visitsEnabled && !widget.venueMode) {
+      text = ready
+          ? 'Kartu dan poin tersedia. Aktifkan di Bengkel Desa pada malam sebelum persembahan.'
+          : 'Lengkapi kartu dan poin di Pasar Riset, lalu aktifkan di Bengkel Desa.';
+    } else if (ready) {
       final n = dormant < poin ? dormant : poin;
       text =
           'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
@@ -1368,7 +1388,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final c = ready ? EmbunColors.gold : Colors.white70;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: ready ? () => _openGabung() : null,
+      onTap: ready && (!widget.visitsEnabled || widget.venueMode)
+          ? () => _openGabung()
+          : null,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 14),
@@ -1713,7 +1735,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
               child: Text(
                 faded
                     ? 'Belum ada kartu lanjutan yang perlu diaktifkan.'
-                    : 'Belum ada $_poinName. Belilah di Toko atau Pasar Riset.',
+                    : 'Belum ada $_poinName. Belilah di Pasar Riset.',
                 style: const TextStyle(fontSize: 12, color: Colors.white60),
               ),
             )
@@ -1743,6 +1765,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   Widget _gabungBody({double minW = 96}) {
+    if (widget.visitsEnabled && !widget.venueMode) {
+      return _empty(
+        'plus',
+        'Bengkel Desa',
+        'Gabungkan kartu saat kunjungan malam sebelum persembahan.',
+      );
+    }
     final c = _fuseCandidates();
     // Pilihan yang sudah tidak ada di tangan dilepas otomatis.
     final advOk = _fuseAdv != null && c.adv.any((e) => e.$1 == _fuseAdv);
@@ -1753,7 +1782,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       return _empty(
         'plus',
         'Belum ada yang bisa digabung',
-        'Beli kartu lanjutan dan $_poinName di Toko atau Pasar Riset, '
+        'Beli kartu lanjutan dan $_poinName di Pasar Riset, '
             'lalu gabungkan di sini.',
       );
     }
@@ -2008,15 +2037,19 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   Widget _hintCard() => Container(
     padding: const EdgeInsets.all(10),
-    child: const Row(
+    child: Row(
       children: [
-        GameIcon('info', size: 28),
+        const GameIcon('info', size: 28),
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            'Buka daftar warga atau ketuk avatar untuk memberi embun, menukar '
-            'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
-            'sebuah kartu untuk membaca efeknya.',
+            widget.venueMode
+                ? 'Pilih penerima dan kartu di atas, lalu tunggu jawaban. Tawaran masuk bisa kamu terima atau tolak di sini.'
+                : widget.visitsEnabled
+                ? 'Ketuk avatar untuk memberi embun atau isyarat. Pertukaran kartu tersedia di Balai Pertukaran saat kunjungan malam.'
+                : 'Buka daftar warga atau ketuk avatar untuk memberi embun, menukar '
+                      'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
+                      'sebuah kartu untuk membaca efeknya.',
             style: TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ),
@@ -2099,7 +2132,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       _tabBalai => _incoming.length,
       _ => 0,
     };
-    final label = _tabLabels[index];
+    final label = widget.visitsEnabled && index == _tabGabung
+        ? 'Bengkel'
+        : _tabLabels[index];
 
     final icon = Badge(
       isLabelVisible: badge > 0,
@@ -2211,8 +2246,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   Widget _dock() => LayoutBuilder(
     builder: (context, box) {
       final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
-      final stacked = box.maxWidth < 300 ||
-          (box.maxWidth < 390 && scale > 1.25);
+      final stacked =
+          box.maxWidth < 300 || (box.maxWidth < 390 && scale > 1.25);
       final tabs = Row(
         children: [
           for (final index in const [_tabToko, _tabMeja, _tabGabung, _tabBalai])
@@ -2358,6 +2393,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
+      if (widget.venueMode) {
+        return _handPage(widget.initialTab.index, wide: box.maxWidth > 700);
+      }
       final previous = _lastMode;
       _lastMode = _modeFor(box);
       if (previous != _lastMode && _lastMode != _Mode.wide) {

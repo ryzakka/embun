@@ -1040,6 +1040,30 @@ class _HowToTab extends StatelessWidget {
           ],
         ),
         _Section(
+          icon: 'store',
+          title: 'Kunjungan desa',
+          children: [
+            _para(
+              'Malam sebelum persembahan, pilih maksimal **2 tempat**. Panah hanya mengganti tujuan. Jatah terpakai saat masuk; meninggalkan tempat tidak mengembalikannya.',
+            ),
+            _bullet(
+              '**Pasar Riset**: beli kartu poin, kartu lanjutan, dan surat perawatan. Maksimal 2 pembelian; harga +20%.',
+            ),
+            _bullet(
+              '**Sumur Desa**: bayar 8 uang untuk mengubah laju bersama sebesar +0,15 (warga) atau −0,15 (Terbisik) per hari. Bertahan sepanjang gim, batas −1,50 sampai +1,50. Berlaku bagi kedua fraksi.',
+            ),
+            _bullet(
+              '**Bengkel Desa**: aktifkan kartu lanjutan menggunakan kartu poin.',
+            ),
+            _bullet(
+              '**Pondok Perawatan**: perlu surat sesuai peran. Perawatan memulihkan 1 nyawa; pasien lain perlu tambahan 12 uang. Jebakan mengurangi 1 nyawa seorang pengunjung lain, lalu habis. Pemulihan diselesaikan sebelum jebakan.',
+            ),
+            _bullet(
+              '**Balai Pertukaran**: tawarkan kartu. Penerima boleh mengikuti undangan tanpa menghabiskan kunjungan dan kembali ke tempat sebelumnya. Kunjungan gratis hanya untuk tawaran tersebut.',
+            ),
+          ],
+        ),
+        _Section(
           icon: 'hari',
           title: 'Satu siklus (3 hari)',
           children: [
@@ -1054,7 +1078,7 @@ class _HowToTab extends StatelessWidget {
               'Hari biasa (dua hari)',
               'Beli **1 kartu per hari** di Pasar Pagi (4 tawaran acak). '
                   'Boleh memberi embun (1 sampai 3, maks 3 kali sehari), '
-                  'menukar kartu, mengirim isyarat, dan mengobrol. Tekan '
+                  'mengirim isyarat, dan mengobrol. Tekan '
                   '"Akhiri hari" bila selesai.',
             ),
             _step(
@@ -1126,6 +1150,12 @@ class _HowToTab extends StatelessWidget {
               'Dipakai di Meja pada hari biasa, bukan dipersembahkan: '
                   'perisai, cermin, embun, nyawa, atau panah.',
             ),
+            _bullet(
+              '**Perisai Malam** bisa dipasang untuk diri sendiri atau satu '
+              'pemain lain sampai akhir sesi. Nama penjaga dirahasiakan dari '
+              'penerima. Jika perisai menahan serangan, penjaga mendapat '
+              'laporan pribadi.',
+            ),
             _infoRow(
               'danger',
               'Serangan malam (Si Terbisik)',
@@ -1157,13 +1187,13 @@ class _HowToTab extends StatelessWidget {
             _step(
               1,
               'Beli keduanya',
-              'Keduanya muncul acak di Pasar Pagi. Kartu lanjutan yang '
+              'Beli keduanya di Pasar Riset. Kartu lanjutan yang '
                   'belum digabung tampak pudar, berlabel "Butuh poin".',
             ),
             _step(
               2,
-              'Gabungkan di tab Gabung',
-              'Hari biasa: buka tab **Gabung**, letakkan satu kartu '
+              'Gabungkan di Bengkel Desa',
+              'Malam sebelum persembahan: kunjungi **Bengkel Desa**, letakkan satu kartu '
                   'lanjutan dan satu kartu syarat (poin) di petak, lalu '
                   'tekan "Aktifkan kartu". Satu poin habis dan kartu menjadi '
                   '**AKTIF**. Tidak diumumkan, dan boleh walau sedang '
@@ -1178,8 +1208,7 @@ class _HowToTab extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _bullet(
-              '**Harga**: kartu lanjutan 5 + poin 16, sekitar 21 '
-              'embun per kombinasi.',
+              '**Harga** mengikuti kartu yang tersedia di Pasar Riset, termasuk kenaikan harga riset.',
             ),
             _bullet(
               '**Kapsul DNA** (Si Terbisik) setara 2 Poin DNA: cukup '
@@ -1472,6 +1501,7 @@ const _itemGroups = [
   'penguat',
   'siang',
   'kombinasi',
+  'perawatan',
   'malam',
 ];
 
@@ -1481,6 +1511,7 @@ const _itemGroupLabel = {
   'penguat': 'Penguat',
   'siang': 'Kartu kuning',
   'kombinasi': 'Kombinasi',
+  'perawatan': 'Perawatan',
   'malam': 'Serangan malam',
 };
 
@@ -1490,10 +1521,13 @@ const _itemGroupIcon = {
   'penguat': 'plus',
   'siang': 'item',
   'kombinasi': 'plus',
+  'perawatan': 'item',
   'malam': 'danger',
 };
 
 const _itemGroupHelp = {
+  'perawatan':
+      'Beli di Pasar Riset. Surat Dokter memulihkan 1 nyawa di Pondok Perawatan; merawat pemain lain perlu 12 uang tambahan. Surat Keterangan Sakit memasang jebakan yang bertahan sampai seorang pengunjung lain terkena. Surat habis setelah digunakan.',
   'persembahan': 'Efek langsung saat dipersembahkan ke Hayu.',
   'sekali_pakai': 'Alat periksa. Hasilnya hanya dilihat pemakainya.',
   'penguat': 'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.',
@@ -1501,8 +1535,8 @@ const _itemGroupHelp = {
       'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
       'dipersembahkan.',
   'kombinasi':
-      'Kartu lanjutan harus digabung dengan kartu poin di tab '
-      'Gabung sebelum bisa dipersembahkan.',
+      'Kartu lanjutan harus digabung dengan kartu poin di '
+      'Bengkel Desa sebelum bisa dipersembahkan.',
   'malam':
       'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
       'tahu ada serangan.',
@@ -1679,15 +1713,23 @@ class _ItemsTabState extends State<_ItemsTab>
     final filter = hayuFilter;
     final filtered = filter == null
         ? all
-        : [for (final d in all) if (cardHayuParts(d).contains(filter)) d];
+        : [
+            for (final d in all)
+              if (cardHayuParts(d).contains(filter)) d,
+          ];
     final groups = <String, List<Map<String, dynamic>>>{};
     for (final d in filtered) {
       final group = _itemGroupOf(d['kind'] as String?);
       (groups[group] ??= []).add(d);
     }
     int n(String g) => groups[g]?.length ?? 0;
-    final available = all.map((d) => _itemGroupOf(d['kind'] as String?)).toSet();
-    final present = [for (final g in _itemGroups) if (available.contains(g)) g];
+    final available = all
+        .map((d) => _itemGroupOf(d['kind'] as String?))
+        .toSet();
+    final present = [
+      for (final g in _itemGroups)
+        if (available.contains(g)) g,
+    ];
     final idx = kindFilter == null ? 0 : present.indexOf(kindFilter!) + 1;
     final shown = [
       for (final g in idx == 0 ? present : [present[idx - 1]])

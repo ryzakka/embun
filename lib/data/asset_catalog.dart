@@ -10,12 +10,16 @@ const protagonisWanitaDir = 'assets/kartu/CharPro/CharPro-Wanita';
 const antagonisDir = 'assets/kartu/CharAnta';
 const pohonDir = 'assets/pohon';
 const bentangDir = 'assets/bentang';
+const kartuPerawatanDir = 'assets/kartu/itemPerawatan';
 const kartuWargaDir = 'assets/kartu/ItemPro';
 const kartuAntagDir = 'assets/kartu/ItemAnta';
-const kartuMalamDir = 'assets/kartu/ItemAntaNight'; // kartu serangan malam (ungu)
+const kartuMalamDir =
+    'assets/kartu/ItemAntaNight'; // kartu serangan malam (ungu)
 const kartuSiangDir = 'assets/kartu/ItemProDay'; // kartu siang warga (kuning)
-const kartuRekayasaDir = 'assets/kartu/ItemAntaRekayasa'; // Kartu Rekayasa + Poin DNA
-const kartuRegenerasiDir = 'assets/kartu/ItemProRegenerasi'; // Kartu Regenerasi + Poin Regenerasi
+const kartuRekayasaDir =
+    'assets/kartu/ItemAntaRekayasa'; // Kartu Rekayasa + Poin DNA
+const kartuRegenerasiDir =
+    'assets/kartu/ItemProRegenerasi'; // Kartu Regenerasi + Poin Regenerasi
 const punggungDir = 'assets/kartu/punggungkartu';
 const logoDir = 'assets/logo';
 const kemampuanDir = 'assets/kartu/CharSkill';
@@ -38,7 +42,8 @@ class AssetCatalog {
       final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       for (final path in manifest.listAssets()) {
         final lower = path.toLowerCase();
-        final isImage = lower.endsWith('.png') ||
+        final isImage =
+            lower.endsWith('.png') ||
             lower.endsWith('.webp') ||
             lower.endsWith('.jpg') ||
             lower.endsWith('.jpeg');
@@ -46,8 +51,7 @@ class AssetCatalog {
         final slash = path.lastIndexOf('/');
         final file = path.substring(slash + 1);
         final stem = file.substring(0, file.lastIndexOf('.'));
-        final folder =
-        byFolder.putIfAbsent(path.substring(0, slash), () => {});
+        final folder = byFolder.putIfAbsent(path.substring(0, slash), () => {});
         if (!folder.containsKey(stem) || lower.endsWith('.webp')) {
           folder[stem] = path;
         }
@@ -79,7 +83,7 @@ List<String> protagonistStems() => [
 
 String? protagonistPath(String id) =>
     AssetCatalog.I.file(protagonisPriaDir, id) ??
-        AssetCatalog.I.file(protagonisWanitaDir, id);
+    AssetCatalog.I.file(protagonisWanitaDir, id);
 
 String randomProtagonist() {
   final s = protagonistStems();
@@ -125,7 +129,7 @@ const kBentangZoom = 1.08;
 String? _rotate(List<String> stems, int day) {
   final have = [
     for (final s in stems)
-      if (_scenery(s) != null) _scenery(s)!
+      if (_scenery(s) != null) _scenery(s)!,
   ];
   if (have.isEmpty) return null;
   return have[day.abs() % have.length];
@@ -153,20 +157,20 @@ String? phaseScenery(String phase, int day, int leaves) {
     case 'day':
       pick = leaves >= 20
           ? _rotate(const [
-        'pasar-sianghari',
-        'balaidesa-luarsiang',
-        'peternakan-sianghari',
-        'sumur-sianghari',
-        'menaralonceng-sianghari',
-        'gerobakdankeranjang',
-        'tepisungai-tanggaterjalsianghari',
-        'balkon-siang',
-      ], day)
+              'pasar-sianghari',
+              'balaidesa-luarsiang',
+              'peternakan-sianghari',
+              'sumur-sianghari',
+              'menaralonceng-sianghari',
+              'gerobakdankeranjang',
+              'tepisungai-tanggaterjalsianghari',
+              'balkon-siang',
+            ], day)
           : _rotate(const [
-        'ladang-gersang',
-        'rumahdesa2-gersang',
-        'rumahdesa-gersang',
-      ], day);
+              'ladang-gersang',
+              'rumahdesa2-gersang',
+              'rumahdesa-gersang',
+            ], day);
     case 'research':
       pick = _rotate(const [
         'kedai-karturiset',
@@ -186,8 +190,10 @@ String? phaseScenery(String phase, int day, int leaves) {
     case 'voting':
       pick = firstScenery(const ['alunalun-tiangberpita']);
     case 'offering':
-      pick = firstScenery(
-          const ['pohon-toplesnyaladankunang', 'pohon-keranjangbuah']);
+      pick = firstScenery(const [
+        'pohon-toplesnyaladankunang',
+        'pohon-keranjangbuah',
+      ]);
   }
   return pick ?? fallback;
 }
@@ -195,20 +201,25 @@ String? phaseScenery(String phase, int day, int leaves) {
 // ---- malam ----
 
 /// Langit malam: tenang, atau langit serangan (sama untuk SEMUA pemain).
-String? nightSkyPath({required bool attack}) => firstScenery(attack
-    ? const ['langit-malammerahungugelap', 'langit-malamberawan']
-    : const ['langit-malamberawan']);
+String? nightSkyPath({required bool attack}) => firstScenery(
+  attack
+      ? const ['langit-malammerahungugelap', 'langit-malamberawan']
+      : const ['langit-malamberawan'],
+);
 
 /// Lembah malam tempat langit itu turun: tenang atau kering akibat serangan.
-String? nightValleyPath({required bool attack}) => firstScenery(attack
-    ? const ['lembah-malamkering', 'lembah-malamindah']
-    : const ['lembah-malamindah']);
+String? nightValleyPath({required bool attack}) => firstScenery(
+  attack
+      ? const ['lembah-malamkering', 'lembah-malamindah']
+      : const ['lembah-malamindah'],
+);
 
 /// Latar pribadi korban: `sumur` (Racun Sumur) atau `rumah` (Maling Embun).
 /// Null untuk selain itu; adegan ini tidak pernah dipakai untuk pemain lain.
 String? nightVictimPath(String? scene) => switch (scene) {
   'sumur' => firstScenery(const ['sumur-gelapmalam']),
   'rumah' => firstScenery(const ['rumah-malamdepanpintu']),
+  'pondok' => firstScenery(const ['tempatdalam-pondokperawatan','tempat-pondokperawatan']),
   _ => null,
 };
 
@@ -231,7 +242,7 @@ List<String> scarecrowFrames() => [
     'hantu-jeramigerakdiam',
     'hantujeramigerakmaju',
   ])
-    if (sceneryPath(s) != null) sceneryPath(s)!
+    if (sceneryPath(s) != null) sceneryPath(s)!,
 ];
 
 /// Hantu murka yang menampakkan diri di atas lembah saat Hayu mati.
@@ -241,7 +252,7 @@ List<String> wrathGhostPaths() => [
     'hantumurka-topengpria',
     'hantumurka-wanitatopengjubah',
   ])
-    if (sceneryPath(s) != null) sceneryPath(s)!
+    if (sceneryPath(s) != null) sceneryPath(s)!,
 ];
 
 /// Latar layar akhir saat Si Terbisik menang.
@@ -255,10 +266,7 @@ String? defeatScenery({required int leaves, String? endReason}) {
     ]);
   }
   if (leaves <= 0 || endReason == 'daun_habis') {
-    return firstScenery(const [
-      'lembah-hantumurka',
-      'keterasingan',
-    ]);
+    return firstScenery(const ['lembah-hantumurka', 'keterasingan']);
   }
   return firstScenery(const ['keterasingan']);
 }
@@ -271,7 +279,9 @@ String? logoPath(String stem) => AssetCatalog.I.file(logoDir, stem);
 /// yang terlihat pemain lain, jangan pakai dark: true, karena itu membocorkan
 /// sisi pemilik kartu.
 String? cardBackPath({bool dark = false}) => AssetCatalog.I.file(
-    punggungDir, dark ? 'punggungantagonis' : 'punggungprotagonis');
+  punggungDir,
+  dark ? 'punggungantagonis' : 'punggungprotagonis',
+);
 
 /// Punggung kartu beli/item, terpisah dari punggung kartu karakter: item warga
 /// hijau (peti), item antagonis merah (peti), serangan malam ungu (bulan),
@@ -286,19 +296,18 @@ String? itemBackPath({
   bool advanced = false, // kartu lanjutan / poin (Rekayasa atau Regenerasi)
 }) =>
     AssetCatalog.I.file(
-        punggungDir,
-        night
-            ? 'punggungitemmalam'
-            : day
-            ? 'punggungitemsiang'
-            : advanced
-            ? (dark
-            ? 'punggungitemantarekayasa'
-            : 'punggungitemproregenerasi')
-            : dark
-            ? 'punggungitemantagonis'
-            : 'punggungitemprotagonis') ??
-        cardBackPath(dark: dark || night);
+      punggungDir,
+      night
+          ? 'punggungitemmalam'
+          : day
+          ? 'punggungitemsiang'
+          : advanced
+          ? (dark ? 'punggungitemantarekayasa' : 'punggungitemproregenerasi')
+          : dark
+          ? 'punggungitemantagonis'
+          : 'punggungitemprotagonis',
+    ) ??
+    cardBackPath(dark: dark || night);
 
 /// Punggung item menurut definisinya (`side`, `kind`). Hanya untuk kartu milik
 /// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
@@ -306,10 +315,11 @@ String? itemBackPath({
 /// lanjutan/poin warga (Regenerasi) hijau-DNA, item antagonis merah, item
 /// warga hijau.
 String? itemBackFor(Map<String, dynamic>? def) => itemBackPath(
-    dark: def?['side'] == 'antagonis',
-    night: def?['kind'] == 'malam',
-    day: def?['kind'] == 'siang',
-    advanced: def?['kind'] == 'lanjutan' || def?['kind'] == 'poin');
+  dark: def?['side'] == 'antagonis',
+  night: def?['kind'] == 'malam',
+  day: def?['kind'] == 'siang',
+  advanced: def?['kind'] == 'lanjutan' || def?['kind'] == 'poin',
+);
 
 /// Punggung kartu kemampuan warga.
 String? abilityBackPath() =>
@@ -322,6 +332,9 @@ String? cardArtPath(Map<String, dynamic>? def) {
   if (def == null) return null;
   final stem = (def['art'] as String?) ?? (def['id'] as String?);
   if (stem == null) return null;
+  if (def['kind'] == 'perawatan') {
+    return AssetCatalog.I.file(kartuPerawatanDir, stem);
+  }
   if (def['kind'] == 'malam') {
     // Folder sendiri; bila belum ada di sana, jatuh ke folder antagonis.
     return AssetCatalog.I.file(kartuMalamDir, stem) ??
@@ -331,7 +344,10 @@ String? cardArtPath(Map<String, dynamic>? def) {
     // Kartu lanjutan + kartu poin: folder sendiri per sisi; bila belum ada,
     // jatuh ke folder item biasa.
     final bad = def['side'] == 'antagonis';
-    return AssetCatalog.I.file(bad ? kartuRekayasaDir : kartuRegenerasiDir, stem) ??
+    return AssetCatalog.I.file(
+          bad ? kartuRekayasaDir : kartuRegenerasiDir,
+          stem,
+        ) ??
         AssetCatalog.I.file(bad ? kartuAntagDir : kartuWargaDir, stem);
   }
   if (def['kind'] == 'siang') {
@@ -366,7 +382,7 @@ double cardAspectFor(String? path) => kTallAspect;
 /// Sama untuk semua jenis kartu (lihat [cardAspectFor]).
 double cardAspectForDef(Map<String, dynamic>? def) => kTallAspect;
 
-/// Nama karakter dari nama berkas. Nama berkas = <pekerjaan><jenis>, mis.
+/// Nama karakter dari nama berkas. Nama berkas = `pekerjaan` + `jenis`, mis.
 /// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
 /// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
@@ -426,52 +442,6 @@ String characterTitle(String stem) {
     'penatu': 'Penatu',
     'penjaga': 'Penjaga',
     'pemburu': 'Pemburu',
-    // kartu pria set baru (gelombang 3)
-    'arsiparis': 'Arsiparis',
-    'dokumentalis': 'Dokumentalis',
-    'jagawana': 'Jagawana',
-    'modellukis': 'Model Lukis',
-    'nelayanbudidaya': 'Nelayan Budidaya',
-    'nelayandemersal': 'Nelayan Demersal',
-    'nelayanpelagis': 'Nelayan Pelagis',
-    'nelayanplasma': 'Nelayan Plasma',
-    'nelayantambak': 'Nelayan Tambak',
-    'olahragawan': 'Olahragawan',
-    'peleografer': 'Paleografer',
-    'paleografer': 'Paleografer',
-    'pedagangbuah': 'Pedagang Buah',
-    'tukanggalangan': 'Tukang Galangan',
-    'pembudidayaikanhias': 'Pembudidaya Ikan Hias',
-    'pembudidayamutiara': 'Pembudidaya Mutiara',
-    'pemetikbuah': 'Pemetik Buah',
-    'penebangkayu': 'Penebang Kayu',
-    'pengrajintahu': 'Pengrajin Tahu',
-    'pengrajintempe': 'Pengrajin Tempe',
-    'penjagakebersihan': 'Penjaga Kebersihan',
-    'penjagapantai': 'Penjaga Pantai',
-    'penyadapkaret': 'Penyadap Karet',
-    'penyadapnira': 'Penyadap Nira',
-    'penyangraikopi': 'Penyangrai Kopi',
-    'penyelam': 'Penyelam',
-    'penyulingherbal': 'Penyuling Herbal',
-    'perajinanyaman': 'Perajin Anyaman',
-    'perajinukiran': 'Perajin Ukiran',
-    'peramujamur': 'Peramu Jamur',
-    'peramumadu': 'Peramu Madu',
-    'perenang': 'Perenang',
-    'petambakgaram': 'Petambak Garam',
-    'petanihortikultura': 'Petani Hortikultura',
-    'petanipalawija': 'Petani Palawija',
-    'peternakpetelur': 'Peternak Petelur',
-    'peternakbibit': 'Peternak Bibit',
-    'peyernakbibit': 'Peternak Bibit',
-    'peternakperah': 'Peternak Perah',
-    'peternakpedaging': 'Peternak Pedaging',
-    'kupukupumalam': 'Kupu-kupu Malam',
-    'tukangbangun': 'Tukang Bangunan',
-    'tukangbangunan': 'Tukang Bangunan',
-    'tukangbatu': 'Tukang Batu',
-    'tukangkayu': 'Tukang Kayu',
     // kartu lama (tetap dikenali bila masih ada)
     'atlet': 'Atlet',
     'besi': 'Pandai Besi',

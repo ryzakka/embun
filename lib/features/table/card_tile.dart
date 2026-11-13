@@ -13,6 +13,7 @@ const kindLabel = {
   'siang': 'Pakai di siang',
   'poin': 'Kartu poin',
   'lanjutan': 'Kartu lanjutan',
+  'perawatan': 'Perawatan',
 };
 
 const kindIcon = {
@@ -23,6 +24,7 @@ const kindIcon = {
   'siang': 'item',
   'poin': 'bulirembun',
   'lanjutan': 'plus',
+  'perawatan': 'item',
 };
 
 String _hayuPartsLabel(List<HayuPart> parts) =>
@@ -72,11 +74,14 @@ class _HayuTargetBadges extends StatelessWidget {
                   children: [
                     _icon(part, 24),
                     const SizedBox(width: 4),
-                    Text(part.label,
-                        style: const TextStyle(
-                            color: EmbunColors.cream,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      part.label,
+                      style: const TextStyle(
+                        color: EmbunColors.cream,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -100,9 +105,7 @@ class _HayuTargetBadges extends StatelessWidget {
             padding: const EdgeInsets.all(2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final part in parts) _icon(part, 22),
-              ],
+              children: [for (final part in parts) _icon(part, 22)],
             ),
           ),
         ),
@@ -113,19 +116,51 @@ class _HayuTargetBadges extends StatelessWidget {
 
 /// Matriks warna: tanpa perubahan.
 const _identityMatrix = <double>[
-  1, 0, 0, 0, 0,
-  0, 1, 0, 0, 0,
-  0, 0, 1, 0, 0,
-  0, 0, 0, 1, 0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
 ];
 
 /// Matriks warna: abu-abu gelap (luminans x 0,55). Dipakai untuk kartu
 /// lanjutan yang belum digabung dengan kartu poin.
 const _fadedMatrix = <double>[
-  0.117, 0.393, 0.040, 0, 0,
-  0.117, 0.393, 0.040, 0, 0,
-  0.117, 0.393, 0.040, 0, 0,
-  0, 0, 0, 1, 0,
+  0.117,
+  0.393,
+  0.040,
+  0,
+  0,
+  0.117,
+  0.393,
+  0.040,
+  0,
+  0,
+  0.117,
+  0.393,
+  0.040,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
 ];
 
 List<double> _lerpMatrix(double t) => [
@@ -187,11 +222,11 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
     final accent = _bad ? EmbunColors.mist : EmbunColors.gold;
     final info = _bad
         ? 'Gabungkan kartu ini dengan $name di tab Gabung (hari biasa) agar AKTIF '
-        'dan bisa dipersembahkan. Poin DNA II dipakai untuk dua kartu Rekayasa '
-        'dan Kapsul DNA untuk tiga. Poin habis sekali pakai.'
+              'dan bisa dipersembahkan. Poin DNA II dipakai untuk dua kartu Rekayasa '
+              'dan Kapsul DNA untuk tiga. Poin habis sekali pakai.'
         : 'Gabungkan kartu ini dengan $name di tab Gabung (hari biasa) agar AKTIF '
-        'dan bisa dipersembahkan. Poin Regenerasi II dipakai untuk dua kartu '
-        'dan III untuk tiga. Poin habis sekali pakai.';
+              'dan bisa dipersembahkan. Poin Regenerasi II dipakai untuk dua kartu '
+              'dan III untuk tiga. Poin habis sekali pakai.';
 
     return SizedBox(
       width: _w,
@@ -220,19 +255,24 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          cost == null
-                              ? 'Syarat: $name'
-                              : 'Syarat: $name ($cost)',
-                          style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: accent)),
+                        cost == null
+                            ? 'Syarat: $name'
+                            : 'Syarat: $name ($cost)',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: accent,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(info,
-                          style: const TextStyle(
-                              fontSize: 11.5,
-                              height: 1.35,
-                              color: Colors.white70)),
+                      Text(
+                        info,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          height: 1.35,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -258,13 +298,15 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
                     child: reqPath != null
                         ? CardArt(path: reqPath, width: _miniW, glow: accent)
                         : SizedBox(
-                      width: _miniW,
-                      height: _miniW * 1.5,
-                      child: Center(
-                          child: GameIcon(
-                              _bad ? 'bulirhitam' : 'bulirembun',
-                              size: 40)),
-                    ),
+                            width: _miniW,
+                            height: _miniW * 1.5,
+                            child: Center(
+                              child: GameIcon(
+                                _bad ? 'bulirhitam' : 'bulirembun',
+                                size: 40,
+                              ),
+                            ),
+                          ),
                   ),
                   Positioned(
                     right: -5,
@@ -297,12 +339,12 @@ class _CardPreviewArtState extends State<_CardPreviewArt> {
 /// Bila [actionLabel] dan [onAction] diisi (mis. kartu kuning di Meja), muncul
 /// tombol utama di atas "Tutup"; dialog menutup dulu, baru [onAction] jalan.
 Future<void> showCardPreview(
-    BuildContext context,
-    Map<String, dynamic> def, {
-      String? actionLabel,
-      Future<void> Function()? onAction,
-      Map<String, Map<String, dynamic>>? defs,
-    }) {
+  BuildContext context,
+  Map<String, dynamic> def, {
+  String? actionLabel,
+  Future<void> Function()? onAction,
+  Map<String, Map<String, dynamic>>? defs,
+}) {
   final bad = def['side'] == 'antagonis';
   final glow = bad
       ? EmbunColors.mist
@@ -327,17 +369,19 @@ Future<void> showCardPreview(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (path != null) ...[
-                _CardPreviewArt(
-                    def: def, path: path, glow: glow, defs: defs),
+                _CardPreviewArt(def: def, path: path, glow: glow, defs: defs),
                 const SizedBox(height: 14),
               ],
-              Text('${def['name'] ?? ''}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                      color: EmbunColors.gold)),
+              Text(
+                '${def['name'] ?? ''}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: EmbunColors.gold,
+                ),
+              ),
               const SizedBox(height: 6),
               Wrap(
                 alignment: WrapAlignment.center,
@@ -354,7 +398,9 @@ Future<void> showCardPreview(
                         child: Text(
                           kindLabel[def['kind']] ?? '',
                           style: const TextStyle(
-                              fontSize: 12, color: Colors.white70),
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                     ],
@@ -365,10 +411,13 @@ Future<void> showCardPreview(
                       children: [
                         GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 28),
                         const SizedBox(width: 4),
-                        Text('$cost',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: EmbunColors.gold)),
+                        Text(
+                          '$cost',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: EmbunColors.gold,
+                          ),
+                        ),
                       ],
                     ),
                 ],
@@ -476,9 +525,9 @@ class CardTile extends StatelessWidget {
       onTap: onTap == null
           ? null
           : () {
-        Sfx.I.click(Snd.clickTung);
-        onTap!();
-      },
+              Sfx.I.click(Snd.clickTung);
+              onTap!();
+            },
       onLongPress: d == null ? null : () => showCardPreview(context, d),
       child: _Grayscale(
         on: gray,
@@ -507,10 +556,11 @@ class CardTile extends StatelessWidget {
               ),
               boxShadow: selected
                   ? [
-                BoxShadow(
-                    color: EmbunColors.gold.withValues(alpha: 0.45),
-                    blurRadius: 14),
-              ]
+                      BoxShadow(
+                        color: EmbunColors.gold.withValues(alpha: 0.45),
+                        blurRadius: 14,
+                      ),
+                    ]
                   : null,
             ),
             child: Stack(
@@ -525,18 +575,24 @@ class CardTile extends StatelessWidget {
                     bottom: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black87,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: EmbunColors.gold.withValues(alpha: 0.8)),
+                          color: EmbunColors.gold.withValues(alpha: 0.8),
+                        ),
                       ),
-                      child: Text('\u00d7$count',
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: EmbunColors.gold)),
+                      child: Text(
+                        '\u00d7$count',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -567,7 +623,12 @@ class CardTile extends StatelessWidget {
 
   /// Gambar kartu memenuhi tile; harga di pojok kanan atas.
   Widget _artBody(
-      String path, bool bad, int cost, bool hasInfo, Widget? targets) {
+    String path,
+    bool bad,
+    int cost,
+    bool hasInfo,
+    Widget? targets,
+  ) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(9),
       child: Stack(
@@ -584,18 +645,22 @@ class CardTile extends StatelessWidget {
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: EmbunColors.gold.withValues(alpha: 0.7)),
+                    color: EmbunColors.gold.withValues(alpha: 0.7),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GameIcon(bad ? 'bulirhitam' : 'bulirembun', size: 24),
                     const SizedBox(width: 3),
-                    Text(badge ?? '$cost',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: EmbunColors.gold)),
+                    Text(
+                      badge ?? '$cost',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: EmbunColors.gold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -612,22 +677,26 @@ class CardTile extends StatelessWidget {
               top: 6,
               left: 6,
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: (tag == 'AKTIF' ? EmbunColors.leaf : EmbunColors.goldDim)
-                          .withValues(alpha: 0.9)),
+                    color:
+                        (tag == 'AKTIF'
+                                ? EmbunColors.leaf
+                                : EmbunColors.goldDim)
+                            .withValues(alpha: 0.9),
+                  ),
                 ),
-                child: Text(tag!,
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: tag == 'AKTIF'
-                            ? EmbunColors.leaf
-                            : EmbunColors.gold)),
+                child: Text(
+                  tag!,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: tag == 'AKTIF' ? EmbunColors.leaf : EmbunColors.gold,
+                  ),
+                ),
               ),
             ),
           if (bought || selected)
@@ -735,13 +804,29 @@ class _Grayscale extends StatelessWidget {
   @override
   Widget build(BuildContext context) => on
       ? ColorFiltered(
-    colorFilter: const ColorFilter.matrix(<double>[
-      0.2126, 0.7152, 0.0722, 0, 0,
-      0.2126, 0.7152, 0.0722, 0, 0,
-      0.2126, 0.7152, 0.0722, 0, 0,
-      0, 0, 0, 1, 0,
-    ]),
-    child: child,
-  )
+          colorFilter: const ColorFilter.matrix(<double>[
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: child,
+        )
       : child;
 }

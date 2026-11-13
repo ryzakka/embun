@@ -24,6 +24,7 @@ class ResearchView extends StatefulWidget {
   final int total;
   final bool dark;
   final VoidCallback? onBought;
+  final Future<void> Function()? onReturn;
 
   const ResearchView({
     super.key,
@@ -38,6 +39,7 @@ class ResearchView extends StatefulWidget {
     required this.total,
     this.dark = false,
     this.onBought,
+    this.onReturn,
   });
 
   @override
@@ -49,8 +51,9 @@ enum _Category {
   advanced(
     'Kartu lanjutan',
     'plus',
-    'Gabungkan dengan kartu poin di tab Gabung.',
-  );
+    'Aktifkan dengan kartu poin di Bengkel Desa.',
+  ),
+  care('Perawatan', 'item', 'Surat untuk layanan Pondok Perawatan.');
 
   const _Category(this.label, this.icon, this.hint);
 
@@ -153,7 +156,11 @@ class _ResearchViewState extends State<ResearchView> {
     if (_action != null || _ready) return;
     setState(() => _action = _Action.finish);
     try {
-      await widget.repo.finishResearch(widget.gameId);
+      if (widget.onReturn != null) {
+        await widget.onReturn!();
+      } else {
+        await widget.repo.finishResearch(widget.gameId);
+      }
       if (mounted) setState(() => _finished = true);
     } catch (error) {
       _toast(errMsg(error));
@@ -170,9 +177,12 @@ class _ResearchViewState extends State<ResearchView> {
     };
     for (final item in _items ?? const <Map<String, dynamic>>[]) {
       final kind = widget.defs[_id(item)]?['kind'];
-      groups[kind == 'lanjutan' ? _Category.advanced : _Category.points]!.add(
-        item,
-      );
+      groups[kind == 'perawatan'
+              ? _Category.care
+              : kind == 'lanjutan'
+              ? _Category.advanced
+              : _Category.points]!
+          .add(item);
     }
     final category = groups[_category]!.isNotEmpty
         ? _category
@@ -764,7 +774,11 @@ class _ResearchViewState extends State<ResearchView> {
       );
     }
     return EmbunButton(
-      label: _action == _Action.finish ? 'Menyelesaikan…' : 'Selesai Riset',
+      label: _action == _Action.finish
+          ? 'Menyelesaikan…'
+          : widget.onReturn != null
+          ? 'Kembali ke desa'
+          : 'Selesai Riset',
       expand: true,
       height: 42,
       kind: EmbunButtonKind.secondary,
