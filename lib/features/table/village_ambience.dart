@@ -308,7 +308,7 @@ class _AmbiencePainter extends CustomPainter {
       final sway = _wave(1, i * .33) * s.width * .02;
       final breathe = .5 + .5 * _wave(2, i * .27);
       final w = s.width * (.10 + .05 * _h(i, 2));
-      final a = (inside ? .10 : .07) * (.55 + .45 * breathe);
+      final a = (inside ? .16 : .12) * (.55 + .45 * breathe);
       c.save();
       c.translate(base + sway, -s.height * .15);
       c.rotate(-.38);
@@ -462,7 +462,7 @@ class _AmbiencePainter extends CustomPainter {
 
   void _vignette(Canvas c, Size s) {
     final breathe = .5 + .5 * _wave(2, 0);
-    final a = (inside ? .52 : .40) + .06 * breathe;
+    final a = (inside ? .36 : .24) + .05 * breathe;
     final edge = dark ? const Color(0xFF0B0617) : Colors.black;
     final r = math.sqrt(s.width * s.width + s.height * s.height) / 2;
     c.drawRect(
@@ -924,8 +924,9 @@ String? popupCharPath({
 }
 
 /// Karakter yang memenuhi ruang induknya (tinggi dan lebar HARUS terbatas),
-/// berdiri di tepi bawah. Berganti pose dengan "pop" kecil; bernapas pelan;
-/// berpendar tipis dengan warna [tint] di belakangnya.
+/// berdiri di tepi bawah. Lapisan dari belakang ke depan: cahaya latar,
+/// kerucut lampu + genangan cahaya di lantai, kilatan saat pose berganti,
+/// pendar siluet berwarna [tint], lalu karakter yang bernapas pelan.
 class PopupCharacter extends StatelessWidget {
   const PopupCharacter({
     super.key,
@@ -951,70 +952,112 @@ class PopupCharacter extends StatelessWidget {
   final bool intro;
   final bool reduced;
 
+  Widget _swap(Widget child) => AnimatedSwitcher(
+    duration: reduced ? Duration.zero : const Duration(milliseconds: 450),
+    layoutBuilder: (current, previous) => Stack(
+      fit: StackFit.expand,
+      alignment: Alignment.bottomCenter,
+      children: [...previous, ?current],
+    ),
+    transitionBuilder: (child, anim) => FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween(begin: Offset(slide, 0), end: Offset.zero).animate(anim),
+        child: ScaleTransition(
+          alignment: Alignment.bottomCenter,
+          scale: Tween(
+            begin: .94,
+            end: 1.0,
+          ).animate(anim.drive(CurveTween(curve: Curves.easeOutBack))),
+          child: child,
+        ),
+      ),
+    ),
+    child: child,
+  );
+
+  Widget _fade(Widget child) => fadeFeet
+      ? ShaderMask(
+    blendMode: BlendMode.dstIn,
+    shaderCallback: (r) => const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Colors.white, Colors.white, Colors.transparent],
+      stops: [0, .86, 1],
+    ).createShader(r),
+    child: child,
+  )
+      : child;
+
   @override
   Widget build(BuildContext context) {
     final p = path;
     if (p == null) return const SizedBox.shrink();
-    Widget art = AnimatedSwitcher(
-      duration: reduced ? Duration.zero : const Duration(milliseconds: 450),
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.expand,
-        alignment: Alignment.bottomCenter,
-        children: [...previous, ?current],
-      ),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween(begin: Offset(slide, 0), end: Offset.zero)
-              .animate(anim),
-          child: ScaleTransition(
-            alignment: Alignment.bottomCenter,
-            scale: Tween(begin: .94, end: 1.0)
-                .animate(anim.drive(CurveTween(curve: Curves.easeOutBack))),
-            child: child,
-          ),
+    final art = _fade(
+      _swap(
+        GameImage(
+          key: ValueKey(p),
+          path: p,
+          fit: BoxFit.contain,
+          alignment: Alignment.bottomCenter,
+          cacheWidth: 900,
         ),
       ),
-      child: GameImage(
-        key: ValueKey(p),
-        path: p,
-        fit: BoxFit.contain,
-        alignment: Alignment.bottomCenter,
-        cacheWidth: 900,
-      ),
     );
-    if (fadeFeet) {
-      art = ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (r) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Colors.white, Colors.transparent],
-          stops: [0, .86, 1],
-        ).createShader(r),
-        child: art,
-      );
-    }
-    final body = _Breathing(
-      reduced: reduced,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, .3),
-                radius: .7,
-                colors: [
-                  tint.withValues(alpha: .30),
-                  tint.withValues(alpha: 0),
-                ],
+    // Pendar siluet: salinan karakter yang diwarnai lalu dikaburkan. Diam di
+    // tempat (di luar napas) dan dibekukan RepaintBoundary supaya murah.
+    final aura = ValueListenableBuilder<bool>(
+      valueListenable: ShaderFx.enabled,
+      builder: (context, on, _) {
+        if (!on) return const SizedBox.shrink();
+        return RepaintBoundary(
+          child: _fade(
+            _swap(
+              ImageFiltered(
+                key: ValueKey('aura-$p'),
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: 16,
+                  sigmaY: 16,
+                  tileMode: TileMode.decal,
+                ),
+                child: Opacity(
+                  opacity: .6,
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
+                    child: GameImage(
+                      path: p,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomCenter,
+                      cacheWidth: 400,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-          art,
-        ],
-      ),
+        );
+      },
+    );
+    final body = Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0, .3),
+              radius: .8,
+              colors: [tint.withValues(alpha: .36), tint.withValues(alpha: 0)],
+            ),
+          ),
+        ),
+        if (!reduced)
+          IgnorePointer(
+            child: CustomPaint(painter: _StageLightPainter(tint, fadeFeet)),
+          ),
+        if (!reduced) _PoseBurst(key: ValueKey('burst-$p'), tint: tint),
+        aura,
+        _Breathing(reduced: reduced, child: art),
+      ],
     );
     if (!intro || reduced) return body;
     return TweenAnimationBuilder<double>(
@@ -1026,6 +1069,166 @@ class PopupCharacter extends StatelessWidget {
         child: Transform.translate(offset: Offset(0, 36 * (1 - v)), child: child),
       ),
       child: body,
+    );
+  }
+}
+
+/// Kerucut lampu dari atas dan genangan cahaya di lantai (bila kaki memudar).
+class _StageLightPainter extends CustomPainter {
+  const _StageLightPainter(this.tint, this.floor);
+  final Color tint;
+  final bool floor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    canvas.drawPath(
+      Path()
+        ..moveTo(w * .40, 0)
+        ..lineTo(w * .60, 0)
+        ..lineTo(w, h)
+        ..lineTo(0, h)
+        ..close(),
+      Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = ui.Gradient.linear(Offset.zero, Offset(0, h), [
+          tint.withValues(alpha: .20),
+          tint.withValues(alpha: 0),
+        ]),
+    );
+    if (floor) {
+      final r = w * .5;
+      canvas.save();
+      canvas.translate(w / 2, h * .96);
+      canvas.scale(1, .2);
+      canvas.drawCircle(
+        Offset.zero,
+        r,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..shader = ui.Gradient.radial(Offset.zero, r, [
+            tint.withValues(alpha: .40),
+            tint.withValues(alpha: 0),
+          ]),
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StageLightPainter old) =>
+      old.tint != tint || old.floor != floor;
+}
+
+/// Kilatan cahaya sekali putar tiap kali karakter muncul atau berganti pose
+/// (kuncinya mengikuti path gambar).
+class _PoseBurst extends StatelessWidget {
+  const _PoseBurst({super.key, required this.tint});
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 950),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => v >= .999
+          ? const SizedBox.shrink()
+          : DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -.1),
+            radius: .35 + .75 * v,
+            colors: [
+              Color.lerp(tint, Colors.white, .5)!.withValues(
+                alpha: .40 * (1 - v),
+              ),
+              tint.withValues(alpha: 0),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ucapan karakter
+// ---------------------------------------------------------------------------
+
+/// Satu kalimat dari karakter, diketik pelan. Teks yang belum muncul tetap
+/// ikut menghitung tata letak (transparan), jadi kotak tidak melompat.
+class PlaceVoice extends StatelessWidget {
+  const PlaceVoice({
+    super.key,
+    required this.speaker,
+    required this.line,
+    required this.accent,
+    this.reduced = false,
+    this.maxWidth = 380,
+  });
+  final String speaker, line;
+  final Color accent;
+  final bool reduced;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final full = '“$line”';
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: .46),
+          border: Border(left: BorderSide(color: accent, width: 2.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 9, 14, 11),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                speaker,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(height: 5),
+              TweenAnimationBuilder<double>(
+                key: ValueKey(full),
+                tween: Tween(begin: reduced ? 1.0 : 0.0, end: 1.0),
+                duration: Duration(
+                  milliseconds: math.min(1800, math.max(500, full.length * 24)),
+                ),
+                builder: (context, v, _) {
+                  final n = (full.length * v).floor().clamp(0, full.length).toInt();
+                  return Text.rich(
+                    TextSpan(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        fontStyle: FontStyle.italic,
+                        color: EmbunColors.cream,
+                      ),
+                      children: [
+                        TextSpan(text: full.substring(0, n)),
+                        TextSpan(
+                          text: full.substring(n),
+                          style: const TextStyle(color: Colors.transparent),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

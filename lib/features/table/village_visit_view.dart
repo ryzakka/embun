@@ -158,6 +158,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   int _dir = 1; // arah geser terakhir, untuk gerak latar
   bool _entering = false; // menunggu server: kamera mendorong masuk
   Object? _actedVisit; // id kunjungan yang sudah ada tindakannya (pose selesai)
+  Object? _collapsedVisit; // kunjungan yang panel layanannya diturunkan pemain
   int _revision = 0;
   bool _busy = false, _loading = false, _finished = false;
   Timer? _timer;
@@ -169,6 +170,19 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       ? Map<String, dynamic>.from(_status!['current'])
       : null;
   bool get _waiting => widget.iAmReady || _finished;
+
+  /// Panel layanan di layar sempit: terbuka tiap kali masuk tempat baru.
+  /// Diturunkan pemain supaya karakter dan latar terlihat penuh.
+  bool get _sheetOpen =>
+      _collapsedVisit == null || _collapsedVisit != _visit?['id'];
+
+  void _toggleSheet() {
+    final id = _visit?['id'];
+    if (id == null) return;
+    Sfx.I.click(Snd.click2);
+    setState(() => _collapsedVisit = _sheetOpen ? id : null);
+  }
+
   bool get _used => _visit?['action_used'] == true;
   bool get _free => _visit?['invitation_id'] != null;
   String get _letter => widget.isAntag ? 'surat_sakit' : 'surat_dokter';
@@ -196,6 +210,53 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   String? _popup(String place, String mood) =>
       popupCharPath(antag: widget.isAntag, place: place, mood: mood);
+
+  String get _speaker => widget.isAntag ? 'SI TERBISIK' : 'WARGA DESA';
+
+  /// Kalimat singkat karakter menurut tempat dan pose. Ubah teksnya di sini.
+  String? _voiceOf(String place, String mood) {
+    if (widget.isAntag) {
+      if (_acted) return 'Sudah terlaksana. Kini… menunggulah.';
+      return switch (place) {
+        'riset' => 'Ssst… setiap ilmu ada harganya. Mau membeli apa malam ini?',
+        'sumur' => 'Setetes saja, dan seluruh desa ikut meminumnya.',
+        'bengkel' => 'Satukan, retakkan. Tak ada yang benar-benar utuh di sini.',
+        'pondok' =>
+        'Titipkan satu surat. Biar lukanya menunggu pengunjung berikutnya.',
+        _ => null,
+      };
+    }
+    return switch ((place, mood)) {
+      ('riset', 'selesai') =>
+      'Bekalmu sudah di tangan. Semoga cukup untuk persembahan nanti.',
+      ('riset', _) =>
+      'Persembahan sudah dekat. Pilih bekalmu baik-baik, tiap bulir berharga.',
+      ('sumur', 'selesai') => 'Terima kasih. Airnya terasa lebih tenang sekarang.',
+      ('sumur', _) =>
+      'Air sumur ini menghidupi seluruh desa. Satu sumbangan, pengaruhnya sampai akhir.',
+      ('bengkel', 'selesai') => 'Sudah menyatu. Hasilnya bagus.',
+      ('bengkel', _) =>
+      'Kartu lanjutan butuh kartu poin. Satukan keduanya, biar menyala.',
+      ('pondok', 'selesai') =>
+      'Beres. Perawatan dijadwalkan; hasilnya diumumkan nanti.',
+      ('pondok', 'periksa') => 'Tahan sebentar. Biar kuperiksa dulu lukanya.',
+      ('pondok', _) => 'Serahkan suratmu, lalu pilih siapa yang kurawat.',
+      (_, 'selesai') => 'Pertukaran tercatat. Senang berurusan denganmu.',
+      _ => 'Ada yang ingin bertukar? Tawarkan kartumu, atau jawab undangan.',
+    };
+  }
+
+  Widget _voiceBubble(String place, {String? mood, double maxWidth = 380}) {
+    final line = _voiceOf(place, mood ?? _moodOf(place));
+    if (line == null) return const SizedBox.shrink();
+    return PlaceVoice(
+      speaker: _speaker,
+      line: line,
+      accent: _accent,
+      reduced: _reduced,
+      maxWidth: maxWidth,
+    );
+  }
 
   VillageRow? get _ticket =>
       widget.hand.where((h) => h['card_id'] == _letter).firstOrNull;
@@ -1059,7 +1120,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   // ---------------------------------------------------------------------
 
   /// Judul tempat sebagai pusat visual adegan.
-  Widget _hero(_Place p, {required bool compact, bool tall = true}) => Column(
+  Widget _hero(
+      _Place p, {
+        required bool compact,
+        bool tall = true,
+        bool voice = false,
+      }) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1086,13 +1152,16 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           constraints: const BoxConstraints(maxWidth: 380),
           child: _text(p.tagline, size: 17, lift: true),
         ),
+        if (voice) ...[const SizedBox(height: 16), _voiceBubble(p.id)],
       ],
     ],
   );
 
   /// Lembar dari bawah untuk layar sempit, mengikuti player_sheet: gradien
-  /// gelap, sudut atas 26, bingkai emas redup, cahaya ke atas, pegangan.
-  Widget _sheet(Widget content) => Container(
+  /// gelap, sudut atas 26, bingkai emas redup, cahaya ke atas. Pegangannya
+  /// bisa diketuk atau diseret untuk menurunkan panel (karakter dan latar
+  /// jadi tontonan penuh) lalu membukanya lagi.
+  Widget _sheet(Widget content, {required bool open}) => Container(
     decoration: BoxDecoration(
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
@@ -1115,20 +1184,49 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     ),
     child: Column(
       children: [
-        const SizedBox(height: 8),
-        Container(
-          width: 44,
-          height: 4,
-          decoration: BoxDecoration(
-            color: EmbunColors.goldDim.withValues(alpha: .7),
-            borderRadius: BorderRadius.circular(2),
+        Semantics(
+          button: true,
+          label: open ? 'Turunkan panel layanan' : 'Buka panel layanan',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleSheet,
+            onVerticalDragEnd: (d) {
+              final vy = d.primaryVelocity ?? 0;
+              if ((vy > 200 && open) || (vy < -200 && !open)) _toggleSheet();
+            },
+            child: SizedBox(
+              height: 34,
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: EmbunColors.goldDim.withValues(alpha: .7),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Icon(
+                    open
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    size: 18,
+                    color: EmbunColors.goldDim,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 10),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            child: content,
+          child: IgnorePointer(
+            ignoring: !open,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: content,
+            ),
           ),
         ),
       ],
@@ -1140,195 +1238,206 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       final side =
           box.maxWidth >= 820 || (box.maxWidth >= 600 && box.maxHeight < 400);
       final broad = p.id == 'riset' || p.id == 'bengkel';
-      if (side) {
-        final width =
-        (box.maxWidth *
-            (broad
-                ? .64
-                : p.id == 'balai'
-                ? .48
-                : .41))
-            .clamp(
-          broad ? 380.0 : 320.0,
-          broad
-              ? 900.0
+      if (!side) return _stageCompact(p, content, box);
+      final width =
+      (box.maxWidth *
+          (broad
+              ? .64
               : p.id == 'balai'
-              ? 620.0
-              : 480.0,
-        )
-            .toDouble();
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            28,
-            12,
-            box.maxWidth > 1000 ? 28 : 12,
-            8,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, c) {
-                    final art = c.maxWidth >= 260
-                        ? _popup(p.id, _moodOf(p.id))
-                        : null;
-                    final h = c.maxHeight * .9;
-                    final w = math.min(c.maxWidth, h * .85);
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Karakter berdiri di belakang teks, melangkah keluar
-                        // dari balik panel.
-                        if (art != null)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            width: w,
-                            height: h,
-                            child: _enter(
-                              PopupCharacter(
-                                path: art,
-                                tint: _glow(p),
-                                intro: false,
-                                reduced: _reduced,
-                              ),
-                              from: const Offset(60, 0),
-                              delay: .45,
-                            ),
-                          ),
-                        _enter(
-                          Align(
-                            alignment: art == null
-                                ? Alignment.bottomLeft
-                                : Alignment.topLeft,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                right: 22,
-                                bottom: 28,
-                                top: art == null ? 0 : 8,
-                              ),
-                              child: _hero(
-                                p,
-                                compact: false,
-                                tall: box.maxHeight >= 300,
-                              ),
-                            ),
-                          ),
-                          from: const Offset(-24, 0),
-                          delay: .2,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _enter(
-                  SizedBox(
-                    width: width,
-                    height: broad
-                        ? null
-                        : (p.id == 'sumur'
-                        ? 470.0
-                        : p.id == 'pondok'
-                        ? 510.0
-                        : 540.0)
-                        .clamp(0.0, box.maxHeight - 20)
-                        .toDouble(),
-                    child: OrnatePanel(
-                      accent: _accent,
-                      radius: 22,
-                      opacity: .95,
-                      padding: const EdgeInsets.all(14),
-                      child: content,
-                    ),
-                  ),
-                  from: const Offset(48, 0),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-      final desired = switch (p.id) {
-        'sumur' => 500.0,
-        'pondok' => 520.0,
-        'balai' => 550.0,
-        'riset' => 580.0,
-        _ => 560.0,
-      };
-      final height = desired
-          .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
+              ? .48
+              : .41))
+          .clamp(
+        broad ? 380.0 : 320.0,
+        broad
+            ? 900.0
+            : p.id == 'balai'
+            ? 620.0
+            : 480.0,
+      )
           .toDouble();
-      return Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                if (c.maxHeight < 96) return const SizedBox.shrink();
-                final art = c.maxHeight >= 130
-                    ? _popup(p.id, _moodOf(p.id))
-                    : null;
-                // Karakter mengintip dari balik lembar: bagian bawahnya
-                // terpotong tepi Stack tepat di bibir lembar.
-                final visible = math.min(c.maxHeight - 6, 230.0);
-                final h = visible / .66;
-                final w = math.min(c.maxWidth * .45, h * .85);
-                return Stack(
-                  children: [
-                    if (art != null)
-                      Positioned(
-                        right: 8,
-                        bottom: -(h - visible),
-                        width: w,
-                        height: h,
-                        child: _enter(
-                          PopupCharacter(
-                            path: art,
-                            tint: _glow(p),
-                            fadeFeet: false,
-                            intro: false,
-                            reduced: _reduced,
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          28,
+          12,
+          box.maxWidth > 1000 ? 28 : 12,
+          8,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  final art = c.maxWidth >= 200
+                      ? _popup(p.id, _moodOf(p.id))
+                      : null;
+                  // Ruang lega: karakter menyisakan tempat untuk ucapannya.
+                  final roomy = c.maxWidth >= 520 && box.maxHeight >= 500;
+                  final h = c.maxHeight * .97;
+                  final w = math.min(c.maxWidth * (roomy ? .74 : 1.0), h * .88);
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Karakter berdiri besar di belakang teks dan sedikit
+                      // menyelinap ke balik panel layanan.
+                      if (art != null)
+                        Positioned(
+                          right: -w * .04,
+                          bottom: 0,
+                          width: w,
+                          height: h,
+                          child: _enter(
+                            PopupCharacter(
+                              path: art,
+                              tint: _glow(p),
+                              intro: false,
+                              reduced: _reduced,
+                            ),
+                            from: const Offset(60, 0),
+                            delay: .45,
                           ),
-                          from: const Offset(0, 50),
-                          delay: .45,
                         ),
-                      ),
-                    _enter(
-                      Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                          child: _hero(p, compact: true),
+                      _enter(
+                        Align(
+                          alignment: art == null
+                              ? Alignment.bottomLeft
+                              : Alignment.topLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: 22,
+                              bottom: 28,
+                              top: art == null ? 0 : 8,
+                            ),
+                            child: _hero(
+                              p,
+                              compact: false,
+                              tall: box.maxHeight >= 300,
+                              voice: roomy && art != null,
+                            ),
+                          ),
                         ),
+                        from: const Offset(-24, 0),
+                        delay: .2,
                       ),
-                      from: const Offset(0, 14),
-                      delay: .2,
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: _enter(
+                SizedBox(
+                  width: width,
+                  height: broad
+                      ? null
+                      : (p.id == 'sumur'
+                      ? 470.0
+                      : p.id == 'pondok'
+                      ? 510.0
+                      : 540.0)
+                      .clamp(0.0, box.maxHeight - 20)
+                      .toDouble(),
+                  child: OrnatePanel(
+                    accent: _accent,
+                    radius: 22,
+                    opacity: .95,
+                    padding: const EdgeInsets.all(14),
+                    child: content,
+                  ),
+                ),
+                from: const Offset(48, 0),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  /// Layar sempit: karakter berdiri di atas lembar layanan. Lembar dapat
+  /// diturunkan (tinggal pegangan + kepala layanan) sehingga karakter tampil
+  /// hampir seluruh badan dan latar terlihat penuh; semuanya bergeser mulus.
+  Widget _stageCompact(_Place p, Widget content, BoxConstraints box) {
+    final open = _sheetOpen;
+    final desired = switch (p.id) {
+      'sumur' => 500.0,
+      'pondok' => 520.0,
+      'balai' => 550.0,
+      'riset' => 580.0,
+      _ => 560.0,
+    };
+    // Tinggi bawaan dibatasi supaya karakter tetap punya ruang di layar ponsel.
+    final cap = math.max(box.maxHeight * .64, 340.0);
+    final sheetH = math.min(desired, cap)
+        .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
+        .toDouble();
+    final shown = open ? sheetH : math.min(78.0, sheetH);
+    final avail = math.max(0.0, box.maxHeight - shown);
+    final dur = _reduced ? Duration.zero : const Duration(milliseconds: 480);
+    const curve = Curves.easeOutCubic;
+    final art = avail >= 130 ? _popup(p.id, _moodOf(p.id)) : null;
+    // Bagian karakter yang tampak di atas lembar; sisanya terselip di baliknya.
+    final visible = math.max(0.0, math.min(avail - 6, open ? 260.0 : 560.0));
+    final h = visible / (open ? .66 : .92);
+    final w = math.min(box.maxWidth * (open ? .5 : .8), h * .8);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (art != null)
+          AnimatedPositioned(
+            duration: dur,
+            curve: curve,
+            right: 8,
+            bottom: shown - (h - visible),
+            width: w,
+            height: h,
+            child: _enter(
+              PopupCharacter(
+                path: art,
+                tint: _glow(p),
+                fadeFeet: false,
+                intro: false,
+                reduced: _reduced,
+              ),
+              from: const Offset(0, 50),
+              delay: .45,
             ),
           ),
-          _enter(
-            SizedBox(
-              height: height,
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 580),
-                  child: _sheet(content),
-                ),
+        if (avail >= 96)
+          AnimatedPositioned(
+            duration: dur,
+            curve: curve,
+            left: 20,
+            right: 20,
+            bottom: shown + 14,
+            child: _enter(
+              _hero(p, compact: true),
+              from: const Offset(0, 14),
+              delay: .2,
+            ),
+          ),
+        AnimatedPositioned(
+          duration: dur,
+          curve: curve,
+          left: 0,
+          right: 0,
+          bottom: open ? 0.0 : shown - sheetH,
+          height: sheetH,
+          child: _enter(
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: _sheet(content, open: open),
               ),
             ),
             from: const Offset(0, 64),
           ),
-        ],
-      );
-    },
-  );
+        ),
+      ],
+    );
+  }
 
   Widget _interior(String place) => switch (place) {
     'riset' => ResearchView(
@@ -1601,76 +1710,107 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     'Tawarkan kartu dan jawab undangan. Penerima undangan boleh datang tanpa memakai jatah.',
   };
 
-  Widget _pickerCopy(_Place p, {required bool short, required bool wide}) {
+  Widget _pickerCopy(
+      _Place p, {
+        required bool short,
+        required bool wide,
+        bool voice = false,
+        double maxWidth = 560,
+      }) {
     final req = _requirement(p);
-    return Column(
+    return ConstrainedBox(
       key: ValueKey(p.id),
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _kicker(
-          'JELAJAH DESA  ·  ${(_index + 1).toString().padLeft(2, '0')} / ${_places.length.toString().padLeft(2, '0')}',
-        ),
-        SizedBox(height: short ? 8 : 16),
-        if (!short) ...[_placeMedal(p, 68), const SizedBox(height: 14)],
-        _titleReveal(
-          p.name,
-          size: short
-              ? 30
-              : wide
-              ? 56
-              : 42,
-        ),
-        if (!short) ...[
-          const SizedBox(height: 10),
-          GildedDivider(color: _accent, width: 200),
-        ],
-        SizedBox(height: short ? 6 : 10),
-        _text(p.tagline, size: short ? 15 : 18, lift: true),
-        if (!short) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.only(left: 12),
-            decoration: BoxDecoration(
-              border: Border(left: BorderSide(color: _accent, width: 2)),
-            ),
-            child: _text(
-              _description(p),
-              size: 14,
-              color: Colors.white70,
-              lift: true,
-            ),
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _kicker(
+            'JELAJAH DESA  ·  ${(_index + 1).toString().padLeft(2, '0')} / ${_places.length.toString().padLeft(2, '0')}',
           ),
+          SizedBox(height: short ? 8 : 16),
+          if (!short && wide) ...[_placeMedal(p, 68), const SizedBox(height: 14)],
+          _titleReveal(
+            p.name,
+            size: short
+                ? 30
+                : wide
+                ? 56
+                : 34,
+          ),
+          if (!short) ...[
+            const SizedBox(height: 10),
+            GildedDivider(color: _accent, width: 200),
+          ],
+          SizedBox(height: short ? 6 : 10),
+          _text(p.tagline, size: short ? 15 : (wide ? 18 : 16), lift: true),
+          if (!short) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.only(left: 12),
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: _accent, width: 2)),
+              ),
+              child: _text(
+                _description(p),
+                size: 14,
+                color: Colors.white70,
+                lift: true,
+              ),
+            ),
+          ],
+          if (voice) ...[
+            const SizedBox(height: 14),
+            _voiceBubble(p.id, mood: 'tanya'),
+          ],
+          if (req != null) ...[SizedBox(height: short ? 6 : 12), req],
         ],
-        if (req != null) ...[SizedBox(height: short ? 6 : 12), req],
-      ],
+      ),
     );
   }
 
-  /// Pemilih + karakter penyambut tempat terpilih di sisi kanan (layar lebar).
-  /// Karakter berganti mengikuti arah geser. Si Terbisik tak punya pose untuk
-  /// Balai Pertukaran, jadi di sana hanya pemilih.
+  /// Karakter melangkah ke arah kamera saat Masuk ditekan.
+  Widget _greet(Widget child) => AnimatedScale(
+    scale: _entering ? 1.14 : 1.0,
+    alignment: Alignment.bottomCenter,
+    duration: _reduced ? Duration.zero : const Duration(milliseconds: 700),
+    curve: Curves.easeInCubic,
+    child: AnimatedOpacity(
+      opacity: _entering ? 0.0 : 1.0,
+      duration: _reduced ? Duration.zero : const Duration(milliseconds: 700),
+      curve: Curves.easeIn,
+      child: child,
+    ),
+  );
+
+  /// Pemilih + karakter penyambut tempat terpilih. Layar lebar: karakter besar
+  /// di sisi kanan. Layar sempit: karakter berdiri di balik teks, tepat di
+  /// atas deretan tempat (lihat [_picker]). Karakter berganti mengikuti arah
+  /// geser. Si Terbisik tak punya pose untuk Balai Pertukaran, jadi di sana
+  /// hanya pemilih.
   Widget _pickerScene(bool wide) {
     final p = _places[_index];
     final art = wide ? _popup(p.id, 'tanya') : null;
     if (art == null) return _picker(wide);
     return LayoutBuilder(
       builder: (context, c) {
-        final h = c.maxHeight * .94;
-        final w = math.min(c.maxWidth * .4, h * .85);
+        final h = c.maxHeight * .98;
+        final w = math.min(c.maxWidth * .46, h * .82);
         return Stack(
           children: [
             Positioned(
-              right: 24,
+              right: math.max(16.0, c.maxWidth * .03),
               bottom: 0,
               width: w,
               height: h,
               child: IgnorePointer(
-                child: PopupCharacter(
-                  path: art,
-                  tint: _glow(p),
-                  slide: .12 * _dir,
-                  reduced: _reduced,
+                child: _greet(
+                  PopupCharacter(
+                    path: art,
+                    tint: _glow(p),
+                    slide: .12 * _dir,
+                    reduced: _reduced,
+                  ),
                 ),
               ),
             ),
@@ -1707,49 +1847,86 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             child: Padding(
               padding: EdgeInsets.fromLTRB(pad, short ? 4 : 12, pad, 6),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
+                constraints: BoxConstraints(
+                  maxWidth: wide ? math.min(560.0, box.maxWidth * .52) : 640.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: LayoutBuilder(
-                        builder: (context, c) => SingleChildScrollView(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: c.maxHeight),
-                            child: Align(
-                              alignment: wide
-                                  ? Alignment.centerLeft
-                                  : Alignment.bottomLeft,
-                              child: AnimatedSwitcher(
-                                duration: _reduced
-                                    ? Duration.zero
-                                    : const Duration(milliseconds: 320),
-                                layoutBuilder: (current, previous) => Stack(
-                                  alignment: wide
-                                      ? Alignment.centerLeft
-                                      : Alignment.bottomLeft,
-                                  children: [...previous, ?current],
-                                ),
-                                transitionBuilder: (child, anim) =>
-                                    FadeTransition(
-                                      opacity: anim,
-                                      child: SlideTransition(
-                                        position: Tween(
-                                          begin: const Offset(0, .05),
-                                          end: Offset.zero,
-                                        ).animate(anim),
-                                        child: child,
+                        builder: (context, c) {
+                          final art = wide ? null : _popup(p.id, 'tanya');
+                          final showArt = art != null && c.maxHeight >= 200;
+                          final copy = SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: c.maxHeight,
+                              ),
+                              child: Align(
+                                alignment: wide
+                                    ? Alignment.centerLeft
+                                    : Alignment.bottomLeft,
+                                child: AnimatedSwitcher(
+                                  duration: _reduced
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 320),
+                                  layoutBuilder: (current, previous) => Stack(
+                                    alignment: wide
+                                        ? Alignment.centerLeft
+                                        : Alignment.bottomLeft,
+                                    children: [...previous, ?current],
+                                  ),
+                                  transitionBuilder: (child, anim) =>
+                                      FadeTransition(
+                                        opacity: anim,
+                                        child: SlideTransition(
+                                          position: Tween(
+                                            begin: const Offset(0, .05),
+                                            end: Offset.zero,
+                                          ).animate(anim),
+                                          child: child,
+                                        ),
                                       ),
-                                    ),
-                                child: _pickerCopy(
-                                  p,
-                                  short: short,
-                                  wide: wide,
+                                  child: _pickerCopy(
+                                    p,
+                                    short: short,
+                                    wide: wide,
+                                    voice: wide && !short && c.maxHeight >= 430,
+                                    maxWidth: showArt ? c.maxWidth * .56 : 560.0,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                          if (!showArt) return copy;
+                          // Layar sempit: karakter berdiri di kanan, tepat di
+                          // atas deretan tempat, dan keluar sedikit ke tepi.
+                          final h = c.maxHeight;
+                          final w = math.min(c.maxWidth * .7, h * .8);
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                right: -pad + 4,
+                                bottom: 0,
+                                width: w,
+                                height: h,
+                                child: IgnorePointer(
+                                  child: _greet(
+                                    PopupCharacter(
+                                      path: art,
+                                      tint: _glow(p),
+                                      slide: .12 * _dir,
+                                      reduced: _reduced,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              copy,
+                            ],
+                          );
+                        },
                       ),
                     ),
                     SizedBox(height: short ? 8 : 14),
@@ -1846,15 +2023,26 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         children: [
           // Latar sinematik: Ken Burns (tak pernah di bawah kBentangZoom),
           // bergeser sesuai arah geser, dan mendorong masuk saat Masuk ditekan.
-          PlaceBackdrop(
-            path: bg,
-            height: place != null && box.maxWidth < 600
-                ? (box.maxHeight * .46).clamp(220.0, 400.0).toDouble()
-                : null,
-            inside: place != null,
-            pushIn: _entering,
-            dir: _dir,
-            reduced: reduced,
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(
+              end: place != null && box.maxWidth < 600
+                  ? (_sheetOpen
+                  ? (box.maxHeight * .52).clamp(240.0, 460.0).toDouble()
+                  : box.maxHeight)
+                  : box.maxHeight,
+            ),
+            duration: reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 480),
+            curve: Curves.easeOutCubic,
+            builder: (context, h, _) => PlaceBackdrop(
+              path: bg,
+              height: place != null && box.maxWidth < 600 ? h : null,
+              inside: place != null,
+              pushIn: _entering,
+              dir: _dir,
+              reduced: reduced,
+            ),
           ),
           // Peredam warna seperti Backdrop: ungu gelap untuk Si Terbisik.
           Positioned.fill(
@@ -1864,7 +2052,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 (widget.isAntag
                     ? const Color(0xFF1A1030)
                     : const Color(0xFF07130F))
-                    .withValues(alpha: place == null ? .38 : .5),
+                    .withValues(alpha: place == null ? .14 : .24),
               ),
             ),
           ),
@@ -1877,9 +2065,14 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                     : const Duration(milliseconds: 500),
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    center: const Alignment(-.55, -.25),
+                    // Cahaya mengikuti karakter: kanan di pemilih dan layar
+                    // sempit, kiri-tengah di panggung lebar.
+                    center: Alignment(
+                      place == null || box.maxWidth < 820 ? .5 : -.25,
+                      -.2,
+                    ),
                     radius: 1.0,
-                    colors: [glow.withValues(alpha: .16), Colors.transparent],
+                    colors: [glow.withValues(alpha: .26), Colors.transparent],
                   ),
                 ),
               ),
@@ -1912,17 +2105,37 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: const [0, .45, 1],
+                    stops: const [0, .5, 1],
                     colors: [
                       const Color(0x60102018),
                       const Color(0x00102018),
-                      EmbunColors.bg.withValues(alpha: place == null ? .94 : .86),
+                      EmbunColors.bg.withValues(alpha: place == null ? .84 : .74),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+          // Alas teks di sisi kiri pemilih lebar; latar sisanya dibiarkan terang.
+          if (place == null && box.maxWidth > 760)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      stops: const [0, .34, .62],
+                      colors: [
+                        EmbunColors.bg.withValues(alpha: .66),
+                        EmbunColors.bg.withValues(alpha: .26),
+                        EmbunColors.bg.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Adegan memudar masuk dari tinta. Di pemilih: pemudaran biasa.
           // Di dalam tempat: lubang cahaya membuka dari tengah.
           if (place == null)
