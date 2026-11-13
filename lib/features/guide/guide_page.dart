@@ -1053,7 +1053,7 @@ class _HowToTab extends StatelessWidget {
               '**Sumur Desa**: bayar 8 uang untuk mengubah laju bersama sebesar +0,15 (warga) atau −0,15 (Terbisik) per hari. Bertahan sepanjang gim, batas −1,50 sampai +1,50. Berlaku bagi kedua fraksi.',
             ),
             _bullet(
-              '**Bengkel Desa**: satu-satunya tempat untuk mengaktifkan kartu lanjutan menggunakan kartu poin. Tidak bisa digabung di Meja hari biasa.',
+              '**Bengkel Desa**: aktifkan kartu lanjutan menggunakan kartu poin, atau tingkatkan Stetoskop milik warga. Tidak bisa digabung di Meja hari biasa.',
             ),
             _bullet(
               '**Pondok Perawatan**: perlu surat sesuai peran. Perawatan memulihkan 1 nyawa; pasien lain perlu tambahan 12 uang. Jebakan mengurangi 1 nyawa seorang pengunjung lain, lalu habis. Pemulihan diselesaikan sebelum jebakan.',
@@ -1130,8 +1130,16 @@ class _HowToTab extends StatelessWidget {
             _infoRow(
               'item',
               'Sekali pakai (warga)',
-              'Alat periksa. Hasilnya hanya kamu yang tahu, dan tidak '
-                  'selalu benar.',
+              'Hasil pemeriksaan muncul dalam popup pribadi saat musyawarah. '
+                  'Kaca Pembesar dan Lampu Senter memberi angka nyata. '
+                  'Lentera menilai persembahan, bukan peran.',
+            ),
+            _bullet(
+              '**Stetoskop** memeriksa peran. Peluang berhasil awal **30%**. '
+              'Tingkatkan satu kartu di **Bengkel Desa**: **30 → 50 → 70 → 85 → 100%**, '
+              'dengan biaya bertahap **3 / 5 / 7 / 10 embun**. Gagal berarti peran '
+              'belum dapat dipastikan. Mulai **85%** kebal pengelabuan; **100%** pasti benar. '
+              'Kartu dan peningkatannya habis saat dipakai. Buka ulang hasil lewat **Infoku**.',
             ),
             _infoRow(
               'plus',

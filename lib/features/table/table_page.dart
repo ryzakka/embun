@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
 import '../../data/hayu_effects.dart';
+import '../../data/inspection.dart';
+import 'inspection_report_dialog.dart';
 import '../../data/embun_data.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
@@ -73,6 +75,9 @@ class _TablePageState extends State<TablePage> {
   late final lobby = EmbunData.maybeOf(context)?.lobby ?? LobbyRepository();
   final List<StreamSubscription<dynamic>> _subs = [];
   Timer? _beat;
+  bool _inspectionLoading = false;
+  bool _inspectionOpen = false;
+  final Set<String> _inspectionShown = {};
 
   Map<String, dynamic>? game;
   List<Map<String, dynamic>> players = [];
@@ -335,7 +340,7 @@ class _TablePageState extends State<TablePage> {
   GlobalKey _avatarKey(String id) =>
       _avatarKeys.putIfAbsent(id, () => GlobalKey());
 
-  bool get _fxBlocked => _dayIntro != null || _holdIntro;
+  bool get _fxBlocked => _dayIntro != null || _holdIntro || _inspectionOpen;
 
   /// Persegi avatar pemain di deretan desa; bila tak tampil, jatuh ke deretan
   /// desa secara umum, lalu ke tengah atas layar.
@@ -567,6 +572,7 @@ class _TablePageState extends State<TablePage> {
   void _heartbeat() {
     repo.tick(widget.gameId).catchError((_) {});
     _refreshHand();
+    _readInspectionInbox();
   }
 
   bool _handBusy = false;
@@ -594,6 +600,71 @@ class _TablePageState extends State<TablePage> {
       _handBusy = false;
     }
   }
+
+  bool get _canReadInspections =>
+      mounted &&
+      !_leaving &&
+      !_holdIntro &&
+      _dayIntro == null &&
+      _heldGame == null &&
+      !_chatOpen &&
+      game?['status'] == 'playing' &&
+      const {
+        'discussion',
+        'voting',
+        'day',
+        'visits',
+      }.contains(game?['phase']) &&
+      (ModalRoute.of(context)?.isCurrent ?? false);
+
+  Future<void> _readInspectionInbox() async {
+    if (_inspectionLoading || _inspectionOpen || !_canReadInspections) return;
+    _inspectionLoading = true;
+    try {
+      final rows = await repo.inspectionReports(
+        widget.gameId,
+        unreadOnly: true,
+      );
+      for (final row in rows) {
+        if (!_canReadInspections) break;
+        final report = InspectionReport.fromRow(row);
+        if (_inspectionShown.contains(report.id)) continue;
+        final target = players
+            .where((p) => p['user_id'] == report.targetId)
+            .firstOrNull;
+        if (!mounted) return;
+        _inspectionOpen = true;
+        final read = await showInspectionReport(
+          context,
+          report,
+          characterStem: target?['character_card'] as String?,
+        );
+        _inspectionOpen = false;
+        if (!mounted) return;
+        if (read) {
+          _inspectionShown.add(report.id);
+          try {
+            await repo.markInspectionReportRead(report.id);
+          } catch (_) {}
+        } else {
+          break;
+        }
+      }
+    } catch (_) {
+      // Percobaan berikutnya dari heartbeat; tidak mengganggu fase permainan.
+    } finally {
+      _inspectionOpen = false;
+      _inspectionLoading = false;
+    }
+  }
+
+  Future<void> _openInspectionHistory() => showInspectionHistory(
+    context,
+    repo: repo,
+    gameId: widget.gameId,
+    players: players,
+    onRead: (id) => _inspectionShown.add(id),
+  );
 
   void _onGame(Map<String, dynamic>? g) {
     if (!mounted) return;
@@ -623,7 +694,12 @@ class _TablePageState extends State<TablePage> {
           .catchError((_) {});
     }
     // Ganti fase/hari: kartu bisa bertambah (persembahan) atau terpakai.
-    if (changed) _refreshHand();
+    if (changed) {
+      _refreshHand();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _readInspectionInbox();
+      });
+    }
   }
 
   /// Hasil efek selesai dan fase berganti ke diskusi: putar kain, dan tahan
@@ -1274,7 +1350,13 @@ class _TablePageState extends State<TablePage> {
     }
     Future.delayed(Duration(milliseconds: attempt == 0 ? 2800 : 1500), () {
       if (!mounted || _abilityRevealed) return;
-      if (_dayIntro != null && attempt < 8) {
+      // Data hari dapat tiba setelah pengambilan kemampuan pertama.
+      // Pengantar kemampuan hari pertama tidak menutupi laporan musyawarah.
+      if (((game?['day'] as int?) ?? 0) > 1) {
+        _abilityRevealed = true;
+        return;
+      }
+      if ((_dayIntro != null || _inspectionOpen) && attempt < 8) {
         _tryRevealAbility(attempt + 1);
         return;
       }
@@ -1353,6 +1435,7 @@ class _TablePageState extends State<TablePage> {
       darkSeed: darkSeed,
       abilityDef: isAntag ? null : abilityDefs[abilityId],
       abilityUsed: abilityUsed,
+      onInspectionHistory: _openInspectionHistory,
     );
   }
 

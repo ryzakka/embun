@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math';
+import '../../data/inspection.dart';
 
 import '../../data/announcement_repository.dart';
 import '../../data/game_repository.dart';
@@ -20,6 +22,8 @@ class PreviewSession
   static const roomCode = 'HAYUU';
 
   final List<PreviewRow> _visits = [];
+  final List<PreviewRow> _inspectionReports = [];
+  final Random _inspectionRandom = Random();
   double _wellBonus = 0;
   bool _trapWaiting = false;
   @override
@@ -261,6 +265,7 @@ class PreviewSession
           },
       ]);
     _visits.clear();
+    _inspectionReports.clear();
     _wellBonus = 0;
     _trapWaiting = false;
     _guards.clear();
@@ -280,7 +285,10 @@ class PreviewSession
         _addCard(d['id'] as String);
       }
     }
-    if (!_dark) _addCard('perlindungan_malam');
+    if (!_dark) {
+      _addCard('perlindungan_malam');
+      _addCard('stetoskop');
+    }
     _bought.clear();
     _researched.clear();
     _chat
@@ -300,6 +308,21 @@ class PreviewSession
         'give_card_id': 'air_suci',
         'status': 'pending',
       });
+    if (phase == 'discussion' && !_dark) {
+      _inspectionReports.add({
+        'id': 'preview-inspection-intro',
+        'game_id': gameId,
+        'inspector_id': myId,
+        'target_id': other['user_id'],
+        'target_name': other['name'],
+        'kind': 'heartbeat',
+        'chance': 85,
+        'outcome': 'antagonis',
+        'day': day,
+        'message':
+            'Stetoskop 85%: pemeriksaan ${other['name']} menunjukkan Si Terbisik.',
+      });
+    }
   }
 
   Stream<T> _watch<T>(T Function() read) => Stream<T>.multi((sink) {
@@ -321,6 +344,7 @@ class PreviewSession
       'user_id': myId,
       'acquired_day': day,
       'charged': charged,
+      'inspection_level': 0,
     });
   }
 
@@ -559,6 +583,61 @@ class PreviewSession
   Future<List<PreviewRow>> handNow(String gameId) async => hand;
 
   @override
+  Future<PreviewRow> upgradeInspectionCard(
+    String gameId,
+    String handId,
+    int expectedLevel,
+  ) async {
+    final visit = _visits.where((v) => v['closed_at'] == null).lastOrNull;
+    if (gameId != PreviewSession.gameId ||
+        _game['phase'] != 'visits' ||
+        visit?['place'] != 'bengkel' ||
+        _dark ||
+        me['ready'] == true ||
+        me['out_day'] != null) {
+      throw StateError('Tingkatkan Stetoskop saat berkunjung ke Bengkel Desa.');
+    }
+    final card = _hand
+        .where((h) => h['id'] == handId && h['card_id'] == 'stetoskop')
+        .firstOrNull;
+    if (card == null || StethoscopeRules.level(card) != expectedLevel) {
+      throw StateError('Kartu atau tingkatnya sudah berubah.');
+    }
+    final cost = StethoscopeRules.nextCost(card);
+    if (cost == null) throw StateError('Stetoskop sudah 100%.');
+    if (_balance < cost) throw StateError('Embunmu tidak cukup.');
+    card['inspection_level'] = expectedLevel + 1;
+    _balance -= cost;
+    _update();
+    return {
+      'hand_id': handId,
+      'inspection_level': expectedLevel + 1,
+      'chance': StethoscopeRules.chance(card),
+      'cost': cost,
+      'balance': _balance,
+    };
+  }
+
+  @override
+  Future<List<PreviewRow>> inspectionReports(
+    String gameId, {
+    bool unreadOnly = false,
+  }) async => [
+    for (final row in _inspectionReports)
+      if (row['inspector_id'] == myId &&
+          (!unreadOnly || row['seen_at'] == null))
+        Map<String, dynamic>.from(row),
+  ];
+
+  @override
+  Future<void> markInspectionReportRead(String reportId) async {
+    final report = _inspectionReports
+        .where((r) => r['id'] == reportId && r['inspector_id'] == myId)
+        .firstOrNull;
+    if (report != null) report['seen_at'] ??= _stamp;
+  }
+
+  @override
   Future<PreviewRow> fuseCards(String gameId, String handId) async {
     final visit = _visits.where((v) => v['closed_at'] == null).lastOrNull;
     if (_game['phase'] != 'visits' || visit?['place'] != 'bengkel') {
@@ -584,7 +663,57 @@ class PreviewSession
     List<String> handIds, {
     String? target,
   }) async {
+    final selected = _hand.where((h) => handIds.contains(h['id'])).toList();
+    final targetPlayer = _players
+        .where((p) => p['user_id'] == target)
+        .firstOrNull;
     _hand.removeWhere((h) => handIds.contains(h['id']));
+    if (targetPlayer != null) {
+      final secrets = await allSecrets(gameId);
+      for (final card in selected) {
+        final kind =
+            (previewCards[card['card_id']]?['effect'] as Map?)?['inspect'];
+        if (!const {'heartbeat', 'hand', 'purchase', 'offering'}.contains(kind)) {
+          continue;
+        }
+        final chance = kind == 'heartbeat'
+            ? StethoscopeRules.chance(card)
+            : null;
+        String outcome = 'number';
+        if (kind == 'heartbeat') {
+          final secret = secrets[target];
+          outcome =
+              _inspectionRandom.nextDouble() < ((chance ?? 30) / 100) &&
+                  secret != null
+              ? '${secret['role']}'
+              : 'unknown';
+        } else if (kind == 'offering') {
+          outcome = 'baik';
+        }
+        final value = kind == 'hand'
+            ? 3
+            : kind == 'purchase'
+            ? 2
+            : null;
+        final row = <String, dynamic>{
+          'id': 'preview-inspection-${++_sequence}',
+          'game_id': gameId,
+          'inspector_id': myId,
+          'target_id': target,
+          'target_name': targetPlayer['name'],
+          'kind': kind,
+          'chance': chance,
+          'outcome': outcome,
+          'value': value,
+          'day': day,
+          'message': '',
+        };
+        final report = InspectionReport.fromRow(row);
+        row['message'] =
+            '${report.source}: ${report.targetName} — ${report.headline}.';
+        _inspectionReports.add(row);
+      }
+    }
     _ready(true);
   }
 
@@ -628,6 +757,8 @@ class PreviewSession
 
   @override
   Future<List<PreviewRow>> privateLogs(String gameId, int day) async => [
+    for (final report in _inspectionReports)
+      if (report['day'] == day) {'message': report['message']},
     if (_dark)
       {'message': 'Bisikan: Tersampaikan kepada Peselancar.'}
     else

@@ -5,6 +5,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../../data/game_rules.dart';
+import '../../data/inspection.dart';
 import '../common/art.dart';
 import 'card_tile.dart';
 import 'day_chrome.dart';
@@ -73,9 +74,10 @@ class _OfferingViewState extends State<OfferingView>
   /// Kartu yang keterangannya sedang ditampilkan.
   String? _focus;
 
-  late final AnimationController _drift =
-  AnimationController(vsync: this, duration: const Duration(seconds: 40))
-    ..repeat();
+  late final AnimationController _drift = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 40),
+  )..repeat();
 
   @override
   void dispose() {
@@ -143,8 +145,9 @@ class _OfferingViewState extends State<OfferingView>
       } else {
         // Sudah 2 kartu: ganti pilihan tertua (kecuali sumbangan wajib).
         final drop = sel.firstWhere(
-                (x) => !(widget.isAntag && x == _samaranId),
-            orElse: () => '');
+          (x) => !(widget.isAntag && x == _samaranId),
+          orElse: () => '',
+        );
         if (drop.isNotEmpty) {
           sel.remove(drop);
           sel.add(handId);
@@ -174,8 +177,9 @@ class _OfferingViewState extends State<OfferingView>
       widget.onSubmitted?.call();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errMsg(e))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errMsg(e))));
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -196,11 +200,13 @@ class _OfferingViewState extends State<OfferingView>
     decoration: tableEdge(widget.isAntag ? EmbunColors.mist : EmbunColors.gold),
     padding: const EdgeInsets.symmetric(vertical: 3),
     child: wide
-        ? Row(children: [
-            const GameIcon('titlepersembahan', width: 143, height: 34),
-            const SizedBox(width: 16),
-            Expanded(child: _gauge()),
-          ])
+        ? Row(
+            children: [
+              const GameIcon('titlepersembahan', width: 143, height: 34),
+              const SizedBox(width: 16),
+              Expanded(child: _gauge()),
+            ],
+          )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -221,57 +227,67 @@ class _OfferingViewState extends State<OfferingView>
           children: [
             const GameIcon('helaidaun', size: 24),
             const SizedBox(width: 6),
-            Text('${widget.leaves}',
-                style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: EmbunColors.gold)),
+            Text(
+              '${widget.leaves}',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: EmbunColors.gold,
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(
-              child: LayoutBuilder(builder: (context, c) {
-                return SizedBox(
-                  height: 12,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 2,
-                        child: Container(
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white12,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: v,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: widget.leaves >= widget.winLeaves
-                                    ? EmbunColors.leaf
-                                    : EmbunColors.gold,
-                                borderRadius: BorderRadius.circular(4),
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  return SizedBox(
+                    height: 12,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 2,
+                          child: Container(
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: v,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: widget.leaves >= widget.winLeaves
+                                      ? EmbunColors.leaf
+                                      : EmbunColors.gold,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        left: c.maxWidth * w - 1,
-                        top: 0,
-                        child: Container(
-                            width: 2, height: 12, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                        Positioned(
+                          left: c.maxWidth * w - 1,
+                          top: 0,
+                          child: Container(
+                            width: 2,
+                            height: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(width: 8),
-            Text('${widget.winLeaves}',
-                style: const TextStyle(fontSize: 12, color: Colors.white60)),
+            Text(
+              '${widget.winLeaves}',
+              style: const TextStyle(fontSize: 12, color: Colors.white60),
+            ),
           ],
         ),
         if (_fog case final baseFog?)
@@ -290,54 +306,71 @@ class _OfferingViewState extends State<OfferingView>
   Widget _info() {
     final picked = <Map<String, dynamic>>[
       for (final h in widget.hand)
-        if (sel.contains(h['id'])) h
+        if (sel.contains(h['id'])) h,
     ];
     final focus = _handById(_focus) ?? (picked.isEmpty ? null : picked.last);
     final d = focus == null ? null : widget.defs[focus['card_id']];
-    final locked =
-        focus != null && widget.isAntag && focus['id'] == _samaranId;
+    final locked = focus != null && widget.isAntag && focus['id'] == _samaranId;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: d == null
           ? Center(
-        child: Text(
-            widget.isAntag
-                ? 'Roti Surplus wajib disertakan sebagai kedok.'
-                : 'Pilih 1-2 kartu untuk dipersembahkan kepada Hayu. '
-                'Sentuh kartu untuk melihat efeknya.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 12.5, height: 1.3, color: Colors.white60)),
-      )
-          : Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text('${d['name'] ?? ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.gold)),
+              child: Text(
+                widget.isAntag
+                    ? 'Roti Surplus wajib disertakan sebagai kedok.'
+                    : 'Pilih 1-2 kartu untuk dipersembahkan kepada Hayu. '
+                          'Sentuh kartu untuk melihat efeknya.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.3,
+                  color: Colors.white60,
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(locked ? 'Wajib · kedok' : (kindLabel[d['kind']] ?? ''),
-                  style:
-                  const TextStyle(fontSize: 11, color: Colors.white54)),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Text('${d['description'] ?? ''}',
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 12, height: 1.3, color: Colors.white70)),
-        ],
-      ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${d['name'] ?? ''}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      locked ? 'Wajib · kedok' : (kindLabel[d['kind']] ?? ''),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  focus?['card_id'] == 'stetoskop'
+                      ? StethoscopeRules.summary(focus!)
+                      : '${d['description'] ?? ''}',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.3,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -349,41 +382,46 @@ class _OfferingViewState extends State<OfferingView>
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Tanganmu kosong. Kamu tidak punya kartu untuk diserahkan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white60)),
-        ),
-      );
-    }
-    return LayoutBuilder(builder: (context, c) {
-      const gap = 10.0, lift = 14.0, side = 12.0;
-      final n = hand.length;
-      final byHeight = (c.maxHeight - lift - 8) / kTallAspect;
-      final byWidth = (c.maxWidth - side * 2 - gap * (n - 1)) / n;
-      // Muat satu baris bila lebar kartu tidak kurang dari 66; selain itu geser.
-      final w = math.min(byHeight, math.max(byWidth, 66.0))
-          .clamp(28.0, 130.0)
-          .toDouble();
-      return Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: side),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: c.maxWidth - side * 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                for (var i = 0; i < n; i++) ...[
-                  if (i > 0) const SizedBox(width: gap),
-                  _cardAt(hand[i], w, lift),
-                ],
-              ],
-            ),
+          child: Text(
+            'Tanganmu kosong. Kamu tidak punya kartu untuk diserahkan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white60),
           ),
         ),
       );
-    });
+    }
+    return LayoutBuilder(
+      builder: (context, c) {
+        const gap = 10.0, lift = 14.0, side = 12.0;
+        final n = hand.length;
+        final byHeight = (c.maxHeight - lift - 8) / kTallAspect;
+        final byWidth = (c.maxWidth - side * 2 - gap * (n - 1)) / n;
+        // Muat satu baris bila lebar kartu tidak kurang dari 66; selain itu geser.
+        final w = math
+            .min(byHeight, math.max(byWidth, 66.0))
+            .clamp(28.0, 130.0)
+            .toDouble();
+        return Center(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: side),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: c.maxWidth - side * 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < n; i++) ...[
+                    if (i > 0) const SizedBox(width: gap),
+                    _cardAt(hand[i], w, lift),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _cardAt(Map<String, dynamic> h, double w, double lift) {
@@ -394,21 +432,32 @@ class _OfferingViewState extends State<OfferingView>
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.only(top: picked ? 0 : lift, bottom: picked ? lift : 0),
+      padding: EdgeInsets.only(
+        top: picked ? 0 : lift,
+        bottom: picked ? lift : 0,
+      ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           CardTile(
             def: widget.defs[cardId],
+            inspectionCard: h,
             fallbackName: cardId,
             width: w,
             selected: picked,
-            tag: picked ? (locked ? 'Wajib' : 'Terpilih') : null,
+            tag: cardId == 'stetoskop'
+                ? '${StethoscopeRules.chance(h)}%${picked ? ' • Dipilih' : ''}'
+                : picked
+                ? (locked ? 'Wajib' : 'Terpilih')
+                : null,
             onTap: () => _toggle(id),
           ),
           if (locked)
             const Positioned(
-                right: -4, top: -4, child: GameIcon('lock', size: 22)),
+              right: -4,
+              top: -4,
+              child: GameIcon('lock', size: 22),
+            ),
         ],
       ),
     );
@@ -423,11 +472,14 @@ class _OfferingViewState extends State<OfferingView>
         children: [
           GameIcon('touch', size: 24),
           SizedBox(width: 6),
-          Text('Pilih sasaran kartumu',
-              style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: EmbunColors.gold)),
+          Text(
+            'Pilih sasaran kartumu',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: EmbunColors.gold,
+            ),
+          ),
         ],
       ),
       const SizedBox(height: 6),
@@ -448,7 +500,8 @@ class _OfferingViewState extends State<OfferingView>
                     children: [
                       PlayerAvatar(
                         path: protagonistPath(
-                            (p['character_card'] as String?) ?? 'default'),
+                          (p['character_card'] as String?) ?? 'default',
+                        ),
                         size: 40,
                         ring: targetId == p['user_id']
                             ? EmbunColors.gold
@@ -457,18 +510,21 @@ class _OfferingViewState extends State<OfferingView>
                       const SizedBox(height: 3),
                       SizedBox(
                         width: 56,
-                        child: Text('${p['name']}',
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: targetId == p['user_id']
-                                    ? FontWeight.bold
-                                    : FontWeight.w400,
-                                color: targetId == p['user_id']
-                                    ? EmbunColors.gold
-                                    : Colors.white70)),
+                        child: Text(
+                          '${p['name']}',
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: targetId == p['user_id']
+                                ? FontWeight.bold
+                                : FontWeight.w400,
+                            color: targetId == p['user_id']
+                                ? EmbunColors.gold
+                                : Colors.white70,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -499,7 +555,8 @@ class _OfferingViewState extends State<OfferingView>
                     opacity: p['ready'] == true ? 1 : 0.55,
                     child: PlayerAvatar(
                       path: protagonistPath(
-                          (p['character_card'] as String?) ?? 'default'),
+                        (p['character_card'] as String?) ?? 'default',
+                      ),
                       size: 42,
                       ring: p['ready'] == true
                           ? EmbunColors.leaf
@@ -518,9 +575,10 @@ class _OfferingViewState extends State<OfferingView>
                             ? EmbunColors.leaf
                             : Colors.black87,
                         border: Border.all(
-                            color: p['ready'] == true
-                                ? EmbunColors.leaf
-                                : Colors.white38),
+                          color: p['ready'] == true
+                              ? EmbunColors.leaf
+                              : Colors.white38,
+                        ),
                       ),
                       child: GameIcon(
                         p['ready'] == true ? 'centang' : 'wait',
@@ -532,11 +590,12 @@ class _OfferingViewState extends State<OfferingView>
               ),
               const SizedBox(height: 3),
               Text(
-                  p['user_id'] == widget.repo.myId ? 'Kamu' : '${p['name']}',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10.5, color: Colors.white70)),
+                p['user_id'] == widget.repo.myId ? 'Kamu' : '${p['name']}',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10.5, color: Colors.white70),
+              ),
             ],
           ),
         ),
@@ -551,10 +610,11 @@ class _OfferingViewState extends State<OfferingView>
         const GameIcon('wait', size: 22),
         const SizedBox(width: 8),
         Text(
-            left == 0
-                ? 'Semua sudah menyerahkan...'
-                : 'Menunggu $left warga lagi  (${widget.readyCount}/${widget.total})',
-            style: const TextStyle(fontSize: 13, color: Colors.white70)),
+          left == 0
+              ? 'Semua sudah menyerahkan...'
+              : 'Menunggu $left warga lagi  (${widget.readyCount}/${widget.total})',
+          style: const TextStyle(fontSize: 13, color: Colors.white70),
+        ),
       ],
     );
   }
@@ -562,52 +622,62 @@ class _OfferingViewState extends State<OfferingView>
   /// Punggung kartu yang sudah diserahkan, tersusun kipas kecil.
   Widget _sentFan() {
     final n = _sentCount.clamp(1, 2).toInt();
-    return LayoutBuilder(builder: (context, c) {
-      final w = ((c.maxHeight - 10) / kTallAspect).clamp(50.0, 110.0).toDouble();
-      final h = w * kTallAspect;
-      return Center(
-        child: SizedBox(
-          width: w * 1.8,
-          height: h + 8,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              for (var i = 0; i < n; i++)
-                Transform.translate(
-                  offset: Offset((i - (n - 1) / 2) * w * 0.5, 0),
-                  child: Transform.rotate(
-                    angle: (i - (n - 1) / 2) * 0.14,
-                    child: Container(
-                      width: w,
-                      height: h,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = ((c.maxHeight - 10) / kTallAspect)
+            .clamp(50.0, 110.0)
+            .toDouble();
+        final h = w * kTallAspect;
+        return Center(
+          child: SizedBox(
+            width: w * 1.8,
+            height: h + 8,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                for (var i = 0; i < n; i++)
+                  Transform.translate(
+                    offset: Offset((i - (n - 1) / 2) * w * 0.5, 0),
+                    child: Transform.rotate(
+                      angle: (i - (n - 1) / 2) * 0.14,
+                      child: Container(
+                        width: w,
+                        height: h,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
                               color: EmbunColors.gold.withValues(alpha: 0.35),
-                              blurRadius: 14),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        // Punggung sama untuk semua pemain: tidak membocorkan peran.
-                        child: GameImage(path: itemBackPath(), cacheWidth: 320),
+                              blurRadius: 14,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          // Punggung sama untuk semua pemain: tidak membocorkan peran.
+                          child: GameImage(
+                            path: itemBackPath(),
+                            cacheWidth: 320,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Widget _picking(List<Map<String, dynamic>> others) => LayoutBuilder(
     builder: (context, box) {
       final wide = box.maxWidth >= 485;
       final action = EmbunButton(
-        label: sel.isEmpty ? 'Pilih kartu dulu' : 'Persembahkan (${sel.length}/2)',
+        label: sel.isEmpty
+            ? 'Pilih kartu dulu'
+            : 'Persembahkan (${sel.length}/2)',
         icon: 'donations',
         expand: true,
         height: 44,
@@ -616,10 +686,7 @@ class _OfferingViewState extends State<OfferingView>
       final detail = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _info(),
-          if (_needsTarget) _targets(others),
-        ],
+        children: [_info(), if (_needsTarget) _targets(others)],
       );
       final Widget content;
       if (wide) {
@@ -634,7 +701,9 @@ class _OfferingViewState extends State<OfferingView>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: Center(child: SingleChildScrollView(child: detail))),
+                  Expanded(
+                    child: Center(child: SingleChildScrollView(child: detail)),
+                  ),
                   action,
                 ],
               ),
@@ -643,21 +712,31 @@ class _OfferingViewState extends State<OfferingView>
         );
       } else if (box.maxHeight < 410) {
         content = ListView(
-          children: [SizedBox(height: 148, child: _cardRow()), detail, action],
+          children: [
+            SizedBox(height: 148, child: _cardRow()),
+            detail,
+            action,
+          ],
         );
       } else {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(child: _cardRow()),
-            DecoratedBox(decoration: tableEdge(EmbunColors.gold, top: true), child: detail),
+            DecoratedBox(
+              decoration: tableEdge(EmbunColors.gold, top: true),
+              child: detail,
+            ),
             action,
           ],
         );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [_header(wide: wide), Expanded(child: content)],
+        children: [
+          _header(wide: wide),
+          Expanded(child: content),
+        ],
       );
     },
   );
@@ -679,9 +758,15 @@ class _OfferingViewState extends State<OfferingView>
                         : Center(child: TreePortrait(leaves: widget.leaves)),
                   ),
                   const SizedBox(height: 5),
-                  const Text('Persembahanmu sudah diserahkan', textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-                      color: EmbunColors.gold)),
+                  const Text(
+                    'Persembahanmu sudah diserahkan',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: EmbunColors.gold,
+                    ),
+                  ),
                   const SizedBox(height: 7),
                   _roster(),
                   const SizedBox(height: 7),
@@ -709,21 +794,28 @@ class _OfferingViewState extends State<OfferingView>
               children: [
                 const GameIcon('lock', size: 64),
                 const SizedBox(height: 10),
-                const Text('Kamu sudah keluar dari desa',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: EmbunColors.blood)),
+                const Text(
+                  'Kamu sudah keluar dari desa',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: EmbunColors.blood,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 360),
                   child: const Text(
-                      'Kamu tidak lagi ikut mempersembahkan kartu. Tonton saja '
-                          'bagaimana nasib Hayu malam ini.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 13, height: 1.35, color: Colors.white70)),
+                    'Kamu tidak lagi ikut mempersembahkan kartu. Tonton saja '
+                    'bagaimana nasib Hayu malam ini.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: Colors.white70,
+                    ),
+                  ),
                 ),
               ],
             ),

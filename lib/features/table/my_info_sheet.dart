@@ -13,6 +13,7 @@ Future<void> showMyInfoDialog(
   int? darkSeed,
   Map<String, dynamic>? abilityDef,
   bool abilityUsed = false,
+  VoidCallback? onInspectionHistory,
 }) => showDialog<void>(
   context: context,
   builder: (_) => _MyInfoDialog(
@@ -22,6 +23,7 @@ Future<void> showMyInfoDialog(
     darkSeed: darkSeed,
     abilityDef: abilityDef,
     abilityUsed: abilityUsed,
+    onInspectionHistory: onInspectionHistory,
   ),
 );
 
@@ -33,6 +35,7 @@ class _MyInfoDialog extends StatelessWidget {
     required this.darkSeed,
     required this.abilityDef,
     required this.abilityUsed,
+    this.onInspectionHistory,
   });
 
   final bool isAntag;
@@ -41,6 +44,7 @@ class _MyInfoDialog extends StatelessWidget {
   final int? darkSeed;
   final Map<String, dynamic>? abilityDef;
   final bool abilityUsed;
+  final VoidCallback? onInspectionHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -206,6 +210,17 @@ class _MyInfoDialog extends StatelessWidget {
                     'Kemampuan belum tersedia.',
                     style: TextStyle(color: Colors.white60),
                   ),
+                if (onInspectionHistory != null) ...[
+                  const Divider(height: 26),
+                  TextButton.icon(
+                    icon: const GameIcon('logorhistory', size: 22),
+                    label: const Text('Catatan pemeriksaan'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onInspectionHistory!();
+                    },
+                  ),
+                ],
               ],
             ),
           ),

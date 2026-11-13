@@ -36,6 +36,41 @@ class GameRepository {
   Future<void> finishVillageVisits(String gameId) =>
       _db.rpc('finish_village_visits', params: {'p_game': gameId});
 
+  Future<Map<String, dynamic>> upgradeInspectionCard(
+    String gameId,
+    String handId,
+    int expectedLevel,
+  ) async {
+    final result = await _db.rpc(
+      'upgrade_inspection_card',
+      params: {
+        'p_game': gameId,
+        'p_hand_id': handId,
+        'p_expected_level': expectedLevel,
+      },
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> inspectionReports(
+    String gameId, {
+    bool unreadOnly = false,
+  }) async {
+    final query = _db
+        .from('inspection_reports')
+        .select()
+        .eq('game_id', gameId)
+        .eq('inspector_id', myId);
+    final rows = await (unreadOnly ? query.isFilter('seen_at', null) : query)
+        .order('day')
+        .order('created_at')
+        .order('id');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> markInspectionReportRead(String reportId) =>
+      _db.rpc('mark_inspection_report_read', params: {'p_report': reportId});
+
   final _db = Supabase.instance.client;
   String get myId => _db.auth.currentUser!.id;
 

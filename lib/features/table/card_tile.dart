@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/hayu_parts.dart';
+import '../../data/inspection.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -344,6 +345,7 @@ Future<void> showCardPreview(
   String? actionLabel,
   Future<void> Function()? onAction,
   Map<String, Map<String, dynamic>>? defs,
+  Map<String, dynamic>? inspectionCard,
 }) {
   final bad = def['side'] == 'antagonis';
   final glow = bad
@@ -427,6 +429,17 @@ Future<void> showCardPreview(
                 _HayuTargetBadges(hayuParts, showLabels: true),
               ],
               const Divider(height: 22),
+              if (def['id'] == 'stetoskop' && inspectionCard != null) ...[
+                Text(
+                  StethoscopeRules.summary(inspectionCard),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: EmbunColors.gold,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Text('${def['description'] ?? ''}', textAlign: TextAlign.center),
               const SizedBox(height: 14),
               if (actionLabel != null && act != null) ...[
@@ -458,6 +471,7 @@ Future<void> showCardPreview(
 
 class CardTile extends StatelessWidget {
   final Map<String, dynamic>? def;
+  final Map<String, dynamic>? inspectionCard;
   final String fallbackName;
   final bool selected;
   final bool dim;
@@ -494,6 +508,7 @@ class CardTile extends StatelessWidget {
   const CardTile({
     super.key,
     required this.def,
+    this.inspectionCard,
     required this.fallbackName,
     this.selected = false,
     this.dim = false,
@@ -510,6 +525,12 @@ class CardTile extends StatelessWidget {
     this.tag,
     this.count = 1,
   });
+
+  String? get _displayTag =>
+      tag ??
+      (def?['id'] == 'stetoskop'
+          ? '${StethoscopeRules.chance(inspectionCard ?? const {})}%'
+          : null);
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +549,12 @@ class CardTile extends StatelessWidget {
               Sfx.I.click(Snd.clickTung);
               onTap!();
             },
-      onLongPress: d == null ? null : () => showCardPreview(context, d),
+      onLongPress: d == null
+          ? null
+          : () => showCardPreview(context, d, inspectionCard: inspectionCard),
+      onSecondaryTap: d == null
+          ? null
+          : () => showCardPreview(context, d, inspectionCard: inspectionCard),
       child: _Grayscale(
         on: gray,
         child: Opacity(
@@ -672,7 +698,7 @@ class CardTile extends StatelessWidget {
               right: 5,
               child: Align(alignment: Alignment.centerRight, child: targets),
             ),
-          if (tag != null)
+          if (_displayTag != null)
             Positioned(
               top: 6,
               left: 6,
@@ -683,18 +709,20 @@ class CardTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color:
-                        (tag == 'AKTIF'
+                        (_displayTag == 'AKTIF'
                                 ? EmbunColors.leaf
                                 : EmbunColors.goldDim)
                             .withValues(alpha: 0.9),
                   ),
                 ),
                 child: Text(
-                  tag!,
+                  _displayTag!,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    color: tag == 'AKTIF' ? EmbunColors.leaf : EmbunColors.gold,
+                    color: _displayTag == 'AKTIF'
+                        ? EmbunColors.leaf
+                        : EmbunColors.gold,
                   ),
                 ),
               ),

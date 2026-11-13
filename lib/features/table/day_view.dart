@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
+import '../../data/inspection.dart';
+import 'inspection_workshop.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -150,6 +152,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   // Tab Gabung: kartu lanjutan dan kartu syarat (poin) yang diletakkan di
   // petak, dikenali lewat card_id. Penggabungan baru terjadi saat
   // "Tempatkan" ditekan.
+  bool _inspectionTab = false;
   String? _fuseAdv;
   String? _fusePoin;
   late int _deskTab = widget.initialTab == DayTab.market
@@ -330,6 +333,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   /// Label di kartu lanjutan: "AKTIF" bila sudah digabung dengan poin.
   String? _handTag(Map<String, dynamic> h) {
     final d = widget.defs[h['card_id']];
+    if (h['card_id'] == 'stetoskop') return '${StethoscopeRules.chance(h)}%';
     if (d?['kind'] != 'lanjutan') return null;
     if (d?['side'] != (widget.isAntag ? 'antagonis' : 'warga')) return null;
     return h['charged'] == true ? 'AKTIF' : 'Butuh poin';
@@ -1297,7 +1301,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   List<List<Map<String, dynamic>>> _mejaStacks() {
     final byKey = <String, List<Map<String, dynamic>>>{};
     for (final h in widget.hand) {
-      (byKey['${h['card_id']}|${h['charged'] == true}'] ??= []).add(h);
+      (byKey['${h['card_id']}|${h['charged'] == true}|${h['card_id'] == 'stetoskop' ? StethoscopeRules.level(h) : 0}'] ??=
+              [])
+          .add(h);
     }
     final stacks = byKey.values.toList();
     Map<String, dynamic>? def(List<Map<String, dynamic>> s) =>
@@ -1482,13 +1488,14 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                   _Pop(
                     key: ValueKey(
                       'hand-${s.first['card_id']}-'
-                      '${s.first['charged'] == true}',
+                      '${s.first['charged'] == true}-${s.first['inspection_level'] ?? 0}',
                     ),
                     index: pop++,
                     child: _preview(
                       widget.defs[s.first['card_id']],
                       CardTile(
                         def: widget.defs[s.first['card_id']],
+                        inspectionCard: s.first,
                         fallbackName: s.first['card_id'] as String,
                         width: g.w,
                         count: s.length,
@@ -1516,6 +1523,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                                         context,
                                         widget.defs[s.first['card_id']]!,
                                         defs: widget.defs,
+                                        inspectionCard: s.first,
                                       ),
                             },
                       ),
@@ -2407,14 +2415,50 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Aktifkan kartu',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            if (!widget.isAntag)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    for (final entry in [
+                      (false, 'Gabung kartu'),
+                      (true, 'Stetoskop'),
+                    ])
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: ChoiceChip(
+                            label: Text(entry.$2),
+                            selected: _inspectionTab == entry.$1,
+                            onSelected: (_) =>
+                                setState(() => _inspectionTab = entry.$1),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Aktifkan kartu',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                ),
               ),
+            Expanded(
+              child: _inspectionTab && !widget.isAntag
+                  ? InspectionWorkshop(
+                      repo: widget.repo,
+                      gameId: widget.gameId,
+                      hand: widget.hand,
+                      defs: widget.defs,
+                      balance: widget.balance,
+                      readOnly: widget.iAmReady,
+                      onChanged: widget.onHandChanged,
+                    )
+                  : _gabungBody(minW: box.maxWidth > 600 ? 76 : 88),
             ),
-            Expanded(child: _gabungBody(minW: box.maxWidth > 600 ? 76 : 88)),
           ],
         );
       }
