@@ -38,33 +38,33 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
   List<Map<String, dynamic>> get _tradable => widget.hand
       .where(
         (h) =>
-            h['card_id'] != 'embun_samaran' &&
-            widget.defs[h['card_id']]?['kind'] != 'malam',
-      )
+    h['card_id'] != 'embun_samaran' &&
+        widget.defs[h['card_id']]?['kind'] != 'malam',
+  )
       .toList();
   List<Map<String, dynamic>> get _incoming => widget.trades
       .where(
         (t) =>
-            t['status'] == 'pending' &&
-            t['day'] == widget.day &&
-            t['to_id'] == widget.repo.myId &&
-            (widget.invitationId == null || t['id'] == widget.invitationId),
-      )
+    t['status'] == 'pending' &&
+        t['day'] == widget.day &&
+        t['to_id'] == widget.repo.myId &&
+        (widget.invitationId == null || t['id'] == widget.invitationId),
+  )
       .toList();
   List<Map<String, dynamic>> get _outgoing => widget.trades
       .where(
         (t) =>
-            t['status'] == 'pending' &&
-            t['day'] == widget.day &&
-            t['from_id'] == widget.repo.myId,
-      )
+    t['status'] == 'pending' &&
+        t['day'] == widget.day &&
+        t['from_id'] == widget.repo.myId,
+  )
       .toList();
   bool get _locked => widget.busy || _choosing;
   Future<void> _pick(
-    bool player,
-    List<VillageCardOption> options,
-    String? current,
-  ) async {
+      bool player,
+      List<VillageCardOption> options,
+      String? current,
+      ) async {
     if (_locked) return;
     setState(() => _choosing = true);
     final id = await showVillageCardPicker(
@@ -90,7 +90,7 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
     if (_locked) return;
     if (widget.jailed) {
       await widget.onAction(
-        () => widget.repo.respondTrade(trade['id'] as String, true),
+            () => widget.repo.respondTrade(trade['id'] as String, true),
       );
       return;
     }
@@ -98,7 +98,7 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
     final hand = await showVillageCardPicker(
       context,
       title:
-          'Balasan untuk ${widget.defs[trade['give_card_id']]?['name'] ?? 'kartu ini'}',
+      'Balasan untuk ${widget.defs[trade['give_card_id']]?['name'] ?? 'kartu ini'}',
       options: [
         for (final h in _tradable) VillageCardOption.item(h, widget.defs),
       ],
@@ -108,7 +108,7 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
     setState(() => _choosing = false);
     if (hand != null) {
       await widget.onAction(
-        () => widget.repo.respondTrade(
+            () => widget.repo.respondTrade(
           trade['id'] as String,
           true,
           returnHand: hand,
@@ -158,7 +158,7 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
         cards.where((h) => h['id'] == _handId).firstOrNull ?? cards.first;
     final player =
         others.where((p) => p['user_id'] == _targetId).firstOrNull ??
-        others.first;
+            others.first;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -186,9 +186,9 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
                   onTap: _locked
                       ? null
                       : () => _pick(false, [
-                          for (final h in cards)
-                            VillageCardOption.item(h, widget.defs),
-                        ], hand['id'] as String),
+                    for (final h in cards)
+                      VillageCardOption.item(h, widget.defs),
+                  ], hand['id'] as String),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(top: 65, left: 6, right: 6),
@@ -208,9 +208,9 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
                   onTap: _locked
                       ? null
                       : () => _pick(true, [
-                          for (final p in others)
-                            VillageCardOption.player(p, myId: widget.repo.myId),
-                        ], player['user_id'] as String),
+                    for (final p in others)
+                      VillageCardOption.player(p, myId: widget.repo.myId),
+                  ], player['user_id'] as String),
                 ),
               ],
             );
@@ -221,15 +221,15 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
           onPressed: _locked
               ? null
               : () async {
-                  final success = await widget.onAction(
-                    () => widget.repo.proposeTrade(
-                      widget.gameId,
-                      player['user_id'] as String,
-                      hand['id'] as String,
-                    ),
-                  );
-                  if (success && mounted) setState(() => _tab = 2);
-                },
+            final success = await widget.onAction(
+                  () => widget.repo.proposeTrade(
+                widget.gameId,
+                player['user_id'] as String,
+                hand['id'] as String,
+              ),
+            );
+            if (success && mounted) setState(() => _tab = 2);
+          },
           child: const Text('Kirim tawaran'),
         ),
         const Padding(
@@ -303,11 +303,11 @@ class _VillageExchangeViewState extends State<VillageExchangeView> {
                     onPressed: _locked
                         ? null
                         : () => widget.onAction(
-                            () => widget.repo.respondTrade(
-                              trade['id'] as String,
-                              false,
-                            ),
-                          ),
+                          () => widget.repo.respondTrade(
+                        trade['id'] as String,
+                        false,
+                      ),
+                    ),
                     child: const Text('Tolak'),
                   ),
                 ),

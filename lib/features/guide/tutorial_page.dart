@@ -8,6 +8,7 @@ import '../../data/embun_data.dart';
 import '../../data/game_rules.dart';
 import '../../data/hayu_effects.dart';
 import '../common/art.dart';
+import '../common/tutor_companion.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../table/parts_strip.dart';
@@ -53,12 +54,16 @@ class _Step {
   final Color accent;
   final Widget Function(Animation<double> pulse) visual;
   final bool hasNarration;
+  final TutorPose pose;
+  final bool narrationCurrent;
   const _Step(
     this.title,
     this.body,
     this.accent,
     this.visual, {
     this.hasNarration = true,
+    required this.pose,
+    this.narrationCurrent = true,
   });
 }
 
@@ -96,7 +101,8 @@ class _TutorialPageState extends State<TutorialPage>
 
   void _speak(int i) {
     final index = _steps.take(i).where((step) => step.hasNarration).length;
-    if (!_voice || !_steps[i].hasNarration || index >= Snd.tutor.length) {
+    if (!_voice || !_steps[i].hasNarration ||
+        !_steps[i].narrationCurrent || index >= Snd.tutor.length) {
       unawaited(Sfx.I.stopNarration());
       return;
     }
@@ -118,6 +124,7 @@ class _TutorialPageState extends State<TutorialPage>
           'siapa penyusupnya. Jangan mudah percaya pada siapa pun.',
       EmbunColors.leaf,
       (p) => const _HayuGrow(),
+      pose: TutorPose.greeting,
     ),
     _Step(
       'Peran',
@@ -127,15 +134,18 @@ class _TutorialPageState extends State<TutorialPage>
           '$kMaxPlayers pemain.',
       EmbunColors.gold,
       (p) => const _RoleDemo(),
+      pose: TutorPose.thinking,
     ),
     _Step(
       'Satu siklus',
       'Permainan berjalan dalam **siklus $kCycleDays hari**: dua hari biasa '
-          'lalu satu hari **persembahan** yang disusul **musyawarah** dan '
-          '**voting**. Tiap malam Si Terbisik bisa menyerang. Dari hari '
-          'ke-2, hari biasa dibuka dengan **Pasar Riset**.',
+          'lalu satu hari **persembahan**, disusul **musyawarah** dan **voting**. '
+          'Pada malam sebelum persembahan, pilih maksimal **2 tempat** di desa. '
+          'Pasar Riset, Sumur, Bengkel, Pondok, dan Balai punya layanan berbeda.',
       EmbunColors.gold,
       (p) => const _CycleDemo(),
+      pose: TutorPose.counting,
+      narrationCurrent: false,
     ),
     _Step(
       'Embun',
@@ -144,41 +154,54 @@ class _TutorialPageState extends State<TutorialPage>
           'untuk berbelanja dan bisa **diberikan ke pemain lain**.',
       EmbunColors.gold,
       (p) => const _EmbunDemo(),
+      pose: TutorPose.heavyWater,
     ),
     _Step(
       'Pagi berbelanja',
       'Di hari biasa, pilih **satu kartu** dari empat penawaran di Pasar '
-          'Pagi. Kamu juga bisa **bertukar kartu**, **mengirim isyarat**, '
-          'dan **mengobrol**. Bila siap, **akhiri hari**.',
+          'Pagi. Kamu bisa **memberikan embun**, **mengirim isyarat**, dan '
+          '**mengobrol**. Pertukaran kartu dilakukan di **Balai Pertukaran** '
+          'saat kunjungan. Bila siap, **akhiri hari**.',
       EmbunColors.gold,
       (p) => const _MarketDemo(),
+      pose: TutorPose.shopping,
+      narrationCurrent: false,
     ),
     _Step(
       'Pasar Riset',
-      'Kartu **poin** dan **lanjutan** tidak dijual di Pasar Pagi, hanya di '
-          '**Pasar Riset** pada awal hari biasa (mulai hari ke-2). Harganya '
-          '**20% lebih mahal**, stoknya tetap, dan jatahnya **2 kartu per '
-          'hari**, terpisah dari jatah Pasar Pagi.',
+      'Kunjungi **Pasar Riset** pada malam sebelum persembahan. Beli kartu '
+          '**poin**, **lanjutan**, atau **surat perawatan** untuk fraksimu. '
+          'Harga riset **20% lebih mahal** dan jatah **2 pembelian**, '
+          'terpisah dari Pasar Pagi. Menggeser tujuan belum memakai jatah '
+          'kunjungan; jatah terpakai saat masuk.',
       EmbunColors.gold,
       (p) => const _ResearchDemo(),
+      pose: TutorPose.choosing,
+      narrationCurrent: false,
     ),
     _Step(
       'Kartu kombinasi',
-      'Kartu lanjutan harus **digabung** dengan kartu poinnya di tab '
-          'Gabung pada hari biasa, lalu tekan **Aktifkan kartu**. Warga: '
-          'Regenerasi + Poin Regenerasi. Si Terbisik: Rekayasa + Poin DNA. '
-          'Hanya kartu yang sudah **aktif** yang bisa dipersembahkan.',
+      'Kunjungi **Bengkel Desa** untuk menggabungkan kartu lanjutan dengan '
+          'kartu poinnya, lalu tekan **Aktifkan kartu**. Warga: Regenerasi + '
+          'Poin Regenerasi. Si Terbisik: Rekayasa + Poin DNA. Penggabungan '
+          '**tidak tersedia di Meja hari biasa**. Kartu yang sudah aktif '
+          'bisa dipersembahkan.',
       EmbunColors.cream,
       (p) => const _FuseDemo(),
+      pose: TutorPose.combine,
+      narrationCurrent: false,
     ),
     _Step(
       'Informasi palsu',
-      'Sebagian kartu memeriksa pemain lain **secara pribadi**; hasilnya '
-          'hanya kamu yang lihat. Tapi **Topeng**, **Cermin Khayal**, dan '
-          '**Boneka Sawah** bisa memalsukan hasilnya. Jangan percaya '
-          'begitu saja.',
+      'Hasil pemeriksaan tampil dalam **popup pribadi**. Stetoskop mulai '
+          'dengan peluang berhasil **30%**; tingkatkan di **Bengkel** sampai '
+          '**100%**. Gagal berarti belum pasti. Mulai **85%** kebal pengelabuan. '
+          '**Kaca Pembesar** dan **Lampu Senter** memberi angka pasti. '
+          '**Lentera** menilai persembahan, bukan peran.',
       _kBlue,
       (p) => const _InspectDemo(),
+      pose: TutorPose.question,
+      narrationCurrent: false,
     ),
     _Step(
       'Serangan malam',
@@ -187,6 +210,7 @@ class _TutorialPageState extends State<TutorialPage>
           'membantu, tetapi hanya berlaku pada malam itu.',
       EmbunColors.mist,
       (p) => const _NightDemo(),
+      pose: TutorPose.panic,
     ),
     _Step(
       'Malam persembahan',
@@ -196,6 +220,7 @@ class _TutorialPageState extends State<TutorialPage>
           'Roti Surplus** sebagai kedok.',
       EmbunColors.leaf,
       (p) => const _OfferDemo(),
+      pose: TutorPose.offering,
     ),
     _Step(
       'Musyawarah dan voting',
@@ -213,6 +238,7 @@ class _TutorialPageState extends State<TutorialPage>
           _Chip('3 dari 5 pemain = tuduhan sah', EmbunColors.blood),
         ],
       ),
+      pose: TutorPose.confused,
     ),
     _Step(
       'Nyawa',
@@ -224,6 +250,7 @@ class _TutorialPageState extends State<TutorialPage>
           'tersisa kurang dari $kMinPlayers, **Si Terbisik menang**.',
       EmbunColors.blood,
       (p) => const _LivesDemo(),
+      pose: TutorPose.tired,
     ),
     _Step(
       'Dua Terbisik',
@@ -235,6 +262,7 @@ class _TutorialPageState extends State<TutorialPage>
       EmbunColors.mist,
       (p) => const _Chip('Obrolan Terbisik · 1 serangan', EmbunColors.mist),
       hasNarration: false,
+      pose: TutorPose.thinking,
     ),
     _Step(
       'Bagian Hayu',
@@ -247,6 +275,7 @@ class _TutorialPageState extends State<TutorialPage>
       EmbunColors.leaf,
       (p) => const _HayuPartsDemo(),
       hasNarration: false,
+      pose: TutorPose.counting,
     ),
     _Step(
       'Kemenangan',
@@ -256,23 +285,26 @@ class _TutorialPageState extends State<TutorialPage>
           'Kurang dari itu, **Si Terbisik menang**. Lama sesi dipilih host.',
       EmbunColors.leaf,
       (p) => const _WinDemo(),
+      pose: TutorPose.encourage,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final hasVoice = _steps[_page].hasNarration && _steps[_page].narrationCurrent;
     return LearningFrame(
       title: 'Tutorial',
       icon: 'tutor',
       background: sceneryPath('balkon-siang') ?? landscapePath(30),
       actions: [
         IconButton(
-          tooltip: _voice ? 'Matikan narasi' : 'Nyalakan narasi',
+          tooltip: !hasVoice ? 'Narasi belum tersedia untuk bab ini'
+              : _voice ? 'Matikan narasi' : 'Nyalakan narasi',
           visualDensity: VisualDensity.compact,
-          onPressed: _toggleVoice,
+          onPressed: hasVoice ? _toggleVoice : null,
           color: EmbunColors.gold,
           icon: Icon(
-            _voice ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+            _voice && hasVoice ? Icons.volume_up_rounded : Icons.volume_off_rounded,
           ),
         ),
         TextButton(
@@ -423,6 +455,14 @@ class _TutorialPageState extends State<TutorialPage>
           ),
         ],
       );
+      final companion = TutorCompanion(
+        key: ValueKey('tutor-${step.pose.name}'),
+        pose: step.pose,
+        compact: short,
+        large: wide && !short,
+        accent: step.accent,
+        child: heading,
+      );
       final explanation = _rich(step.body, step.accent);
       final visual = _stage(
         step.accent,
@@ -450,7 +490,7 @@ class _TutorialPageState extends State<TutorialPage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              heading,
+                              companion,
                               const SizedBox(height: 15),
                               explanation,
                             ],
@@ -463,7 +503,7 @@ class _TutorialPageState extends State<TutorialPage>
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        heading,
+                        companion,
                         const SizedBox(height: 12),
                         visual,
                         const SizedBox(height: 12),
@@ -894,7 +934,7 @@ class _CycleDemo extends StatelessWidget {
   const _CycleDemo();
 
   static const _caps = [
-    'Riset: awal hari biasa (mulai hari ke-2), beli kartu poin dan lanjutan',
+    'Kunjungan malam: pilih Pasar Riset untuk kartu poin dan lanjutan',
     'Hari: belanja, tukar kartu, dan mengobrol',
     'Malam: Si Terbisik bisa menyerang',
     'Persembahan: tiap $kCycleDays hari, kartu dipersembahkan anonim',
@@ -1015,7 +1055,7 @@ class _MarketDemo extends StatelessWidget {
 
   static const _chips = [
     ('1 kartu / hari', EmbunColors.gold),
-    ('Tukar kartu', EmbunColors.leaf),
+    ('Dar embun', EmbunColors.leaf),
     ('Isyarat', _kBlue),
     ('Obrolan', EmbunColors.mist),
     ('Akhiri hari', EmbunColors.cream),
@@ -1102,7 +1142,7 @@ class _MarketDemo extends StatelessWidget {
   );
 }
 
-/// 6. Pasar Riset: harga naik 20%, jatah 2 kartu per hari.
+/// 6. Pasar Riset: harga naik 20%, jatah 2 pembelian.
 class _ResearchDemo extends StatelessWidget {
   const _ResearchDemo();
 
@@ -1308,7 +1348,7 @@ class _FuseDemo extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               scale: press ? 0.94 : 1,
               child: _Chip(
-                'Tab Gabung  ›  Aktifkan kartu',
+                'Bengkel Desa  ›  Aktifkan kartu',
                 press ? EmbunColors.gold : EmbunColors.cream,
               ),
             ),
@@ -1406,7 +1446,7 @@ class _InspectDemo extends StatelessWidget {
           _caption(
             masked ? 1 : 0,
             masked
-                ? 'Topeng, Cermin Khayal, dan Boneka Sawah bisa memalsukannya'
+                ? 'Stetoskop di bawah 80% masih bisa dipengaruhi pengelabuan'
                 : 'Pemeriksaan bersifat pribadi: hanya kamu yang melihat',
             color: _kBlue,
           ),

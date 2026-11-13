@@ -6,10 +6,10 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 
 Future<bool> showInspectionReport(
-  BuildContext context,
-  InspectionReport report, {
-  String? characterStem,
-}) async =>
+    BuildContext context,
+    InspectionReport report, {
+      String? characterStem,
+    }) async =>
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -18,7 +18,7 @@ Future<bool> showInspectionReport(
         child: _ReportDialog(report: report, characterStem: characterStem),
       ),
     ) ??
-    false;
+        false;
 
 class _ReportDialog extends StatelessWidget {
   const _ReportDialog({required this.report, this.characterStem});
@@ -201,12 +201,12 @@ class _ReportDialog extends StatelessWidget {
 }
 
 Future<void> showInspectionHistory(
-  BuildContext context, {
-  required GameRepository repo,
-  required String gameId,
-  required List<Map<String, dynamic>> players,
-  void Function(String id)? onRead,
-}) => showDialog<void>(
+    BuildContext context, {
+      required GameRepository repo,
+      required String gameId,
+      required List<Map<String, dynamic>> players,
+      void Function(String id)? onRead,
+    }) => showDialog<void>(
   context: context,
   builder: (_) => _HistoryDialog(
     repo: repo,

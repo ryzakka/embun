@@ -10,6 +10,7 @@ import '../../data/game_rules.dart';
 import '../../data/hayu_parts.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/tutor_companion.dart';
 import '../common/ornate.dart';
 import '../table/ability_panel.dart';
 import '../table/card_tile.dart';
@@ -1000,7 +1001,27 @@ class _HowToTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Page(
       maxWidth: 780,
-      header: _stats(),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TutorCompanion(
+            pose: TutorPose.greeting,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Kenali desa Hayu', style: TextStyle(
+                  color: EmbunColors.cream, fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                )),
+                const SizedBox(height: 6),
+                _para('Mulai dari tujuan, lalu kenali kartu dan tempat yang bisa kamu kunjungi.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _stats(),
+        ],
+      ),
       // Bagian tersusun bergantian tanpa daftar indeks yang bisa tertinggal.
       column: (i) => i % 2,
       children: [

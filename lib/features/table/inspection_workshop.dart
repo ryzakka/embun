@@ -43,7 +43,7 @@ class _InspectionWorkshopState extends State<InspectionWorkshop> {
   Map<String, dynamic> _effective(Map<String, dynamic> card) => {
     ...card,
     'inspection_level':
-        (_confirmed['${card['id']}'] ?? 0) > StethoscopeRules.level(card)
+    (_confirmed['${card['id']}'] ?? 0) > StethoscopeRules.level(card)
         ? _confirmed['${card['id']}']
         : StethoscopeRules.level(card),
   };
@@ -59,8 +59,8 @@ class _InspectionWorkshopState extends State<InspectionWorkshop> {
         title: Text('Tingkatkan ke $next%?'),
         content: Text(
           'Bayar $cost embun untuk Stetoskop ini. '
-          'Peningkatan bertahan sampai kartu dipakai. '
-          '${next >= 80 ? 'Kartu akan kebal pengelabuan.' : 'Kartu masih dapat dipengaruhi pengelabuan.'}',
+              'Peningkatan bertahan sampai kartu dipakai. '
+              '${next >= 80 ? 'Kartu akan kebal pengelabuan.' : 'Kartu masih dapat dipengaruhi pengelabuan.'}',
         ),
         actions: [
           TextButton(
@@ -266,7 +266,7 @@ class _InspectionWorkshopState extends State<InspectionWorkshop> {
             icon: 'bulirembun',
             expand: true,
             onPressed:
-                _busy || widget.readOnly || cost == null || balance < cost
+            _busy || widget.readOnly || cost == null || balance < cost
                 ? null
                 : () => _upgrade(card),
           ),

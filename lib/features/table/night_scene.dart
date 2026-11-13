@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../common/art.dart';
+import '../common/tutor_companion.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/scene_flow.dart';
@@ -366,6 +367,17 @@ class _NightSceneState extends State<NightScene>
                     ),
                   ),
                 ),
+
+                // Ilustrasi ancaman yang sama untuk seluruh pemain, tanpa
+                // mengambil wajah atau identitas pelaku dari data rahasia.
+                if (!widget.finalBow && _attackIdx >= 0 &&
+                    ms >= atkAt && ms < atkAt + 3200)
+                  AntagonistCanopy(
+                    visibility: MediaQuery.disableAnimationsOf(context)
+                        ? .65
+                        : fadeMs(ms, atkAt, atkAt + 450) *
+                            (1 - fadeMs(ms, atkAt + 2200, atkAt + 3200)),
+                  ),
 
                 // Gelombang kejut + garis kecepatan dari titik hantaman.
                 if (atkSince >= 0 && atkSince < 1600)

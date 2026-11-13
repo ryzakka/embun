@@ -210,7 +210,7 @@ class _ClinicEntrySceneState extends State<ClinicEntryScene>
                                     child: CardTile(
                                       def: widget.letter,
                                       fallbackName:
-                                          widget.letter['name'] as String? ??
+                                      widget.letter['name'] as String? ??
                                           'Surat',
                                       width: cardW,
                                     ),
