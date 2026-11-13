@@ -14,6 +14,7 @@ import '../common/scene_flow.dart';
 import '../common/sfx.dart';
 import '../table/table_page.dart';
 import 'character_pick.dart';
+import 'cast_introduction.dart';
 import 'dark_omen.dart';
 import 'role_reveal.dart';
 import '../../data/game_repository.dart';
@@ -178,8 +179,9 @@ class PrologueFlow extends StatefulWidget {
 /// pick     : pilih 1 dari 3 kartu karakter terbalik (semua pemain)
 /// role     : pengungkapan peran (tahan kartu); Si Terbisik: peringatan awan
 ///            gelap + pilih wajah gelap disisipkan lewat [RoleReveal.twistGate]
-/// waiting  : menunggu semua pemain selesai
-enum _Step { story, shuffling, pick, role, waiting }
+/// cast     : perkenalan nama dan karakter publik seluruh pemain
+/// waiting  : menunggu semua pemain selesai, daftar pemeran tetap terlihat
+enum _Step { story, shuffling, pick, role, cast, waiting }
 
 class _PrologueFlowState extends State<PrologueFlow>
     with TickerProviderStateMixin {
@@ -576,7 +578,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   /// memilih.
   void _afterReveal() {
     if (role == null || step != _Step.role) return;
-    _enterWaiting();
+    setState(() => step = _Step.cast);
   }
 
   /// Menunggu semua pemain selesai prolog; meja dibuka bersamaan.
@@ -653,8 +655,14 @@ class _PrologueFlowState extends State<PrologueFlow>
                 onSkip: _skipPick,
               ),
             )
-          else if (step == _Step.waiting)
-              const SafeArea(child: _WaitingForPlayers())
+          else if (step == _Step.cast || step == _Step.waiting)
+              CastIntroduction(
+                key: const ValueKey('cast'),
+                players: _roster,
+                myId: widget.repo.myId,
+                waiting: step == _Step.waiting,
+                onContinue: _enterWaiting,
+              )
             else
               RoleReveal(
                 role: role,
@@ -1089,46 +1097,6 @@ class _PrologueFlowState extends State<PrologueFlow>
     if (role == null) return null;
     return role == 'antagonis' ? darkCardPath(darkSeed) : protagonistPath(myCard);
   }
-}
-
-class _WaitingForPlayers extends StatelessWidget {
-  const _WaitingForPlayers();
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('PROLOG SELESAI', style: TextStyle(
-              color: EmbunColors.gold, fontSize: 11,
-              letterSpacing: 1.5, fontWeight: FontWeight.w800,
-            )),
-            const SizedBox(height: 6),
-            const Text('Menunggu pemain lain', style: TextStyle(
-              color: EmbunColors.cream, fontSize: 25,
-              height: 1.15, fontWeight: FontWeight.w900,
-            )),
-            const SizedBox(height: 8),
-            const Text(
-              'Kamu sudah siap. Meja dibuka bersama saat semua pemain selesai '
-              'atau waktu prolog habis.',
-              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              color: EmbunColors.leaf, backgroundColor: Colors.white12, minHeight: 2,
-              semanticsLabel: 'Menunggu meja permainan dibuka',
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 /// Efek atmosfer prolog menurut suasana adegan:
