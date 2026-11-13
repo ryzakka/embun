@@ -178,22 +178,22 @@ class _ResearchViewState extends State<ResearchView> {
     for (final item in _items ?? const <Map<String, dynamic>>[]) {
       final kind = widget.defs[_id(item)]?['kind'];
       groups[kind == 'perawatan'
-              ? _Category.care
-              : kind == 'lanjutan'
-              ? _Category.advanced
-              : _Category.points]!
+          ? _Category.care
+          : kind == 'lanjutan'
+          ? _Category.advanced
+          : _Category.points]!
           .add(item);
     }
     final category = groups[_category]!.isNotEmpty
         ? _category
         : _Category.values.firstWhere(
-            (kind) => groups[kind]!.isNotEmpty,
-            orElse: () => _category,
-          );
+          (kind) => groups[kind]!.isNotEmpty,
+      orElse: () => _category,
+    );
     final offers = groups[category]!;
     final selected =
         offers.where((item) => _id(item) == _selectedId).firstOrNull ??
-        offers.firstOrNull;
+            offers.firstOrNull;
 
     return LayoutBuilder(
       builder: (context, box) {
@@ -390,9 +390,9 @@ class _ResearchViewState extends State<ResearchView> {
               TextButton.icon(
                 onPressed: _action == null
                     ? () {
-                        setState(() => _items = null);
-                        _load();
-                      }
+                  setState(() => _items = null);
+                  _load();
+                }
                     : null,
                 icon: const GameIcon('refresh', size: 20),
                 label: const Text('Coba lagi'),
@@ -405,9 +405,9 @@ class _ResearchViewState extends State<ResearchView> {
   }
 
   Widget _categories(
-    Map<_Category, List<Map<String, dynamic>>> groups,
-    _Category category,
-  ) => Row(
+      Map<_Category, List<Map<String, dynamic>>> groups,
+      _Category category,
+      ) => Row(
     children: [
       for (final kind in _Category.values)
         Expanded(
@@ -432,9 +432,9 @@ class _ResearchViewState extends State<ResearchView> {
             onTap: count == 0
                 ? null
                 : () => setState(() {
-                    _category = kind;
-                    _selectedId = null;
-                  }),
+              _category = kind;
+              _selectedId = null;
+            }),
             child: Container(
               decoration: selected ? tableEdge(_accent) : null,
               constraints: const BoxConstraints(minHeight: 35),
@@ -468,11 +468,11 @@ class _ResearchViewState extends State<ResearchView> {
   }
 
   Widget _offersGrid(
-    List<Map<String, dynamic>> offers,
-    Map<String, dynamic> selected,
-    _Category category, {
-    required bool short,
-  }) => LayoutBuilder(
+      List<Map<String, dynamic>> offers,
+      Map<String, dynamic> selected,
+      _Category category, {
+        required bool short,
+      }) => LayoutBuilder(
     builder: (context, box) {
       const gap = 8.0;
       final available = box.maxWidth - 16;
@@ -488,8 +488,14 @@ class _ResearchViewState extends State<ResearchView> {
       final cardWidth = (columnWidth - 8).clamp(1.0, short ? 33.0 : 137.0);
       final scaler = MediaQuery.textScalerOf(context);
       final labelHeight = scaler.scale(12) * 2.55 + scaler.scale(11) * 1.35;
+      // Label pendek tetap membutuhkan dua baris nama, harga, dan padding.
+      // Cadangan ponsel hanya berlaku untuk pasar yang tertanam di kunjungan.
+      final labelPadding =
+      widget.onReturn != null && MediaQuery.sizeOf(context).width < 1000
+          ? 24.0
+          : 16.0;
       final extent = short
-          ? math.max(cardWidth * kTallAspect, labelHeight) + 16
+          ? math.max(cardWidth * kTallAspect, labelHeight) + labelPadding
           : cardWidth * kTallAspect + labelHeight + 27;
       return Center(
         child: SizedBox(
@@ -521,11 +527,11 @@ class _ResearchViewState extends State<ResearchView> {
   );
 
   Widget _offer(
-    Map<String, dynamic> item,
-    double width, {
-    required bool selected,
-    required bool short,
-  }) {
+      Map<String, dynamic> item,
+      double width, {
+        required bool selected,
+        required bool short,
+      }) {
     final name = _name(item);
     final price = _price(item);
     final bought = item['bought'] == true;
@@ -589,39 +595,39 @@ class _ResearchViewState extends State<ResearchView> {
             child: ExcludeSemantics(
               child: short
                   ? Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 5,
-                      ),
-                      child: Row(
-                        children: [
-                          card,
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                title,
-                                const SizedBox(height: 2),
-                                cost,
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(3, 12, 3, 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 5,
+                ),
+                child: Row(
+                  children: [
+                    card,
+                    const SizedBox(width: 7),
+                    Expanded(
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          card,
-                          const SizedBox(height: 4),
-                          Expanded(child: Center(child: title)),
+                          title,
+                          const SizedBox(height: 2),
                           cost,
                         ],
                       ),
                     ),
+                  ],
+                ),
+              )
+                  : Padding(
+                padding: const EdgeInsets.fromLTRB(3, 12, 3, 4),
+                child: Column(
+                  children: [
+                    card,
+                    const SizedBox(height: 4),
+                    Expanded(child: Center(child: title)),
+                    cost,
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -630,12 +636,12 @@ class _ResearchViewState extends State<ResearchView> {
   }
 
   Widget _selection(
-    Map<String, dynamic> item,
-    _Category category, {
-    required bool compact,
-    required bool side,
-    Widget? finish,
-  }) {
+      Map<String, dynamic> item,
+      _Category category, {
+        required bool compact,
+        required bool side,
+        Widget? finish,
+      }) {
     final definition = _definition(item);
     final name = _name(item);
     final description = definition?['description'] as String?;

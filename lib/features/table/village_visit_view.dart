@@ -162,6 +162,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   int _revision = 0;
   bool _busy = false, _loading = false, _finished = false;
   Timer? _timer;
+  final ScrollController _phoneRailScroll = ScrollController();
   Color get _accent => widget.isAntag ? EmbunColors.mist : EmbunColors.gold;
   Color _glow(_Place p) => widget.isAntag ? EmbunColors.mist : p.tint;
   String get _currency => widget.isAntag ? 'bulirhitam' : 'bulirembun';
@@ -186,6 +187,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   bool get _used => _visit?['action_used'] == true;
   bool get _free => _visit?['invitation_id'] != null;
   String get _letter => widget.isAntag ? 'surat_sakit' : 'surat_dokter';
+
   /// Tindakan sudah tercatat di kunjungan ini: karakter berpose "selesai".
   bool get _acted {
     final id = _visit?['id'];
@@ -220,7 +222,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       return switch (place) {
         'riset' => 'Ssst… setiap ilmu ada harganya. Mau membeli apa malam ini?',
         'sumur' => 'Setetes saja, dan seluruh desa ikut meminumnya.',
-        'bengkel' => 'Satukan, retakkan. Tak ada yang benar-benar utuh di sini.',
+        'bengkel' =>
+        'Satukan, retakkan. Tak ada yang benar-benar utuh di sini.',
         'pondok' =>
         'Titipkan satu surat. Biar lukanya menunggu pengunjung berikutnya.',
         _ => null,
@@ -231,7 +234,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       'Bekalmu sudah di tangan. Semoga cukup untuk persembahan nanti.',
       ('riset', _) =>
       'Persembahan sudah dekat. Pilih bekalmu baik-baik, tiap bulir berharga.',
-      ('sumur', 'selesai') => 'Terima kasih. Airnya terasa lebih tenang sekarang.',
+      ('sumur', 'selesai') =>
+      'Terima kasih. Airnya terasa lebih tenang sekarang.',
       ('sumur', _) =>
       'Air sumur ini menghidupi seluruh desa. Satu sumbangan, pengaruhnya sampai akhir.',
       ('bengkel', 'selesai') => 'Sudah menyatu. Hasilnya bagus.',
@@ -274,6 +278,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   @override
   void dispose() {
     _timer?.cancel();
+    _phoneRailScroll.dispose();
     Sfx.I.release(this);
     super.dispose();
   }
@@ -618,7 +623,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         Widget? trailing,
       }) => ListView(
     padding: const EdgeInsets.fromLTRB(2, 0, 2, 16),
-    children: [_header(p, title, trailing: trailing), const SizedBox(height: 16), ...children],
+    children: [
+      _header(p, title, trailing: trailing),
+      const SizedBox(height: 16),
+      ...children,
+    ],
   );
   Widget _gap() => const SizedBox(height: 14);
 
@@ -810,7 +819,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _text('Setelah tindakanmu', size: 12, color: Colors.white60),
+                    _text(
+                      'Setelah tindakanmu',
+                      size: 12,
+                      color: Colors.white60,
+                    ),
                     _title('${_signed(next)} / hari'),
                   ],
                 ),
@@ -1129,10 +1142,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (!compact && tall) ...[
-        _placeMedal(p, 64),
-        const SizedBox(height: 16),
-      ],
+      if (!compact && tall) ...[_placeMedal(p, 64), const SizedBox(height: 16)],
       _kicker('KUNJUNGAN MALAM'),
       SizedBox(height: compact ? 6 : 12),
       _title(
@@ -1161,75 +1171,100 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   /// gelap, sudut atas 26, bingkai emas redup, cahaya ke atas. Pegangannya
   /// bisa diketuk atau diseret untuk menurunkan panel (karakter dan latar
   /// jadi tontonan penuh) lalu membukanya lagi.
-  Widget _sheet(Widget content, {required bool open}) => Container(
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [EmbunColors.panelHi, EmbunColors.panel],
-      ),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-      border: Border.all(
-        color: (widget.isAntag ? EmbunColors.mist : EmbunColors.goldDim)
-            .withValues(alpha: .55),
-        width: 1.2,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: _accent.withValues(alpha: .16),
-          blurRadius: 28,
-          offset: const Offset(0, -6),
+  Widget _sheet(
+      Widget content, {
+        required bool open,
+        required double expandedHeight,
+      }) => ClipRRect(
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [EmbunColors.panelHi, EmbunColors.panel],
         ),
-      ],
-    ),
-    child: Column(
-      children: [
-        Semantics(
-          button: true,
-          label: open ? 'Turunkan panel layanan' : 'Buka panel layanan',
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggleSheet,
-            onVerticalDragEnd: (d) {
-              final vy = d.primaryVelocity ?? 0;
-              if ((vy > 200 && open) || (vy < -200 && !open)) _toggleSheet();
-            },
-            child: SizedBox(
-              height: 34,
-              width: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: EmbunColors.goldDim.withValues(alpha: .7),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Icon(
-                    open
-                        ? Icons.keyboard_arrow_down_rounded
-                        : Icons.keyboard_arrow_up_rounded,
-                    size: 18,
-                    color: EmbunColors.goldDim,
-                  ),
-                ],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        border: Border.all(color: _accent.withValues(alpha: .40)),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 48,
+            left: 0,
+            right: 0,
+            height: math.max(0, expandedHeight - 48),
+            child: Offstage(
+              offstage: !open,
+              child: TickerMode(
+                enabled: open,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: content,
+                ),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: IgnorePointer(
-            ignoring: !open,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: content,
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 48,
+            child: Semantics(
+              button: true,
+              label: open ? 'Turunkan panel layanan' : 'Buka panel layanan',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleSheet,
+                onVerticalDragEnd: (d) {
+                  final velocity = d.primaryVelocity ?? 0;
+                  if ((velocity > 200 && open) || (velocity < -200 && !open)) {
+                    _toggleSheet();
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: _accent.withValues(alpha: .6),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          open ? 'Layanan' : 'Buka layanan',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        open ? 'Lihat latar' : 'Lanjutkan',
+                        style: TextStyle(fontSize: 11, color: _accent),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        open
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_up,
+                        size: 20,
+                        color: _accent,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 
@@ -1256,12 +1291,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       )
           .toDouble();
       return Padding(
-        padding: EdgeInsets.fromLTRB(
-          28,
-          12,
-          box.maxWidth > 1000 ? 28 : 12,
-          8,
-        ),
+        padding: EdgeInsets.fromLTRB(28, 12, box.maxWidth > 1000 ? 28 : 12, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1362,94 +1392,124 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   /// Layar sempit: karakter berdiri di kiri di atas lembar layanan, papan nama
   /// di sebelah kanannya. Lembar dapat diturunkan sehingga karakter tampil
   /// hampir seluruh badan (dan papan nama pindah ke kakinya).
+  /// Di ponsel karakter, judul, dan layanan memiliki ruang masing-masing.
+  /// Isi layanan tetap mendapat tinggi penuh ketika panel disembunyikan,
+  /// sehingga pilihan kartu tidak ter-reset dan tidak meluap saat animasi.
   Widget _stageCompact(_Place p, Widget content, BoxConstraints box) {
     final open = _sheetOpen;
-    final desired = switch (p.id) {
-      'sumur' => 500.0,
-      'pondok' => 520.0,
-      'balai' => 550.0,
-      'riset' => 580.0,
-      _ => 560.0,
-    };
-    // Tinggi bawaan dibatasi supaya karakter tetap punya ruang di layar ponsel.
-    final cap = math.max(box.maxHeight * .56, 320.0);
-    final sheetH = math
-        .min(desired, cap)
-        .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
-        .toDouble();
-    final shown = open ? sheetH : math.min(78.0, sheetH);
-    final avail = math.max(0.0, box.maxHeight - shown);
-    final dur = _reduced ? Duration.zero : const Duration(milliseconds: 480);
-    const curve = Curves.easeOutCubic;
-    final art = avail >= 130 ? _popup(p.id, _moodOf(p.id)) : null;
-    final visible = math.max(0.0, math.min(avail - 6, open ? 360.0 : 560.0));
-    final h = visible / (open ? .74 : .92);
-    final w = math.min(box.maxWidth * (open ? .52 : .82), h * .8);
-    final heroLeft = art != null && open ? w * .84 : 20.0;
-    final voiceRoom = box.maxWidth - heroLeft - 16;
-    final showVoice = art != null && open && avail >= 210 && voiceRoom >= 190;
-    return Stack(
-      fit: StackFit.expand,
+    final height = box.maxHeight;
+    final heroHeight = height < 300
+        ? 0.0
+        : height < 400
+        ? 58.0
+        : (height * .23).clamp(90.0, 164.0);
+    final fullPanelHeight = math.max(56.0, height - heroHeight);
+    final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (art != null)
-          AnimatedPositioned(
-            duration: dur,
-            curve: curve,
-            left: -w * .02,
-            bottom: shown - (h - visible),
-            width: w,
-            height: h,
-            child: _enter(
-              PopupCharacter(
-                path: art,
-                tint: _glow(p),
-                fadeFeet: false,
-                intro: false,
-                reduced: _reduced,
-              ),
-              from: const Offset(-50, 0),
-              delay: .45,
-            ),
-          ),
-        if (avail >= 96)
-          AnimatedPositioned(
-            duration: dur,
-            curve: curve,
-            left: heroLeft,
-            right: 16,
-            bottom: shown + 14,
-            child: _enter(
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _hero(p, compact: true),
-                  if (showVoice) ...[
-                    const SizedBox(height: 12),
-                    _voiceBubble(p.id, maxWidth: math.min(voiceRoom, 340.0)),
+        if (!open || heroHeight > 0)
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, heroBox) {
+                final tiny = heroBox.maxHeight < 90;
+                final art = _phonePopup(p.id, _moodOf(p.id));
+                final text = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.name,
+                      maxLines: tiny ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: tiny ? 18 : 23,
+                        height: 1.08,
+                        fontWeight: FontWeight.w800,
+                        color: _accent,
+                        shadows: _lift,
+                      ),
+                    ),
+                    if (!tiny && heroBox.maxHeight > 115 * scale) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _voiceOf(p.id, _moodOf(p.id)) ?? p.tagline,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color: EmbunColors.cream,
+                          shadows: _lift,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-              from: const Offset(24, 0),
-              delay: .2,
+                );
+                if (!open && art != null) {
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: _phonePortrait(
+                          p,
+                          _moodOf(p.id),
+                          height: heroBox.maxHeight,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: text,
+                      ),
+                    ],
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (art != null && !tiny) ...[
+                        _phonePortrait(
+                          p,
+                          _moodOf(p.id),
+                          height: heroBox.maxHeight - 8,
+                          width: (box.maxWidth * .30).clamp(78.0, 130.0),
+                        ),
+                        const SizedBox(width: 12),
+                      ] else if (tiny) ...[
+                        _placeMedal(p, 28),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: text,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
-        AnimatedPositioned(
-          duration: dur,
-          curve: curve,
-          left: 0,
-          right: 0,
-          bottom: open ? 0.0 : shown - sheetH,
-          height: sheetH,
-          child: _enter(
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 580),
-                child: _sheet(content, open: open),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: math.max(0.0, height - math.min(heroHeight, 58.0)),
+          ),
+          child: AnimatedSize(
+            duration: _reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            alignment: Alignment.bottomCenter,
+            curve: Curves.easeOutCubic,
+            child: SizedBox(
+              height: open ? fullPanelHeight : 56,
+              child: _sheet(
+                content,
+                open: open,
+                expandedHeight: fullPanelHeight,
               ),
             ),
-            from: const Offset(0, 64),
           ),
         ),
       ],
@@ -1550,6 +1610,19 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       _dir = dir ?? (i > _index ? 1 : -1);
       _index = i;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_phoneRailScroll.hasClients) return;
+      final position = _phoneRailScroll.position;
+      final target = (i * 116.0 - (position.viewportDimension - 108) / 2).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+      _phoneRailScroll.animateTo(
+        target,
+        duration: _reduced ? Duration.zero : const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   void _step(int d) =>
@@ -1602,7 +1675,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                       child: AnimatedContainer(
                         duration: dur,
                         curve: Curves.easeOutCubic,
-                        transform: Matrix4.translationValues(0, sel ? -6 : 0, 0),
+                        transform: Matrix4.translationValues(
+                          0,
+                          sel ? -6 : 0,
+                          0,
+                        ),
                         child: PulsingGlow(
                           active: sel,
                           color: _accent,
@@ -1634,7 +1711,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                                           end: Alignment.bottomCenter,
                                           colors: [
                                             Colors.transparent,
-                                            EmbunColors.bg.withValues(alpha: .85),
+                                            EmbunColors.bg.withValues(
+                                              alpha: .85,
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -1642,7 +1721,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                                     Align(
                                       alignment: Alignment.bottomCenter,
                                       child: Padding(
-                                        padding: const EdgeInsets.only(bottom: 3),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 3,
+                                        ),
                                         child: _icon(p.ikon, p.icon, 22),
                                       ),
                                     ),
@@ -1746,7 +1827,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             'JELAJAH DESA  ·  ${(_index + 1).toString().padLeft(2, '0')} / ${_places.length.toString().padLeft(2, '0')}',
           ),
           SizedBox(height: short ? 8 : 16),
-          if (!short && wide) ...[_placeMedal(p, 68), const SizedBox(height: 14)],
+          if (!short && wide) ...[
+            _placeMedal(p, 68),
+            const SizedBox(height: 14),
+          ],
           _titleReveal(
             p.name,
             size: short
@@ -1910,7 +1994,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                                     short: short,
                                     wide: wide,
                                     voice: wide && !short && c.maxHeight >= 430,
-                                    maxWidth: showArt ? c.maxWidth * .56 : 560.0,
+                                    maxWidth: showArt
+                                        ? c.maxWidth * .56
+                                        : 560.0,
                                   ),
                                 ),
                               ),
@@ -2019,6 +2105,510 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     ),
   );
 
+  // Tata letak khusus ponsel. Jalur desktop tetap memakai panggung semula.
+  bool _compactLayout(BoxConstraints box) =>
+      box.maxWidth < 760 || (box.maxWidth < 1000 && box.maxHeight < 500);
+
+  Widget _phoneHeader(_Place p, String? place, int? seconds) => Padding(
+    padding: const EdgeInsets.fromLTRB(8, 6, 12, 4),
+    child: Row(
+      children: [
+        if (place != null && !_waiting)
+          IconButton(
+            tooltip: 'Kembali dari tempat ini',
+            onPressed: _busy ? null : _leave,
+            icon: const Icon(Icons.arrow_back, size: 22),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _placeMedal(p, 26),
+          ),
+        Expanded(
+          child: Text(
+            place == null ? 'Jelajah desa' : p.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.15,
+              color: EmbunColors.cream,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Tooltip(
+          message: widget.balance.toStringAsFixed(1),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 100),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GameIcon(_currency, size: 24),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.balance.toStringAsFixed(1).replaceAll('.', ','),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: EmbunColors.cream,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (seconds != null) ...[
+          const SizedBox(width: 10),
+          Text(
+            '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: seconds <= 10 ? EmbunColors.blood : _accent,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Widget _phoneInvitation() {
+    final offers = widget.trades
+        .where(
+          (t) =>
+      t['status'] == 'pending' &&
+          t['day'] == widget.day &&
+          t['to_id'] == widget.repo.myId &&
+          t['id'] != _visit?['invitation_id'],
+    )
+        .toList();
+    if (offers.isEmpty || _waiting || _free) return const SizedBox.shrink();
+    final t = offers.first;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Row(
+        children: [
+          const GameIcon('barter', size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${_name(t['from_id'])} mengajak bertukar',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => _act(
+                  () => widget.repo.enterVillagePlace(
+                widget.gameId,
+                'balai',
+                invitation: t['id'] as String,
+              ),
+            ),
+            child: const Text('Ke balai'),
+          ),
+          IconButton(
+            tooltip: 'Tolak undangan',
+            onPressed: _busy
+                ? null
+                : () => _act(() async {
+              await widget.repo.respondTrade(t['id'] as String, false);
+              return widget.repo.villageStatus(widget.gameId);
+            }),
+            icon: const Icon(Icons.close, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneFrame(_Place p, String? place, int? seconds) => SafeArea(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _phoneHeader(p, place, seconds),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Tooltip(
+                    message: _error!,
+                    child: Text(
+                      _error!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: EmbunColors.blood,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Coba lagi',
+                  onPressed: _busy ? null : _load,
+                  icon: const GameIcon('refresh', size: 22),
+                ),
+              ],
+            ),
+          ),
+        _phoneInvitation(),
+        Expanded(
+          child: _waiting
+              ? LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight),
+                child: _waitingView(),
+              ),
+            ),
+          )
+              : _status == null
+              ? const Center(child: CircularProgressIndicator())
+              : place == null
+              ? _phonePicker(p)
+              : LayoutBuilder(
+            builder: (context, box) =>
+                _stageCompact(p, _interior(place), box),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 6, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Hari ${widget.day} · Kunjungan ${_number('used', 0)}/${_number('limit', 2)}',
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                ),
+              ),
+              if (!_waiting) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 122,
+                  child: _button(
+                    'Selesai',
+                    _busy ? null : _finish,
+                    secondary: true,
+                    height: 44,
+                    icon: 'endday',
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (_busy) const LinearProgressIndicator(minHeight: 2),
+      ],
+    ),
+  );
+
+  String? _phonePopup(String place, String mood) {
+    final stem = switch (place) {
+      'riset' => 'pasarriset',
+      'sumur' => 'sumur',
+      'bengkel' => 'bengkelkartu',
+      'pondok' => 'perawatan',
+      _ => 'barter',
+    };
+    const folder = 'assets/kartu/CharPopUp';
+    if (widget.isAntag) {
+      return AssetCatalog.I.file(folder, 'popupchar-anta-$stem');
+    }
+    return AssetCatalog.I.file(folder, 'popupchar-pro-$stem$mood') ??
+        AssetCatalog.I.file(folder, 'popupchar-pro-${stem}tanya');
+  }
+
+  Widget _phonePortrait(
+      _Place p,
+      String mood, {
+        required double height,
+        double? width,
+      }) {
+    final art = _phonePopup(p.id, mood);
+    if (art == null) return const SizedBox.shrink();
+    return SizedBox(
+      height: height,
+      width: width,
+      child: IgnorePointer(
+        child: ClipRect(
+          child: AnimatedSwitcher(
+            duration: _reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            child: GameImage(
+              key: ValueKey(art),
+              path: art,
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneRail({required bool short}) {
+    final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final height = short ? 66.0 : 98.0 + math.max(0, scale - 1) * 24;
+    return SizedBox(
+      height: height,
+      child: SingleChildScrollView(
+        controller: _phoneRailScroll,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+        child: Row(
+          children: [
+            for (var i = 0; i < _places.length; i++)
+              _phoneRailTile(i, short: short),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneRailTile(int index, {required bool short}) {
+    final p = _places[index], selected = _index == index;
+    final locked = p.id == 'pondok' && _ticket == null;
+    final image = ClipRRect(
+      borderRadius: BorderRadius.circular(9),
+      child: GameImage(
+        path: firstScenery([p.outside, 'pasar-sianghari']),
+        cacheWidth: 240,
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: locked ? '${p.name}, perlu surat perawatan' : p.name,
+        child: Material(
+          color: selected
+              ? _accent.withValues(alpha: .13)
+              : const Color(0xB307130F),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            key: ValueKey('phone-place-${p.id}'),
+            onTap: () => _select(index),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: short ? 150 : 108,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selected
+                      ? _accent
+                      : EmbunColors.goldDim.withValues(alpha: .4),
+                  width: selected ? 2 : 1,
+                ),
+              ),
+              child: short
+                  ? Row(
+                children: [
+                  SizedBox(width: 40, height: 40, child: image),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      p.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: selected ? _accent : EmbunColors.cream,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+                  : Column(
+                children: [
+                  Expanded(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        image,
+                        if (locked)
+                          const Align(
+                            alignment: Alignment.topRight,
+                            child: GameIcon('lock', size: 18),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    p.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: selected ? _accent : EmbunColors.cream,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _phonePicker(_Place p) => LayoutBuilder(
+    builder: (context, box) {
+      final left = (_number('limit', 2) - _number('used', 0))
+          .clamp(0, 99)
+          .toInt();
+      final needLetter = p.id == 'pondok' && _ticket == null;
+      final short = box.maxHeight < 380;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 2, 14, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, copyBox) {
+                  final bigPortrait = copyBox.maxHeight >= 350;
+                  final art = _phonePopup(p.id, 'tanya');
+                  final headline = Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _text(
+                        'TUJUAN ${_index + 1} / ${_places.length}',
+                        size: 10,
+                        spacing: 1.4,
+                        color: _accent,
+                        weight: FontWeight.w800,
+                        lift: true,
+                      ),
+                      const SizedBox(height: 8),
+                      _title(p.name, size: bigPortrait ? 30 : 24, lift: true),
+                      const SizedBox(height: 8),
+                      _text(
+                        p.tagline,
+                        size: 13,
+                        color: EmbunColors.cream,
+                        lift: true,
+                      ),
+                    ],
+                  );
+                  return GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragEnd: (d) {
+                      final speed = d.primaryVelocity ?? 0;
+                      if (speed < -250) {
+                        _step(1);
+                      } else if (speed > 250) {
+                        _step(-1);
+                      }
+                    },
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (bigPortrait && art != null) ...[
+                            _greet(
+                              _phonePortrait(
+                                p,
+                                'tanya',
+                                height: math.min(230, copyBox.maxHeight * .48),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (!bigPortrait && art != null)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: headline),
+                                const SizedBox(width: 10),
+                                _greet(
+                                  _phonePortrait(
+                                    p,
+                                    'tanya',
+                                    height: 120,
+                                    width: 92,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            headline,
+                          if (!short) ...[
+                            const SizedBox(height: 12),
+                            _text(
+                              _description(p),
+                              size: 12,
+                              color: Colors.white70,
+                              lift: true,
+                            ),
+                          ],
+                          if (p.id == 'pondok') ...[
+                            const SizedBox(height: 10),
+                            _text(
+                              needLetter
+                                  ? 'Butuh ${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'}'
+                                  : '${widget.isAntag ? 'Surat Sakit' : 'Surat Dokter'} siap dipakai',
+                              size: 12,
+                              color: needLetter
+                                  ? EmbunColors.blood
+                                  : EmbunColors.leaf,
+                              lift: true,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 6),
+            _phoneRail(short: short),
+            const SizedBox(height: 8),
+            _button(
+              left == 0
+                  ? 'Jatah kunjungan habis'
+                  : needLetter
+                  ? 'Perlu surat perawatan'
+                  : 'Masuk ke ${p.name}',
+              _busy || left == 0 || needLetter ? null : () => _enterPlace(p.id),
+              height: 50,
+            ),
+            if (!short)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: _text(
+                  'Tersisa $left kunjungan · Geser pilihan tempat',
+                  size: 11,
+                  color: Colors.white70,
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     final current = _visit, place = current?['place'] as String?;
@@ -2083,10 +2673,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
                     // Cahaya mengikuti karakter: kanan di pemilih, kiri di dalam tempat.
-                    center: Alignment(
-                      place == null ? .5 : -.5,
-                      -.2,
-                    ),
+                    center: Alignment(place == null ? .5 : -.5, -.2),
                     radius: 1.0,
                     colors: [glow.withValues(alpha: .26), Colors.transparent],
                   ),
@@ -2125,7 +2712,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                     colors: [
                       const Color(0x60102018),
                       const Color(0x00102018),
-                      EmbunColors.bg.withValues(alpha: place == null ? .84 : .74),
+                      EmbunColors.bg.withValues(
+                        alpha: place == null ? .84 : .74,
+                      ),
                     ],
                   ),
                 ),
@@ -2175,145 +2764,148 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 center: const Alignment(0, .05),
               ),
             ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 16, 6),
-                  child: Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (place != null && !_waiting)
-                            IconButton(
-                              tooltip: 'Kembali dari tempat ini',
-                              onPressed: _busy ? null : _leave,
-                              icon: const Icon(Icons.arrow_back),
-                            )
-                          else
-                            const SizedBox(width: 4),
-                          Flexible(
-                            child: _text(
-                              place == null
-                                  ? 'Malam sebelum persembahan'
-                                  : 'Kembali ke desa',
-                              size: 13,
-                              color: Colors.white70,
-                              weight: FontWeight.w700,
-                              spacing: .4,
-                              lift: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _hud(
-                            _currency,
-                            widget.balance
-                                .toStringAsFixed(1)
-                                .replaceAll('.', ','),
-                            EmbunColors.cream,
-                          ),
-                          if (seconds != null) ...[
-                            const SizedBox(width: 8),
-                            _hud(
-                              'timer',
-                              '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
-                              seconds <= 10 ? EmbunColors.blood : _accent,
+          if (_compactLayout(box))
+            _phoneFrame(selected, place, seconds)
+          else
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 16, 6),
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (place != null && !_waiting)
+                              IconButton(
+                                tooltip: 'Kembali dari tempat ini',
+                                onPressed: _busy ? null : _leave,
+                                icon: const Icon(Icons.arrow_back),
+                              )
+                            else
+                              const SizedBox(width: 4),
+                            Flexible(
+                              child: _text(
+                                place == null
+                                    ? 'Malam sebelum persembahan'
+                                    : 'Kembali ke desa',
+                                size: 13,
+                                color: Colors.white70,
+                                weight: FontWeight.w700,
+                                spacing: .4,
+                                lift: true,
+                              ),
                             ),
                           ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (_error != null)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                    padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
-                    decoration: BoxDecoration(
-                      color: EmbunColors.blood.withValues(alpha: .14),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: EmbunColors.blood.withValues(alpha: .6),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const GameIcon('alert', size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _error!,
-                            style: const TextStyle(
-                              color: EmbunColors.blood,
-                              fontSize: 12.5,
-                              height: 1.3,
-                            ),
-                          ),
                         ),
-                        IconButton(
-                          tooltip: 'Coba lagi',
-                          onPressed: _busy ? null : _load,
-                          icon: const GameIcon('refresh', size: 22),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _hud(
+                              _currency,
+                              widget.balance
+                                  .toStringAsFixed(1)
+                                  .replaceAll('.', ','),
+                              EmbunColors.cream,
+                            ),
+                            if (seconds != null) ...[
+                              const SizedBox(width: 8),
+                              _hud(
+                                'timer',
+                                '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+                                seconds <= 10 ? EmbunColors.blood : _accent,
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
                   ),
-                _invitations(),
-                Expanded(
-                  child: _waiting
-                      ? _waitingView()
-                      : _status == null
-                      ? const Center(child: CircularProgressIndicator())
-                      : place == null
-                      ? _pickerScene(box.maxWidth > 760)
-                      : _stage(_placeOf(place), _interior(place)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-                  child: Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    runSpacing: 8,
-                    spacing: 18,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                      padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+                      decoration: BoxDecoration(
+                        color: EmbunColors.blood.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: EmbunColors.blood.withValues(alpha: .6),
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          _pips(),
-                          const SizedBox(width: 6),
-                          _text(
-                            'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Hari ${widget.day}',
-                            size: 12,
-                            color: Colors.white70,
-                            lift: true,
+                          const GameIcon('alert', size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: EmbunColors.blood,
+                                fontSize: 12.5,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Coba lagi',
+                            onPressed: _busy ? null : _load,
+                            icon: const GameIcon('refresh', size: 22),
                           ),
                         ],
                       ),
-                      if (!_waiting)
-                        _button(
-                          'Selesai menjelajah',
-                          _busy ? null : _finish,
-                          secondary: true,
-                          height: 44,
-                          icon: 'endday',
-                        ),
-                    ],
+                    ),
+                  _invitations(),
+                  Expanded(
+                    child: _waiting
+                        ? _waitingView()
+                        : _status == null
+                        ? const Center(child: CircularProgressIndicator())
+                        : place == null
+                        ? _pickerScene(box.maxWidth > 760)
+                        : _stage(_placeOf(place), _interior(place)),
                   ),
-                ),
-                if (_busy) const LinearProgressIndicator(minHeight: 2),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 8,
+                      spacing: 18,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _pips(),
+                            const SizedBox(width: 6),
+                            _text(
+                              'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Hari ${widget.day}',
+                              size: 12,
+                              color: Colors.white70,
+                              lift: true,
+                            ),
+                          ],
+                        ),
+                        if (!_waiting)
+                          _button(
+                            'Selesai menjelajah',
+                            _busy ? null : _finish,
+                            secondary: true,
+                            height: 44,
+                            icon: 'endday',
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_busy) const LinearProgressIndicator(minHeight: 2),
+                ],
+              ),
             ),
-          ),
           if (place != null && !_waiting)
             Positioned.fill(
               child: PlaceTitleCard(
