@@ -14,6 +14,11 @@ double _seg(double v, double a, double b) =>
 
 double _smooth(double x) => x * x * (3 - 2 * x);
 
+double _rnd(int i, int k) {
+  final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+  return v - v.floorToDouble();
+}
+
 /// Layar malam di antara dua hari biasa, diputar SEBELUM adegan fajar.
 ///
 /// Laporan umum memakai suasana malam yang sama untuk semua pemain.
@@ -87,7 +92,7 @@ class _NightSceneState extends State<NightScene>
     _impacts = _lines.map(NightImpact.fromReport).toList();
     _attackIdx = _lines.indexWhere((l) => l['kind'] == 'attack');
     _privateIdx = _lines.indexWhere((l) =>
-        l['kind'] == 'private' && nightVictimPath(l['scene'] as String?) != null);
+    l['kind'] == 'private' && nightVictimPath(l['scene'] as String?) != null);
     _victimScene = _privateIdx < 0
         ? null
         : (_lines[_privateIdx]['scene'] as String?);
@@ -292,10 +297,17 @@ class _NightSceneState extends State<NightScene>
             final atkFlash = _attackIdx < 0 ? 0.0 : pulse(atkAt + 60, 200);
             final privPulse = _privateIdx < 0 ? 0.0 : pulse(privAt + 80, 380);
 
-            final shakeAmp = 9 * atkPulse + 3 * privPulse;
+            // Serangan dramatis: hentakan keras + gema yang lebih panjang.
+            final atkEcho = _attackIdx < 0 ? 0.0 : pulse(atkAt + 80, 1100);
+            final atkSecond = _attackIdx < 0 ? 0.0 : pulse(atkAt + 260, 380);
+            final atkSince = _attackIdx < 0 ? -1.0 : (ms - atkAt);
+            final shakeAmp =
+                20 * atkPulse + 8 * atkSecond + 3 * atkEcho + 3 * privPulse;
             final t = ms / 1000;
             final shake = Offset(math.sin(t * 95) * shakeAmp,
                 math.cos(t * 81) * shakeAmp * 0.7);
+            final tilt = math.sin(t * 61) * 0.012 * (atkPulse + atkSecond);
+            final punch = 0.09 * atkPulse + 0.03 * atkSecond;
 
             final fadeIn = 1 - fadeMs(ms, 0, kSceneFadeInMs.toDouble());
             final fadeOut =
@@ -304,7 +316,7 @@ class _NightSceneState extends State<NightScene>
             // Kamera: perbesaran tetap (membuang bingkai emas gambar) ditambah
             // desir pelan; bergeser sedikit mengikuti waktu.
             final drift = ms / _total;
-            final zoom = kBentangZoom * (1.0 + 0.035 * drift);
+            final zoom = kBentangZoom * (1.0 + 0.035 * drift + punch);
             final pan = Offset(math.sin(sec * 0.35) * 6, -drift * h * 0.012);
 
             return Stack(
@@ -314,12 +326,24 @@ class _NightSceneState extends State<NightScene>
                 ClipRect(
                   child: Transform.translate(
                     offset: shake + pan,
-                    child: Transform.scale(
-                      scale: zoom,
-                      child: _world(ms, h, atkAt, privAt),
+                    child: Transform.rotate(
+                      angle: tilt,
+                      child: Transform.scale(
+                        scale: zoom,
+                        child: _world(ms, h, atkAt, privAt),
+                      ),
                     ),
                   ),
                 ),
+
+                // Gelombang kejut + garis kecepatan dari titik hantaman.
+                if (atkSince >= 0 && atkSince < 1600)
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _ShockPainter(since: atkSince),
+                      size: Size.infinite,
+                    ),
+                  ),
 
                 // Perendam agar teks terbaca; menebal sedikit saat serangan.
                 IgnorePointer(
@@ -340,10 +364,10 @@ class _NightSceneState extends State<NightScene>
                 ),
 
                 // Retakan ungu dari langit saat serangan menghantam.
-                if (atkPulse > 0.02)
+                if (atkEcho > 0.02)
                   IgnorePointer(
                     child: CustomPaint(
-                      painter: _CrackPainter(pulse: atkPulse),
+                      painter: _CrackPainter(pulse: math.min(1.0, atkPulse + 0.35 * atkEcho)),
                       size: Size.infinite,
                     ),
                   ),
@@ -355,11 +379,43 @@ class _NightSceneState extends State<NightScene>
                 ),
 
                 // Kilatan.
+                // Putih menyilaukan sesaat, lalu merah darah, lalu berdenyut.
                 if (atkFlash > 0.01)
                   IgnorePointer(
                     child: ColoredBox(
+                      color: Color.lerp(EmbunColors.blood, Colors.white,
+                          (atkFlash * atkFlash).clamp(0.0, 1.0))!
+                          .withValues(
+                          alpha: (0.75 * atkFlash).clamp(0.0, 1.0)),
+                    ),
+                  ),
+                if (atkSecond > 0.01)
+                  IgnorePointer(
+                    child: ColoredBox(
                       color: EmbunColors.blood.withValues(
-                          alpha: (0.42 * atkFlash).clamp(0.0, 1.0)),
+                          alpha: (0.22 * atkSecond).clamp(0.0, 1.0)),
+                    ),
+                  ),
+                // Tepi layar memerah berdenyut seperti detak jantung.
+                if (attack > 0.01)
+                  IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          radius: 0.95,
+                          colors: [
+                            Colors.transparent,
+                            EmbunColors.blood.withValues(
+                                alpha: (attack *
+                                    (0.22 +
+                                        0.12 *
+                                            math.sin(ms / 1000 * 5.2) +
+                                        0.25 * atkEcho))
+                                    .clamp(0.0, 0.6)),
+                          ],
+                          stops: const [0.55, 1.0],
+                        ),
+                      ),
                     ),
                   ),
                 if (privPulse > 0.01)
@@ -562,7 +618,9 @@ class _NightSceneState extends State<NightScene>
       'private' => Offset(0, 22 * (1 - a)),
       _ => Offset(0, 14 * (1 - a)),
     };
-    final scale = isAtk ? 1.22 - 0.22 * Curves.easeOutCubic.transform(a) : 1.0;
+    // Kartu serangan menghantam dari besar (1.9x) ke ukuran asli dengan
+    // sedikit memantul.
+    final scale = isAtk ? 1.9 - 0.9 * Curves.easeOutBack.transform(a) : 1.0;
 
     return Opacity(
       opacity: a,
@@ -641,7 +699,7 @@ class _NightSceneState extends State<NightScene>
   }
 }
 
-/// Retakan ungu dari langit saat serangan menghantam.
+/// Retakan ungu bercabang dari langit saat serangan menghantam.
 class _CrackPainter extends CustomPainter {
   final double pulse; // 0..1
   const _CrackPainter({required this.pulse});
@@ -652,31 +710,125 @@ class _CrackPainter extends CustomPainter {
     final rnd = math.Random(8);
     final glow = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
-      ..color = const Color(0xFFB07CE8).withValues(alpha: 0.6 * pulse);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9)
+      ..color = const Color(0xFFB07CE8).withValues(alpha: 0.7 * pulse);
     final core = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFF1E6FF).withValues(alpha: 0.95 * pulse);
-    for (var k = 0; k < 4; k++) {
-      var x = w * (0.12 + 0.76 * rnd.nextDouble());
-      var y = 0.0;
+      ..color = const Color(0xFFF8F1FF).withValues(alpha: pulse);
+    final thin = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFE2CCFF).withValues(alpha: 0.85 * pulse);
+
+    void bolt(double sx, double sy, double len, double dir, int depth) {
+      var x = sx, y = sy;
       final path = Path()..moveTo(x, y);
-      const steps = 7;
-      final len = h * (0.22 + 0.2 * rnd.nextDouble());
+      const steps = 9;
       for (var i = 0; i < steps; i++) {
-        x += (rnd.nextDouble() - 0.5) * w * 0.07;
+        x += (rnd.nextDouble() - 0.5) * w * 0.09 + dir * w * 0.012;
         y += len / steps;
         path.lineTo(x, y);
+        if (depth < 2 && i > 1 && i < steps - 1 && rnd.nextDouble() < 0.32) {
+          bolt(x, y, len * 0.45, rnd.nextBool() ? 1 : -1, depth + 1);
+        }
       }
       canvas.drawPath(path, glow);
-      canvas.drawPath(path, core);
+      canvas.drawPath(path, depth == 0 ? core : thin);
+    }
+
+    for (var k = 0; k < 6; k++) {
+      bolt(w * (0.08 + 0.84 * rnd.nextDouble()), 0,
+          h * (0.30 + 0.30 * rnd.nextDouble()), 0, 0);
     }
   }
 
   @override
   bool shouldRepaint(covariant _CrackPainter old) => old.pulse != pulse;
+}
+
+/// Gelombang kejut ganda, garis kecepatan, dan bara yang terlempar dari
+/// pusat layar saat serangan menghantam. [since] = ms sejak serangan muncul.
+class _ShockPainter extends CustomPainter {
+  final double since;
+  const _ShockPainter({required this.since});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.46);
+    final maxR = size.longestSide * 0.75;
+
+    // Dua cincin kejut berurutan.
+    for (var k = 0; k < 2; k++) {
+      final u = _seg(since, 40 + k * 160.0, 900 + k * 160.0);
+      if (u <= 0 || u >= 1) continue;
+      final e = Curves.easeOutCubic.transform(u);
+      final a = (1 - u);
+      canvas.drawCircle(
+        c,
+        maxR * e,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 18 * (1 - u) + 2
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
+          ..color = EmbunColors.blood.withValues(alpha: 0.55 * a),
+      );
+      canvas.drawCircle(
+        c,
+        maxR * e,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5 * (1 - u) + 0.8
+          ..color = const Color(0xFFFFE6EA).withValues(alpha: 0.9 * a),
+      );
+    }
+
+    // Garis kecepatan memancar keluar.
+    final lu = _seg(since, 0, 520);
+    if (lu > 0 && lu < 1) {
+      final fade = math.sin(lu * math.pi);
+      final line = Paint()
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 2
+        ..color = Colors.white.withValues(alpha: 0.55 * fade);
+      for (var i = 0; i < 36; i++) {
+        final ang = _rnd(i, 1) * math.pi * 2;
+        final r0 = maxR * (0.12 + 0.55 * lu * (0.6 + 0.4 * _rnd(i, 2)));
+        final r1 = r0 + maxR * (0.10 + 0.18 * _rnd(i, 3));
+        canvas.drawLine(
+          c + Offset(math.cos(ang), math.sin(ang)) * r0,
+          c + Offset(math.cos(ang), math.sin(ang)) * r1,
+          line,
+        );
+      }
+    }
+
+    // Bara merah-ungu yang terlempar lalu jatuh.
+    final pu = _seg(since, 60, 1500);
+    if (pu > 0 && pu < 1) {
+      for (var i = 0; i < 40; i++) {
+        final ang = _rnd(i, 7) * math.pi * 2;
+        final speed = 0.25 + 0.6 * _rnd(i, 8);
+        final dist = maxR * speed * Curves.easeOutCubic.transform(pu);
+        final p = c +
+            Offset(math.cos(ang) * dist,
+                math.sin(ang) * dist + pu * pu * 90 * (0.5 + _rnd(i, 9)));
+        final a = math.sin(pu * math.pi) * 0.9;
+        canvas.drawCircle(
+          p,
+          1.5 + 3 * _rnd(i, 10) * (1 - pu),
+          Paint()
+            ..color = (i.isEven ? EmbunColors.blood : const Color(0xFFD7A8FF))
+                .withValues(alpha: a),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShockPainter old) => old.since != since;
 }
