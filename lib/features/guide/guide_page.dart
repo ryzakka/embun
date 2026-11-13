@@ -1001,8 +1001,8 @@ class _HowToTab extends StatelessWidget {
     return _Page(
       maxWidth: 780,
       header: _stats(),
-      // Layar lebar: kiri = Tujuan, Siklus, Kartu lanjutan; kanan = sisanya.
-      column: (i) => const [0, 1, 0, 1, 0, 1, 1][i],
+      // Bagian tersusun bergantian tanpa daftar indeks yang bisa tertinggal.
+      column: (i) => i % 2,
       children: [
         _Section(
           icon: 'helaidaun',
@@ -1053,7 +1053,7 @@ class _HowToTab extends StatelessWidget {
               '**Sumur Desa**: bayar 8 uang untuk mengubah laju bersama sebesar +0,15 (warga) atau −0,15 (Terbisik) per hari. Bertahan sepanjang gim, batas −1,50 sampai +1,50. Berlaku bagi kedua fraksi.',
             ),
             _bullet(
-              '**Bengkel Desa**: aktifkan kartu lanjutan menggunakan kartu poin.',
+              '**Bengkel Desa**: satu-satunya tempat untuk mengaktifkan kartu lanjutan menggunakan kartu poin. Tidak bisa digabung di Meja hari biasa.',
             ),
             _bullet(
               '**Pondok Perawatan**: perlu surat sesuai peran. Perawatan memulihkan 1 nyawa; pasien lain perlu tambahan 12 uang. Jebakan mengurangi 1 nyawa seorang pengunjung lain, lalu habis. Pemulihan diselesaikan sebelum jebakan.',

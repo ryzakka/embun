@@ -560,6 +560,10 @@ class PreviewSession
 
   @override
   Future<PreviewRow> fuseCards(String gameId, String handId) async {
+    final visit = _visits.where((v) => v['closed_at'] == null).lastOrNull;
+    if (_game['phase'] != 'visits' || visit?['place'] != 'bengkel') {
+      throw StateError('Kunjungi Bengkel Desa untuk menggabungkan kartu.');
+    }
     final item = _hand.firstWhere((h) => h['id'] == handId);
     final points = _hand.indexWhere(
       (h) => previewCards[h['card_id']]?['kind'] == 'poin',

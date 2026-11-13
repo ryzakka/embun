@@ -25,6 +25,8 @@ const _tabMeja = 1;
 const _tabGabung = 2;
 const _tabBalai = 3;
 
+const _dayTabs = [_tabToko, _tabMeja, _tabBalai];
+
 enum DayTab { market, hand, merge, hall }
 
 enum _Mode { phone, landscape, wide }
@@ -130,14 +132,21 @@ class DayView extends StatefulWidget {
 
 class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   late final PageController _pager = PageController(
-    initialPage: widget.initialTab.index,
+    initialPage: _dayTabs.indexOf(_initialTab).clamp(0, _dayTabs.length - 1),
     keepPage: false,
   );
 
   // Jam berdenyut untuk penggabungan kartu dan tawaran tukar.
   late final AnimationController _t;
   double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
-  late int tab = widget.initialTab.index;
+  bool get _canFuse =>
+      widget.venueMode &&
+      widget.visitsEnabled &&
+      widget.initialTab == DayTab.merge;
+  int get _initialTab => widget.initialTab == DayTab.merge && !_canFuse
+      ? _tabMeja
+      : widget.initialTab.index;
+  late int tab = _initialTab;
   // Tab Gabung: kartu lanjutan dan kartu syarat (poin) yang diletakkan di
   // petak, dikenali lewat card_id. Penggabungan baru terjadi saat
   // "Tempatkan" ditekan.
@@ -145,7 +154,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   String? _fusePoin;
   late int _deskTab = widget.initialTab == DayTab.market
       ? _tabMeja
-      : widget.initialTab.index;
+      : _initialTab;
   _Mode _lastMode = _Mode.phone;
   int sel = 0; // indeks kartu toko yang dipilih
   List<Map<String, dynamic>>? offers;
@@ -334,7 +343,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   /// Buka Gabung dan tempatkan kartu pilihan bila ada.
   void _openGabung([String? advCardId]) {
-    if (widget.visitsEnabled && !widget.venueMode) {
+    if (!_canFuse) {
       _toast('Kunjungi Bengkel Desa pada malam sebelum persembahan.');
       return;
     }
@@ -343,7 +352,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   /// Kartu lanjutan di Meja: ketuk -> hanya pratinjau. Penggabungan dengan
-  /// kartu syarat dilakukan di tab Gabung.
+  /// kartu syarat hanya dilakukan di Bengkel Desa.
   Future<void> _useAdvanced(Map<String, dynamic> h) async {
     final def = widget.defs[h['card_id']];
     if (def == null) return;
@@ -363,10 +372,12 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       context,
       def,
       defs: widget.defs,
-      actionLabel: widget.visitsEnabled ? 'Bengkel Desa' : 'Buka tab Gabung',
-      onAction: () async {
-        if (mounted) _openGabung(h['card_id'] as String);
-      },
+      actionLabel: _canFuse ? 'Aktifkan di Bengkel' : null,
+      onAction: _canFuse
+          ? () async {
+              if (mounted) _openGabung(h['card_id'] as String);
+            }
+          : null,
     );
   }
 
@@ -394,6 +405,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   /// Tempatkan: gabungkan kartu lanjutan di petak dengan kartu syarat.
   Future<void> _doFuse() async {
+    if (!_canFuse) {
+      _toast('Penggabungan kartu hanya tersedia di Bengkel Desa.');
+      return;
+    }
     final advId = _fuseAdv;
     if (advId == null || _fusePoin == null) return;
     Map<String, dynamic>? row;
@@ -427,7 +442,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     if (def == null) return;
     await showCardPreview(context, def, defs: widget.defs);
     if (mounted) {
-      _toast('Gabungkan $_poinName dengan kartu lanjutanmu di tab Gabung.');
+      _toast('Gabungkan $_poinName dengan kartu lanjutanmu di Bengkel Desa.');
     }
   }
 
@@ -636,6 +651,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   void _goTab(int index) {
+    if (index == _tabGabung && !_canFuse) return;
+    if (widget.venueMode) return;
+    final page = _dayTabs.indexOf(index);
+    if (page < 0) return;
     if (_lastMode == _Mode.wide) {
       if (index == _deskTab) return;
       HapticFeedback.selectionClick();
@@ -645,13 +664,17 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       });
       return;
     }
-    if (!_pager.hasClients || (_pager.page ?? tab.toDouble()) == index) return;
+    if (!_pager.hasClients ||
+        (_pager.page ?? _dayTabs.indexOf(tab).toDouble()) == page) {
+      return;
+    }
     HapticFeedback.selectionClick();
-    if ((index - (_pager.page ?? tab.toDouble())).abs() > 1.5) {
-      _pager.jumpToPage(index);
+    if ((page - (_pager.page ?? _dayTabs.indexOf(tab).toDouble())).abs() >
+        1.5) {
+      _pager.jumpToPage(page);
     } else {
       _pager.animateToPage(
-        index,
+        page,
         duration: const Duration(milliseconds: 230),
         curve: Curves.easeOutCubic,
       );
@@ -1361,7 +1384,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     if (dormant == 0 && poin == 0) return null;
     final ready = dormant > 0 && poin > 0;
     final String text;
-    if (widget.visitsEnabled && !widget.venueMode) {
+    if (!_canFuse) {
       text = ready
           ? 'Kartu dan poin tersedia. Aktifkan di Bengkel Desa pada malam sebelum persembahan.'
           : 'Lengkapi kartu dan poin di Pasar Riset, lalu aktifkan di Bengkel Desa.';
@@ -1369,22 +1392,20 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       final n = dormant < poin ? dormant : poin;
       text =
           'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
-          'Buka tab Gabung untuk menempatkannya.';
+          'Pilih kedua kartu di Bengkel untuk mengaktifkannya.';
     } else if (dormant > 0) {
       text =
-          'Kartu lanjutanmu belum aktif. Beli $_poinName di Toko, '
-          'lalu gabungkan di tab Gabung.';
+          'Kartu lanjutanmu belum aktif. Beli $_poinName di Pasar Riset, '
+          'lalu gabungkan di Bengkel Desa.';
     } else {
       text =
-          '$_poinName tersimpan. Beli kartu lanjutan di Toko, '
-          'lalu gabungkan di tab Gabung.';
+          '$_poinName tersimpan. Beli kartu lanjutan di Pasar Riset, '
+          'lalu gabungkan di Bengkel Desa.';
     }
     final c = ready ? EmbunColors.gold : Colors.white70;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: ready && (!widget.visitsEnabled || widget.venueMode)
-          ? () => _openGabung()
-          : null,
+      onTap: ready && _canFuse ? () => _openGabung() : null,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 14),
@@ -1759,7 +1780,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   Widget _gabungBody({double minW = 96}) {
-    if (widget.visitsEnabled && !widget.venueMode) {
+    if (!_canFuse) {
       return _empty(
         'plus',
         'Bengkel Desa',
@@ -2244,7 +2265,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           box.maxWidth < 300 || (box.maxWidth < 390 && scale > 1.25);
       final tabs = Row(
         children: [
-          for (final index in const [_tabToko, _tabMeja, _tabGabung, _tabBalai])
+          for (final index in _dayTabs)
             Expanded(child: _tabButton(index, wide: false)),
         ],
       );
@@ -2279,12 +2300,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final index in const [
-                _tabToko,
-                _tabMeja,
-                _tabGabung,
-                _tabBalai,
-              ])
+              for (final index in const [_tabToko, _tabMeja, _tabBalai])
                 Expanded(child: _tabButton(index, wide: false, vertical: true)),
             ],
           ),
@@ -2351,7 +2367,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   Widget _pages() => PageView(
     controller: _pager,
-    onPageChanged: (index) {
+    onPageChanged: (page) {
+      final index = _dayTabs[page];
       if (tab != index) {
         setState(() {
           tab = index;
@@ -2361,8 +2378,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     },
     children: [
       _shopPanel(),
-      for (final index in const [_tabMeja, _tabGabung, _tabBalai])
-        _handPage(index),
+      for (final index in const [_tabMeja, _tabBalai]) _handPage(index),
     ],
   );
 
@@ -2374,7 +2390,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       children: [
         Row(
           children: [
-            for (final index in const [_tabMeja, _tabGabung, _tabBalai])
+            for (final index in const [_tabMeja, _tabBalai])
               Expanded(child: _tabButton(index, wide: true)),
           ],
         ),
@@ -2387,7 +2403,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      if (widget.venueMode && widget.initialTab == DayTab.merge) {
+      if (_canFuse) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -2403,14 +2419,15 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         );
       }
       if (widget.venueMode) {
-        return _handPage(widget.initialTab.index, wide: box.maxWidth > 700);
+        return _handPage(_initialTab, wide: box.maxWidth > 700);
       }
       final previous = _lastMode;
       _lastMode = _modeFor(box);
       if (previous != _lastMode && _lastMode != _Mode.wide) {
-        final page = tab;
+        final selectedTab = tab;
+        final page = _dayTabs.indexOf(selectedTab);
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _pager.hasClients && tab == page) {
+          if (mounted && _pager.hasClients && tab == selectedTab) {
             _pager.jumpToPage(page);
           }
         });
