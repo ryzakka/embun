@@ -1236,7 +1236,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   Widget _stage(_Place p, Widget content) => LayoutBuilder(
     builder: (context, box) {
       final side =
-          box.maxWidth >= 820 || (box.maxWidth >= 600 && box.maxHeight < 400);
+          box.maxWidth >= 700 || (box.maxWidth >= 600 && box.maxHeight < 400);
       final broad = p.id == 'riset' || p.id == 'bengkel';
       if (!side) return _stageCompact(p, content, box);
       final width =
@@ -1372,7 +1372,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       _ => 560.0,
     };
     // Tinggi bawaan dibatasi supaya karakter tetap punya ruang di layar ponsel.
-    final cap = math.max(box.maxHeight * .64, 340.0);
+    final cap = math.max(box.maxHeight * .56, 320.0);
     final sheetH = math
         .min(desired, cap)
         .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
@@ -1382,9 +1382,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final dur = _reduced ? Duration.zero : const Duration(milliseconds: 480);
     const curve = Curves.easeOutCubic;
     final art = avail >= 130 ? _popup(p.id, _moodOf(p.id)) : null;
-    final visible = math.max(0.0, math.min(avail - 6, open ? 280.0 : 560.0));
-    final h = visible / (open ? .68 : .92);
-    final w = math.min(box.maxWidth * (open ? .56 : .82), h * .8);
+    final visible = math.max(0.0, math.min(avail - 6, open ? 360.0 : 560.0));
+    final h = visible / (open ? .74 : .92);
+    final w = math.min(box.maxWidth * (open ? .52 : .82), h * .8);
+    final heroLeft = art != null && open ? w * .84 : 20.0;
+    final voiceRoom = box.maxWidth - heroLeft - 16;
+    final showVoice = art != null && open && avail >= 210 && voiceRoom >= 190;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -1392,7 +1395,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           AnimatedPositioned(
             duration: dur,
             curve: curve,
-            left: -w * .06,
+            left: -w * .02,
             bottom: shown - (h - visible),
             width: w,
             height: h,
@@ -1412,11 +1415,21 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           AnimatedPositioned(
             duration: dur,
             curve: curve,
-            left: art != null && open ? w * .86 : 20,
+            left: heroLeft,
             right: 16,
             bottom: shown + 14,
             child: _enter(
-              _hero(p, compact: true),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _hero(p, compact: true),
+                  if (showVoice) ...[
+                    const SizedBox(height: 12),
+                    _voiceBubble(p.id, maxWidth: math.min(voiceRoom, 340.0)),
+                  ],
+                ],
+              ),
               from: const Offset(24, 0),
               delay: .2,
             ),
