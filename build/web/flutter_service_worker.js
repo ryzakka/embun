@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "6c81fd08e3a6ad360f4da1a7758734fb",
-"assets/AssetManifest.bin.json": "c7dce37d31b9bcdc2fe774262faed514",
+const RESOURCES = {"assets/AssetManifest.bin": "612e6520090e9bd70754f4c422465c4e",
+"assets/AssetManifest.bin.json": "1bba0a2d2f39ac3aa1ea2818ecc5a242",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/anyaman-gelap.webp": "5322aff6e036276cb3e8960a77599f9b",
 "assets/assets/bentang/anyaman-rusak.webp": "21b76bbe9458a9952369cf8d1b451492",
@@ -400,6 +400,10 @@ const RESOURCES = {"assets/AssetManifest.bin": "6c81fd08e3a6ad360f4da1a7758734fb
 "assets/assets/sound/fairygrow.mp3": "d36bcc19f042fab3c1fce9c1838043f9",
 "assets/assets/sound/latarakhirendingstatistik.mp3": "8dc19f19a272d80ef0241aed27a8fd55",
 "assets/assets/sound/latarprologawal.mp3": "b2f1a9b1978cc02d580b7121239db263",
+"assets/assets/sound/musikLatar-1.mp3": "57b61786b6efe9b8682c4dfb353be5bc",
+"assets/assets/sound/musikLatar-2.mp3": "593c66f6150c8e5d62b8fa00b43d513c",
+"assets/assets/sound/musikLatar-3.mp3": "add4165258445e1ece78b3b40665864e",
+"assets/assets/sound/musikLatar-4.mp3": "e82554bf2c892eab74954ed7035bad84",
 "assets/assets/sound/prolog-narasibicara.mp3": "49539ea3d61ee6fe5d9a2ab89c67ef2f",
 "assets/assets/sound/slashgemerciklight.mp3": "c78ee7e75b5e5d4cba73e273dcc526f1",
 "assets/assets/sound/slashpedang.mp3": "7d3209777e8632c8eb69e093eb4268f7",
@@ -442,7 +446,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "6c81fd08e3a6ad360f4da1a7758734fb
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "edcc9d733fd9646e6b79f6e5c9e1aede",
+"flutter_bootstrap.js": "a5443fdea16286e9a977b192be61583a",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -453,7 +457,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "6c81fd08e3a6ad360f4da1a7758734fb
 "icons/Icon-maskable-512.webp": "21d7710de6b473107c3376fe3a48a797",
 "index.html": "e8810c49a8158ad25b7df982a3df3ea5",
 "/": "e8810c49a8158ad25b7df982a3df3ea5",
-"main.dart.js": "360e5fa156f649f5b5a37280c31a01fe",
+"main.dart.js": "72b9f6921d6b0efd6b54154db36a6086",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "version.json": "0c2c27559c0bfd79046d10a3ff8b2335",
 "_headers": "37cb9ac50993ed26a84190a1031c15c3"};

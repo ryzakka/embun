@@ -22,8 +22,10 @@ Future<void> main() async {
   Sfx.I.init();
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await AssetCatalog.load();
+  await Sfx.I.prepareMenuMusic();
   await ClothTransition.preload();
   await FxShaders.preload();
+  Sfx.I.startMenuMusic();
   runApp(const ProviderScope(child: EmbunApp()));
 }
 
@@ -36,6 +38,11 @@ class EmbunApp extends StatelessWidget {
       title: 'Embun',
       debugShowCheckedModeBanner: false,
       theme: embunTheme(),
+      builder: (_, child) => Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => Sfx.I.unlockAudio(),
+        child: child,
+      ),
       home: const _Launcher(),
     );
   }
@@ -60,10 +67,7 @@ class _LauncherState extends State<_Launcher> {
       if (!mounted) return;
       Sfx.I.playAny(Snd.winds);
       Navigator.of(context).pushReplacement(
-        ClothTransition.route(
-          const LobbyPage(),
-          style: ClothStyle.daunHayu,
-        ),
+        ClothTransition.route(const LobbyPage(), style: ClothStyle.daunHayu),
       );
     });
   }

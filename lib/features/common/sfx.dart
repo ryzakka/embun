@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'menu_playlist.dart';
 
 /// Satu berkas suara di assets/sound/ beserta volume dasarnya (0..1).
 class Snd {
@@ -81,6 +83,8 @@ class _Lease {
 /// Pemutar suara satu pintu untuk seluruh aplikasi.
 class Sfx with WidgetsBindingObserver {
   Sfx._();
+  @visibleForTesting
+  Sfx.testing();
   static final Sfx I = Sfx._();
 
   /// Bisukan semua suara. Ubah nilainya untuk menyalakan / mematikan.
@@ -95,6 +99,15 @@ class Sfx with WidgetsBindingObserver {
   final List<_Lease> _leases = [];
   final Set<Object> _duckers = {};
   final Map<String, Future<AudioPool?>> _pools = {};
+
+  final Object _menuOwner = Object();
+  final MenuPlaylist _menuPlaylist = MenuPlaylist();
+  bool _menuEnabled = false;
+  bool _bgmIsMenu = false;
+  int _sourceSerial = 0;
+  int _completionHandledSerial = -1;
+  StreamSubscription<void>? _bgmComplete;
+  Future<void> _musicQueue = Future<void>.value();
 
   AudioPlayer? _bgm;
   Snd? _bgmTrack;
@@ -124,6 +137,7 @@ class Sfx with WidgetsBindingObserver {
     _inited = true;
     WidgetsBinding.instance.addObserver(this);
     muted.addListener(_onMuteChanged);
+    HardwareKeyboard.instance.addHandler(_onKey);
 
     // PENTING: Jangan panggil AudioPlayer.global di Web karena kanal
     // xyz.luan/audioplayers.global/events tidak diimplementasikan di Web
@@ -132,9 +146,10 @@ class Sfx with WidgetsBindingObserver {
       try {
         AudioPlayer.global
             .setAudioContext(
-          AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
-              .build(),
-        )
+              AudioContextConfig(
+                focus: AudioContextConfigFocus.mixWithOthers,
+              ).build(),
+            )
             .catchError((Object e) => _log('audioContext', e));
       } catch (e) {
         _log('audioContext', e);
@@ -151,9 +166,85 @@ class Sfx with WidgetsBindingObserver {
   /// Di Web, kebijakan autoplay memblokir musik sebelum ada interaksi pengguna.
   /// Panggil ini setiap ada aksi suara agar BGM yang tertahan langsung menyala.
   void _retryMusicIfNeeded() {
-    if (_leases.isNotEmpty && _bgmTrack == null && !_syncing && !muted.value && !_paused) {
+    if (_leases.isNotEmpty &&
+        _bgmTrack == null &&
+        !_syncing &&
+        !muted.value &&
+        !_paused) {
       unawaited(_syncMusic());
     }
+  }
+
+  /// Panggil dari interaksi nyata untuk mencoba lagi jika browser menahan autoplay.
+  void unlockAudio() => _retryMusicIfNeeded();
+
+  bool _onKey(KeyEvent event) {
+    if (event is KeyDownEvent) unlockAudio();
+    return false;
+  }
+
+  /// Manifest memastikan nama huruf besar/kecil cocok dengan berkas yang dibangun.
+  Future<void> prepareMenuMusic({Iterable<String>? assetPaths}) async {
+    try {
+      final paths =
+          assetPaths ??
+          (await AssetManifest.loadFromAssetBundle(rootBundle)).listAssets();
+      _menuPlaylist.replace(MenuPlaylist.fromAssets(paths));
+      if (_menuPlaylist.current == null) {
+        _log(
+          'musik menu',
+          'Belum ada musiklatar-1.mp3 sampai musiklatar-4.mp3 di assets/sound/.',
+        );
+      }
+      if (_menuEnabled) {
+        _setMenuLease();
+        unawaited(_syncMusic());
+      }
+    } catch (error) {
+      _log('manifest musik menu', error);
+    }
+  }
+
+  /// Satu sewa dasar: berpindah halaman menu tidak mengulang lagu.
+  void startMenuMusic() {
+    if (_menuEnabled) {
+      unlockAudio();
+      return;
+    }
+    _menuEnabled = true;
+    _setMenuLease();
+    unawaited(_syncMusic());
+  }
+
+  void stopMenuMusic() {
+    if (!_menuEnabled) return;
+    _menuEnabled = false;
+    _leases.removeWhere((lease) => identical(lease.owner, _menuOwner));
+    unawaited(_syncMusic());
+  }
+
+  void _setMenuLease() {
+    _leases.removeWhere((lease) => identical(lease.owner, _menuOwner));
+    final file = _menuPlaylist.current;
+    if (file != null) _leases.insert(0, _Lease(_menuOwner, Snd(file, 0.32)));
+  }
+
+  void _menuTrackComplete(AudioPlayer player, int serial) {
+    if (serial != _sourceSerial ||
+        serial == _completionHandledSerial ||
+        !identical(player, _bgm) ||
+        !_bgmIsMenu ||
+        !_menuEnabled ||
+        muted.value ||
+        _paused ||
+        _leases.isEmpty ||
+        !identical(_leases.last.owner, _menuOwner)) {
+      return;
+    }
+    _completionHandledSerial = serial;
+    _menuPlaylist.advance();
+    _setMenuLease();
+    unawaited(_syncMusic());
   }
 
   // ===================================================================
@@ -185,7 +276,9 @@ class Sfx with WidgetsBindingObserver {
   Future<AudioPool?> _makePool(Snd s) async {
     try {
       return await AudioPool.createFromAsset(
-          path: 'sound/${s.file}', maxPlayers: 3);
+        path: 'sound/${s.file}',
+        maxPlayers: 3,
+      );
     } catch (e) {
       _log('pool ${s.file}', e);
       return null;
@@ -194,12 +287,12 @@ class Sfx with WidgetsBindingObserver {
 
   /// Putar [s]. [owner] = State adegan (wajib untuk suara adegan).
   Future<void> play(
-      Snd s, {
-        Object? owner,
-        String? tag,
-        bool replace = false,
-        double volume = 1.0,
-      }) async {
+    Snd s, {
+    Object? owner,
+    String? tag,
+    bool replace = false,
+    double volume = 1.0,
+  }) async {
     if (muted.value || _paused || _ownerGone(owner)) return;
     _retryMusicIfNeeded();
 
@@ -233,14 +326,18 @@ class Sfx with WidgetsBindingObserver {
 
   /// Putar salah satu dari [list] secara acak.
   Future<void> playAny(
-      List<Snd> list, {
-        Object? owner,
-        String? tag,
-        bool replace = false,
-        double volume = 1.0,
-      }) =>
-      play(list[_rng.nextInt(list.length)],
-          owner: owner, tag: tag, replace: replace, volume: volume);
+    List<Snd> list, {
+    Object? owner,
+    String? tag,
+    bool replace = false,
+    double volume = 1.0,
+  }) => play(
+    list[_rng.nextInt(list.length)],
+    owner: owner,
+    tag: tag,
+    replace: replace,
+    volume: volume,
+  );
 
   bool _ownerGone(Object? o) => o is State && !o.mounted;
 
@@ -401,26 +498,38 @@ class Sfx with WidgetsBindingObserver {
     return (_bgmTrack?.volume ?? 0) * k;
   }
 
-  Future<void> _syncMusic() async {
+  Future<void> _syncMusic() {
     final epoch = ++_epoch;
-    final want = (_leases.isEmpty || muted.value || _paused)
-        ? null
-        : _leases.last.track;
-    if (want != null && want.file == _bgmTrack?.file) {
-      // Sinkronisasi lama yang disela bisa meninggalkan _syncing = true;
-      // tanpa direset, _kick() tak pernah menaikkan volume.
-      _syncing = false;
+    // Semua pergantian sumber berjalan berurutan. Pemuatan lagu lama tidak
+    // boleh selesai belakangan lalu menimpa musik permainan yang baru masuk.
+    _musicQueue = _musicQueue
+        .then<void>((_) async {
+          if (epoch == _epoch) await _applyMusic(epoch);
+        })
+        .catchError((Object error) => _log('sinkronisasi musik', error));
+    return _musicQueue;
+  }
+
+  Future<void> _applyMusic(int epoch) async {
+    _leases.removeWhere((lease) => _ownerGone(lease.owner));
+    final lease = _leases.isEmpty ? null : _leases.last;
+    final want = muted.value || _paused ? null : lease?.track;
+    final isMenu = lease != null && identical(lease.owner, _menuOwner);
+    if (want != null &&
+        want.file == _bgmTrack?.file &&
+        isMenu == _bgmIsMenu &&
+        _bgm?.state != PlayerState.completed &&
+        _bgm?.state != PlayerState.stopped) {
       _kick();
       return;
     }
-    if (want == null && _bgmTrack == null) {
-      _syncing = false;
-      return;
-    }
+    if (want == null && _bgmTrack == null) return;
     _syncing = true;
-    final p = _bgm ??= AudioPlayer();
+    final player = _bgm ??= AudioPlayer();
     try {
-      if (_bgmTrack != null) {
+      if (_bgmTrack != null &&
+          !muted.value &&
+          player.state != PlayerState.completed) {
         const steps = 7;
         final from = _bgmVol;
         for (var i = 1; i <= steps; i++) {
@@ -428,46 +537,80 @@ class Sfx with WidgetsBindingObserver {
           if (epoch != _epoch) return;
           _bgmVol = from * (1 - i / steps);
           try {
-            await p.setVolume(_bgmVol);
+            await player.setVolume(_bgmVol);
           } catch (_) {}
         }
       }
+      if (epoch != _epoch) return;
+      ++_sourceSerial;
+      await _bgmComplete?.cancel();
+      _bgmComplete = null;
       try {
-        await p.stop();
+        await player.stop();
       } catch (_) {}
-      if (epoch != _epoch) {
-        _syncing = false;
-        return;
-      }
       _bgmTrack = null;
+      _bgmIsMenu = false;
       _bgmVol = 0;
-      if (want == null) {
-        _syncing = false;
-        return;
-      }
-      await p.setReleaseMode(ReleaseMode.loop);
-      await p.play(AssetSource('sound/${want.file}'), volume: 0);
-      _bgmTrack = want;
-      _bgmVol = 0;
+      if (epoch != _epoch || want == null) return;
+      final serial = _sourceSerial;
+      _bgmComplete = player.onPlayerComplete.listen(
+        (_) => _menuTrackComplete(player, serial),
+      );
+      await player.setReleaseMode(isMenu ? ReleaseMode.stop : ReleaseMode.loop);
+      await player
+          .play(AssetSource('sound/${want.file}'), volume: 0)
+          .timeout(const Duration(seconds: 10));
       if (epoch != _epoch) {
-        _syncing = false;
+        // Napas terakhir pemuatan lama: hentikan sebelum permintaan berikutnya.
+        try {
+          await player.stop();
+        } catch (_) {}
         return;
       }
-      _syncing = false;
-      _kick();
-    } catch (e) {
-      _log('musik ${want?.file}', e);
-      // Jika gagal (mis. terblokir autoplay browser), buang instance lama
-      // agar percobaan berikutnya setelah klik pengguna memakai player bersih.
+      _bgmTrack = want;
+      _bgmIsMenu = isMenu;
+      _bgmVol = 0;
+    } catch (error) {
+      _log('musik ${want?.file}', error);
+      ++_sourceSerial;
+      await _bgmComplete?.cancel();
+      _bgmComplete = null;
       try {
-        await _bgm?.dispose();
+        await player.dispose();
       } catch (_) {}
-      _bgm = null;
-      if (epoch == _epoch) {
-        _syncing = false;
+      if (identical(_bgm, player)) {
+        _bgm = null;
         _bgmTrack = null;
+        _bgmIsMenu = false;
+        _bgmVol = 0;
       }
+    } finally {
+      _syncing = false;
+      if (epoch == _epoch && _bgmTrack != null) _kick();
     }
+  }
+
+  @visibleForTesting
+  Future<void> disposeForTesting() async {
+    muted.value = true;
+    _menuEnabled = false;
+    _leases.clear();
+    _stopAllVoices();
+    await stopNarration();
+    await _syncMusic();
+    _stepTimer?.cancel();
+    _stepTimer = null;
+    await _bgmComplete?.cancel();
+    _bgmComplete = null;
+    await _bgm?.dispose();
+    _bgm = null;
+    if (_inited) {
+      WidgetsBinding.instance.removeObserver(this);
+      HardwareKeyboard.instance.removeHandler(_onKey);
+      muted.removeListener(_onMuteChanged);
+      _inited = false;
+    }
+    muted.dispose();
   }
 
   /// Dekatkan volume musik ke targetnya (pudar masuk / duck), bertahap.
@@ -524,7 +667,8 @@ class Sfx with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final away = state == AppLifecycleState.paused ||
+    final away =
+        state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached;
     if (away && !_paused) {
