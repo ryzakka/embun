@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
@@ -6,6 +7,8 @@ import '../../data/game_repository.dart';
 import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../common/scene_flow.dart';
+import '../common/sfx.dart';
 import 'day_view.dart';
 import 'research_view.dart';
 import 'village_card_picker.dart';
@@ -15,6 +18,15 @@ import 'clinic_entry_scene.dart';
 typedef VillageRow = Map<String, dynamic>;
 
 /// Panah hanya memilih tujuan. Jatah dipakai oleh server saat pemain masuk.
+///
+/// Revisi visual:
+///  * Pemilih tujuan: latar sinematik (zoom pelan), judul tempat besar,
+///    deretan bidikan tempat (rail) yang bisa diketuk / digeser, satu tombol
+///    masuk yang jelas.
+///  * Di dalam tempat: adegan memudar masuk dari [kSceneInk], panel kaca
+///    meluncur masuk, judul tempat menjadi pusat visual, dan sumur memakai
+///    pengukur laju bersama.
+/// Logika, parameter, dan panggilan repo tidak berubah.
 class VillageVisitView extends StatefulWidget {
   const VillageVisitView({
     super.key,
@@ -49,47 +61,80 @@ class VillageVisitView extends StatefulWidget {
   State<VillageVisitView> createState() => _VillageVisitViewState();
 }
 
+class _Place {
+  const _Place(
+      this.id,
+      this.name,
+      this.tagline,
+      this.outside,
+      this.inside,
+      this.icon,
+      this.tint,
+      );
+  final String id, name, tagline;
+
+  /// Stem `assets/bentang` untuk pemilih (luar) dan di dalam tempat.
+  final String outside, inside;
+  final IconData icon;
+
+  /// Warna suasana (cahaya di belakang adegan). Sisi Terbisik memakai ungu.
+  final Color tint;
+}
+
 const _places = [
-  (
+  _Place(
     'riset',
     'Pasar Riset',
     'Bekal untuk persembahan berikutnya.',
     'pasar-sianghari',
     'pasar-sianghari',
     Icons.auto_stories_outlined,
+    Color(0xFFE8C766),
   ),
-  (
+  _Place(
     'sumur',
     'Sumur Desa',
     'Satu sumbangan. Pengaruh sepanjang permainan.',
     'sumur-sianghari',
     'sumur-sianghari',
     Icons.water_drop_outlined,
+    Color(0xFF5CC8D6),
   ),
-  (
+  _Place(
     'bengkel',
     'Bengkel Desa',
     'Satukan kartu lanjutan dengan kartu poin.',
     'tempat-bengkel',
     'tempatdalam-bengkel',
     Icons.handyman_outlined,
+    Color(0xFFE89A4A),
   ),
-  (
+  _Place(
     'pondok',
     'Pondok Perawatan',
     'Sebuah surat membuka layanan pondok.',
     'tempat-pondokperawatan',
     'tempatdalam-pondokperawatan',
     Icons.local_hospital_outlined,
+    Color(0xFF7FE0A0),
   ),
-  (
+  _Place(
     'balai',
     'Balai Pertukaran',
     'Temui warga lain. Sepakati pertukaran kartu.',
     'tempat-balaitukar',
     'tempatdalam-balaitukar',
     Icons.swap_horiz_rounded,
+    Color(0xFFE0A07A),
   ),
+];
+
+_Place _placeOf(String id) =>
+    _places.firstWhere((p) => p.id == id, orElse: () => _places.last);
+
+/// Bayangan teks supaya judul terbaca di atas gambar apa pun.
+const _lift = [
+  Shadow(color: Color(0xCC000000), blurRadius: 14, offset: Offset(0, 2)),
 ];
 
 class _VillageVisitViewState extends State<VillageVisitView> {
@@ -101,6 +146,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   bool _busy = false, _loading = false, _finished = false;
   Timer? _timer;
   Color get _accent => widget.isAntag ? EmbunColors.mist : EmbunColors.gold;
+  Color _glow(_Place p) => widget.isAntag ? EmbunColors.mist : p.tint;
+  bool get _reduced => MediaQuery.disableAnimationsOf(context);
   VillageRow? get _visit => _status?['current'] is Map
       ? Map<String, dynamic>.from(_status!['current'])
       : null;
@@ -182,52 +229,354 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2).replaceAll('.', ',')}';
   String _name(Object? id) =>
       widget.players.where((p) => p['user_id'] == id).firstOrNull?['name']
-          as String? ??
-      'Pemain';
+      as String? ??
+          'Pemain';
+
+  // ---------------------------------------------------------------------
+  // Blok bangunan visual
+  // ---------------------------------------------------------------------
 
   Widget _button(
-    String label,
-    VoidCallback? action, {
-    bool secondary = false,
-  }) => secondary
-      ? OutlinedButton(
-          onPressed: action,
-          child: Text(label, textAlign: TextAlign.center),
-        )
-      : FilledButton(
-          onPressed: action,
-          child: Text(label, textAlign: TextAlign.center),
-        );
+      String label,
+      VoidCallback? action, {
+        bool secondary = false,
+        double height = 52,
+      }) => EmbunButton(
+    label: label,
+    onPressed: action,
+    expand: !secondary,
+    height: height,
+    kind: secondary ? EmbunButtonKind.secondary : EmbunButtonKind.primary,
+  );
+
   Widget _text(
-    String text, {
-    double size = 14,
-    Color? color,
-    FontWeight? weight,
-  }) => Text(
+      String text, {
+        double size = 14,
+        Color? color,
+        FontWeight? weight,
+        double height = 1.35,
+        double? spacing,
+        TextAlign? align,
+        bool lift = false,
+      }) => Text(
     text,
+    textAlign: align,
     style: TextStyle(
       fontSize: size,
-      height: 1.35,
+      height: height,
       color: color ?? EmbunColors.cream,
       fontWeight: weight,
+      letterSpacing: spacing,
+      shadows: lift ? _lift : null,
     ),
   );
-  Widget _service(IconData icon, String title, List<Widget> children) =>
-      ListView(
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 18),
+
+  /// Label kecil huruf kapital dengan garis penanda di kirinya.
+  Widget _kicker(String text, {Color? color}) {
+    final c = color ?? _accent;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 22, height: 2, color: c),
+        const SizedBox(width: 8),
+        Flexible(
+          child: _text(
+            text,
+            size: 11,
+            color: c,
+            weight: FontWeight.w800,
+            spacing: 2,
+            lift: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Medali bercahaya untuk ikon tempat.
+  Widget _medal(IconData icon, {double size = 44, Color? glow}) {
+    final g = glow ?? _accent;
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [g.withValues(alpha: .30), g.withValues(alpha: .06)],
+        ),
+        border: Border.all(color: g.withValues(alpha: .7), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: g.withValues(alpha: .28),
+            blurRadius: size * .35,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Icon(icon, size: size * .5, color: g),
+    );
+  }
+
+  Widget _chip(IconData icon, String text, Color color) => Container(
+    padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .14),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: .6)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: _text(text, size: 12, color: color, weight: FontWeight.w700),
+        ),
+      ],
+    ),
+  );
+
+  Widget _pill(Widget child, {Color? edge}) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: .38),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: (edge ?? _accent).withValues(alpha: .4)),
+    ),
+    child: child,
+  );
+
+  /// Titik jatah kunjungan: terang = masih ada, kosong = sudah terpakai.
+  Widget _pips() {
+    final limit = _number('limit', 2).toInt().clamp(0, 6).toInt();
+    final used = _number('used', 0).toInt();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < limit; i++)
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(right: 5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < used ? Colors.transparent : _accent,
+              border: Border.all(
+                color: _accent.withValues(alpha: .7),
+                width: 1.2,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Animasi masuk satu kali per kunjungan (kunci = id kunjungan). Mulai
+  /// sedikit terlambat supaya adegan sempat memudar masuk dulu.
+  Widget _enter(Widget child, {Offset from = Offset.zero, double delay = .3}) =>
+      TweenAnimationBuilder<double>(
+        key: ValueKey('enter-${_visit?['id']}'),
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: _reduced ? Duration.zero : const Duration(milliseconds: 900),
+        curve: Interval(delay, 1.0, curve: Curves.easeOutCubic),
+        builder: (context, v, child) => Opacity(
+          opacity: v.clamp(0.0, 1.0).toDouble(),
+          child: Transform.translate(
+            offset: Offset(from.dx * (1 - v), from.dy * (1 - v)),
+            child: child,
+          ),
+        ),
+        child: child,
+      );
+
+  /// Isi layanan di dalam panel: medali + judul + garis emas memudar, lalu
+  /// isi. [kicker] menamai tempatnya, judul menamai tindakannya.
+  Widget _service(
+      IconData icon,
+      String title,
+      List<Widget> children, {
+        String? kicker,
+      }) => ListView(
+    padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
+    children: [
+      Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 22, color: _accent),
-              const SizedBox(width: 10),
-              Expanded(child: _text(title, size: 24, weight: FontWeight.w800)),
+          _medal(icon),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (kicker != null)
+                  _text(
+                    kicker,
+                    size: 10,
+                    color: _accent,
+                    weight: FontWeight.w800,
+                    spacing: 1.8,
+                  ),
+                _text(title, size: 22, weight: FontWeight.w800, height: 1.15),
+              ],
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Container(
+        height: 1.5,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              _accent.withValues(alpha: .8),
+              _accent.withValues(alpha: 0),
             ],
           ),
-          const SizedBox(height: 22),
-          ...children,
-        ],
-      );
+        ),
+      ),
+      const SizedBox(height: 20),
+      ...children,
+    ],
+  );
   Widget _gap() => const SizedBox(height: 18);
+
+  /// Pita keberhasilan setelah tindakan tercatat.
+  Widget _done(String title, [String? note]) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: EmbunColors.leaf.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: EmbunColors.leaf.withValues(alpha: .6)),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.check_circle, color: EmbunColors.leaf, size: 26),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _text(
+                title,
+                size: 17,
+                color: EmbunColors.leaf,
+                weight: FontWeight.w800,
+              ),
+              if (note != null) ...[
+                const SizedBox(height: 4),
+                _text(note, size: 12, color: Colors.white70),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ---------------------------------------------------------------------
+  // Sumur: pengukur laju bersama
+  // ---------------------------------------------------------------------
+
+  Widget _gauge(num bonus, num next, num cap) => LayoutBuilder(
+    builder: (context, box) {
+      final w = box.maxWidth;
+      double pos(num v) =>
+          ((v + cap) / (2 * cap)).clamp(0.0, 1.0).toDouble() * w;
+      final fill = bonus < 0 ? EmbunColors.blood : EmbunColors.leaf;
+      final start = bonus < 0 ? pos(bonus) : pos(0);
+      final span = (pos(bonus) - pos(0)).abs();
+      const dur = Duration(milliseconds: 600);
+      return SizedBox(
+        height: 54,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 20,
+              child: Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: dur,
+              curve: Curves.easeOutCubic,
+              left: start,
+              width: span,
+              top: 20,
+              child: Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: fill,
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: fill.withValues(alpha: .5),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: w / 2 - .5,
+              top: 14,
+              child: Container(width: 1, height: 20, color: Colors.white38),
+            ),
+            AnimatedPositioned(
+              duration: dur,
+              curve: Curves.easeOutCubic,
+              left: pos(next) - 7,
+              top: 17,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _accent, width: 1.5),
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: dur,
+              curve: Curves.easeOutCubic,
+              left: pos(bonus) - 9,
+              top: 15,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fill,
+                  border: Border.all(color: EmbunColors.cream, width: 2),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              top: 38,
+              child: _text(
+                _signed(-cap),
+                size: 11,
+                color: Colors.white54,
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 38,
+              child: _text(_signed(cap), size: 11, color: Colors.white54),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
   Widget _well() {
     final bonus = _number('well_bonus', 0),
         step = _number('well_step', .15),
@@ -238,46 +587,65 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     return _service(
       Icons.water_drop_outlined,
       widget.isAntag ? 'Cemari sumur' : 'Rawat sumur desa',
+      kicker: 'SUMUR DESA',
       [
         _text(
           'LAJU BERSAMA',
           size: 10,
           color: Colors.white60,
           weight: FontWeight.w800,
+          spacing: 1.8,
         ),
         _text(
           _signed(bonus),
-          size: 52,
+          size: 56,
+          height: 1.1,
           color: bonus < 0 ? EmbunColors.blood : EmbunColors.leaf,
           weight: FontWeight.w800,
         ),
         _text('embun / bulir hitam per hari', size: 12, color: Colors.white70),
+        const SizedBox(height: 14),
+        _gauge(bonus, next, cap),
         _gap(),
-        const Divider(color: Color(0x339C8442)),
-        _gap(),
-        Row(
-          children: [
-            Icon(
-              widget.isAntag ? Icons.trending_down : Icons.trending_up,
-              color: _accent,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _text('Setelah tindakanmu', size: 12, color: Colors.white60),
-                  _text(
-                    '${_signed(next)} / hari',
-                    size: 24,
-                    weight: FontWeight.w800,
-                  ),
-                ],
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _accent.withValues(alpha: .10),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _accent.withValues(alpha: .4)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.isAntag ? Icons.trending_down : Icons.trending_up,
+                color: _accent,
+                size: 28,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _text('Setelah tindakanmu', size: 12, color: Colors.white60),
+                    _text(
+                      '${_signed(next)} / hari',
+                      size: 24,
+                      weight: FontWeight.w800,
+                    ),
+                  ],
+                ),
+              ),
+              if (!capped)
+                _text(
+                  _signed(next - bonus),
+                  size: 13,
+                  color: _accent,
+                  weight: FontWeight.w800,
+                ),
+            ],
+          ),
         ),
-        _gap(),
+        const SizedBox(height: 14),
         _text(
           'Efek menetap hingga gim berakhir, untuk seluruh pemain dan kedua fraksi.',
           size: 12,
@@ -285,12 +653,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         ),
         _gap(),
         if (_used)
-          _text(
-            'Sumbangan tercatat',
-            size: 18,
-            color: EmbunColors.leaf,
-            weight: FontWeight.w800,
-          )
+          _done('Sumbangan tercatat')
         else
           _button(
             capped
@@ -310,10 +673,14 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // Pondok perawatan
+  // ---------------------------------------------------------------------
+
   Future<void> _choosePatient(
-    List<VillageRow> patients,
-    String? selected,
-  ) async {
+      List<VillageRow> patients,
+      String? selected,
+      ) async {
     if (_busy || _used) return;
     final id = await showVillageCardPicker(
       context,
@@ -334,8 +701,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         .toList();
     final patient =
         patients.where((p) => p['user_id'] == _target).firstOrNull ??
-        patients.where((p) => p['user_id'] == widget.repo.myId).firstOrNull ??
-        patients.firstOrNull;
+            patients.where((p) => p['user_id'] == widget.repo.myId).firstOrNull ??
+            patients.firstOrNull;
     final target = patient?['user_id'] as String?;
     final fee = target != null && target != widget.repo.myId
         ? _number('care_other_fee', 12)
@@ -344,17 +711,29 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     return _service(
       Icons.local_hospital_outlined,
       widget.isAntag ? 'Titipkan jebakan' : 'Pilih perawatan',
+      kicker: 'PONDOK PERAWATAN',
       [
         if (widget.isAntag) ...[
           Center(
-            child: VillageChoiceCard(
-              option: VillageCardOption(
-                id: _letter,
-                title: 'Surat Keterangan Sakit',
-                path: cardArtPath(widget.defs[_letter]),
-                subtitle: '−1 nyawa · satu pengunjung',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: _accent.withValues(alpha: .35),
+                    blurRadius: 30,
+                  ),
+                ],
               ),
-              width: 138,
+              child: VillageChoiceCard(
+                option: VillageCardOption(
+                  id: _letter,
+                  title: 'Surat Keterangan Sakit',
+                  path: cardArtPath(widget.defs[_letter]),
+                  subtitle: '−1 nyawa · satu pengunjung',
+                ),
+                width: 150,
+              ),
             ),
           ),
           _gap(),
@@ -375,20 +754,31 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         ] else if (patient != null) ...[
           LayoutBuilder(
             builder: (context, box) {
-              final cardW = box.maxWidth < 330 ? 105.0 : 128.0;
+              final cardW = box.maxWidth < 330 ? 108.0 : 132.0;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  VillageChoiceCard(
-                    option: VillageCardOption.player(
-                      patient,
-                      myId: widget.repo.myId,
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: EmbunColors.leaf.withValues(alpha: .28),
+                          blurRadius: 28,
+                        ),
+                      ],
                     ),
-                    width: cardW,
-                    selected: true,
-                    onTap: _busy || _used
-                        ? null
-                        : () => _choosePatient(patients, target),
+                    child: VillageChoiceCard(
+                      option: VillageCardOption.player(
+                        patient,
+                        myId: widget.repo.myId,
+                      ),
+                      width: cardW,
+                      selected: true,
+                      onTap: _busy || _used
+                          ? null
+                          : () => _choosePatient(patients, target),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -400,20 +790,25 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                           size: 10,
                           color: Colors.white60,
                           weight: FontWeight.w800,
+                          spacing: 1.8,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         _text(
                           '+1 nyawa',
-                          size: 26,
+                          size: 30,
+                          height: 1.1,
                           color: EmbunColors.leaf,
                           weight: FontWeight.w800,
                         ),
                         const SizedBox(height: 12),
-                        _text(
+                        _chip(
+                          fee == 0
+                              ? Icons.check_circle_outline
+                              : Icons.payments_outlined,
                           fee == 0
                               ? 'Tanpa biaya tambahan'
                               : 'Biaya tambahan $fee',
-                          size: 13,
+                          fee == 0 ? EmbunColors.leaf : _accent,
                         ),
                         if (!_used)
                           TextButton(
@@ -438,34 +833,26 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         const Divider(color: Color(0x339C8442)),
         const SizedBox(height: 12),
         if (_used) ...[
-          _text(
+          _done(
             widget.isAntag ? 'Jebakan terpasang' : 'Perawatan dijadwalkan',
-            size: 20,
-            color: EmbunColors.leaf,
-            weight: FontWeight.w800,
-          ),
-          const SizedBox(height: 8),
-          _text(
             'Hasil diumumkan setelah semua pemain selesai menjelajah.',
-            size: 12,
-            color: Colors.white70,
           ),
         ] else
           _button(
             widget.isAntag ? 'Pasang jebakan' : 'Konfirmasi perawatan',
             _busy ||
-                    _ticket == null ||
-                    (!widget.isAntag &&
-                        (target == null || widget.balance < fee)) ||
-                    (widget.isAntag && trapWaiting)
+                _ticket == null ||
+                (!widget.isAntag &&
+                    (target == null || widget.balance < fee)) ||
+                (widget.isAntag && trapWaiting)
                 ? null
                 : () => _act(
-                    () => widget.repo.useClinicLetter(
-                      widget.gameId,
-                      _ticket!['id'] as String,
-                      target: widget.isAntag ? null : target,
-                    ),
-                  ),
+                  () => widget.repo.useClinicLetter(
+                widget.gameId,
+                _ticket!['id'] as String,
+                target: widget.isAntag ? null : target,
+              ),
+            ),
           ),
         const SizedBox(height: 10),
         _text(
@@ -498,8 +885,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     events: widget.events,
     trades: _free
         ? widget.trades
-              .where((t) => t['id'] == _visit?['invitation_id'])
-              .toList()
+        .where((t) => t['id'] == _visit?['invitation_id'])
+        .toList()
         : widget.trades,
     dark: widget.isAntag,
     isAntag: widget.isAntag,
@@ -531,39 +918,64 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     _act(() => widget.repo.enterVillagePlace(widget.gameId, place));
   }
 
-  Widget _stage(String place, Widget content) => LayoutBuilder(
+  // ---------------------------------------------------------------------
+  // Di dalam tempat: panggung
+  // ---------------------------------------------------------------------
+
+  /// Judul tempat sebagai pusat visual adegan.
+  Widget _hero(_Place p, {required bool compact, bool tall = true}) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (!compact && tall) ...[
+        _medal(p.icon, size: 56, glow: _glow(p)),
+        const SizedBox(height: 16),
+      ],
+      _kicker('KUNJUNGAN MALAM'),
+      SizedBox(height: compact ? 6 : 12),
+      _text(
+        p.name,
+        size: compact
+            ? 30
+            : tall
+            ? 46
+            : 30,
+        weight: FontWeight.w800,
+        height: 1.05,
+        lift: true,
+      ),
+      if (!compact) ...[
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: _text(p.tagline, size: 17, lift: true),
+        ),
+      ],
+    ],
+  );
+
+  Widget _stage(_Place p, Widget content) => LayoutBuilder(
     builder: (context, box) {
       final side =
           box.maxWidth >= 820 || (box.maxWidth >= 600 && box.maxHeight < 400);
-      final broad = place == 'riset' || place == 'bengkel';
-      final panel = DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xD90B1B16), Color(0xF00B1B16)],
-          ),
-          border: Border.all(color: _accent.withValues(alpha: .22)),
-        ),
-        child: Padding(padding: const EdgeInsets.all(14), child: content),
-      );
+      final broad = p.id == 'riset' || p.id == 'bengkel';
       if (side) {
         final width =
-            (box.maxWidth *
-                    (broad
-                        ? .64
-                        : place == 'balai'
-                        ? .48
-                        : .41))
-                .clamp(
-                  broad ? 380.0 : 320.0,
-                  broad
-                      ? 900.0
-                      : place == 'balai'
-                      ? 620.0
-                      : 480.0,
-                );
+        (box.maxWidth *
+            (broad
+                ? .64
+                : p.id == 'balai'
+                ? .48
+                : .41))
+            .clamp(
+          broad ? 380.0 : 320.0,
+          broad
+              ? 900.0
+              : p.id == 'balai'
+              ? 620.0
+              : 480.0,
+        )
+            .toDouble();
         return Padding(
           padding: EdgeInsets.fromLTRB(
             28,
@@ -575,70 +987,88 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 22, bottom: 28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _text(
-                          'KUNJUNGAN MALAM',
-                          size: 10,
-                          color: _accent,
-                          weight: FontWeight.w800,
-                        ),
-                        const SizedBox(height: 10),
-                        _text(
-                          _places.firstWhere((p) => p.$1 == place).$2,
-                          size: box.maxHeight < 300 ? 22 : 34,
-                          weight: FontWeight.w800,
-                        ),
-                      ],
+                child: _enter(
+                  Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 22, bottom: 28),
+                      child: _hero(p, compact: false, tall: box.maxHeight >= 300),
                     ),
                   ),
+                  from: const Offset(-24, 0),
+                  delay: .2,
                 ),
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: SizedBox(
-                  width: width,
-                  height: broad
-                      ? null
-                      : (place == 'sumur'
-                                ? 450.0
-                                : place == 'pondok'
-                                ? 490.0
-                                : 540.0)
-                            .clamp(0.0, box.maxHeight - 20),
-                  child: panel,
+                child: _enter(
+                  SizedBox(
+                    width: width,
+                    height: broad
+                        ? null
+                        : (p.id == 'sumur'
+                        ? 470.0
+                        : p.id == 'pondok'
+                        ? 510.0
+                        : 540.0)
+                        .clamp(0.0, box.maxHeight - 20)
+                        .toDouble(),
+                    child: _GlassPanel(
+                      accent: _accent,
+                      glow: _glow(p),
+                      child: content,
+                    ),
+                  ),
+                  from: const Offset(48, 0),
                 ),
               ),
             ],
           ),
         );
       }
-      final desired = switch (place) {
-        'sumur' => 430.0,
-        'pondok' => 460.0,
+      final desired = switch (p.id) {
+        'sumur' => 470.0,
+        'pondok' => 480.0,
         'balai' => 550.0,
         'riset' => 580.0,
         _ => 560.0,
       };
-      final height = desired.clamp(
-        0.0,
-        (box.maxHeight - 36).clamp(0.0, double.infinity),
-      );
+      final height = desired
+          .clamp(0.0, (box.maxHeight - 36).clamp(0.0, double.infinity))
+          .toDouble();
       return Column(
         children: [
-          const Expanded(child: SizedBox()),
-          SizedBox(
-            height: height,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: panel,
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) => c.maxHeight < 96
+                  ? const SizedBox.shrink()
+                  : _enter(
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                    child: _hero(p, compact: true),
+                  ),
+                ),
+                from: const Offset(0, 14),
+                delay: .2,
+              ),
             ),
+          ),
+          _enter(
+            SizedBox(
+              height: height,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _GlassPanel(
+                  accent: _accent,
+                  glow: _glow(p),
+                  sheet: true,
+                  child: content,
+                ),
+              ),
+            ),
+            from: const Offset(0, 64),
           ),
         ],
       );
@@ -670,175 +1100,357 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final incoming = widget.trades
         .where(
           (t) =>
-              t['status'] == 'pending' &&
-              t['day'] == widget.day &&
-              t['to_id'] == widget.repo.myId &&
-              t['id'] != _visit?['invitation_id'],
-        )
+      t['status'] == 'pending' &&
+          t['day'] == widget.day &&
+          t['to_id'] == widget.repo.myId &&
+          t['id'] != _visit?['invitation_id'],
+    )
         .toList();
     if (incoming.isEmpty || _waiting || _free) return const SizedBox.shrink();
     final t = incoming.first;
-    return Material(
-      color: EmbunColors.panelHi,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 12,
-          children: [
-            Text(
-              '${_name(t['from_id'])} mengundangmu bertukar${incoming.length > 1 ? ' · ${incoming.length} tawaran' : ''}',
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: EmbunColors.panelHi.withValues(alpha: .92),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withValues(alpha: .6)),
+        boxShadow: [
+          BoxShadow(color: _accent.withValues(alpha: .18), blurRadius: 16),
+        ],
+      ),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        children: [
+          Icon(Icons.mail_outline, size: 18, color: _accent),
+          Text(
+            '${_name(t['from_id'])} mengundangmu bertukar${incoming.length > 1 ? ' · ${incoming.length} tawaran' : ''}',
+          ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => _act(
+                  () => widget.repo.enterVillagePlace(
+                widget.gameId,
+                'balai',
+                invitation: t['id'] as String,
+              ),
             ),
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => _act(
-                      () => widget.repo.enterVillagePlace(
-                        widget.gameId,
-                        'balai',
-                        invitation: t['id'] as String,
+            child: const Text('Ke balai · Gratis'),
+          ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => _act(() async {
+              await widget.repo.respondTrade(t['id'] as String, false);
+              return widget.repo.villageStatus(widget.gameId);
+            }),
+            child: const Text('Tolak'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Pemilih tujuan
+  // ---------------------------------------------------------------------
+
+  void _select(int i) {
+    if (i == _index) return;
+    Sfx.I.click(Snd.click2);
+    setState(() => _index = i);
+  }
+
+  void _step(int d) => _select((_index + d + _places.length) % _places.length);
+
+  /// Bidikan tempat: ketuk untuk memilih. Yang terpilih membesar dan
+  /// bercahaya; yang lain meredup. Kunci pondok bila belum punya surat.
+  Widget _rail({required bool short}) {
+    return SizedBox(
+      height: short ? 54 : 78,
+      child: Row(
+        children: [
+          for (var i = 0; i < _places.length; i++)
+            Expanded(child: _railItem(i)),
+        ],
+      ),
+    );
+  }
+
+  Widget _railItem(int i) {
+    final p = _places[i];
+    final sel = i == _index;
+    final locked = p.id == 'pondok' && _ticket == null;
+    final glow = _glow(p);
+    final art = firstScenery([p.outside, 'pasar-sianghari']);
+    final reduced = _reduced;
+    final dur = reduced ? Duration.zero : const Duration(milliseconds: 220);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Semantics(
+        button: true,
+        selected: sel,
+        label: locked ? '${p.name}, perlu surat perawatan' : p.name,
+        child: Tooltip(
+          message: p.name,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _select(i),
+            child: Center(
+              child: AnimatedScale(
+                scale: sel ? 1 : .86,
+                duration: dur,
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: sel ? 1 : .6,
+                  duration: dur,
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: AnimatedContainer(
+                      duration: dur,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: sel ? _accent : Colors.white24,
+                          width: sel ? 2.2 : 1,
+                        ),
+                        boxShadow: [
+                          if (sel)
+                            BoxShadow(
+                              color: glow.withValues(alpha: .55),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            GameImage(path: art, cacheWidth: 240),
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    EmbunColors.bg.withValues(alpha: .8),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 5),
+                                child: Icon(
+                                  p.icon,
+                                  size: 18,
+                                  color: sel ? _accent : Colors.white70,
+                                ),
+                              ),
+                            ),
+                            if (locked)
+                              const Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(
+                                    Icons.lock,
+                                    size: 14,
+                                    color: EmbunColors.blood,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-              child: const Text('Ke balai · Gratis'),
+                  ),
+                ),
+              ),
             ),
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => _act(() async {
-                      await widget.repo.respondTrade(t['id'] as String, false);
-                      return widget.repo.villageStatus(widget.gameId);
-                    }),
-              child: const Text('Tolak'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _picker(bool wide) {
-    final p = _places[_index];
-    final left = (_number('limit', 2) - _number('used', 0)).clamp(0, 2);
-    final allowed = left > 0 && (_index != 3 || _ticket != null);
-    final description = switch (p.$1) {
-      'riset' => 'Poin, kartu lanjutan, dan surat perawatan. Harga riset +20%.',
-      'sumur' =>
-        widget.isAntag
-            ? 'Cemari sumur untuk menghambat laju seluruh desa.'
-            : 'Sumbangkan embun untuk menaikkan laju seluruh desa.',
-      'bengkel' =>
-        'Pilih kartu lanjutan dan kartu poin. Penggabungan mengaktifkan kartu.',
-      'pondok' =>
-        widget.isAntag
-            ? 'Syarat: Surat Keterangan Sakit. Pasang jebakan yang menetap sampai terpicu.'
-            : 'Syarat: Surat Dokter. Rawat diri, atau bayar tambahan untuk merawat pemain lain.',
-      _ =>
-        'Tawarkan kartu dan jawab undangan. Penerima undangan boleh datang tanpa memakai jatah.',
-    };
-    final controls = Padding(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton.filledTonal(
-                tooltip: 'Tempat sebelumnya',
-                onPressed: () => setState(() => _index = (_index + 4) % 5),
-                icon: const Icon(Icons.chevron_left),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _button(
-                  left == 0
-                      ? 'Jatah kunjungan habis'
-                      : _index == 3 && _ticket == null
-                      ? 'Perlu surat perawatan'
-                      : 'Masuk · 1 kunjungan',
-                  _busy || !allowed ? null : () => _enterPlace(p.$1),
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton.filledTonal(
-                tooltip: 'Tempat berikutnya',
-                onPressed: () => setState(() => _index = (_index + 1) % 5),
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _text(
-            'Panah memilih tujuan · Tersisa $left kunjungan',
-            size: 12,
-            color: Colors.white70,
+  Widget? _requirement(_Place p) {
+    if (p.id != 'pondok') return null;
+    final ok = _ticket != null;
+    final name = widget.isAntag ? 'Surat Keterangan Sakit' : 'Surat Dokter';
+    return _chip(
+      ok ? Icons.check_circle_outline : Icons.lock_outline,
+      ok ? '$name siap dipakai' : 'Butuh $name',
+      ok ? EmbunColors.leaf : EmbunColors.blood,
+    );
+  }
+
+  String _description(_Place p) => switch (p.id) {
+    'riset' => 'Poin, kartu lanjutan, dan surat perawatan. Harga riset +20%.',
+    'sumur' =>
+    widget.isAntag
+        ? 'Cemari sumur untuk menghambat laju seluruh desa.'
+        : 'Sumbangkan embun untuk menaikkan laju seluruh desa.',
+    'bengkel' =>
+    'Pilih kartu lanjutan dan kartu poin. Penggabungan mengaktifkan kartu.',
+    'pondok' =>
+    widget.isAntag
+        ? 'Pasang jebakan yang menetap sampai terpicu.'
+        : 'Rawat diri, atau bayar tambahan untuk merawat pemain lain.',
+    _ =>
+    'Tawarkan kartu dan jawab undangan. Penerima undangan boleh datang tanpa memakai jatah.',
+  };
+
+  Widget _pickerCopy(_Place p, {required bool short, required bool wide}) {
+    final req = _requirement(p);
+    return Column(
+      key: ValueKey(p.id),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _kicker(
+          'JELAJAH DESA  ·  ${(_index + 1).toString().padLeft(2, '0')} / ${_places.length.toString().padLeft(2, '0')}',
+        ),
+        SizedBox(height: short ? 8 : 18),
+        if (!short) ...[
+          _medal(p.icon, size: 60, glow: _glow(p)),
+          const SizedBox(height: 16),
+        ],
+        _text(
+          p.name,
+          size: short
+              ? 30
+              : wide
+              ? 56
+              : 42,
+          weight: FontWeight.w800,
+          height: 1.04,
+          lift: true,
+        ),
+        SizedBox(height: short ? 6 : 12),
+        _text(p.tagline, size: short ? 15 : 18, lift: true),
+        if (!short) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.only(left: 12),
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: _accent, width: 2)),
+            ),
+            child: _text(
+              _description(p),
+              size: 14,
+              color: Colors.white70,
+              lift: true,
+            ),
           ),
         ],
-      ),
+        if (req != null) ...[SizedBox(height: short ? 8 : 14), req],
+      ],
     );
+  }
+
+  Widget _picker(bool wide) {
+    final p = _places[_index];
+    final left = (_number('limit', 2) - _number('used', 0))
+        .clamp(0, 99)
+        .toInt();
+    final needLetter = p.id == 'pondok' && _ticket == null;
+    final allowed = left > 0 && !needLetter;
     return LayoutBuilder(
       builder: (context, box) {
         final short = box.maxHeight < 360;
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              wide ? 48 : 22,
-              short ? 8 : 20,
-              wide ? 48 : 22,
-              8,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 540),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: short ? 0 : box.maxHeight - 155,
-                        ),
-                        child: Align(
-                          alignment: wide
-                              ? Alignment.centerLeft
-                              : Alignment.bottomLeft,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _text(
-                                'JELAJAH DESA  ·  ${_index + 1} / ${_places.length}',
-                                size: 12,
-                                color: _accent,
-                                weight: FontWeight.w800,
+        final pad = wide ? 48.0 : 20.0;
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragEnd: (d) {
+            final v = d.primaryVelocity ?? 0;
+            if (v <= -250) {
+              _step(1);
+            } else if (v >= 250) {
+              _step(-1);
+            }
+          },
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(pad, short ? 4 : 12, pad, 6),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, c) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: c.maxHeight),
+                            child: Align(
+                              alignment: wide
+                                  ? Alignment.centerLeft
+                                  : Alignment.bottomLeft,
+                              child: AnimatedSwitcher(
+                                duration: _reduced
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 320),
+                                layoutBuilder: (current, previous) => Stack(
+                                  alignment: wide
+                                      ? Alignment.centerLeft
+                                      : Alignment.bottomLeft,
+                                  children: [...previous, ?current],
+                                ),
+                                transitionBuilder: (child, anim) =>
+                                    FadeTransition(
+                                      opacity: anim,
+                                      child: SlideTransition(
+                                        position: Tween(
+                                          begin: const Offset(0, .05),
+                                          end: Offset.zero,
+                                        ).animate(anim),
+                                        child: child,
+                                      ),
+                                    ),
+                                child: _pickerCopy(
+                                  p,
+                                  short: short,
+                                  wide: wide,
+                                ),
                               ),
-                              SizedBox(height: short ? 8 : 18),
-                              if (!short) ...[
-                                Icon(p.$6, size: 40, color: _accent),
-                                const SizedBox(height: 14),
-                              ],
-                              _text(
-                                p.$2,
-                                size: short
-                                    ? 28
-                                    : wide
-                                    ? 48
-                                    : 36,
-                                weight: FontWeight.w800,
-                              ),
-                              SizedBox(height: short ? 8 : 16),
-                              _text(p.$3, size: short ? 15 : 18),
-                              const SizedBox(height: 12),
-                              _text(description, color: Colors.white70),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  controls,
-                ],
+                    SizedBox(height: short ? 6 : 10),
+                    _rail(short: short),
+                    SizedBox(height: short ? 8 : 14),
+                    EmbunButton(
+                      label: left == 0
+                          ? 'Jatah kunjungan habis'
+                          : needLetter
+                          ? 'Perlu surat perawatan'
+                          : 'Masuk ke ${p.name}',
+                      expand: true,
+                      onPressed: _busy || !allowed
+                          ? null
+                          : () => _enterPlace(p.id),
+                    ),
+                    const SizedBox(height: 8),
+                    _text(
+                      left == 0
+                          ? 'Tidak ada kunjungan tersisa malam ini.'
+                          : 'Masuk memakai 1 dari $left kunjungan tersisa · Ketuk atau geser untuk memilih tujuan',
+                      size: 11.5,
+                      color: Colors.white70,
+                      lift: true,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -847,52 +1459,166 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     );
   }
 
+  Widget _waitingView() => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: _GlassPanel(
+          accent: _accent,
+          glow: _accent,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _medal(Icons.nights_stay_outlined, size: 72),
+                const SizedBox(height: 18),
+                _text(
+                  'Kunjungan selesai',
+                  size: 26,
+                  weight: FontWeight.w800,
+                  align: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                _text(
+                  'Menunggu ${widget.readyCount}/${widget.total} pemain. Hasil pondok dan persembahan menyusul.',
+                  size: 14,
+                  color: Colors.white70,
+                  align: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: widget.total > 0
+                        ? (widget.readyCount / widget.total).clamp(0.0, 1.0)
+                        : null,
+                    minHeight: 6,
+                    color: _accent,
+                    backgroundColor: Colors.white12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final current = _visit, place = current?['place'] as String?;
-    final selected = place == null
-        ? _places[_index]
-        : _places.firstWhere((p) => p.$1 == place);
+    final selected = place == null ? _places[_index] : _placeOf(place);
     final seconds = widget.deadline
         ?.difference(ServerClock.now())
         .inSeconds
         .clamp(0, 9999);
     final bg = firstScenery([
-      place == null ? selected.$4 : selected.$5,
+      place == null ? selected.outside : selected.inside,
       'pasar-sianghari',
       'sumur-sianghari',
     ]);
+    final glow = _glow(selected);
+    final reduced = _reduced;
     return LayoutBuilder(
       builder: (context, box) => Stack(
         fit: StackFit.expand,
         children: [
+          // Latar: memudar antar gambar, zoom sangat pelan.
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
+            duration: reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 600),
+            layoutBuilder: (current, previous) => Stack(
+              fit: StackFit.expand,
+              children: [...previous, ?current],
+            ),
             child: SizedBox.expand(
               key: ValueKey(bg),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: double.infinity,
-                  height: place != null && box.maxWidth < 600
-                      ? (box.maxHeight * .46).clamp(220.0, 400.0)
-                      : box.maxHeight,
-                  child: GameImage(path: bg),
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: place != null && box.maxWidth < 600
+                        ? (box.maxHeight * .46).clamp(220.0, 400.0).toDouble()
+                        : box.maxHeight,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 1.0, end: reduced ? 1.0 : 1.08),
+                      duration: const Duration(seconds: 16),
+                      builder: (context, s, child) =>
+                          Transform.scale(scale: s, child: child),
+                      child: GameImage(path: bg, cacheWidth: 1280),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  EmbunColors.bg.withValues(alpha: .42),
-                  EmbunColors.bg.withValues(alpha: place == null ? .22 : .06),
-                  EmbunColors.bg.withValues(alpha: .75),
-                ],
+          // Cahaya suasana menurut tempat.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedContainer(
+                duration: reduced
+                    ? Duration.zero
+                    : const Duration(milliseconds: 500),
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(-.55, -.25),
+                    radius: 1.0,
+                    colors: [glow.withValues(alpha: .20), Colors.transparent],
+                  ),
+                ),
               ),
+            ),
+          ),
+          // Gelap atas-bawah untuk keterbacaan, plus vinyet.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0, .45, 1],
+                    colors: [
+                      EmbunColors.bg.withValues(alpha: .55),
+                      EmbunColors.bg.withValues(alpha: place == null ? .08 : .04),
+                      EmbunColors.bg.withValues(alpha: place == null ? .92 : .8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    radius: 1.15,
+                    colors: [
+                      Colors.transparent,
+                      EmbunColors.bg.withValues(alpha: .5),
+                    ],
+                    stops: const [.6, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Adegan memudar masuk dari tinta, sama seperti adegan layar penuh lain.
+          Positioned.fill(
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey('veil-${place ?? 'pilih'}-${current?['id']}'),
+              tween: Tween(begin: 1.0, end: 0.0),
+              duration: reduced
+                  ? Duration.zero
+                  : const Duration(milliseconds: kSceneFadeInMs + 150),
+              curve: Curves.easeOut,
+              builder: (context, a, _) => sceneVeil(a),
             ),
           ),
           SafeArea(
@@ -900,7 +1626,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 16, 6),
                   child: Wrap(
                     alignment: WrapAlignment.spaceBetween,
                     crossAxisAlignment: WrapCrossAlignment.center,
@@ -915,14 +1641,19 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                               tooltip: 'Kembali dari tempat ini',
                               onPressed: _busy ? null : _leave,
                               icon: const Icon(Icons.arrow_back),
-                            ),
+                            )
+                          else
+                            const SizedBox(width: 4),
                           Flexible(
                             child: _text(
                               place == null
                                   ? 'Malam sebelum persembahan'
-                                  : selected.$2,
-                              size: 16,
-                              weight: FontWeight.w800,
+                                  : 'Kembali ke desa',
+                              size: 13,
+                              color: Colors.white70,
+                              weight: FontWeight.w700,
+                              spacing: .4,
+                              lift: true,
                             ),
                           ),
                         ],
@@ -930,24 +1661,41 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          GameIcon(
-                            widget.isAntag ? 'bulirhitam' : 'bulirembun',
-                            size: 24,
-                          ),
-                          const SizedBox(width: 5),
-                          _text(
-                            widget.balance
-                                .toStringAsFixed(1)
-                                .replaceAll('.', ','),
-                            size: 22,
-                            weight: FontWeight.w800,
-                          ),
-                          const SizedBox(width: 18),
-                          if (seconds != null)
-                            _text(
-                              '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
-                              color: _accent,
+                          _pill(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GameIcon(
+                                  widget.isAntag ? 'bulirhitam' : 'bulirembun',
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 6),
+                                _text(
+                                  widget.balance
+                                      .toStringAsFixed(1)
+                                      .replaceAll('.', ','),
+                                  size: 20,
+                                  weight: FontWeight.w800,
+                                ),
+                              ],
                             ),
+                          ),
+                          if (seconds != null) ...[
+                            const SizedBox(width: 8),
+                            _pill(
+                              _text(
+                                '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+                                size: 16,
+                                weight: FontWeight.w800,
+                                color: seconds <= 10
+                                    ? EmbunColors.blood
+                                    : _accent,
+                              ),
+                              edge: seconds <= 10
+                                  ? EmbunColors.blood
+                                  : _accent,
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -973,39 +1721,40 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 _invitations(),
                 Expanded(
                   child: _waiting
-                      ? _service(
-                          Icons.nights_stay_outlined,
-                          'Kunjungan selesai',
-                          [
-                            _text(
-                              'Menunggu ${widget.readyCount}/${widget.total} pemain. Hasil pondok dan persembahan menyusul.',
-                            ),
-                          ],
-                        )
+                      ? _waitingView()
                       : _status == null
                       ? const Center(child: CircularProgressIndicator())
                       : place == null
                       ? _picker(box.maxWidth > 760)
-                      : _stage(place, _interior(place)),
+                      : _stage(_placeOf(place), _interior(place)),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
                   child: Wrap(
                     alignment: WrapAlignment.spaceBetween,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     runSpacing: 8,
                     spacing: 18,
                     children: [
-                      _text(
-                        'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Hari ${widget.day}',
-                        size: 12,
-                        color: Colors.white70,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _pips(),
+                          const SizedBox(width: 6),
+                          _text(
+                            'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Hari ${widget.day}',
+                            size: 12,
+                            color: Colors.white70,
+                            lift: true,
+                          ),
+                        ],
                       ),
                       if (!_waiting)
                         _button(
                           'Selesai menjelajah',
                           _busy ? null : _finish,
                           secondary: true,
+                          height: 44,
                         ),
                     ],
                   ),
@@ -1018,7 +1767,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             Positioned.fill(
               child: ClinicEntryScene(
                 letter:
-                    widget.defs[_letter] ??
+                widget.defs[_letter] ??
                     {
                       'id': _letter,
                       'kind': 'perawatan',
@@ -1042,6 +1791,96 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Panel kaca di dalam tempat: kabur lembut di atas adegan, bingkai tipis
+/// beraksen, garis cahaya di tepi atas, dan cahaya halus warna tempat.
+/// [sheet] = bentuk lembar dari bawah (layar sempit): sudut atas membulat.
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({
+    required this.accent,
+    required this.glow,
+    required this.child,
+    this.sheet = false,
+  });
+  final Color accent, glow;
+  final Widget child;
+  final bool sheet;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = sheet
+        ? const BorderRadius.vertical(top: Radius.circular(28))
+        : BorderRadius.circular(24);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(color: glow.withValues(alpha: .22), blurRadius: 36),
+          const BoxShadow(color: Colors.black54, blurRadius: 18),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xE60F2420), Color(0xF207130F)],
+              ),
+              border: Border.all(color: accent.withValues(alpha: .28)),
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(14, sheet ? 22 : 16, 14, 14),
+                  child: child,
+                ),
+                // Garis cahaya di tepi atas.
+                Positioned(
+                  top: 0,
+                  left: 28,
+                  right: 28,
+                  height: 2,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accent.withValues(alpha: 0),
+                          accent.withValues(alpha: .9),
+                          accent.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (sheet)
+                  Positioned(
+                    top: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: .45),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
