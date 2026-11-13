@@ -51,6 +51,7 @@ flutter:
     - assets/kartu/ItemProRegenerasi/
     - assets/kartu/punggungkartu/
     - assets/kartu/CharSkill/
+    - assets/kartu/CharPopUp/
     - assets/logo/
     - assets/ikon/
     - assets/sound/

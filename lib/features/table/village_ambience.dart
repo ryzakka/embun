@@ -19,6 +19,8 @@ import '../common/shader_fx.dart';
 ///  * [SweepGlint]     kilau menyapu saat tujuan berganti.
 ///  * [PulsingGlow]    cahaya berdenyut untuk item terpilih.
 ///  * [GildedDivider]  garis emas berujung belah ketupat.
+///  * [PopupCharacter] karakter pop-up (assets/kartu/CharPopUp) yang
+///                     bernapas dan berganti pose menurut keadaan.
 ///
 /// Efek ambience mengikuti saklar [ShaderFx.enabled] dan pengaturan
 /// "kurangi animasi" sistem.
@@ -885,4 +887,193 @@ class _DividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DividerPainter old) =>
       old.v != v || old.color != color || old.centered != centered;
+}
+
+// ---------------------------------------------------------------------------
+// Karakter pop-up (assets/kartu/CharPopUp)
+// ---------------------------------------------------------------------------
+
+/// Daftarkan `assets/kartu/CharPopUp/` di pubspec.yaml. Katalog aset membaca
+/// manifest, jadi nama berkas tak perlu ditulis satu per satu. Bila nanti
+/// ingin dipindah, letakkan konstanta ini di asset_catalog.dart bersama
+/// konstanta folder lain.
+const popupCharDir = 'assets/kartu/CharPopUp';
+
+/// Path karakter pop-up untuk [place] (id tempat di village_visit_view).
+///
+/// Warga punya pose [mood]: `tanya` (menyambut / bertanya), `selesai`
+/// (tindakan tuntas), dan `periksa` (khusus pondok). Si Terbisik hanya punya
+/// satu pose per tempat, dan tidak punya pose untuk Balai Pertukaran, jadi
+/// hasilnya null di sana. Pose yang tak ada jatuh ke `tanya`.
+String? popupCharPath({
+  required bool antag,
+  required String place,
+  String mood = 'tanya',
+}) {
+  final key = switch (place) {
+    'riset' => 'pasarriset',
+    'bengkel' => 'bengkelkartu',
+    'pondok' => 'perawatan',
+    'sumur' => 'sumur',
+    _ => 'barter',
+  };
+  final c = AssetCatalog.I;
+  if (antag) return c.file(popupCharDir, 'popupchar-anta-$key');
+  return c.file(popupCharDir, 'popupchar-pro-$key$mood') ??
+      c.file(popupCharDir, 'popupchar-pro-${key}tanya');
+}
+
+/// Karakter yang memenuhi ruang induknya (tinggi dan lebar HARUS terbatas),
+/// berdiri di tepi bawah. Berganti pose dengan "pop" kecil; bernapas pelan;
+/// berpendar tipis dengan warna [tint] di belakangnya.
+class PopupCharacter extends StatelessWidget {
+  const PopupCharacter({
+    super.key,
+    required this.path,
+    required this.tint,
+    this.slide = 0,
+    this.fadeFeet = true,
+    this.intro = true,
+    this.reduced = false,
+  });
+  final String? path;
+  final Color tint;
+
+  /// Pergeseran horizontal (pecahan lebar) saat gambar berganti; 0 = hanya
+  /// "pop" di tempat.
+  final double slide;
+
+  /// Memudarkan tepi bawah gambar (potongan pinggang/paha) ke transparan.
+  final bool fadeFeet;
+
+  /// Naik sambil memudar masuk saat pertama muncul. Matikan bila induk sudah
+  /// menganimasikan kemunculannya.
+  final bool intro;
+  final bool reduced;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = path;
+    if (p == null) return const SizedBox.shrink();
+    Widget art = AnimatedSwitcher(
+      duration: reduced ? Duration.zero : const Duration(milliseconds: 450),
+      layoutBuilder: (current, previous) => Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.bottomCenter,
+        children: [...previous, ?current],
+      ),
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween(begin: Offset(slide, 0), end: Offset.zero)
+              .animate(anim),
+          child: ScaleTransition(
+            alignment: Alignment.bottomCenter,
+            scale: Tween(begin: .94, end: 1.0)
+                .animate(anim.drive(CurveTween(curve: Curves.easeOutBack))),
+            child: child,
+          ),
+        ),
+      ),
+      child: GameImage(
+        key: ValueKey(p),
+        path: p,
+        fit: BoxFit.contain,
+        alignment: Alignment.bottomCenter,
+        cacheWidth: 900,
+      ),
+    );
+    if (fadeFeet) {
+      art = ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (r) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Colors.white, Colors.transparent],
+          stops: [0, .86, 1],
+        ).createShader(r),
+        child: art,
+      );
+    }
+    final body = _Breathing(
+      reduced: reduced,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, .3),
+                radius: .7,
+                colors: [
+                  tint.withValues(alpha: .30),
+                  tint.withValues(alpha: 0),
+                ],
+              ),
+            ),
+          ),
+          art,
+        ],
+      ),
+    );
+    if (!intro || reduced) return body;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 1100),
+      curve: const Interval(.25, 1.0, curve: Curves.easeOutCubic),
+      builder: (context, v, child) => Opacity(
+        opacity: v.clamp(0.0, 1.0).toDouble(),
+        child: Transform.translate(offset: Offset(0, 36 * (1 - v)), child: child),
+      ),
+      child: body,
+    );
+  }
+}
+
+class _Breathing extends StatefulWidget {
+  const _Breathing({required this.child, required this.reduced});
+  final Widget child;
+  final bool reduced;
+  @override
+  State<_Breathing> createState() => _BreathingState();
+}
+
+class _BreathingState extends State<_Breathing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3600),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.reduced) _c.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.reduced) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_c.value);
+        return Transform.translate(
+          offset: Offset(0, -3 * t),
+          child: Transform.scale(
+            scale: 1 + .01 * t,
+            alignment: Alignment.bottomCenter,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 }

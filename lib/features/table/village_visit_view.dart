@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
@@ -156,6 +157,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   int _index = 0;
   int _dir = 1; // arah geser terakhir, untuk gerak latar
   bool _entering = false; // menunggu server: kamera mendorong masuk
+  Object? _actedVisit; // id kunjungan yang sudah ada tindakannya (pose selesai)
   int _revision = 0;
   bool _busy = false, _loading = false, _finished = false;
   Timer? _timer;
@@ -170,6 +172,31 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   bool get _used => _visit?['action_used'] == true;
   bool get _free => _visit?['invitation_id'] != null;
   String get _letter => widget.isAntag ? 'surat_sakit' : 'surat_dokter';
+  /// Tindakan sudah tercatat di kunjungan ini: karakter berpose "selesai".
+  bool get _acted {
+    final id = _visit?['id'];
+    return _used || (id != null && id == _actedVisit);
+  }
+
+  void _markActed() {
+    final id = _visit?['id'];
+    if (!mounted || id == null || id == _actedVisit) return;
+    setState(() => _actedVisit = id);
+  }
+
+  /// Pose karakter warga: tanya (menyambut) -> periksa (pondok, pasien sudah
+  /// dipilih) -> selesai (tindakan tercatat).
+  String _moodOf(String place) {
+    if (_acted) return 'selesai';
+    if (place == 'pondok' && !widget.isAntag && _target != null) {
+      return 'periksa';
+    }
+    return 'tanya';
+  }
+
+  String? _popup(String place, String mood) =>
+      popupCharPath(antag: widget.isAntag, place: place, mood: mood);
+
   VillageRow? get _ticket =>
       widget.hand.where((h) => h['card_id'] == _letter).firstOrNull;
   num _number(String key, num fallback) => _status?[key] as num? ?? fallback;
@@ -217,8 +244,14 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       _error = null;
     });
     try {
+      final visitBefore = _visit?['id'];
       final next = await action();
-      if (mounted) setState(() => _status = next);
+      if (mounted) {
+        setState(() {
+          _status = next;
+          if (visitBefore != null) _actedVisit = visitBefore;
+        });
+      }
       widget.onHandChanged?.call();
       return true;
     } catch (e) {
@@ -976,7 +1009,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         : widget.trades,
     dark: widget.isAntag,
     isAntag: widget.isAntag,
-    onHandChanged: widget.onHandChanged,
+    onHandChanged: () {
+      _markActed();
+      widget.onHandChanged?.call();
+    },
   );
   Widget _hall() => VillageExchangeView(
     key: ValueKey('hall-${_visit?['id']}'),
@@ -1132,16 +1168,59 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: _enter(
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 22, bottom: 28),
-                      child: _hero(p, compact: false, tall: box.maxHeight >= 300),
-                    ),
-                  ),
-                  from: const Offset(-24, 0),
-                  delay: .2,
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final art = c.maxWidth >= 260
+                        ? _popup(p.id, _moodOf(p.id))
+                        : null;
+                    final h = c.maxHeight * .9;
+                    final w = math.min(c.maxWidth, h * .85);
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Karakter berdiri di belakang teks, melangkah keluar
+                        // dari balik panel.
+                        if (art != null)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            width: w,
+                            height: h,
+                            child: _enter(
+                              PopupCharacter(
+                                path: art,
+                                tint: _glow(p),
+                                intro: false,
+                                reduced: _reduced,
+                              ),
+                              from: const Offset(60, 0),
+                              delay: .45,
+                            ),
+                          ),
+                        _enter(
+                          Align(
+                            alignment: art == null
+                                ? Alignment.bottomLeft
+                                : Alignment.topLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                right: 22,
+                                bottom: 28,
+                                top: art == null ? 0 : 8,
+                              ),
+                              child: _hero(
+                                p,
+                                compact: false,
+                                tall: box.maxHeight >= 300,
+                              ),
+                            ),
+                          ),
+                          from: const Offset(-24, 0),
+                          delay: .2,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               Align(
@@ -1187,19 +1266,50 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         children: [
           Expanded(
             child: LayoutBuilder(
-              builder: (context, c) => c.maxHeight < 96
-                  ? const SizedBox.shrink()
-                  : _enter(
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                    child: _hero(p, compact: true),
-                  ),
-                ),
-                from: const Offset(0, 14),
-                delay: .2,
-              ),
+              builder: (context, c) {
+                if (c.maxHeight < 96) return const SizedBox.shrink();
+                final art = c.maxHeight >= 130
+                    ? _popup(p.id, _moodOf(p.id))
+                    : null;
+                // Karakter mengintip dari balik lembar: bagian bawahnya
+                // terpotong tepi Stack tepat di bibir lembar.
+                final visible = math.min(c.maxHeight - 6, 230.0);
+                final h = visible / .66;
+                final w = math.min(c.maxWidth * .45, h * .85);
+                return Stack(
+                  children: [
+                    if (art != null)
+                      Positioned(
+                        right: 8,
+                        bottom: -(h - visible),
+                        width: w,
+                        height: h,
+                        child: _enter(
+                          PopupCharacter(
+                            path: art,
+                            tint: _glow(p),
+                            fadeFeet: false,
+                            intro: false,
+                            reduced: _reduced,
+                          ),
+                          from: const Offset(0, 50),
+                          delay: .45,
+                        ),
+                      ),
+                    _enter(
+                      Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                          child: _hero(p, compact: true),
+                        ),
+                      ),
+                      from: const Offset(0, 14),
+                      delay: .2,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           _enter(
@@ -1233,7 +1343,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       readyCount: widget.readyCount,
       total: widget.total,
       dark: widget.isAntag,
-      onBought: widget.onHandChanged,
+      onBought: () {
+        _markActed();
+        widget.onHandChanged?.call();
+      },
       onReturn: _leave,
     ),
     'sumur' => _well(),
@@ -1531,6 +1644,40 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         ],
         if (req != null) ...[SizedBox(height: short ? 6 : 12), req],
       ],
+    );
+  }
+
+  /// Pemilih + karakter penyambut tempat terpilih di sisi kanan (layar lebar).
+  /// Karakter berganti mengikuti arah geser. Si Terbisik tak punya pose untuk
+  /// Balai Pertukaran, jadi di sana hanya pemilih.
+  Widget _pickerScene(bool wide) {
+    final p = _places[_index];
+    final art = wide ? _popup(p.id, 'tanya') : null;
+    if (art == null) return _picker(wide);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final h = c.maxHeight * .94;
+        final w = math.min(c.maxWidth * .4, h * .85);
+        return Stack(
+          children: [
+            Positioned(
+              right: 24,
+              bottom: 0,
+              width: w,
+              height: h,
+              child: IgnorePointer(
+                child: PopupCharacter(
+                  path: art,
+                  tint: _glow(p),
+                  slide: .12 * _dir,
+                  reduced: _reduced,
+                ),
+              ),
+            ),
+            Positioned.fill(child: _picker(wide)),
+          ],
+        );
+      },
     );
   }
 
@@ -1899,7 +2046,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                       : _status == null
                       ? const Center(child: CircularProgressIndicator())
                       : place == null
-                      ? _picker(box.maxWidth > 760)
+                      ? _pickerScene(box.maxWidth > 760)
                       : _stage(_placeOf(place), _interior(place)),
                 ),
                 Padding(
@@ -1969,6 +2116,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   if (mounted) {
                     setState(() {
                       _status = status;
+                      _target = null;
                       _clinicGate = false;
                     });
                   }
