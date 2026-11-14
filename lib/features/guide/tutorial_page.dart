@@ -713,15 +713,25 @@ class _TutorialPageState extends State<TutorialPage>
     ),
   );
 
+  /// Pose tutor -> nama berkas gambar karakter (popupchar-tutor-*).
   static const _figureStems = {
-    'heavyWater': 'popupchar-tutor-emberberatair',
+    'greeting': 'popupchar-tutor-menyapa',
+    'thinking': 'popupchar-tutor-berfikir',
     'counting': 'popupchar-tutor-menghitung',
-    // Tambahkan pose lain di sini begitu gambarnya ada, mis.
-    // 'greeting': 'popupchar-tutor-<nama-berkas>',
+    'heavyWater': 'popupchar-tutor-emberberatair',
+    'shopping': 'popupchar-tutor-belanjakebanyakan',
+    'choosing': 'popupchar-tutor-menunjukmemilih',
+    'combine': 'popupchar-tutor-gabungair',
+    'question': 'popupchar-tutor-tanya',
+    'panic': 'popupchar-tutor-panik',
+    'offering': 'popupchar-tutor-persembahan',
+    'confused': 'popupchar-tutor-kebingunganataukesal',
+    'tired': 'popupchar-tutor-lesu',
+    'encourage': 'popupchar-tutor-ayo',
   };
 
-  /// Gambar karakter untuk pose ini. Pose yang belum punya gambar memakai
-  /// salah satu gambar yang ada (bergantian) supaya karakter tetap tampil.
+  /// Gambar karakter untuk pose ini. Bila berkasnya belum ada di aset,
+  /// dipakai gambar tutor lain yang ada supaya karakter tetap tampil.
   String? _figurePath(TutorPose pose, int index) {
     final cat = AssetCatalog.I;
     final own = cat.anywhere(
