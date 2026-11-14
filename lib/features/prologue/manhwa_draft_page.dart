@@ -217,8 +217,8 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage> {
                           const SizedBox(height: 8),
                           Text(
                             characters
-                                ? 'Setiap tokoh hanya bisa dipilih satu pemain. Urutan mengikuti pemain masuk ruangan.'
-                                : 'Setelah semua pakaian terkunci, peran dibagikan dan pengungkapan dimulai.',
+                                ? 'Setiap tokoh hanya bisa dipilih satu pemain. Urutan mengikuti pemain masuk ruangan. Jika waktu habis, tokoh dipilihkan otomatis.'
+                                : 'Setelah semua pakaian terkunci, peran dibagikan. Jika waktu habis, pakaian yang belum dipilih dikunci otomatis dari tokoh masing-masing.',
                             textAlign: TextAlign.center,
                           ),
                           if (s['seconds_left'] != null)

@@ -13,6 +13,7 @@ import '../common/ornate.dart';
 import '../common/scene_flow.dart';
 import '../common/sfx.dart';
 import '../table/table_page.dart';
+import '../lobby/lobby_page.dart';
 import 'character_pick.dart';
 import 'ability_pick.dart';
 import 'cast_introduction.dart';
@@ -204,7 +205,16 @@ class PrologueFlow extends StatefulWidget {
 ///            gelap + pilih wajah gelap disisipkan lewat [RoleReveal.twistGate]
 /// cast     : perkenalan nama dan karakter publik seluruh pemain
 /// waiting  : menunggu semua pemain selesai, daftar pemeran tetap terlihat
-enum _Step { story, shuffling, pick, role, cast, waiting }
+enum _Step {
+  loading,
+  story,
+  shuffling,
+  pick,
+  role,
+  selectionWaiting,
+  cast,
+  waiting,
+}
 
 class _PrologueFlowState extends State<PrologueFlow>
     with TickerProviderStateMixin {
@@ -227,7 +237,16 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   // Pilih kartu karakter (semua) dan wajah gelap (Si Terbisik).
   // true = tidak perlu memilih (sudah memilih, atau migrasi belum jalan).
-  bool _charChosen = true;
+  bool _charChosen = false;
+  bool _secretLoaded = false;
+  bool _secretBusy = false;
+  String? _secretError;
+  String? _darkError;
+  String? _syncError;
+  Map<String, dynamic>? _sharedState;
+  bool _syncBusy = false, _readyIntent = false, _keepBusy = false;
+  Timer? _syncTimer;
+  List<Map<String, dynamic>> _castRoster = [];
   bool _darkChosen = true;
   List<String> _goodOptions = [];
   List<int> _darkOptions = [];
@@ -240,7 +259,6 @@ class _PrologueFlowState extends State<PrologueFlow>
   Completer<void>? _darkGate;
 
   // Gerbang prolog.
-  StreamSubscription<Map<String, dynamic>?>? _gameSub;
   Timer? _waitTimer;
   bool _opened = false;
   late final _gr = EmbunData.maybeOf(context)?.game ?? GameRepository();
@@ -295,7 +313,7 @@ class _PrologueFlowState extends State<PrologueFlow>
       step = _Step.waiting;
       WidgetsBinding.instance.addPostFrameCallback((_) => _enterWaiting());
     } else if (widget.resume) {
-      step = _Step.role;
+      step = _Step.loading;
     }
     randomStems = widget.characterTheme == 'manhwa'
         ? manhwaOutfits.keys.toList()
@@ -305,30 +323,17 @@ class _PrologueFlowState extends State<PrologueFlow>
       duration: const Duration(milliseconds: 1500),
     );
 
-    widget.repo.mySecret(widget.gameId).then((s) {
-      if (!mounted || s == null) return;
-      setState(() {
-        role = s['role'] as String?;
-        darkSeed = (s['dark_seed'] as int?) ?? 0;
-        // false persis = belum memilih; null = migrasi belum jalan (lewati).
-        _charChosen = s['char_chosen'] != false;
-        _darkChosen = s['dark_chosen'] != false || role != 'antagonis';
-      });
-      if (widget.resume && !_charChosen && step == _Step.role) _enterPick();
-      if (role == 'antagonis' && widget.antagonistCount == 2) {
-        widget.repo
-            .terbisikPartner(widget.gameId)
-            .then((id) {
-              if (mounted) setState(() => _partnerId = id);
-            })
-            .catchError((_) {});
-      }
-    });
+    _loadSecret();
+    _syncPrologue();
+    _syncTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _syncPrologue(),
+    );
     _rosterSub = widget.repo.players(widget.gameId).listen((rows) {
       if (!mounted) return;
       final me = rows.where((p) => p['user_id'] == widget.repo.myId);
       setState(() {
-        if (_roster.isEmpty && me.isNotEmpty) {
+        if (me.isNotEmpty) {
           myCard = me.first['character_card'] as String;
         }
         _roster = rows;
@@ -487,9 +492,51 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   // ====================== pilih kartu karakter ======================
 
+  Future<void> _loadSecret() async {
+    if (_secretBusy) return;
+    _secretBusy = true;
+    try {
+      final s = await widget.repo.mySecret(widget.gameId);
+      if (!mounted) return;
+      if (s == null || !['warga', 'antagonis'].contains(s['role'])) {
+        throw StateError('Data peran belum tersedia. Coba lagi.');
+      }
+      setState(() {
+        role = s['role'] as String?;
+        darkSeed = (s['dark_seed'] as int?) ?? 0;
+        _charChosen = s['char_chosen'] == true;
+        _darkChosen = s['dark_chosen'] == true || role != 'antagonis';
+        _secretLoaded = role != null;
+        _secretError = null;
+      });
+      if (role == 'antagonis' && widget.antagonistCount == 2) {
+        widget.repo
+            .terbisikPartner(widget.gameId)
+            .then((id) {
+              if (mounted) setState(() => _partnerId = id);
+            })
+            .catchError((_) {});
+      }
+      if (_sharedState != null) _applySharedState(_sharedState!);
+      if (step == _Step.loading) {
+        if (!_charChosen) {
+          _enterPick();
+        } else {
+          setState(() => step = _Step.role);
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _secretError = errMsg(e));
+    } finally {
+      _secretBusy = false;
+    }
+  }
+
   void _afterShuffle() {
-    if (!mounted) return;
-    if (!_charChosen) {
+    if (!mounted || step != _Step.shuffling) return;
+    if (!_secretLoaded) {
+      setState(() => step = _Step.loading);
+    } else if (!_charChosen) {
       _enterPick();
     } else {
       setState(() => step = _Step.role);
@@ -516,8 +563,8 @@ class _PrologueFlowState extends State<PrologueFlow>
     _goodOptions = _rollGood();
     if (_goodOptions.length < 2) {
       // Tak cukup gambar untuk dipilih: pakai kartu yang sudah ada.
-      _charChosen = true;
-      setState(() => step = _Step.role);
+      setState(() => step = _Step.pick);
+      _skipPick();
       return;
     }
     setState(() => step = _Step.pick);
@@ -556,13 +603,23 @@ class _PrologueFlowState extends State<PrologueFlow>
   }
 
   void _goodDone() {
-    if (mounted) setState(() => step = _Step.role);
+    if (mounted && step == _Step.pick) setState(() => step = _Step.role);
   }
 
-  /// "Lanjut tanpa memilih": pakai kartu yang dibagikan server.
-  void _skipPick() {
-    _charChosen = true;
-    _goodDone();
+  /// Tetap memakai kartu awal juga harus dikunci di server.
+  Future<void> _skipPick() async {
+    if (_keepBusy) return;
+    _keepBusy = true;
+    try {
+      await widget.repo.keepPrologueCard(widget.gameId, 'character');
+      if (!mounted) return;
+      _charChosen = true;
+      _goodDone();
+    } catch (e) {
+      if (mounted) setState(() => _pickNote = errMsg(e));
+    } finally {
+      _keepBusy = false;
+    }
   }
 
   // ====================== pilih kemampuan warga ======================
@@ -599,13 +656,13 @@ class _PrologueFlowState extends State<PrologueFlow>
   Future<void> _antagGate() async {
     if (_darkChosen || !mounted) return;
     _darkOptions = _rollDark();
-    if (_darkOptions.length < 2) {
-      _darkChosen = true;
-      return;
-    }
     final c = Completer<void>();
     _darkGate = c;
-    setState(() => _omen = true);
+    if (_darkOptions.length < 2) {
+      await _skipDark();
+    } else {
+      setState(() => _omen = true);
+    }
     await c.future;
   }
 
@@ -630,13 +687,24 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   void _darkPicked() {
     if (mounted) setState(() => _darkPick = false);
-    _darkGate?.complete();
+    if (_darkGate?.isCompleted == false) _darkGate!.complete();
     _darkGate = null;
   }
 
-  void _skipDark() {
-    _darkChosen = true;
-    _darkPicked();
+  Future<void> _skipDark() async {
+    if (_keepBusy) return;
+    _keepBusy = true;
+    try {
+      await widget.repo.keepPrologueCard(widget.gameId, 'dark');
+      if (!mounted) return;
+      _darkError = null;
+      _darkChosen = true;
+      _darkPicked();
+    } catch (e) {
+      if (mounted) setState(() => _darkError = errMsg(e));
+    } finally {
+      _keepBusy = false;
+    }
   }
 
   // ====================== gerbang prolog ======================
@@ -645,24 +713,142 @@ class _PrologueFlowState extends State<PrologueFlow>
   /// gerbang yang sama, jadi tak ada yang bisa menebak siapa yang sedang
   /// memilih.
   void _afterReveal() {
-    if (role == null || step != _Step.role) return;
-    setState(() => step = _Step.cast);
+    if (!mounted || role == null || step != _Step.role) return;
+    _readyIntent = true;
+    setState(() => step = _Step.selectionWaiting);
+    _syncPrologue();
   }
 
-  /// Menunggu semua pemain selesai prolog; meja dibuka bersamaan.
+  Future<void> _syncPrologue() async {
+    if (_syncBusy || _opened || !mounted) return;
+    _syncBusy = true;
+    final reportReady = _readyIntent;
+    try {
+      final state = await widget.repo.syncPrologue(
+        widget.gameId,
+        ready: reportReady,
+      );
+      if (!mounted) return;
+      if (reportReady) _readyIntent = false;
+      setState(() {
+        _sharedState = state;
+        _syncError = null;
+      });
+      _applySharedState(state);
+    } catch (e) {
+      if (mounted) setState(() => _syncError = errMsg(e));
+    } finally {
+      _syncBusy = false;
+    }
+  }
+
+  void _applySharedState(Map<String, dynamic> state) {
+    if (!mounted || _opened) return;
+    if (state['status'] == 'finished') {
+      _opened = true;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LobbyPage(startAtMenu: true)),
+      );
+      return;
+    }
+    if (!_secretLoaded) return;
+    if (state['table_open'] == true) {
+      _openTable();
+      return;
+    }
+    if (state['cast_started'] == true) {
+      if (step == _Step.cast ||
+          (step == _Step.waiting && _castRoster.isNotEmpty))
+        return;
+      final rows = (state['players'] as List? ?? [])
+          .map((p) => Map<String, dynamic>.from(p as Map))
+          .toList();
+      if (rows.isEmpty || rows.length != state['total']) return;
+      _storySub?.cancel();
+      _sc.stop();
+      _shuffleTimer?.cancel();
+      _shuffleCtrl.stop();
+      unawaited(Sfx.I.fadeOutNarration());
+      setState(() {
+        _castRoster = rows;
+        _omen = false;
+        _darkPick = false;
+        _abilityPick = false;
+        step = state['me_done'] == true ? _Step.waiting : _Step.cast;
+      });
+      if (_abilityGate?.isCompleted == false) _abilityGate!.complete();
+      if (_darkGate?.isCompleted == false) _darkGate!.complete();
+      if (step == _Step.waiting) _enterWaiting();
+    } else if (state['me_ready'] == true && step != _Step.selectionWaiting) {
+      setState(() => step = _Step.selectionWaiting);
+    }
+  }
+
+  /// Setelah daftar pemeran selesai, tunggu semua perangkat selesai menontonnya.
   void _enterWaiting() {
     if (!mounted) return;
     setState(() => step = _Step.waiting);
-    void report() =>
-        widget.repo.finishPrologue(widget.gameId).catchError((_) {});
+    var reporting = false;
+    Future<void> report() async {
+      if (reporting || !mounted || _opened) return;
+      reporting = true;
+      try {
+        await widget.repo.finishPrologue(widget.gameId);
+        await _syncPrologue();
+      } catch (e) {
+        if (mounted) setState(() => _syncError = errMsg(e));
+      } finally {
+        reporting = false;
+      }
+    }
+
     report();
     _waitTimer?.cancel();
     _waitTimer = Timer.periodic(const Duration(seconds: 5), (_) => report());
-    _gameSub?.cancel();
-    _gameSub = widget.repo.game(widget.gameId).listen((g) {
-      if (g != null && g['prologue_until'] == null) _openTable();
-    });
   }
+
+  Widget _selectionWaiting() => SafeArea(
+    child: Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            const Text(
+              'Menunggu semua pemain selesai memilih',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${_sharedState?['ready_count'] ?? 0}/${_sharedState?['total'] ?? _total} pemain siap',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Pengungkapan kartu teman-teman dimulai setelah semua pilihan terkunci.',
+              textAlign: TextAlign.center,
+            ),
+            if (_sharedState?['seconds_left'] != null)
+              Text(
+                'Batas pemilihan: ${_sharedState!['seconds_left']} detik. Saat habis, pilihan tertunda dikunci otomatis.',
+                textAlign: TextAlign.center,
+              ),
+            if (_syncError != null) ...[
+              const SizedBox(height: 12),
+              Text(_syncError!, textAlign: TextAlign.center),
+              TextButton(
+                onPressed: _syncPrologue,
+                child: const Text('Coba lagi'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
 
   void _openTable() {
     if (_opened || !mounted || role == null) return;
@@ -678,9 +864,9 @@ class _PrologueFlowState extends State<PrologueFlow>
   void dispose() {
     if (_abilityGate?.isCompleted == false) _abilityGate!.complete();
     if (_darkGate?.isCompleted == false) _darkGate!.complete();
+    _syncTimer?.cancel();
     _beat?.cancel();
     _waitTimer?.cancel();
-    _gameSub?.cancel();
     _storySub?.cancel();
     _rosterSub?.cancel();
     Sfx.I.release(this); // juga menghentikan narasi milik halaman ini
@@ -704,7 +890,25 @@ class _PrologueFlowState extends State<PrologueFlow>
         fit: StackFit.expand,
         children: [
           Backdrop(path: sceneryPath('desajembatan-keringgulita'), dim: 0.5),
-          if (step == _Step.shuffling)
+          if (step == _Step.loading)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  if (_secretError != null) ...[
+                    Text(_secretError!, textAlign: TextAlign.center),
+                    TextButton(
+                      onPressed: _loadSecret,
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ],
+              ),
+            )
+          else if (step == _Step.selectionWaiting)
+            _selectionWaiting()
+          else if (step == _Step.shuffling)
             SafeArea(child: _shufflingStep())
           else if (step == _Step.pick)
             SafeArea(
@@ -725,12 +929,29 @@ class _PrologueFlowState extends State<PrologueFlow>
               ),
             )
           else if (step == _Step.cast || step == _Step.waiting)
-            CastIntroduction(
-              key: const ValueKey('cast'),
-              players: _roster,
-              myId: widget.repo.myId,
-              waiting: step == _Step.waiting,
-              onContinue: _enterWaiting,
+            Column(
+              children: [
+                if (_sharedState?['auto_completed'] == true)
+                  const SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Text(
+                        'Waktu pemilihan habis. Pilihan tertunda telah dikunci otomatis.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: CastIntroduction(
+                    key: const ValueKey('cast'),
+                    players: _castRoster,
+                    myId: widget.repo.myId,
+                    waiting: step == _Step.waiting,
+                    onContinue: _enterWaiting,
+                  ),
+                ),
+              ],
             )
           else
             RoleReveal(
@@ -745,6 +966,22 @@ class _PrologueFlowState extends State<PrologueFlow>
               twistGate: _antagGate,
               wargaGate: _wargaGate,
               onContinue: role == null ? () {} : _afterReveal,
+            ),
+          if (_darkError != null && step == _Step.role && !_darkPick)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_darkError!, textAlign: TextAlign.center),
+                    TextButton(
+                      onPressed: _skipDark,
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           if (_abilityPick)
             Positioned.fill(
@@ -773,6 +1010,7 @@ class _PrologueFlowState extends State<PrologueFlow>
           child: CardPick(
             key: const ValueKey('darkpick'),
             dark: true,
+            note: _darkError,
             title: 'Pilih Wajah Gelapmu',
             hint:
                 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat '

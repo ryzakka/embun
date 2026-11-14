@@ -169,6 +169,17 @@ class LobbyRepository {
   Future<void> chooseDark(String gameId, int seed) =>
       _db.rpc('choose_dark', params: {'p_game': gameId, 'p_seed': seed});
 
+  Future<void> keepPrologueCard(String gameId, String kind) =>
+      _db.rpc('keep_prologue_card', params: {'p_game': gameId, 'p_kind': kind});
+
+  Future<Map<String, dynamic>> syncPrologue(
+    String gameId, {
+    bool ready = false,
+  }) async => Map<String, dynamic>.from(
+    await _db.rpc('prologue_sync', params: {'p_game': gameId, 'p_ready': ready})
+        as Map,
+  );
+
   /// Tandai prolog selesai; juga membuka gerbang bila semua siap / waktu habis.
   Future<void> finishPrologue(String gameId) =>
       _db.rpc('finish_prologue', params: {'p_game': gameId});

@@ -124,6 +124,7 @@ class PreviewSession
   bool _holdPrologue = false;
   bool _charChosen = true;
   bool _darkChosen = true;
+  bool _revealReady = false, _castStarted = false, _castDone = false;
   String? _pickedAbility;
   int? _abilitySlot;
   List<String> _abilityOffers = [];
@@ -182,6 +183,9 @@ class PreviewSession
     _holdPrologue = holdPrologue;
     _charChosen = !pickCharacter;
     _darkChosen = !pickDark;
+    _revealReady = false;
+    _castStarted = false;
+    _castDone = false;
     _pickedAbility = null;
     _abilitySlot = null;
     _abilityOffers = (previewAbilities.keys.toList()..shuffle())
@@ -672,7 +676,42 @@ class PreviewSession
   }
 
   @override
+  Future<void> keepPrologueCard(String gameId, String kind) async {
+    if (kind == 'character') _charChosen = true;
+    if (kind == 'dark') _darkChosen = true;
+  }
+
+  @override
+  Future<PreviewRow> syncPrologue(String gameId, {bool ready = false}) async {
+    if (ready) {
+      if (!_charChosen || (_dark ? !_darkChosen : _pickedAbility == null)) {
+        throw StateError('Kunci semua kartu pilihanmu terlebih dahulu');
+      }
+      _revealReady = true;
+      _castStarted = true;
+    }
+    return {
+      'status': _game['status'],
+      'cast_started': _castStarted,
+      'table_open': _game['prologue_until'] == null,
+      'me_ready': _revealReady,
+      'me_done': _castDone,
+      'ready_count': roster.length - (_revealReady ? 0 : 1),
+      'total': roster.length,
+      'seconds_left': 200,
+      'auto_completed': false,
+      'players': _castStarted ? roster : [],
+    };
+  }
+
+  @override
   Future<void> finishPrologue(String gameId) async {
+    if (!_castStarted && !_holdPrologue) {
+      throw StateError('Pengungkapan bersama belum dimulai');
+    }
+    _revealReady = true;
+    _castStarted = true;
+    _castDone = true;
     if (_holdPrologue || _game['prologue_until'] == null) return;
     _game = {..._game, 'prologue_until': null};
     _update();
