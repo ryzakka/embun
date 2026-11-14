@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,14 +58,14 @@ class _Step {
   final TutorPose pose;
   final bool narrationCurrent;
   const _Step(
-    this.title,
-    this.body,
-    this.accent,
-    this.visual, {
-    this.hasNarration = true,
-    required this.pose,
-    this.narrationCurrent = true,
-  });
+      this.title,
+      this.body,
+      this.accent,
+      this.visual, {
+        this.hasNarration = true,
+        required this.pose,
+        this.narrationCurrent = true,
+      });
 }
 
 const _kBlue = Color(0xFF5B9BE8);
@@ -123,7 +124,7 @@ class _TutorialPageState extends State<TutorialPage>
           'sedikit**. Tugas warga: merawatnya sampai rimbun dan menemukan '
           'siapa penyusupnya. Jangan mudah percaya pada siapa pun.',
       EmbunColors.leaf,
-      (p) => const _HayuGrow(),
+          (p) => const _HayuGrow(),
       pose: TutorPose.greeting,
     ),
     _Step(
@@ -133,7 +134,7 @@ class _TutorialPageState extends State<TutorialPage>
           'lawan tahu siapa dirimu. Satu ruangan diisi $kMinPlayers sampai '
           '$kMaxPlayers pemain.',
       EmbunColors.gold,
-      (p) => const _RoleDemo(),
+          (p) => const _RoleDemo(),
       pose: TutorPose.thinking,
     ),
     _Step(
@@ -143,7 +144,7 @@ class _TutorialPageState extends State<TutorialPage>
           'Pada malam sebelum persembahan, pilih maksimal **2 tempat** di desa. '
           'Pasar Riset, Sumur, Bengkel, Pondok, dan Balai punya layanan berbeda.',
       EmbunColors.gold,
-      (p) => const _CycleDemo(),
+          (p) => const _CycleDemo(),
       pose: TutorPose.counting,
       narrationCurrent: false,
     ),
@@ -153,7 +154,7 @@ class _TutorialPageState extends State<TutorialPage>
           'pertama setiap siklus ada **tambahan 5 embun**. Embun dipakai '
           'untuk berbelanja dan bisa **diberikan ke pemain lain**.',
       EmbunColors.gold,
-      (p) => const _EmbunDemo(),
+          (p) => const _EmbunDemo(),
       pose: TutorPose.heavyWater,
     ),
     _Step(
@@ -163,7 +164,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**mengobrol**. Pertukaran kartu dilakukan di **Balai Pertukaran** '
           'saat kunjungan. Bila siap, **akhiri hari**.',
       EmbunColors.gold,
-      (p) => const _MarketDemo(),
+          (p) => const _MarketDemo(),
       pose: TutorPose.shopping,
       narrationCurrent: false,
     ),
@@ -175,7 +176,7 @@ class _TutorialPageState extends State<TutorialPage>
           'terpisah dari Pasar Pagi. Menggeser tujuan belum memakai jatah '
           'kunjungan; jatah terpakai saat masuk.',
       EmbunColors.gold,
-      (p) => const _ResearchDemo(),
+          (p) => const _ResearchDemo(),
       pose: TutorPose.choosing,
       narrationCurrent: false,
     ),
@@ -187,7 +188,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**tidak tersedia di Meja hari biasa**. Kartu yang sudah aktif '
           'bisa dipersembahkan.',
       EmbunColors.cream,
-      (p) => const _FuseDemo(),
+          (p) => const _FuseDemo(),
       pose: TutorPose.combine,
       narrationCurrent: false,
     ),
@@ -199,7 +200,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**Kaca Pembesar** dan **Lampu Senter** memberi angka pasti. '
           '**Lentera** menilai persembahan, bukan peran.',
       _kBlue,
-      (p) => const _InspectDemo(),
+          (p) => const _InspectDemo(),
       pose: TutorPose.question,
       narrationCurrent: false,
     ),
@@ -209,7 +210,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**ada serangan**, bukan siapa sasarannya. **Kartu perlindungan** '
           'membantu, tetapi hanya berlaku pada malam itu.',
       EmbunColors.mist,
-      (p) => const _NightDemo(),
+          (p) => const _NightDemo(),
       pose: TutorPose.panic,
     ),
     _Step(
@@ -219,7 +220,7 @@ class _TutorialPageState extends State<TutorialPage>
           'desa hanya tahu **jumlahnya**. Si Terbisik **wajib menyertakan '
           'Roti Surplus** sebagai kedok.',
       EmbunColors.leaf,
-      (p) => const _OfferDemo(),
+          (p) => const _OfferDemo(),
       pose: TutorPose.offering,
     ),
     _Step(
@@ -229,7 +230,7 @@ class _TutorialPageState extends State<TutorialPage>
           'Tuduhan sah bila suara yang mendukung **lebih dari separuh** '
           'pemain yang tersisa.',
       EmbunColors.blood,
-      (p) => const Column(
+          (p) => const Column(
         children: [
           _CycleStrip(active: 5),
           SizedBox(height: 12),
@@ -249,7 +250,7 @@ class _TutorialPageState extends State<TutorialPage>
           'menang; bila warga, ia **keluar dari desa**. Bila pemain '
           'tersisa kurang dari $kMinPlayers, **Si Terbisik menang**.',
       EmbunColors.blood,
-      (p) => const _LivesDemo(),
+          (p) => const _LivesDemo(),
       pose: TutorPose.tired,
     ),
     _Step(
@@ -260,7 +261,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**satu serangan per malam biasa**. Untuk menang lewat penyingkiran, '
           'Warga perlu mengalahkan keduanya.',
       EmbunColors.mist,
-      (p) => const _Chip('Obrolan Terbisik · 1 serangan', EmbunColors.mist),
+          (p) => const _TwinDemo(),
       hasNarration: false,
       pose: TutorPose.thinking,
     ),
@@ -273,7 +274,7 @@ class _TutorialPageState extends State<TutorialPage>
           '**Daun** naik menuju target dan membuka +0,5 bulir hitam tiap 5 daun '
           'bagi Terbisik. Ketuk indikator Hayu untuk melihat rinciannya.',
       EmbunColors.leaf,
-      (p) => const _HayuPartsDemo(),
+          (p) => const _HayuPartsDemo(),
       hasNarration: false,
       pose: TutorPose.counting,
     ),
@@ -284,7 +285,7 @@ class _TutorialPageState extends State<TutorialPage>
           '6 / 12 / 18 / 24 hari memakai batas **12 / 20 / 24 / 26**. '
           'Kurang dari itu, **Si Terbisik menang**. Lama sesi dipilih host.',
       EmbunColors.leaf,
-      (p) => const _WinDemo(),
+          (p) => const _WinDemo(),
       pose: TutorPose.encourage,
     ),
   ];
@@ -312,22 +313,87 @@ class _TutorialPageState extends State<TutorialPage>
           child: const Text('Lewati'),
         ),
       ],
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            child: PageView.builder(
-              controller: _pc,
-              itemCount: _steps.length,
-              onPageChanged: (i) {
-                setState(() => _page = i);
-                HapticFeedback.selectionClick();
-                _speak(i);
-              },
-              itemBuilder: (_, i) => _pageOf(_steps[i], i),
-            ),
+          Positioned.fill(child: _scene()),
+          Column(
+            children: [
+              Expanded(
+                child: PageView.builder(
+                  controller: _pc,
+                  itemCount: _steps.length,
+                  onPageChanged: (i) {
+                    setState(() => _page = i);
+                    HapticFeedback.selectionClick();
+                    _speak(i);
+                  },
+                  itemBuilder: (_, i) => _pageOf(_steps[i], i),
+                ),
+              ),
+              _controls(context),
+            ],
           ),
-          _controls(context),
         ],
+      ),
+    );
+  }
+
+  // ----------------------- latar sinematik per bab -----------------------
+
+  static const _darkPages = {8, 9, 11, 12};
+  static const _sceneLeaves = [30, 22, 18, 24, 20, 15, 26, 12, 12, 12, 10, 6, 4, 20, 30];
+
+  String? _sceneFor(int i) {
+    final path = switch (i) {
+      8 => nightSkyPath(attack: true),
+      9 => nightSkyPath(attack: false),
+      12 => nightValleyPath(attack: true),
+      _ => landscapePath(_sceneLeaves[i % _sceneLeaves.length]),
+    };
+    return path ?? sceneryPath('balkon-siang');
+  }
+
+  /// Latar bentangan yang bernapas pelan, diberi cahaya aksen dan vinyet.
+  Widget _scene() {
+    final accent = _steps[_page].accent;
+    return IgnorePointer(
+      child: ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedBuilder(
+              animation: _pulse,
+              builder: (_, child) => Transform.scale(
+                scale: 1.05 + 0.05 * Curves.easeInOut.transform(_pulse.value),
+                child: child,
+              ),
+              child: Backdrop(
+                path: _sceneFor(_page),
+                dark: _darkPages.contains(_page),
+                dim: 0.58,
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 700),
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.25),
+                  radius: 1.0,
+                  colors: [accent.withValues(alpha: 0.22), Colors.transparent],
+                ),
+              ),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 1.15,
+                  colors: [Colors.transparent, Color(0xCC000000)],
+                  stops: [0.55, 1.0],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -348,7 +414,10 @@ class _TutorialPageState extends State<TutorialPage>
     final step = _steps[_page];
     final last = _page == _steps.length - 1;
     return DecoratedBox(
-      decoration: BoxDecoration(border: Border(top: learningRule(step.accent))),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.5),
+        border: Border(top: learningRule(step.accent)),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
@@ -428,17 +497,25 @@ class _TutorialPageState extends State<TutorialPage>
     builder: (context, box) {
       final short = box.maxHeight < 385;
       final wide = box.maxWidth >= (short ? 510 : 650);
+      const shadow = [Shadow(color: Colors.black87, blurRadius: 14)];
       final heading = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _chapter(index),
-            style: TextStyle(
-              color: step.accent,
-              fontSize: 11,
-              letterSpacing: 1.6,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 18, height: 2, color: step.accent),
+              const SizedBox(width: 8),
+              Text(
+                _chapter(index),
+                style: TextStyle(
+                  color: step.accent,
+                  fontSize: 11,
+                  letterSpacing: 2.4,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Semantics(
@@ -446,10 +523,11 @@ class _TutorialPageState extends State<TutorialPage>
             child: Text(
               step.title,
               style: TextStyle(
-                fontSize: wide && !short ? 39 : 27,
-                height: 1.12,
+                fontSize: wide && !short ? 36 : 26,
+                height: 1.1,
                 fontWeight: FontWeight.w900,
                 color: EmbunColors.cream,
+                shadows: shadow,
               ),
             ),
           ),
@@ -458,66 +536,55 @@ class _TutorialPageState extends State<TutorialPage>
       final companion = TutorCompanion(
         key: ValueKey('tutor-${step.pose.name}'),
         pose: step.pose,
-        compact: short,
+        compact: short || !wide,
         large: wide && !short,
         accent: step.accent,
         child: heading,
       );
-      final explanation = _rich(step.body, step.accent);
-      final visual = _stage(
-        step.accent,
-        step.visual(_pulse),
-        maxHeight: wide && short ? math.max(95, box.maxHeight - 20) : 315,
-      );
-      return SingleChildScrollView(
-        key: PageStorageKey(index),
-        padding: EdgeInsets.symmetric(
-          horizontal: wide ? 18 : 4,
-          vertical: short ? 8 : 16,
+      final hero = _hero(step, index);
+      final text = _textPanel(step, companion);
+
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          wide ? 18 : 10,
+          short ? 6 : 10,
+          wide ? 18 : 10,
+          8,
         ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: math.max(0, box.maxHeight - (short ? 16 : 32)),
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: wide ? 1000 : 520),
-              child: wide
-                  ? Row(
-                      children: [
-                        Expanded(
-                          flex: 5,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              companion,
-                              const SizedBox(height: 15),
-                              explanation,
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: short ? 20 : 42),
-                        Expanded(flex: 6, child: visual),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        companion,
-                        const SizedBox(height: 12),
-                        visual,
-                        const SizedBox(height: 12),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            border: Border(top: learningRule(step.accent)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 11),
-                            child: explanation,
-                          ),
-                        ),
-                      ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: wide ? 1100 : 560),
+            child: wide
+                ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 13, child: hero),
+                SizedBox(width: short ? 14 : 24),
+                SizedBox(
+                  width: math.min(400, box.maxWidth * 0.36),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: math.max(120, box.maxHeight - 20),
+                      ),
+                      child: text,
                     ),
+                  ),
+                ),
+              ],
+            )
+                : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: hero),
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: box.maxHeight * (short ? 0.5 : 0.4),
+                  ),
+                  child: text,
+                ),
+              ],
             ),
           ),
         ),
@@ -525,46 +592,167 @@ class _TutorialPageState extends State<TutorialPage>
     },
   );
 
-  Widget _stage(Color accent, Widget child, {required double maxHeight}) =>
-      DecoratedBox(
+  /// Panel teks kaca buram: judul dan penjelasan, aksen emas di tepi atas.
+  Widget _textPanel(_Step step, Widget companion) => ClipRRect(
+    borderRadius: BorderRadius.circular(20),
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [accent.withValues(alpha: 0.12), Colors.transparent],
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.48),
+              Colors.black.withValues(alpha: 0.74),
+            ],
           ),
+          border: Border.all(color: step.accent.withValues(alpha: 0.35)),
         ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: SizedBox(
-                width: 400,
-                child: MediaQuery.withClampedTextScaling(
-                  maxScaleFactor: 1.15,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 7,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    step.accent.withValues(alpha: 0),
+                    step.accent,
+                    step.accent.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    companion,
+                    const SizedBox(height: 10),
+                    _rich(step.body, step.accent),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  /// Visual utama: mengisi seluruh ruang yang ada, masuk dengan gerak
+  /// membesar, dan mengecil-meredup saat digeser keluar.
+  Widget _hero(_Step step, int index) => AnimatedBuilder(
+    animation: _pc,
+    builder: (context, child) {
+      final cur = _pc.hasClients && _pc.position.haveDimensions
+          ? (_pc.page ?? _page.toDouble())
+          : _page.toDouble();
+      final d = (cur - index).abs().clamp(0.0, 1.0).toDouble();
+      return Opacity(
+        opacity: 1 - 0.85 * d,
+        child: Transform.scale(scale: 1 - 0.14 * d, child: child),
+      );
+    },
+    child: TweenAnimationBuilder<double>(
+      key: ValueKey('hero-$index'),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 750),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+          offset: Offset(0, 26 * (1 - v)),
+          child: Transform.scale(scale: 0.9 + 0.1 * v, child: child),
+        ),
+      ),
+      child: _stage(step.accent, step.visual(_pulse)),
+    ),
+  );
+
+  /// Panggung gambar: bingkai bercahaya yang berdenyut, bulir cahaya yang
+  /// naik, dan isi yang diperbesar sampai memenuhi ruang.
+  Widget _stage(Color accent, Widget child) => AnimatedBuilder(
+    animation: _pulse,
+    builder: (context, inner) {
+      final p = Curves.easeInOut.transform(_pulse.value);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.2),
+            radius: 0.95,
+            colors: [
+              accent.withValues(alpha: 0.16 + 0.08 * p),
+              Colors.black.withValues(alpha: 0.55),
+            ],
+          ),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.45 + 0.2 * p),
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.22 + 0.14 * p),
+              blurRadius: 36 + 16 * p,
+              spreadRadius: 1,
+            ),
+            const BoxShadow(
+              color: Colors.black87,
+              blurRadius: 24,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: inner,
+      );
+    },
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(child: _Motes(color: accent)),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 820, maxHeight: 640),
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 400,
+                    child: MediaQuery.withClampedTextScaling(
+                      maxScaleFactor: 1.15,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        child: child,
+                      ),
                     ),
-                    child: child,
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   /// Teks dengan **tebal** berwarna aksen.
   Widget _rich(String s, Color accent) {
     final parts = s.split('**');
     return Text.rich(
       TextSpan(
-        style: const TextStyle(
-          fontSize: 15.5,
-          height: 1.5,
-          color: Colors.white,
-        ),
+        style: const TextStyle(fontSize: 16, height: 1.55, color: Colors.white),
         children: [
           for (var i = 0; i < parts.length; i++)
             TextSpan(
@@ -578,6 +766,163 @@ class _TutorialPageState extends State<TutorialPage>
       textAlign: TextAlign.left,
     );
   }
+}
+
+// ------------------------- efek & bahan baru -------------------------
+
+/// CardArt versi tutorial: gambar dimuat lebih tajam karena panggung
+/// memperbesar isinya.
+class _HiCard extends StatelessWidget {
+  final String? path;
+  final double width;
+  final Color? glow;
+  const _HiCard({required this.path, this.width = 100, this.glow});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: width * cardAspectFor(path),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [
+        BoxShadow(
+          color: (glow ?? Colors.black).withValues(alpha: 0.55),
+          blurRadius: glow == null ? 8 : 26,
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: GameImage(path: path, cacheWidth: (width * 5).round()),
+    ),
+  );
+}
+
+/// Bulir cahaya yang naik pelan di belakang gambar.
+class _Motes extends StatefulWidget {
+  final Color color;
+  const _Motes({required this.color});
+
+  @override
+  State<_Motes> createState() => _MotesState();
+}
+
+class _MotesState extends State<_Motes> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 14),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: RepaintBoundary(
+      child: CustomPaint(
+        painter: _MotesPainter(_c, widget.color),
+        size: Size.infinite,
+      ),
+    ),
+  );
+}
+
+class _MotesPainter extends CustomPainter {
+  final Animation<double> t;
+  final Color color;
+  _MotesPainter(this.t, this.color) : super(repaint: t);
+
+  static const _n = 26;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var i = 0; i < _n; i++) {
+      final seed = (i * 0.6180339887) % 1.0;
+      final phase = (t.value + seed) % 1.0;
+      final x =
+          ((seed * 7.13) % 1.0) * size.width +
+              math.sin(t.value * 2 * math.pi + i) * 10;
+      final y = size.height * (1 - phase);
+      final a = math.sin(math.pi * phase) * 0.55;
+      final r = 1.2 + (i % 3) * 0.9;
+      canvas.drawCircle(
+        Offset(x, y),
+        r * 3.2,
+        Paint()..color = color.withValues(alpha: a * 0.18),
+      );
+      canvas.drawCircle(
+        Offset(x, y),
+        r,
+        Paint()..color = color.withValues(alpha: a),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MotesPainter old) => old.color != color;
+}
+
+/// 13. Dua Terbisik: dua kartu gelap yang saling terhubung.
+class _TwinDemo extends StatelessWidget {
+  const _TwinDemo();
+
+  @override
+  Widget build(BuildContext context) => _Loop(
+    ms: 4200,
+    reverse: true,
+    builder: (context, t, _) {
+      final e = _sm(t);
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CardCol(
+                path: cardBackPath(dark: true),
+                label: 'Terbisik 1',
+                w: 96,
+                glow: EmbunColors.blood.withValues(alpha: 0.4 + 0.5 * e),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 56, 14, 0),
+                child: Icon(
+                  Icons.link_rounded,
+                  size: 34,
+                  color: Color.lerp(Colors.white38, EmbunColors.blood, e),
+                ),
+              ),
+              _CardCol(
+                path: cardBackPath(dark: true),
+                label: 'Terbisik 2',
+                w: 96,
+                glow: EmbunColors.blood.withValues(alpha: 0.4 + 0.5 * e),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Chip('Obrolan Terbisik', EmbunColors.mist),
+              _Chip('1 serangan / malam', EmbunColors.blood),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _caption(
+            'twin',
+            'Saling kenal, berunding diam-diam, berbagi satu serangan',
+            color: EmbunColors.mist,
+          ),
+        ],
+      );
+    },
+  );
 }
 
 // ------------------------- bahan gambar kecil -------------------------
@@ -681,7 +1026,7 @@ class _CardCol extends StatelessWidget {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            CardArt(path: path, width: w, glow: glow),
+            _HiCard(path: path, width: w, glow: glow),
             if (badge != null)
               Positioned(right: -8, top: -8, child: _Chip(badge!, badgeColor)),
           ],
@@ -745,19 +1090,19 @@ class _CycleStrip extends StatelessWidget {
                     ),
                     boxShadow: i == active
                         ? [
-                            BoxShadow(
-                              color: EmbunColors.gold.withValues(alpha: 0.4),
-                              blurRadius: 12,
-                            ),
-                          ]
+                      BoxShadow(
+                        color: EmbunColors.gold.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                      ),
+                    ]
                         : null,
                   ),
                   child: _items[i].$2 != null
                       ? Icon(
-                          _items[i].$2,
-                          size: 22,
-                          color: i == 2 ? EmbunColors.mist : EmbunColors.gold,
-                        )
+                    _items[i].$2,
+                    size: 22,
+                    color: i == 2 ? EmbunColors.mist : EmbunColors.gold,
+                  )
                       : GameIcon(_items[i].$1, size: 26),
                 ),
               ),
@@ -851,11 +1196,11 @@ class _HayuGrow extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (paths.isNotEmpty)
-                    GameImage(path: paths[lo], cacheWidth: 900),
+                    GameImage(path: paths[lo], cacheWidth: 1400),
                   if (paths.isNotEmpty && hi != lo)
                     Opacity(
                       opacity: fr,
-                      child: GameImage(path: paths[hi], cacheWidth: 900),
+                      child: GameImage(path: paths[hi], cacheWidth: 1400),
                     ),
                   Positioned(
                     left: 10,
@@ -1031,7 +1376,7 @@ class _EmbunDemo extends StatelessWidget {
                       opacity: _sg(t, 0.72, 0.8),
                       child: Column(
                         children: [
-                          CardArt(path: cardBackPath(), width: 34),
+                          _HiCard(path: cardBackPath(), width: 34),
                           const SizedBox(height: 2),
                           const _Chip('+3', EmbunColors.gold),
                         ],
@@ -1163,7 +1508,7 @@ class _ResearchDemo extends StatelessWidget {
               _CardCol(
                 path: path,
                 label:
-                    '$name\n${up ? '${(base * 1.2).ceil()}' : '$base'} embun',
+                '$name\n${up ? '${(base * 1.2).ceil()}' : '$base'} embun',
                 w: w,
                 glow: bought ? EmbunColors.leaf : null,
                 opacity: bought ? 0.55 : 1,
@@ -1212,8 +1557,8 @@ class _ResearchDemo extends StatelessWidget {
                 t < 0.28
                     ? 'Hanya menjual kartu poin dan lanjutan'
                     : (left == 0
-                          ? 'Jatah habis: stok tetap, jatah terpisah dari Pasar Pagi'
-                          : 'Harganya 20% lebih mahal dari harga biasa'),
+                    ? 'Jatah habis: stok tetap, jatah terpisah dari Pasar Pagi'
+                    : 'Harganya 20% lebih mahal dari harga biasa'),
                 color: EmbunColors.gold,
               ),
             ],
@@ -1273,14 +1618,14 @@ class _FuseDemo extends StatelessWidget {
           opacity: a,
           child: Transform.translate(
             offset: Offset(0, 16 * (1 - a)),
-            child: CardArt(path: adv, width: w - 4),
+            child: _HiCard(path: adv, width: w - 4),
           ),
         );
         final Widget poinCard = Opacity(
           opacity: b,
           child: Transform.translate(
             offset: Offset(0, 16 * (1 - b)),
-            child: CardArt(path: poin, width: w - 4),
+            child: _HiCard(path: poin, width: w - 4),
           ),
         );
         return Column(
@@ -1325,7 +1670,7 @@ class _FuseDemo extends StatelessWidget {
                         opacity: done,
                         child: Transform.scale(
                           scale: 0.85 + 0.15 * done,
-                          child: CardArt(
+                          child: _HiCard(
                             path: adv,
                             width: w - 4,
                             glow: EmbunColors.leaf.withValues(alpha: 0.8),
@@ -1387,7 +1732,7 @@ class _InspectDemo extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              CardArt(
+              _HiCard(
                 path: cardBackPath(),
                 width: 86,
                 glow: col.withValues(alpha: 0.5),
@@ -1553,7 +1898,7 @@ class _OfferDemo extends StatelessWidget {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        CardArt(
+                        _HiCard(
                           path: cardBackPath(dark: i == 3 && roti),
                           width: 50,
                         ),
@@ -1722,11 +2067,11 @@ class _LivesDemo extends StatelessWidget {
           _caption(s, switch (s) {
             0 => 'Tiap pemain punya $kStrikesMax nyawa',
             1 =>
-              'Dikurung: tak bisa membeli atau menawar tukar, tapi masih bisa bicara dan memilih',
+            'Dikurung: tak bisa membeli atau menawar tukar, tapi masih bisa bicara dan memilih',
             2 =>
-              'Tuduhan kedua: Si Terbisik tertangkap dan warga menang, atau warga biasa keluar',
+            'Tuduhan kedua: Si Terbisik tertangkap dan warga menang, atau warga biasa keluar',
             _ =>
-              'Bila pemain tersisa kurang dari 3, Si Terbisik langsung menang',
+            'Bila pemain tersisa kurang dari 3, Si Terbisik langsung menang',
           }, color: hearts == 0 ? EmbunColors.blood : EmbunColors.gold),
         ],
       );
@@ -1939,9 +2284,9 @@ class _RingDemoState extends State<_RingDemo>
           for (var k = 0; k < 5; k++)
             center +
                 Offset(
-                      math.cos(-math.pi / 2 + 2 * math.pi * k / 5),
-                      math.sin(-math.pi / 2 + 2 * math.pi * k / 5),
-                    ) *
+                  math.cos(-math.pi / 2 + 2 * math.pi * k / 5),
+                  math.sin(-math.pi / 2 + 2 * math.pi * k / 5),
+                ) *
                     r,
         ];
         return SizedBox(
@@ -1975,7 +2320,7 @@ class _RingDemoState extends State<_RingDemo>
                     Positioned(
                       left: pos[k].dx - cw / 2,
                       top: pos[k].dy - ch / 2,
-                      child: CardArt(
+                      child: _HiCard(
                         path: cardBackPath(),
                         width: cw,
                         glow: k == 0 && maj > 0
