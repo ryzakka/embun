@@ -67,8 +67,8 @@ bool abilityIsManual(String id) => const {
   'kunci_segel',
 }.contains(id);
 
-/// Bidang 5:6 memuat semua muka kartu biru dengan bingkai aslinya utuh.
-const abilityCardAspect = 1.2;
+/// Tinggi/lebar 3:2: muka dan punggung kemampuan mengikuti kartu 2:3.
+const abilityCardAspect = kTallAspect;
 const _cardBlue = Color(0xFF8FCBFF);
 
 /// Kartu kemampuan memakai ilustrasi asli atau ikon saat ilustrasi tak ada.

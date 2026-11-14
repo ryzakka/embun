@@ -56356,7 +56356,7 @@ ayB(a){var s=A.Dx(A.j(a.h(0,"id"))),r=J.c(a.h(0,"kind"),"pasif")?"Pasif":"Sekali
 q.toString
 A.hX(!0,new A.aCV(a,s,r),q,t.H)},
 aIz(a,b){var s=null,r=A.Dx(A.j(a.h(0,"id")))
-return A.dm(s,A.C(A.a([A.bcg(B.bF,A.bly(),!1,new A.qb(a,!1,b,s),r,b*1.2,b),B.a8,A.bcJ(A.j(a.h(0,"name")),r)],t.p),B.l,s,B.d,B.i),B.O,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s,new A.aD0(this,a),s,s,s,s,s,s)},
+return A.dm(s,A.C(A.a([A.bcg(B.bF,A.bly(),!1,new A.qb(a,!1,b,s),r,b*1.5,b),B.a8,A.bcJ(A.j(a.h(0,"name")),r)],t.p),B.l,s,B.d,B.i),B.O,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s,new A.aD0(this,a),s,s,s,s,s,s)},
 C(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d=this,c=null
 d.oB(a)
 if(d.e==null){s=d.f
@@ -61103,7 +61103,7 @@ $2(a,b){var s,r,q,p,o=null,n=Math.max(0,b.d-40),m=this.a,l=A.m(m.gve()?"Kemampua
 l=A.a([B.aws,B.aa,l,B.a8,A.m(m.gve()?"Hanya kamu yang melihat kartu ini.":"Tiga kartu biru diacak untukmu. Pilih satu kartu tertutup, lalu kunci pilihanmu untuk membukanya.",o,o,o,o,o,B.n7,B.A,o),B.mR],k)
 if(m.gve()&&m.gEC()!=null){s=m.gEC()
 s.toString
-r=A.V7(!0,B.bF,A.bly(),!1,o,new A.qb(s,!1,170,o),B.dE,204,0,B.ayZ,!0,!1,170)
+r=A.V7(!0,B.bF,A.bly(),!1,o,new A.qb(s,!1,170,o),B.dE,255,0,B.ayZ,!0,!1,170)
 q=A.m(A.j(s.h(0,"name")),o,o,o,o,o,B.asp,B.A,o)
 p=A.m(J.c(s.h(0,"kind"),"pasif")?"PASIF":"SEKALI PAKAI",o,o,o,o,o,B.asd,o,o)
 s=s.h(0,"description")
@@ -61139,7 +61139,7 @@ c=c==null?b:c.h(0,"punggungkemampuan")
 if(c==null){c=$.ct
 if(c==null)c=new A.cf(A.w(o,n))
 c=c.a.h(0,a)
-c=c==null?b:c.h(0,"punggungprotagonis")}l.push(A.b4(!0,b,A.e6(!1,new A.cq(g,g,g,g),!0,new A.T(s,b,A.C(A.a([new A.aD(new A.N(b,b,new A.bD(e,e,e,e),new A.cq(f,f,f,f),b,b,B.o),B.M,new A.EB(d,d*1.2,!1,c,B.bF,b),b),B.a8,A.m("Kartu "+j,b,b,b,b,b,B.k1,b,b)],a1),B.l,b,B.d,B.i),b),b,!0,b,b,b,b,new A.aC("ability-slot-"+j,p),b,b,b,b,b,h,b,b,b,b,b,b,b),!1,b,b,!1,b,!1,b,b,b,b,b,b,b,"Kartu kemampuan "+j,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,i,b,b,b,b,b,b))
+c=c==null?b:c.h(0,"punggungprotagonis")}l.push(A.b4(!0,b,A.e6(!1,new A.cq(g,g,g,g),!0,new A.T(s,b,A.C(A.a([new A.aD(new A.N(b,b,new A.bD(e,e,e,e),new A.cq(f,f,f,f),b,b,B.o),B.M,new A.EB(d,d*1.5,!1,c,B.bF,b),b),B.a8,A.m("Kartu "+j,b,b,b,b,b,B.k1,b,b)],a1),B.l,b,B.d,B.i),b),b,!0,b,b,b,b,new A.aC("ability-slot-"+j,p),b,b,b,b,b,h,b,b,b,b,b,b,b),!1,b,b,!1,b,!1,b,b,b,b,b,b,b,"Kartu kemampuan "+j,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,i,b,b,b,b,b,b))
 B.c.G(r,l)}return A.Y(r,B.l,b,B.aV,B.i,0,b)},
 $S:70}
 A.aDs.prototype={
@@ -63811,7 +63811,7 @@ q=i*0.03
 p=A.b9(B.x,2.5)
 o=A.ae(8)
 m=J.c(m.h(0,"kind"),"pasif")?"NONAKTIF":"TERPAKAI"
-B.c.G(c,A.a([s,A.b2(A.f3(B.k,-0.2,A.ai(n,A.m(m,n,n,n,n,n,A.al(n,n,B.x,n,n,n,n,n,n,n,n,i*0.11,n,n,B.aq,n,n,!0,n,1.5,n,n,n,n,n,n),n,n),B.n,n,n,new A.N(n,n,p,o,n,n,B.o),n,n,n,n,new A.B(r,q,r,q),n,n,n)),n,n,n)],d))}return A.ai(n,A.dU(e,A.an(B.C,c,B.r,B.a_)),B.n,n,n,new A.N(n,n,g,h,f,B.a6c,B.o),n,i*1.2,n,n,n,n,n,i)}}
+B.c.G(c,A.a([s,A.b2(A.f3(B.k,-0.2,A.ai(n,A.m(m,n,n,n,n,n,A.al(n,n,B.x,n,n,n,n,n,n,n,n,i*0.11,n,n,B.aq,n,n,!0,n,1.5,n,n,n,n,n,n),n,n),B.n,n,n,new A.N(n,n,p,o,n,n,B.o),n,n,n,n,new A.B(r,q,r,q),n,n,n)),n,n,n)],d))}return A.ai(n,A.dU(e,A.an(B.C,c,B.r,B.a_)),B.n,n,n,new A.N(n,n,g,h,f,B.a6c,B.o),n,i*1.5,n,n,n,n,n,i)}}
 A.b9_.prototype={
 $1(a){var s=this
 return new A.wJ(s.a,s.b,s.c,s.d,s.e,s.f,s.r,s.w,s.x,s.y,s.z,null)},
