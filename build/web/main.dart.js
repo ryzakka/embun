@@ -57100,7 +57100,7 @@ for(s=J.aY(a),r=null;s.u();){q=s.gP()
 if(!J.c(q.h(0,"kind"),"pembaruan"))continue
 q=A.at(q.h(0,"version"))
 p=B.e.d3(q==null?"":q)
-if(p.length===0||A.DY(p,"3.2.5")<=0)continue
+if(p.length===0||A.DY(p,"3.2.6")<=0)continue
 if(r==null||A.DY(p,r)>0)r=p}return r},
 aIY(a,b){var s,r,q,p,o=null
 for(s=J.aY(a),r=o;s.u();){q=s.gP()
@@ -57111,7 +57111,7 @@ q=A.at(q.h(0,"body"))
 r=A.bbQ(q==null?"":q)
 if(r!=null)break}s=r!=null
 q=s?"Unduh pembaruannya di bawah ini.":"Muat ulang halaman atau perbarui aplikasimu."
-q=A.a([new A.k3("info","Versi V"+b+" sudah tersedia (versimu V3.2.5). "+q,B.h,o)],t.p)
+q=A.a([new A.k3("info","Versi V"+b+" sudah tersedia (versimu V3.2.6). "+q,B.h,o)],t.p)
 if(s)q.push(new A.H(B.p2,new A.ca("Unduh V"+b,o,new A.aDL(this,r),B.aC,!0,46,o),o))
 return new A.H(B.Yu,A.C(q,B.N,o,B.d,B.i),o)},
 C(a){var s,r=null,q="assets/bentang",p=A.br().be(q,"balaidesa-dalamsiang")
@@ -57147,10 +57147,10 @@ if(r){a3=d.y.h(0,b)
 if(a3==null){a3=a1||a2||a6===0
 q=a3}else q=a3}else q=!1
 p=a?A.bbQ(a4):c
-o=a&&s.length!==0&&A.DY(s,"3.2.5")>0
+o=a&&s.length!==0&&A.DY(s,"3.2.6")>0
 a3=A.a([],t.s)
 if(s.length!==0){n="v"+s
-a3.push(A.DY(s,"3.2.5")===0?n+" (terpasang)":n)}n=A.at(a5.h(0,"published_at"))
+a3.push(A.DY(s,"3.2.6")===0?n+" (terpasang)":n)}n=A.at(a5.h(0,"published_at"))
 n=A.U0(n==null?"":n)
 m=n==null?c:n.aea()
 a3.push(m==null?"":""+A.ba2(m)+" "+B.a4K[A.ba5(m)-1]+" "+A.HV(m))
@@ -57431,7 +57431,7 @@ j.a=j.b=null
 for(i=J.aY(m);i.u();){l=i.gP()
 h=A.at(J.ba(l,"version"))
 k=B.e.d3(h==null?"":h)
-if(J.bW(k)===0||A.DY(k,"3.2.5")<=0)continue
+if(J.bW(k)===0||A.DY(k,"3.2.6")<=0)continue
 h=j.b
 if(h==null||A.DY(k,h)>0){j.b=k
 j.a=null}if(J.c(k,j.b))if(j.a==null){h=A.at(J.ba(l,"body"))
@@ -57465,7 +57465,7 @@ o=o.a!=null?"Unduh V"+r:"Pembaruan V"+r
 o=A.Cn(1,a,"announcement",0,o,this.ga3g(),1)
 r=a?0:70
 q=t.p
-return new A.H(B.iW,A.C(A.a([o,new A.H(new A.B(r,0,0,0),A.X(A.a([A.m("Versi baru \xb7 versimu V3.2.5",p,p,p,p,p,B.anT,p,p),B.b1,A.e8(!1,p,!0,B.ack,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aPJ(this),p,p,p,p,p,p,p)],q),B.l,p,B.d,B.u,0,p),p)],q),s,p,B.d,B.u),p)},
+return new A.H(B.iW,A.C(A.a([o,new A.H(new A.B(r,0,0,0),A.X(A.a([A.m("Versi baru \xb7 versimu V3.2.6",p,p,p,p,p,B.anT,p,p),B.b1,A.e8(!1,p,!0,B.ack,p,!0,p,p,p,p,p,p,p,p,p,p,new A.aPJ(this),p,p,p,p,p,p,p)],q),B.l,p,B.d,B.u,0,p),p)],q),s,p,B.d,B.u),p)},
 zU(){var s=0,r=A.q(t.H),q=this,p
 var $async$zU=A.r(function(a,b){if(a===1)return A.n(b,r)
 for(;;)switch(s){case 0:A.df()
@@ -57543,7 +57543,7 @@ A.c7(s,!1).hk(A.EN(B.Li,B.uQ,t.H))},
 aCa(){var s=this.c
 s.toString
 return A.bla(s)},
-aJL(){var s=this,r=null,q=s.cy&&s.c.is(t.cY)==null?new A.aPL(s):r,p=A.af(8),o=s.ch>0,n=o?"V3.2.5  \xb7  ada kabar baru":"V3.2.5"
+aJL(){var s=this,r=null,q=s.cy&&s.c.is(t.cY)==null?new A.aPL(s):r,p=A.af(8),o=s.ch>0,n=o?"V3.2.6  \xb7  ada kabar baru":"V3.2.6"
 return A.aT(8,A.e8(!1,p,!0,new A.H(B.wK,A.m(n,r,r,r,r,r,A.ak(r,r,o?B.h:B.aZ,r,r,r,r,r,r,r,r,11.5,r,r,r,r,r,!0,r,1.2,r,r,r,B.q7,r,r),r,r),r),r,!0,r,r,r,r,r,r,r,r,r,q,s.ga3c(),r,r,r,r,r,r,r),r,r,r,12,r,r)},
 azQ(){return A.b1(new A.aPh(this))},
 zZ(a,b){return this.aDu(a,b)},
@@ -57782,7 +57782,7 @@ o=p*1.2
 n=t.p
 q=A.ae(A.by(A.bn(B.k,new A.U(p*1.3,p,A.ao(B.k,A.a([A.ah(k,k,B.n,k,k,new A.N(k,k,k,k,k,new A.bk(B.k,0.5,B.w,k,0,A.a([B.h.l(0.18+0.12*r),B.h.l(0)],t.O),k,k),B.aG),k,o,k,k,k,k,k,o),new A.c6(A.br().be("assets/logo","ikon-transparent"),B.bL,B.k,1000,k)],n),B.t,B.Z),k),0.88+0.12*q),new A.e(0,i*5)),q)
 i=l.d
-i=A.ae(A.by(A.m("BALAI PERTEMUAN DESA V3.2.5",k,k,k,k,k,A.ak(k,k,B.h.l(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.ja,k,k),k,k),new A.e(0,(1-i)*10)),i)
+i=A.ae(A.by(A.m("BALAI PERTEMUAN DESA V3.2.6",k,k,k,k,k,A.ak(k,k,B.h.l(0.9),k,k,k,k,k,k,k,k,12,k,k,k,k,k,!0,k,4,k,k,k,B.ja,k,k),k,k),new A.e(0,(1-i)*10)),i)
 o=l.e
 p=j.cy
 m=p?"Mulai":"Memuat..."
@@ -80735,7 +80735,7 @@ A.a4t.prototype={
 ab(){this.an()
 $.au.p3$.push(new A.aOJ(this))},
 C(a){var s=null
-return A.cL(!1,B.Y,!0,s,A.l2(A.dk(!0,new A.bj(B.aj,s,s,new A.H(B.Xg,A.dz(new A.aOI(),A.m("V3.2.5",s,s,s,s,s,A.ak(s,s,B.h.l(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.F,B.cC,s,s,new A.ax(0,1,t.Y),t.i),s),s),B.a4,!0),s),B.n,B.bq,0,s,s,s,s,s,B.aL)}}
+return A.cL(!1,B.Y,!0,s,A.l2(A.dk(!0,new A.bj(B.aj,s,s,new A.H(B.Xg,A.dz(new A.aOI(),A.m("V3.2.6",s,s,s,s,s,A.ak(s,s,B.h.l(0.55),s,s,s,s,s,s,s,s,12,s,s,s,s,s,!0,s,4,s,s,s,s,s,s),s,s),B.F,B.cC,s,s,new A.ax(0,1,t.Y),t.i),s),s),B.a4,!0),s),B.n,B.bq,0,s,s,s,s,s,B.aL)}}
 A.aOJ.prototype={
 $1(a){return this.aeU(a)},
 aeU(a){var s=0,r=A.q(t.H),q,p=this,o
@@ -140567,7 +140567,7 @@ B.ja=s([B.rc],t.r)
 B.anx=new A.l(!0,B.h,null,null,null,null,20,B.X,null,0.8,null,null,null,null,null,null,null,null,null,null,null,null,B.ja,null,null,null)
 B.arn=new A.a9("Pengumuman",null,B.anx,null,null,null,B.T,1,null,null)
 B.dy=new A.l(!0,B.aV,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.asM=new A.a9("Log pembaruan  \xb7  versimu V3.2.5",null,B.dy,null,null,null,null,null,null,null)
+B.asM=new A.a9("Log pembaruan  \xb7  versimu V3.2.6",null,B.dy,null,null,null,null,null,null,null)
 B.a8b=s([B.arn,B.asM],t.p)
 B.Vs=new A.hX(B.U,B.d,B.i,B.I,null,B.cg,null,0,B.a8b,null)
 B.a_a=new A.cJ(1,B.au,B.Vs,null)
