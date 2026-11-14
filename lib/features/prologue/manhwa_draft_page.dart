@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/lobby_repository.dart';
@@ -37,7 +38,7 @@ class ManhwaDraftPage extends StatefulWidget {
 }
 
 class _ManhwaDraftPageState extends State<ManhwaDraftPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   Map<String, dynamic>? _state;
   String? _selected, _error;
   bool _busy = false,
@@ -51,6 +52,21 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
     vsync: this,
     duration: const Duration(milliseconds: 2800),
   )..repeat();
+
+  // Gerak ambient lambat (bara api) dan dua momen sinematik.
+  late final AnimationController _ambient = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 16),
+  )..repeat();
+  late final AnimationController _burst = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1900),
+  );
+  String? _introStage, _introText, _introSub;
 
   // Hitung mundur lokal supaya cincin waktu halus di antara dua polling.
   final ValueNotifier<int?> _left = ValueNotifier<int?>(null);
@@ -73,6 +89,9 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
     _timer?.cancel();
     _clock?.cancel();
     _fx.dispose();
+    _ambient.dispose();
+    _burst.dispose();
+    _intro.dispose();
     _left.dispose();
     super.dispose();
   }
@@ -134,6 +153,13 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
                 : (state['own'] as Map?)?['outfit_card'] == null) &&
             items.any((item) => item['id'] == _selected && item['taken'] != true);
     _syncClock(state);
+    final stageNow = '${state['stage']}';
+    if (state['status'] == 'prologue' && _introStage != stageNow) {
+      _introStage = stageNow;
+      _introText = characters ? 'TAHAP 1' : 'TAHAP 2';
+      _introSub = characters ? 'PILIH TOKOHMU' : 'TENTUKAN PENAMPILAN';
+      _intro.forward(from: 0);
+    }
     setState(() {
       _state = state;
       if (!canKeepSelection) _selected = null;
@@ -186,6 +212,8 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
           ? await widget.repo.chooseManhwaCharacter(widget.gameId, selected)
           : await widget.repo.chooseManhwaOutfit(widget.gameId, selected);
       Sfx.I.click(Snd.clickTung);
+      HapticFeedback.heavyImpact();
+      _burst.forward(from: 0);
       _accept(state);
     } catch (e) {
       if (mounted) setState(() => _error = errMsg(e));
@@ -232,6 +260,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
   void _select(String id) {
     if (_selected == id) return;
     Sfx.I.click(Snd.click2);
+    HapticFeedback.selectionClick();
     setState(() => _selected = id);
   }
 
@@ -326,7 +355,35 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            _StageBackdrop(accent: accent),
+            _StageBackdrop(accent: accent, t: _ambient),
+            if (accentChar != null && manhwaNames[accentChar] != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      child: Padding(
+                        key: ValueKey(accentChar),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            manhwaNames[accentChar]!.toUpperCase(),
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 150,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 6,
+                              color: accent.withValues(alpha: 0.08),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             SafeArea(
               child: s == null
                   ? Center(
@@ -467,6 +524,88 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
                 ),
               ),
             ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _burst,
+                  builder: (_, _) {
+                    final t = _burst.value;
+                    if (t <= 0 || t >= 1) return const SizedBox.shrink();
+                    return CustomPaint(
+                      painter: _BurstPainter(
+                        Curves.easeOutCubic.transform(t),
+                        accent,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _intro,
+                  builder: (_, _) {
+                    final t = _intro.value;
+                    final text = _introText;
+                    if (text == null || t <= 0 || t >= 1) {
+                      return const SizedBox.shrink();
+                    }
+                    final inT = Curves.easeOutCubic.transform(
+                      (t / 0.25).clamp(0.0, 1.0).toDouble(),
+                    );
+                    final outT = ((t - 0.7) / 0.3).clamp(0.0, 1.0).toDouble();
+                    return Opacity(
+                      opacity: inT * (1 - outT),
+                      child: ColoredBox(
+                        color: const Color(0xB307050E),
+                        child: Center(
+                          child: Transform.scale(
+                            scale: 1.25 - 0.25 * inT,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  text,
+                                  style: TextStyle(
+                                    fontSize: 46,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 9,
+                                    color: EmbunColors.cream,
+                                    shadows: [
+                                      Shadow(
+                                        color: accent.withValues(alpha: 0.8),
+                                        blurRadius: 28,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: 240 * inT,
+                                  height: 2,
+                                  color: accent,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _introSub ?? '',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 5,
+                                    color: accent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -479,8 +618,9 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
 // ======================================================================
 
 class _StageBackdrop extends StatelessWidget {
-  const _StageBackdrop({required this.accent});
+  const _StageBackdrop({required this.accent, required this.t});
   final Color accent;
+  final Animation<double> t;
 
   @override
   Widget build(BuildContext context) {
@@ -499,17 +639,25 @@ class _StageBackdrop extends StatelessWidget {
         TweenAnimationBuilder<Color?>(
           tween: ColorTween(end: accent),
           duration: const Duration(milliseconds: 700),
-          builder: (_, c, _) => DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, -0.85),
-                radius: 1.15,
-                colors: [
-                  (c ?? accent).withValues(alpha: 0.30),
-                  Colors.transparent,
-                ],
+          builder: (_, c, _) => Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.85),
+                    radius: 1.15,
+                    colors: [
+                      (c ?? accent).withValues(alpha: 0.34),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
               ),
-            ),
+              RepaintBoundary(
+                child: CustomPaint(painter: _EmberPainter(t, c ?? accent)),
+              ),
+            ],
           ),
         ),
         const RepaintBoundary(child: CustomPaint(painter: _ComicPainter())),
@@ -928,6 +1076,7 @@ class _DraftCard extends StatefulWidget {
     required this.fx,
     required this.label,
     this.selected = false,
+    this.dimmed = false,
     this.taken = false,
     this.takenBy,
     this.onTap,
@@ -936,7 +1085,7 @@ class _DraftCard extends StatefulWidget {
   final Color accent;
   final Animation<double> fx;
   final String label;
-  final bool selected, taken;
+  final bool selected, taken, dimmed;
   final String? takenBy;
   final VoidCallback? onTap;
 
@@ -1131,14 +1280,30 @@ class _DraftCardState extends State<_DraftCard> {
               onTapUp: (_) => setState(() => _down = false),
               onTapCancel: () => setState(() => _down = false),
               onTap: w.onTap,
-              child: AnimatedScale(
-                scale: sel ? 1.05 : (_down ? 0.96 : 1),
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutBack,
-                child: Transform(
-                  alignment: Alignment.center,
-                  transform: tilt,
-                  child: card,
+              child: AnimatedOpacity(
+                opacity: w.dimmed ? 0.5 : 1,
+                duration: const Duration(milliseconds: 260),
+                child: AnimatedScale(
+                  scale: sel ? 1.06 : (w.dimmed ? 0.95 : (_down ? 0.96 : 1)),
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutBack,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: tilt,
+                    child: sel
+                        ? AnimatedBuilder(
+                      animation: w.fx,
+                      builder: (_, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          -5 * math.sin(w.fx.value * math.pi * 2),
+                        ),
+                        child: child,
+                      ),
+                      child: card,
+                    )
+                        : card,
+                  ),
                 ),
               ),
             ),
@@ -1213,6 +1378,7 @@ class _CharacterGrid extends StatelessWidget {
                 fx: fx,
                 label: '${item['name']}${taken ? ', sudah dipilih' : ''}',
                 selected: selectedId == id,
+                dimmed: selectedId != null && selectedId != id && !taken,
                 taken: taken,
                 takenBy: takenBy,
                 onTap: !enabled || taken ? null : () => onSelect(id),
@@ -1448,6 +1614,17 @@ class _LockedHero extends StatelessWidget {
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
                   children: [
+                    Positioned(
+                      left: -w * 1.3,
+                      right: -w * 1.3,
+                      top: -w * 1.0,
+                      bottom: -w * 1.0,
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _RaysPainter(fx.value, accent),
+                        ),
+                      ),
+                    ),
                     CardArt(
                       path: path,
                       width: w,
@@ -1646,4 +1823,115 @@ class _BottomBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ======================================================================
+// Painter tambahan
+// ======================================================================
+
+/// Bara cahaya yang melayang naik pelan-pelan.
+class _EmberPainter extends CustomPainter {
+  _EmberPainter(this.t, this.color) : super(repaint: t);
+  final Animation<double> t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = math.Random(11);
+    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    for (var i = 0; i < 28; i++) {
+      final x0 = rnd.nextDouble();
+      final speed = 1 + rnd.nextInt(3);
+      final phase = rnd.nextDouble();
+      final r = 1 + rnd.nextDouble() * 2.4;
+      final p = (phase + t.value * speed) % 1.0;
+      final x = size.width * x0 + math.sin((p + phase) * math.pi * 2) * 18;
+      final y = size.height * (1 - p);
+      paint.color = Color.lerp(color, Colors.white, 0.35)!
+          .withValues(alpha: math.sin(p * math.pi) * 0.6);
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_EmberPainter old) => old.color != color;
+}
+
+/// Ledakan singkat saat tokoh atau pakaian dikunci.
+class _BurstPainter extends CustomPainter {
+  _BurstPainter(this.e, this.color);
+  final double e;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.5);
+    final reach = size.longestSide * 0.75;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = Colors.white.withValues(alpha: (1 - e) * 0.32),
+    );
+    canvas.drawCircle(
+      c,
+      reach * e,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2 + 10 * (1 - e)
+        ..color = color.withValues(alpha: 1 - e),
+    );
+    canvas.drawCircle(
+      c,
+      reach * e * 0.6,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1 + 5 * (1 - e)
+        ..color = Colors.white.withValues(alpha: (1 - e) * 0.8),
+    );
+    final spark = Paint()
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = color.withValues(alpha: 1 - e);
+    for (var i = 0; i < 28; i++) {
+      final a = i / 28 * math.pi * 2;
+      final d = Offset(math.cos(a), math.sin(a));
+      canvas.drawLine(c + d * (reach * e * 0.7), c + d * (reach * e * 0.95), spark);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BurstPainter o) => o.e != e || o.color != color;
+}
+
+/// Sinar yang berputar pelan di belakang kartu yang terkunci.
+class _RaysPainter extends CustomPainter {
+  _RaysPainter(this.t, this.color);
+  final double t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.longestSide / 2;
+    const n = 12;
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [color.withValues(alpha: 0.42), color.withValues(alpha: 0)],
+      ).createShader(Rect.fromCircle(center: c, radius: r));
+    final spin = t * math.pi * 2 / n;
+    for (var i = 0; i < n; i++) {
+      final a = i / n * math.pi * 2 + spin;
+      const w = 0.07;
+      canvas.drawPath(
+        Path()
+          ..moveTo(c.dx, c.dy)
+          ..lineTo(c.dx + math.cos(a - w) * r, c.dy + math.sin(a - w) * r)
+          ..lineTo(c.dx + math.cos(a + w) * r, c.dy + math.sin(a + w) * r)
+          ..close(),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RaysPainter o) => o.t != t || o.color != color;
 }
