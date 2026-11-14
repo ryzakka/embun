@@ -14,6 +14,15 @@ import 'prologue_page.dart';
 
 /// Warna aksen tiap tokoh: dipakai untuk cahaya latar, glow kartu, dan cincin.
 const _accents = <String, Color>{
+  'arystanbeknurlanuly': Color(0xFFD0AE75),
+  'fujiwaraaoi': Color(0xFFE99EB2),
+  'junghyunwoo': Color(0xFF5D9ACB),
+  'kurokawaren': Color(0xFF9D85C1),
+  'linzixuan': Color(0xFF77B6B0),
+  'suqinghuan': Color(0xFFAA8BD5),
+  'xuwenjing': Color(0xFFD7A4BC),
+  'zhangmingzhe': Color(0xFF718BA8),
+
   'baekseoyeon': Color(0xFF9AA8C4),
   'chahyunjae': Color(0xFFE0645A),
   'chaminhyuk': Color(0xFFE87BB0),
@@ -147,11 +156,11 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
         .cast<Map>();
     final canKeepSelection =
         state['status'] == 'prologue' &&
-            _state?['stage'] == state['stage'] &&
-            (characters
-                ? state['turn'] == widget.repo.myId
-                : (state['own'] as Map?)?['outfit_card'] == null) &&
-            items.any((item) => item['id'] == _selected && item['taken'] != true);
+        _state?['stage'] == state['stage'] &&
+        (characters
+            ? state['turn'] == widget.repo.myId
+            : (state['own'] as Map?)?['outfit_card'] == null) &&
+        items.any((item) => item['id'] == _selected && item['taken'] != true);
     _syncClock(state);
     final stageNow = '${state['stage']}';
     if (state['status'] == 'prologue' && _introStage != stageNow) {
@@ -178,12 +187,12 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
           MaterialPageRoute(
             builder: (_) => state['status'] == 'playing'
                 ? PrologueFlow(
-              gameId: widget.gameId,
-              repo: widget.repo,
-              characterTheme: 'manhwa',
-              resume: !_wasDrafting,
-              antagonistCount: (state['antagonist_count'] as int?) ?? 1,
-            )
+                    gameId: widget.gameId,
+                    repo: widget.repo,
+                    characterTheme: 'manhwa',
+                    resume: !_wasDrafting,
+                    antagonistCount: (state['antagonist_count'] as int?) ?? 1,
+                  )
                 : const LobbyPage(startAtMenu: true),
           ),
         );
@@ -299,10 +308,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
         if ('${it['id']}' == '$cid') return protagonistPath('${it['preview']}');
       }
     }
-    for (final o in manhwaOutfits.values) {
-      if (o.characterId == cid) return protagonistPath(o.id);
-    }
-    return null;
+    return protagonistPath(manhwaPrimaryCard('$cid'));
   }
 
   // ---------------------------------------------------------------- tampilan
@@ -334,13 +340,11 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
         : locked
         ? manhwaOutfits['${own?['outfit_card']}']?.characterId
         : (!characters && items.isNotEmpty
-        ? manhwaOutfits['${items.first['id']}']?.characterId
-        : null);
+              ? manhwaOutfits['${items.first['id']}']?.characterId
+              : null);
     final accent = _accentFor(accentChar);
 
-    final selItem = items
-        .where((it) => '${it['id']}' == _selected)
-        .firstOrNull;
+    final selItem = items.where((it) => '${it['id']}' == _selected).firstOrNull;
     final selLabel = selItem == null
         ? null
         : '${characters ? selItem['name'] : selItem['label']}';
@@ -387,142 +391,167 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
             SafeArea(
               child: s == null
                   ? Center(
-                child: _error == null
-                    ? const EmbunLoading(text: 'Memuat pilihan…')
-                    : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_error!, textAlign: TextAlign.center),
-                    TextButton(
-                      onPressed: _load,
-                      child: const Text('Coba lagi'),
-                    ),
-                  ],
-                ),
-              )
+                      child: _error == null
+                          ? const EmbunLoading(text: 'Memuat pilihan…')
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_error!, textAlign: TextAlign.center),
+                                TextButton(
+                                  onPressed: _load,
+                                  child: const Text('Coba lagi'),
+                                ),
+                              ],
+                            ),
+                    )
                   : Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: Column(
-                    children: [
-                      _DraftHeader(
-                        accent: accent,
-                        eyebrow: characters
-                            ? 'TAHAP 1 · TOKOH'
-                            : 'TAHAP 2 · PAKAIAN',
-                        title: characters
-                            ? (mine ? 'GILIRANMU' : 'MENUNGGU GILIRAN')
-                            : (locked ? 'TERKUNCI' : 'PILIH PAKAIAN'),
-                        subtitle: characters
-                            ? (mine
-                            ? 'Pilih tokoh yang akan kamu mainkan'
-                            : '$turnName sedang memilih tokoh')
-                            : (locked
-                            ? 'Pakaianmu sudah terkunci'
-                            : 'Tentukan penampilan tokohmu'),
-                        left: _left,
-                        maxSecs: _maxSecs,
-                        fx: _fx,
-                        isHost: s['host_id'] == widget.repo.myId,
-                        busy: _busy,
-                        onCancel: _cancelRoom,
-                        onInfo: () => _showRules(characters),
-                      ),
-                      _PlayerStrip(
-                        players: players,
-                        characters: characters,
-                        turnId: s['turn'],
-                        myId: widget.repo.myId,
-                        accent: accent,
-                        fx: _fx,
-                        avatarOf: (p) => _avatarPath(p, characters, items),
-                      ),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _error!,
-                                  style: const TextStyle(
-                                    color: Colors.orangeAccent,
-                                    fontSize: 13,
-                                  ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1100),
+                        child: LayoutBuilder(
+                          builder: (context, box) {
+                            final scale = MediaQuery.textScalerOf(
+                              context,
+                            ).scale(1);
+                            return SingleChildScrollView(
+                              child: SizedBox(
+                                height: math.max(
+                                  box.maxHeight,
+                                  560 * math.max(1.0, scale),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _DraftHeader(
+                                      accent: accent,
+                                      eyebrow: characters
+                                          ? 'TAHAP 1 · TOKOH'
+                                          : 'TAHAP 2 · PAKAIAN',
+                                      title: characters
+                                          ? (mine
+                                                ? 'GILIRANMU'
+                                                : 'MENUNGGU GILIRAN')
+                                          : (locked
+                                                ? 'TERKUNCI'
+                                                : 'PILIH PAKAIAN'),
+                                      subtitle: characters
+                                          ? (mine
+                                                ? 'Pilih tokoh yang akan kamu mainkan'
+                                                : '$turnName sedang memilih tokoh')
+                                          : (locked
+                                                ? 'Pakaianmu sudah terkunci'
+                                                : 'Tentukan penampilan tokohmu'),
+                                      left: _left,
+                                      maxSecs: _maxSecs,
+                                      fx: _fx,
+                                      isHost: s['host_id'] == widget.repo.myId,
+                                      busy: _busy,
+                                      onCancel: _cancelRoom,
+                                      onInfo: () => _showRules(characters),
+                                    ),
+                                    _PlayerStrip(
+                                      players: players,
+                                      characters: characters,
+                                      turnId: s['turn'],
+                                      myId: widget.repo.myId,
+                                      accent: accent,
+                                      fx: _fx,
+                                      avatarOf: (p) =>
+                                          _avatarPath(p, characters, items),
+                                    ),
+                                    if (_error != null)
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          18,
+                                          4,
+                                          18,
+                                          0,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                _error!,
+                                                style: const TextStyle(
+                                                  color: Colors.orangeAccent,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                            TextButton(
+                                              onPressed: _busy ? null : _load,
+                                              child: const Text('Muat ulang'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: locked
+                                          ? _LockedHero(
+                                              path: protagonistPath(
+                                                '${own!['outfit_card']}',
+                                              ),
+                                              accent: accent,
+                                              fx: _fx,
+                                              waiting: [
+                                                for (final p in players)
+                                                  if (p['outfit_card'] == null)
+                                                    '${p['name']}',
+                                              ],
+                                            )
+                                          : items.isEmpty
+                                          ? const Center(
+                                              child: Text('Belum ada pilihan.'),
+                                            )
+                                          : characters
+                                          ? _CharacterGrid(
+                                              items: items,
+                                              players: players,
+                                              selectedId: _selected,
+                                              enabled: mine && !_busy,
+                                              accentOf: _accentFor,
+                                              fx: _fx,
+                                              onSelect: _select,
+                                            )
+                                          : LayoutBuilder(
+                                              builder: (_, c) {
+                                                final f = c.maxWidth < 600
+                                                    ? 0.62
+                                                    : c.maxWidth < 900
+                                                    ? 0.42
+                                                    : 0.3;
+                                                return _OutfitCarousel(
+                                                  key: ValueKey('car-$f'),
+                                                  fraction: f,
+                                                  items: items,
+                                                  selectedId: _selected,
+                                                  enabled: mine && !_busy,
+                                                  accent: accent,
+                                                  fx: _fx,
+                                                  onSelect: _select,
+                                                );
+                                              },
+                                            ),
+                                    ),
+                                    if (!locked)
+                                      _BottomBar(
+                                        mine: mine,
+                                        busy: _busy,
+                                        characters: characters,
+                                        label: selLabel,
+                                        previewPath: selPath,
+                                        turnName: turnName,
+                                        accent: accent,
+                                        onConfirm: _selected == null || _busy
+                                            ? null
+                                            : _confirm,
+                                      ),
+                                  ],
                                 ),
                               ),
-                              TextButton(
-                                onPressed: _busy ? null : _load,
-                                child: const Text('Muat ulang'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      Expanded(
-                        child: locked
-                            ? _LockedHero(
-                          path: protagonistPath(
-                            '${own!['outfit_card']}',
-                          ),
-                          accent: accent,
-                          fx: _fx,
-                          waiting: [
-                            for (final p in players)
-                              if (p['outfit_card'] == null)
-                                '${p['name']}',
-                          ],
-                        )
-                            : items.isEmpty
-                            ? const Center(
-                          child: Text('Belum ada pilihan.'),
-                        )
-                            : characters
-                            ? _CharacterGrid(
-                          items: items,
-                          players: players,
-                          selectedId: _selected,
-                          enabled: mine && !_busy,
-                          accentOf: _accentFor,
-                          fx: _fx,
-                          onSelect: _select,
-                        )
-                            : LayoutBuilder(
-                          builder: (_, c) {
-                            final f = c.maxWidth < 600
-                                ? 0.62
-                                : c.maxWidth < 900
-                                ? 0.42
-                                : 0.3;
-                            return _OutfitCarousel(
-                              key: ValueKey('car-$f'),
-                              fraction: f,
-                              items: items,
-                              selectedId: _selected,
-                              enabled: mine && !_busy,
-                              accent: accent,
-                              fx: _fx,
-                              onSelect: _select,
                             );
                           },
                         ),
                       ),
-                      if (!locked)
-                        _BottomBar(
-                          mine: mine,
-                          busy: _busy,
-                          characters: characters,
-                          label: selLabel,
-                          previewPath: selPath,
-                          turnName: turnName,
-                          accent: accent,
-                          onConfirm: _selected == null || _busy
-                              ? null
-                              : _confirm,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
             ),
             Positioned.fill(
               child: IgnorePointer(
@@ -801,10 +830,10 @@ class _DraftHeader extends StatelessWidget {
             builder: (_, v, _) => v == null
                 ? const SizedBox.shrink()
                 : _TimerRing(
-              left: v,
-              total: math.max(maxSecs, math.max(v, 1)),
-              fx: fx,
-            ),
+                    left: v,
+                    total: math.max(maxSecs, math.max(v, 1)),
+                    fx: fx,
+                  ),
           ),
           IconButton(
             tooltip: 'Aturan',
@@ -824,11 +853,7 @@ class _DraftHeader extends StatelessWidget {
 }
 
 class _TimerRing extends StatelessWidget {
-  const _TimerRing({
-    required this.left,
-    required this.total,
-    required this.fx,
-  });
+  const _TimerRing({required this.left, required this.total, required this.fx});
   final int left, total;
   final Animation<double> fx;
 
@@ -842,7 +867,11 @@ class _TimerRing extends StatelessWidget {
             ? 0.5 + 0.5 * math.sin(fx.value * math.pi * 4)
             : 0.0;
         final color = urgent
-            ? Color.lerp(EmbunColors.gold, EmbunColors.blood, 0.4 + 0.6 * pulse)!
+            ? Color.lerp(
+                EmbunColors.gold,
+                EmbunColors.blood,
+                0.4 + 0.6 * pulse,
+              )!
             : EmbunColors.gold;
         return Transform.scale(
           scale: 1 + 0.06 * pulse,
@@ -995,12 +1024,14 @@ class _PlayerChip extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: isTurn
                       ? [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.35 + 0.35 * pulse),
-                      blurRadius: 8 + 10 * pulse,
-                      spreadRadius: 1 + 2 * pulse,
-                    ),
-                  ]
+                          BoxShadow(
+                            color: accent.withValues(
+                              alpha: 0.35 + 0.35 * pulse,
+                            ),
+                            blurRadius: 8 + 10 * pulse,
+                            spreadRadius: 1 + 2 * pulse,
+                          ),
+                        ]
                       : null,
                 ),
                 child: child,
@@ -1292,16 +1323,16 @@ class _DraftCardState extends State<_DraftCard> {
                     transform: tilt,
                     child: sel
                         ? AnimatedBuilder(
-                      animation: w.fx,
-                      builder: (_, child) => Transform.translate(
-                        offset: Offset(
-                          0,
-                          -5 * math.sin(w.fx.value * math.pi * 2),
-                        ),
-                        child: child,
-                      ),
-                      child: card,
-                    )
+                            animation: w.fx,
+                            builder: (_, child) => Transform.translate(
+                              offset: Offset(
+                                0,
+                                -5 * math.sin(w.fx.value * math.pi * 2),
+                              ),
+                              child: child,
+                            ),
+                            child: card,
+                          )
                         : card,
                   ),
                 ),
@@ -1426,13 +1457,10 @@ class _OutfitCarouselState extends State<_OutfitCarousel> {
   void initState() {
     super.initState();
     final idx = widget.items.indexWhere(
-          (e) => '${e['id']}' == widget.selectedId,
+      (e) => '${e['id']}' == widget.selectedId,
     );
     _page = idx < 0 ? 0 : idx;
-    _pc = PageController(
-      initialPage: _page,
-      viewportFraction: widget.fraction,
-    );
+    _pc = PageController(initialPage: _page, viewportFraction: widget.fraction);
   }
 
   @override
@@ -1497,18 +1525,18 @@ class _OutfitCarouselState extends State<_OutfitCarousel> {
                           onTap: !widget.enabled
                               ? null
                               : () {
-                            if (i != _page) {
-                              _pc.animateToPage(
-                                i,
-                                duration: const Duration(
-                                  milliseconds: 320,
-                                ),
-                                curve: Curves.easeOutCubic,
-                              );
-                            } else {
-                              widget.onSelect(id);
-                            }
-                          },
+                                  if (i != _page) {
+                                    _pc.animateToPage(
+                                      i,
+                                      duration: const Duration(
+                                        milliseconds: 320,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                    );
+                                  } else {
+                                    widget.onSelect(id);
+                                  }
+                                },
                         ),
                       ),
                     );
@@ -1741,86 +1769,89 @@ class _BottomBar extends StatelessWidget {
       ),
       child: mine
           ? Row(
-        children: [
-          Container(
-            width: 40,
-            height: 60,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: label == null ? Colors.white12 : accent,
-                width: 1.5,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: previewPath == null
-                  ? const ColoredBox(color: Color(0x22FFFFFF))
-                  : GameImage(path: previewPath, cacheWidth: 120),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  characters ? 'TOKOHMU' : 'PAKAIANMU',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    letterSpacing: 2.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white54,
+                Container(
+                  width: 40,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: label == null ? Colors.white12 : accent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: previewPath == null
+                        ? const ColoredBox(color: Color(0x22FFFFFF))
+                        : GameImage(path: previewPath, cacheWidth: 120),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  label ?? 'Belum dipilih',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: label == null
-                        ? Colors.white38
-                        : EmbunColors.cream,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        characters ? 'TOKOHMU' : 'PAKAIANMU',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 2.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white54,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        label ?? 'Belum dipilih',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: label == null
+                              ? Colors.white38
+                              : EmbunColors.cream,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  flex: 2,
+                  child: EmbunButton(
+                    label: busy
+                        ? 'Mengunci…'
+                        : characters
+                        ? 'Kunci tokoh'
+                        : 'Kunci pakaian',
+                    icon: 'lock',
+                    onPressed: onConfirm,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Menunggu $turnName memilih tokoh…',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          EmbunButton(
-            label: busy
-                ? 'Mengunci…'
-                : characters
-                ? 'Kunci tokoh'
-                : 'Kunci pakaian',
-            icon: 'lock',
-            onPressed: onConfirm,
-          ),
-        ],
-      )
-          : Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              'Menunggu $turnName memilih tokoh…',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1838,7 +1869,8 @@ class _EmberPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rnd = math.Random(11);
-    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    final paint = Paint()
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
     for (var i = 0; i < 28; i++) {
       final x0 = rnd.nextDouble();
       final speed = 1 + rnd.nextInt(3);
@@ -1847,8 +1879,11 @@ class _EmberPainter extends CustomPainter {
       final p = (phase + t.value * speed) % 1.0;
       final x = size.width * x0 + math.sin((p + phase) * math.pi * 2) * 18;
       final y = size.height * (1 - p);
-      paint.color = Color.lerp(color, Colors.white, 0.35)!
-          .withValues(alpha: math.sin(p * math.pi) * 0.6);
+      paint.color = Color.lerp(
+        color,
+        Colors.white,
+        0.35,
+      )!.withValues(alpha: math.sin(p * math.pi) * 0.6);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
   }
@@ -1894,7 +1929,11 @@ class _BurstPainter extends CustomPainter {
     for (var i = 0; i < 28; i++) {
       final a = i / 28 * math.pi * 2;
       final d = Offset(math.cos(a), math.sin(a));
-      canvas.drawLine(c + d * (reach * e * 0.7), c + d * (reach * e * 0.95), spark);
+      canvas.drawLine(
+        c + d * (reach * e * 0.7),
+        c + d * (reach * e * 0.95),
+        spark,
+      );
     }
   }
 

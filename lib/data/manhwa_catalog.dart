@@ -8,23 +8,57 @@ class ManhwaOutfit {
 }
 
 const manhwaNames = <String, String>{
+  "arystanbeknurlanuly": "Arystanbek Nurlanuly",
   "baekseoyeon": "Baek Seo-yeon",
   "chahyunjae": "Cha Hyun-jae",
   "chaminhyuk": "Cha Min-hyuk",
   "choinari": "Choi Na-ri",
+  "fujiwaraaoi": "Fujiwara Aoi",
   "hanseoah": "Han Seo-ah",
   "hanseoyul": "Han Seo-yul",
+  "junghyunwoo": "Jung Hyun-woo",
   "kangjiwoo": "Kang Ji-woo",
+  "kimdasol": "Kim Da-sol",
+  "kurokawaren": "Kurokawa Ren",
   "kwontaehyuk": "Kwon Tae-hyuk",
   "leejunseo": "Lee Jun-seo",
-  "kimdasol": "Kim Da-sol",
+  "linzixuan": "Lin Zixuan",
   "namseojun": "Nam Seo-jun",
+  "suqinghuan": "Su Qinghuan",
+  "xuwenjing": "Xu Wenjing",
+  "zhangmingzhe": "Zhang Mingzhe",
 };
+
 const manhwaOutfits = <String, ManhwaOutfit>{
-  "baekseoyeon-jaketabuabuelegan": ManhwaOutfit(
-    "baekseoyeon-jaketabuabuelegan",
+  "arystanbeknurlanuly-utama": ManhwaOutfit(
+    "arystanbeknurlanuly-utama",
+    "arystanbeknurlanuly",
+    "Kartu utama",
+  ),
+  "arystanbeknurlanuly-berkuda": ManhwaOutfit(
+    "arystanbeknurlanuly-berkuda",
+    "arystanbeknurlanuly",
+    "Berkuda",
+  ),
+  "arystanbeknurlanuly-kaoskampus": ManhwaOutfit(
+    "arystanbeknurlanuly-kaoskampus",
+    "arystanbeknurlanuly",
+    "Kaos kampus",
+  ),
+  "arystanbeknurlanuly-kaosolahraga": ManhwaOutfit(
+    "arystanbeknurlanuly-kaosolahraga",
+    "arystanbeknurlanuly",
+    "Kaos olahraga",
+  ),
+  "arystanbeknurlanuly-kemejahitam": ManhwaOutfit(
+    "arystanbeknurlanuly-kemejahitam",
+    "arystanbeknurlanuly",
+    "Kemeja hitam",
+  ),
+  "baekseoyeon-utama": ManhwaOutfit(
+    "baekseoyeon-utama",
     "baekseoyeon",
-    "Jaket abu-abu",
+    "Kartu utama",
   ),
   "baekseoyeon-kaoshitamtamanponsel": ManhwaOutfit(
     "baekseoyeon-kaoshitamtamanponsel",
@@ -36,15 +70,10 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "baekseoyeon",
     "Sweter hitam · kafe",
   ),
-  "chahyunjae-jaketbasket": ManhwaOutfit(
-    "chahyunjae-jaketbasket",
+  "chahyunjae-utama": ManhwaOutfit(
+    "chahyunjae-utama",
     "chahyunjae",
-    "Jaket basket",
-  ),
-  "chahyunjae-kemejaabuabukampus": ManhwaOutfit(
-    "chahyunjae-kemejaabuabukampus",
-    "chahyunjae",
-    "Kemeja abu-abu · kampus",
+    "Kartu utama",
   ),
   "chahyunjae-basketkaosbasah": ManhwaOutfit(
     "chahyunjae-basketkaosbasah",
@@ -55,6 +84,16 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "chahyunjae-internetkafesweetermerah",
     "chahyunjae",
     "Sweter merah · kafe",
+  ),
+  "chahyunjae-jaketbasket": ManhwaOutfit(
+    "chahyunjae-jaketbasket",
+    "chahyunjae",
+    "Jaket basket",
+  ),
+  "chaminhyuk-utama": ManhwaOutfit(
+    "chaminhyuk-utama",
+    "chaminhyuk",
+    "Kartu utama",
   ),
   "chaminhyuk-gamerpink": ManhwaOutfit(
     "chaminhyuk-gamerpink",
@@ -70,11 +109,6 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "chaminhyuk-kaostanpalengan",
     "chaminhyuk",
     "Kaos tanpa lengan",
-  ),
-  "chaminhyuk-kasual": ManhwaOutfit(
-    "chaminhyuk-kasual",
-    "chaminhyuk",
-    "Pakaian kasual",
   ),
   "chaminhyuk-kemejabiru": ManhwaOutfit(
     "chaminhyuk-kemejabiru",
@@ -101,20 +135,16 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "chaminhyuk",
     "Training abu-abu",
   ),
+  "choinari-utama": ManhwaOutfit("choinari-utama", "choinari", "Kartu utama"),
   "choinari-belanjagenit": ManhwaOutfit(
     "choinari-belanjagenit",
     "choinari",
     "Pakaian belanja",
   ),
-  "choinari-hujanpayungbajupink": ManhwaOutfit(
-    "choinari-hujanpayungbajupink",
-    "choinari",
-    "Pink · payung",
-  ),
   "choinari-kelasseragam": ManhwaOutfit(
     "choinari-kelasseragam",
     "choinari",
-    "Seragam kelas",
+    "Seragam kampus",
   ),
   "choinari-pinktaskecil": ManhwaOutfit(
     "choinari-pinktaskecil",
@@ -124,54 +154,66 @@ const manhwaOutfits = <String, ManhwaOutfit>{
   "choinari-putihpita": ManhwaOutfit(
     "choinari-putihpita",
     "choinari",
-    "Blus berpita",
+    "Blus putih berpita",
   ),
-  "choinari-ungu": ManhwaOutfit("choinari-ungu", "choinari", "Sweter ungu"),
+  "choinari-ungu": ManhwaOutfit("choinari-ungu", "choinari", "Sweter lavender"),
+  "fujiwaraaoi-utama": ManhwaOutfit(
+    "fujiwaraaoi-utama",
+    "fujiwaraaoi",
+    "Kartu utama",
+  ),
+  "fujiwaraaoi-bajutradisional": ManhwaOutfit(
+    "fujiwaraaoi-bajutradisional",
+    "fujiwaraaoi",
+    "Pakaian tradisional",
+  ),
+  "fujiwaraaoi-seragamkampus": ManhwaOutfit(
+    "fujiwaraaoi-seragamkampus",
+    "fujiwaraaoi",
+    "Seragam kampus",
+  ),
+  "hanseoah-utama": ManhwaOutfit("hanseoah-utama", "hanseoah", "Kartu utama"),
   "hanseoah-bubblebajupink": ManhwaOutfit(
     "hanseoah-bubblebajupink",
     "hanseoah",
-    "Pink · minuman",
+    "Blus pink",
   ),
   "hanseoah-eleganputih": ManhwaOutfit(
     "hanseoah-eleganputih",
     "hanseoah",
-    "Pakaian putih",
+    "Blus putih",
   ),
   "hanseoah-kaosputihponsel": ManhwaOutfit(
     "hanseoah-kaosputihponsel",
     "hanseoah",
     "Kaos putih · ponsel",
   ),
-  "hanseoah-kemejahitammapmap": ManhwaOutfit(
-    "hanseoah-kemejahitammapmap",
-    "hanseoah",
-    "Kemeja hitam · map",
-  ),
   "hanseoah-lari": ManhwaOutfit("hanseoah-lari", "hanseoah", "Pakaian lari"),
   "hanseoah-laritrek": ManhwaOutfit(
     "hanseoah-laritrek",
     "hanseoah",
-    "Pakaian trek lari",
+    "Olahraga hitam",
   ),
   "hanseoah-pinkminum": ManhwaOutfit(
     "hanseoah-pinkminum",
     "hanseoah",
-    "Pink · tumbler",
+    "Sweter pink · tumbler",
   ),
-  "hanseoyul-minimarketsweeterhitam": ManhwaOutfit(
-    "hanseoyul-minimarketsweeterhitam",
+  "hanseoyul-utama": ManhwaOutfit(
+    "hanseoyul-utama",
     "hanseoyul",
-    "Sweter hitam · minimarket",
+    "Kartu utama",
   ),
+  "hanseoyul-gym": ManhwaOutfit("hanseoyul-gym", "hanseoyul", "Pakaian gym"),
   "hanseoyul-kasualkaoskrem": ManhwaOutfit(
     "hanseoyul-kasualkaoskrem",
     "hanseoyul",
     "Kaos krem",
   ),
-  "hanseoyul-kemejaputihkampus": ManhwaOutfit(
-    "hanseoyul-kemejaputihkampus",
+  "hanseoyul-minimarketsweeterhitam": ManhwaOutfit(
+    "hanseoyul-minimarketsweeterhitam",
     "hanseoyul",
-    "Kemeja putih · kampus",
+    "Sweter hitam · minimarket",
   ),
   "hanseoyul-renang": ManhwaOutfit(
     "hanseoyul-renang",
@@ -183,15 +225,40 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "hanseoyul",
     "Sweter hitam",
   ),
+  "junghyunwoo-utama": ManhwaOutfit(
+    "junghyunwoo-utama",
+    "junghyunwoo",
+    "Kartu utama",
+  ),
+  "junghyunwoo-basket": ManhwaOutfit(
+    "junghyunwoo-basket",
+    "junghyunwoo",
+    "Pakaian basket",
+  ),
+  "junghyunwoo-gym": ManhwaOutfit(
+    "junghyunwoo-gym",
+    "junghyunwoo",
+    "Pakaian gym",
+  ),
+  "junghyunwoo-kemejabiruabu": ManhwaOutfit(
+    "junghyunwoo-kemejabiruabu",
+    "junghyunwoo",
+    "Kemeja biru abu-abu",
+  ),
+  "junghyunwoo-kemejakampus": ManhwaOutfit(
+    "junghyunwoo-kemejakampus",
+    "junghyunwoo",
+    "Kemeja kampus",
+  ),
+  "kangjiwoo-utama": ManhwaOutfit(
+    "kangjiwoo-utama",
+    "kangjiwoo",
+    "Kartu utama",
+  ),
   "kangjiwoo-gamerkaosputih": ManhwaOutfit(
     "kangjiwoo-gamerkaosputih",
     "kangjiwoo",
     "Kaos putih · gaming",
-  ),
-  "kangjiwoo-kemejakampus": ManhwaOutfit(
-    "kangjiwoo-kemejakampus",
-    "kangjiwoo",
-    "Kemeja kampus",
   ),
   "kangjiwoo-lari": ManhwaOutfit("kangjiwoo-lari", "kangjiwoo", "Pakaian lari"),
   "kangjiwoo-sweeterhitamkafe": ManhwaOutfit(
@@ -199,10 +266,51 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "kangjiwoo",
     "Sweter hitam · kafe",
   ),
+  "kimdasol-utama": ManhwaOutfit("kimdasol-utama", "kimdasol", "Kartu utama"),
+  "kimdasol-jaketbirukuning": ManhwaOutfit(
+    "kimdasol-jaketbirukuning",
+    "kimdasol",
+    "Jaket biru-kuning",
+  ),
+  "kimdasol-kampuskasual": ManhwaOutfit(
+    "kimdasol-kampuskasual",
+    "kimdasol",
+    "Kasual · kampus",
+  ),
+  "kurokawaren-utama": ManhwaOutfit(
+    "kurokawaren-utama",
+    "kurokawaren",
+    "Kartu utama",
+  ),
+  "kurokawaren-bajutradisional": ManhwaOutfit(
+    "kurokawaren-bajutradisional",
+    "kurokawaren",
+    "Pakaian tradisional",
+  ),
+  "kurokawaren-jaketbomberhitam": ManhwaOutfit(
+    "kurokawaren-jaketbomberhitam",
+    "kurokawaren",
+    "Jaket bomber hitam",
+  ),
+  "kurokawaren-seragamkampus": ManhwaOutfit(
+    "kurokawaren-seragamkampus",
+    "kurokawaren",
+    "Seragam kampus",
+  ),
+  "kwontaehyuk-utama": ManhwaOutfit(
+    "kwontaehyuk-utama",
+    "kwontaehyuk",
+    "Kartu utama",
+  ),
   "kwontaehyuk-berkeringatmendengarkanmusik": ManhwaOutfit(
     "kwontaehyuk-berkeringatmendengarkanmusik",
     "kwontaehyuk",
     "Kaos · musik",
+  ),
+  "kwontaehyuk-gym": ManhwaOutfit(
+    "kwontaehyuk-gym",
+    "kwontaehyuk",
+    "Pakaian gym",
   ),
   "kwontaehyuk-kasualtaskiri": ManhwaOutfit(
     "kwontaehyuk-kasualtaskiri",
@@ -214,15 +322,15 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "kwontaehyuk",
     "Kaos putih · buku",
   ),
-  "kwontaehyuk-kemejamerah": ManhwaOutfit(
-    "kwontaehyuk-kemejamerah",
-    "kwontaehyuk",
-    "Kemeja merah",
-  ),
   "kwontaehyuk-renangkolam": ManhwaOutfit(
     "kwontaehyuk-renangkolam",
     "kwontaehyuk",
     "Pakaian renang · kolam",
+  ),
+  "leejunseo-utama": ManhwaOutfit(
+    "leejunseo-utama",
+    "leejunseo",
+    "Kartu utama",
   ),
   "leejunseo-bacabukukaoskrem": ManhwaOutfit(
     "leejunseo-bacabukukaoskrem",
@@ -239,44 +347,97 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "leejunseo",
     "Kaos biru · toko buku",
   ),
-  "leejunseo-kemejahitambus": ManhwaOutfit(
-    "leejunseo-kemejahitambus",
-    "leejunseo",
-    "Kemeja hitam · halte",
-  ),
   "leejunseo-sweetermerahbataperpustakaan": ManhwaOutfit(
     "leejunseo-sweetermerahbataperpustakaan",
     "leejunseo",
     "Sweter merah bata · perpustakaan",
   ),
-  "kimdasol-hoodiehijau": ManhwaOutfit(
-    "kimdasol-hoodiehijau",
-    "kimdasol",
-    "Hoodie hijau",
+  "linzixuan-utama": ManhwaOutfit(
+    "linzixuan-utama",
+    "linzixuan",
+    "Kartu utama",
   ),
-  "kimdasol-jaketbirukuning": ManhwaOutfit(
-    "kimdasol-jaketbirukuning",
-    "kimdasol",
-    "Jaket biru-kuning",
+  "linzixuan-kasualtradisionalmodern": ManhwaOutfit(
+    "linzixuan-kasualtradisionalmodern",
+    "linzixuan",
+    "Kasual tradisional modern",
   ),
-  "kimdasol-kampuskasual": ManhwaOutfit(
-    "kimdasol-kampuskasual",
-    "kimdasol",
-    "Kasual · kampus",
-  ),
-  "namseojun-laptopatasanbirutua": ManhwaOutfit(
-    "namseojun-laptopatasanbirutua",
+  "linzixuan-lari": ManhwaOutfit("linzixuan-lari", "linzixuan", "Pakaian lari"),
+  "namseojun-utama": ManhwaOutfit(
+    "namseojun-utama",
     "namseojun",
-    "Jaket biru tua · laptop",
-  ),
-  "namseojun-jaketdanhoodiehitam": ManhwaOutfit(
-    "namseojun-jaketdanhoodiehitam",
-    "namseojun",
-    "Jaket dan hoodie hitam",
+    "Kartu utama",
   ),
   "namseojun-internetkafehoodiehitam": ManhwaOutfit(
     "namseojun-internetkafehoodiehitam",
     "namseojun",
     "Hoodie hitam · kafe",
   ),
+  "namseojun-kaosberkeringatmengelap": ManhwaOutfit(
+    "namseojun-kaosberkeringatmengelap",
+    "namseojun",
+    "Kaos · mengusap keringat",
+  ),
+  "namseojun-laptopatasanbirutua": ManhwaOutfit(
+    "namseojun-laptopatasanbirutua",
+    "namseojun",
+    "Jaket biru tua · laptop",
+  ),
+  "suqinghuan-utama": ManhwaOutfit(
+    "suqinghuan-utama",
+    "suqinghuan",
+    "Kartu utama",
+  ),
+  "suqinghuan-internetcafe": ManhwaOutfit(
+    "suqinghuan-internetcafe",
+    "suqinghuan",
+    "Pakaian kafe",
+  ),
+  "suqinghuan-kaoskasual": ManhwaOutfit(
+    "suqinghuan-kaoskasual",
+    "suqinghuan",
+    "Kaos kasual",
+  ),
+  "xuwenjing-utama": ManhwaOutfit(
+    "xuwenjing-utama",
+    "xuwenjing",
+    "Kartu utama",
+  ),
+  "xuwenjing-hoodieputihbukulaptop": ManhwaOutfit(
+    "xuwenjing-hoodieputihbukulaptop",
+    "xuwenjing",
+    "Hoodie putih · buku dan laptop",
+  ),
+  "zhangmingzhe-utama": ManhwaOutfit(
+    "zhangmingzhe-utama",
+    "zhangmingzhe",
+    "Kartu utama",
+  ),
+  "zhangmingzhe-internetkafe": ManhwaOutfit(
+    "zhangmingzhe-internetkafe",
+    "zhangmingzhe",
+    "Pakaian kafe",
+  ),
+  "zhangmingzhe-jakethitam": ManhwaOutfit(
+    "zhangmingzhe-jakethitam",
+    "zhangmingzhe",
+    "Jaket hitam",
+  ),
 };
+
+// ID lama tetap bisa ditampilkan tanpa masuk ke pilihan pakaian baru.
+const manhwaLegacyAliases = <String, String>{
+  "baekseoyeon-jaketabuabuelegan": "baekseoyeon-utama",
+  "chahyunjae-kemejaabuabukampus": "chahyunjae-utama",
+  "chaminhyuk-kasual": "chaminhyuk-utama",
+  "choinari-hujanpayungbajupink": "choinari-utama",
+  "hanseoah-kemejahitammapmap": "hanseoah-utama",
+  "hanseoyul-kemejaputihkampus": "hanseoyul-utama",
+  "kangjiwoo-kemejakampus": "kangjiwoo-utama",
+  "kwontaehyuk-kemejamerah": "kwontaehyuk-utama",
+  "leejunseo-kemejahitambus": "leejunseo-utama",
+  "kimdasol-hoodiehijau": "kimdasol-utama",
+  "namseojun-jaketdanhoodiehitam": "namseojun-utama",
+};
+
+String manhwaPrimaryCard(String characterId) => '$characterId-utama';

@@ -635,9 +635,7 @@ class PreviewSession
             'taken': _manhwaChoices.values.any(
               (c) => c['character_id'] == e.key,
             ),
-            'preview': manhwaOutfits.values
-                .firstWhere((o) => o.characterId == e.key)
-                .id,
+            'preview': manhwaPrimaryCard(e.key),
           },
       ],
       'outfits': [
