@@ -229,18 +229,18 @@ class PreviewSession
       'end_reason': winner == 'warga' ? 'tertangkap' : null,
     };
     const names = [
-      'Pelukis',
+      'Arsiparis',
       'Peselancar',
       'Mata-mata',
       'Penatu',
-      'Penggembala',
+      'Peternak Telur',
     ];
     const cards = [
-      'pria-pelukis',
+      'pria-arsiparis',
       'pria-peselancar',
       'pria-matamata',
       'wanita-penatu',
-      'pria-penggembala',
+      'pria-peternaktelur',
     ];
     _players
       ..clear()
@@ -673,7 +673,12 @@ class PreviewSession
       for (final card in selected) {
         final kind =
             (previewCards[card['card_id']]?['effect'] as Map?)?['inspect'];
-        if (!const {'heartbeat', 'hand', 'purchase', 'offering'}.contains(kind)) {
+        if (!const {
+          'heartbeat',
+          'hand',
+          'purchase',
+          'offering',
+        }.contains(kind)) {
           continue;
         }
         final chance = kind == 'heartbeat'

@@ -11,6 +11,7 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/character_lock.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/cloth_transition.dart';
@@ -938,7 +939,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
 
   Future<void> _pickCard(String id, Map<String, dynamic> me) async {
     if (me['ready'] == true) return; // terkunci selama siap
-    final stems = protagonistStems();
+    final stems = protagonistStems(includeLocked: true);
     final chosen = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: const Color(0xFF12201E),
@@ -968,7 +969,9 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                   final s = stems[i];
                   final sel = s == me['character_card'];
                   return GestureDetector(
-                    onTap: () => Navigator.pop(ctx, s),
+                    onTap: () {
+                      if (CharacterCatalog.isEnabled(s)) Navigator.pop(ctx, s);
+                    },
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
@@ -979,9 +982,12 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: GameImage(
-                          path: protagonistPath(s),
-                          cacheWidth: 300,
+                        child: CharacterLock(
+                          id: s,
+                          child: GameImage(
+                            path: protagonistPath(s),
+                            cacheWidth: 300,
+                          ),
                         ),
                       ),
                     ),

@@ -827,7 +827,7 @@ class _JoinPreviewState extends State<_JoinPreview> {
     nameCtrl: _name,
     codeCtrl: _code,
     onJoin: (code) async {
-      await widget.session.joinGame(code, _name.text, 'pria-pelukis');
+      await widget.session.joinGame(code, _name.text, randomProtagonist());
       return null;
     },
     onCreate: () {},

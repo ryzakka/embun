@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'character_catalog.dart';
+export 'character_catalog.dart';
 import 'package:flutter/services.dart';
 
 // Kartu karakter protagonis dibagi dua folder menurut jenis kelamin. Nama
@@ -36,17 +38,19 @@ class AssetCatalog {
   static AssetCatalog? _instance;
   static AssetCatalog get I => _instance ?? AssetCatalog._({});
 
-  static Future<void> load() async {
+  static Future<void> load({AssetBundle? bundle}) async {
     final byFolder = <String, Map<String, String>>{};
     try {
-      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final manifest = await AssetManifest.loadFromAssetBundle(
+        bundle ?? rootBundle,
+      );
       for (final path in manifest.listAssets()) {
         final lower = path.toLowerCase();
         final isImage =
             lower.endsWith('.png') ||
-                lower.endsWith('.webp') ||
-                lower.endsWith('.jpg') ||
-                lower.endsWith('.jpeg');
+            lower.endsWith('.webp') ||
+            lower.endsWith('.jpg') ||
+            lower.endsWith('.jpeg');
         if (!path.startsWith('assets/') || !isImage) continue;
         final slash = path.lastIndexOf('/');
         final file = path.substring(slash + 1);
@@ -86,14 +90,22 @@ class AssetCatalog {
 }
 
 /// Semua id karakter protagonis (pria + wanita), terurut.
-List<String> protagonistStems() => [
-  ...AssetCatalog.I.stems(protagonisPriaDir),
-  ...AssetCatalog.I.stems(protagonisWanitaDir),
-]..sort();
+List<String> protagonistStems({bool includeLocked = false}) =>
+    [
+          ...AssetCatalog.I.stems(protagonisPriaDir),
+          ...AssetCatalog.I.stems(protagonisWanitaDir),
+        ]
+        .where(
+          (id) =>
+              CharacterCatalog.isListed(id) &&
+              (includeLocked || CharacterCatalog.isEnabled(id)),
+        )
+        .toList()
+      ..sort();
 
 String? protagonistPath(String id) =>
     AssetCatalog.I.file(protagonisPriaDir, id) ??
-        AssetCatalog.I.file(protagonisWanitaDir, id);
+    AssetCatalog.I.file(protagonisWanitaDir, id);
 
 String randomProtagonist() {
   final s = protagonistStems();
@@ -167,20 +179,20 @@ String? phaseScenery(String phase, int day, int leaves) {
     case 'day':
       pick = leaves >= 20
           ? _rotate(const [
-        'pasar-sianghari',
-        'balaidesa-luarsiang',
-        'peternakan-sianghari',
-        'sumur-sianghari',
-        'menaralonceng-sianghari',
-        'gerobakdankeranjang',
-        'tepisungai-tanggaterjalsianghari',
-        'balkon-siang',
-      ], day)
+              'pasar-sianghari',
+              'balaidesa-luarsiang',
+              'peternakan-sianghari',
+              'sumur-sianghari',
+              'menaralonceng-sianghari',
+              'gerobakdankeranjang',
+              'tepisungai-tanggaterjalsianghari',
+              'balkon-siang',
+            ], day)
           : _rotate(const [
-        'ladang-gersang',
-        'rumahdesa2-gersang',
-        'rumahdesa-gersang',
-      ], day);
+              'ladang-gersang',
+              'rumahdesa2-gersang',
+              'rumahdesa-gersang',
+            ], day);
     case 'research':
       pick = _rotate(const [
         'kedai-karturiset',
@@ -229,7 +241,10 @@ String? nightValleyPath({required bool attack}) => firstScenery(
 String? nightVictimPath(String? scene) => switch (scene) {
   'sumur' => firstScenery(const ['sumur-gelapmalam']),
   'rumah' => firstScenery(const ['rumah-malamdepanpintu']),
-  'pondok' => firstScenery(const ['tempatdalam-pondokperawatan','tempat-pondokperawatan']),
+  'pondok' => firstScenery(const [
+    'tempatdalam-pondokperawatan',
+    'tempat-pondokperawatan',
+  ]),
   _ => null,
 };
 
@@ -317,7 +332,7 @@ String? itemBackPath({
           ? 'punggungitemantagonis'
           : 'punggungitemprotagonis',
     ) ??
-        cardBackPath(dark: dark || night);
+    cardBackPath(dark: dark || night);
 
 /// Punggung item menurut definisinya (`side`, `kind`). Hanya untuk kartu milik
 /// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
@@ -355,9 +370,9 @@ String? cardArtPath(Map<String, dynamic>? def) {
     // jatuh ke folder item biasa.
     final bad = def['side'] == 'antagonis';
     return AssetCatalog.I.file(
-      bad ? kartuRekayasaDir : kartuRegenerasiDir,
-      stem,
-    ) ??
+          bad ? kartuRekayasaDir : kartuRegenerasiDir,
+          stem,
+        ) ??
         AssetCatalog.I.file(bad ? kartuAntagDir : kartuWargaDir, stem);
   }
   if (def['kind'] == 'siang') {
@@ -396,6 +411,8 @@ double cardAspectForDef(Map<String, dynamic>? def) => kTallAspect;
 /// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
 /// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
+  final current = characterDefinitions[stem];
+  if (current != null) return current.title;
   if (stem == 'default') return 'Belum memilih';
   final isFemale = stem.startsWith('wanita-');
   final base = stem

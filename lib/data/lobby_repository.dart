@@ -1,20 +1,32 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'character_access.dart';
+import 'character_catalog.dart';
 
 final _db = Supabase.instance.client;
 
 class LobbyRepository {
   Future<void> ensureSignedIn() async {
-    if (_db.auth.currentSession != null) return;
+    if (_db.auth.currentSession != null) {
+      await CharacterAccess.I.refresh();
+      return;
+    }
     try {
       await _db.auth.signInAnonymously();
     } on AuthException catch (e) {
       throw Exception('Gagal masuk anonim: ${e.message}');
     }
+    await CharacterAccess.I.refresh();
   }
 
-  Future<String> createGame(String name, String card,
-      {bool isPublic = false, int cycles = 4, int antagonistCount = 1}) async {
+  Future<String> createGame(
+    String name,
+    String card, {
+    bool isPublic = false,
+    int cycles = 4,
+    int antagonistCount = 1,
+  }) async {
     await ensureSignedIn();
+    _requireCharacter(card);
     final params = {
       'p_name': name,
       'p_card': card,
@@ -24,10 +36,11 @@ class LobbyRepository {
     if (antagonistCount == 1) {
       return await _db.rpc('create_game', params: params) as String;
     }
-    return await _db.rpc('create_game_with_mode', params: {
-      ...params,
-      'p_antagonist_count': antagonistCount,
-    }) as String;
+    return await _db.rpc(
+          'create_game_with_mode',
+          params: {...params, 'p_antagonist_count': antagonistCount},
+        )
+        as String;
   }
 
   /// Host: ubah ruangan lobi menjadi publik / privat.
@@ -51,8 +64,12 @@ class LobbyRepository {
 
   Future<String> joinGame(String code, String name, String card) async {
     await ensureSignedIn();
-    return await _db.rpc('join_game',
-        params: {'p_code': code, 'p_name': name, 'p_card': card}) as String;
+    _requireCharacter(card);
+    return await _db.rpc(
+          'join_game',
+          params: {'p_code': code, 'p_name': name, 'p_card': card},
+        )
+        as String;
   }
 
   Future<void> startGame(String id) =>
@@ -68,16 +85,33 @@ class LobbyRepository {
   Future<void> setReady(String gameId, bool ready) =>
       _db.rpc('set_ready', params: {'p_game': gameId, 'p_ready': ready});
 
-  Future<void> updateCharacter(String gameId, String name, String card) =>
-      _db.rpc('update_character',
-          params: {'p_game': gameId, 'p_name': name, 'p_card': card});
+  Future<void> updateCharacter(String gameId, String name, String card) {
+    _requireCharacter(card);
+    return _db.rpc(
+      'update_character',
+      params: {'p_game': gameId, 'p_name': name, 'p_card': card},
+    );
+  }
 
   /// Prolog: semua pemain memilih satu dari tiga kartu karakter terbalik
   /// (sekali, selama gerbang prolog masih tertutup). Mengembalikan nama baru
   /// pemain. Galat bila kartu baru saja diambil pemain lain.
-  Future<String> chooseCharacter(String gameId, String card) async =>
-      await _db.rpc('choose_character',
-          params: {'p_game': gameId, 'p_card': card}) as String;
+  Future<String> chooseCharacter(String gameId, String card) async {
+    _requireCharacter(card);
+    return await _db.rpc(
+          'choose_character',
+          params: {'p_game': gameId, 'p_card': card},
+        )
+        as String;
+  }
+
+  void _requireCharacter(String card) {
+    if (card != 'default' && !CharacterCatalog.isEnabled(card)) {
+      throw StateError(
+        'Karakter ini terkunci atau tidak tersedia. Pilih kartu lain.',
+      );
+    }
+  }
 
   /// Prolog: Si Terbisik memilih wajah gelapnya (indeks gambar antagonis).
   Future<void> chooseDark(String gameId, int seed) =>
@@ -141,8 +175,10 @@ class LobbyRepository {
     }
 
     try {
-      return await q('role, dark_seed, ability, ability_used, disguise_used, '
-          'char_chosen, dark_chosen');
+      return await q(
+        'role, dark_seed, ability, ability_used, disguise_used, '
+        'char_chosen, dark_chosen',
+      );
     } catch (_) {
       // Kolom pilihan prolog belum ada (migrasi pilih karakter belum jalan).
     }
@@ -163,19 +199,23 @@ class LobbyRepository {
   Future<Map<String, Map<String, dynamic>>> allSecrets(String gameId) async {
     List<Map<String, dynamic>> rows;
     try {
-      rows = List<Map<String, dynamic>>.from(await _db
-          .from('player_secrets')
-          .select('user_id, role, dark_seed, ability')
-          .eq('game_id', gameId));
+      rows = List<Map<String, dynamic>>.from(
+        await _db
+            .from('player_secrets')
+            .select('user_id, role, dark_seed, ability')
+            .eq('game_id', gameId),
+      );
     } catch (_) {
-      rows = List<Map<String, dynamic>>.from(await _db
-          .from('player_secrets')
-          .select('user_id, role, dark_seed')
-          .eq('game_id', gameId));
+      rows = List<Map<String, dynamic>>.from(
+        await _db
+            .from('player_secrets')
+            .select('user_id, role, dark_seed')
+            .eq('game_id', gameId),
+      );
     }
     return {
       for (final r in rows)
-        r['user_id'] as String: Map<String, dynamic>.from(r)
+        r['user_id'] as String: Map<String, dynamic>.from(r),
     };
   }
 

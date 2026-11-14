@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/app_info.dart';
 import 'data/asset_catalog.dart';
+import 'data/character_access.dart';
 import 'features/common/cloth_transition.dart';
 import 'features/common/fx_shaders.dart';
 import 'features/common/ornate.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
   Sfx.I.init();
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await AssetCatalog.load();
+  CharacterAccess.I.start();
   await Sfx.I.prepareMenuMusic();
   await ClothTransition.preload();
   await FxShaders.preload();

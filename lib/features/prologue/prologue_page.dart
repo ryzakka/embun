@@ -60,7 +60,7 @@ const _prologue = [
   // 1. Lembah subur.
   _Scene(
     text:
-    'Dahulu, di lembah yang dikelilingi kabut,\nberdiri sebuah pohon tua bernama Hayu.',
+        'Dahulu, di lembah yang dikelilingi kabut,\nberdiri sebuah pohon tua bernama Hayu.',
     frames: ['lembah-hijau0'],
     ms: 6500,
     mood: _Mood.lush,
@@ -72,7 +72,7 @@ const _prologue = [
   // 2. Desa yang hidup.
   _Scene(
     text:
-    'Selama Hayu berdaun,\nsungai mengalir, buah bergelantungan,\ndan desa tidak pernah gelap.',
+        'Selama Hayu berdaun,\nsungai mengalir, buah bergelantungan,\ndan desa tidak pernah gelap.',
     frames: ['rumahdesa-hijau'],
     ms: 6500,
     mood: _Mood.lush,
@@ -84,7 +84,7 @@ const _prologue = [
   // 3. Kemerosotan: subur -> mulai layu, lalu kering, daun berguguran.
   _Scene(
     text:
-    'Suatu musim, kabut turun terlalu lama.\nSatu per satu daun Hayu gugur tanpa angin.',
+        'Suatu musim, kabut turun terlalu lama.\nSatu per satu daun Hayu gugur tanpa angin.',
     frames: ['lembah-hijau1', 'lembah-hijau2', 'lembah-hijau3'],
     ms: 9000,
     mood: _Mood.fading,
@@ -98,7 +98,7 @@ const _prologue = [
   // 4. Gersang, dilupakan.
   _Scene(
     text:
-    'Orang-orang desa berbisik:\npohon itu tidak sedang sakit,\nia sedang dilupakan.',
+        'Orang-orang desa berbisik:\npohon itu tidak sedang sakit,\nia sedang dilupakan.',
     frames: ['lembah-hijau4', 'rumahdesa-gersang'],
     ms: 8000,
     mood: _Mood.barren,
@@ -125,8 +125,12 @@ const _prologue = [
   // 6. Kegelapan: kering -> krisis -> gulita, benih hitam berdenyut.
   _Scene(
     text:
-    'Tetapi kabut tidak pernah pergi sendirian.\nIa membisiki satu orang dari desa itu\ndan menitipkan sebutir benih hitam di dadanya.',
-    frames: ['desajembatan-kering', 'lembah-hijau5', 'desajembatan-keringgulita'],
+        'Tetapi kabut tidak pernah pergi sendirian.\nIa membisiki satu orang dari desa itu\ndan menitipkan sebutir benih hitam di dadanya.',
+    frames: [
+      'desajembatan-kering',
+      'lembah-hijau5',
+      'desajembatan-keringgulita',
+    ],
     ms: 10000,
     mood: _Mood.dark,
     decayFrom: 0.8,
@@ -142,10 +146,26 @@ List<double> _sat(double s) {
   final inv = 1 - s;
   final r = 0.2126 * inv, g = 0.7152 * inv, b = 0.0722 * inv;
   return [
-    r + s, g, b, 0, 0,
-    r, g + s, b, 0, 0,
-    r, g, b + s, 0, 0,
-    0, 0, 0, 1, 0,
+    r + s,
+    g,
+    b,
+    0,
+    0,
+    r,
+    g + s,
+    b,
+    0,
+    0,
+    r,
+    g,
+    b + s,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 
@@ -230,12 +250,17 @@ class _PrologueFlowState extends State<PrologueFlow>
   // Penggerak prolog: kemajuan adegan, silang-pudar antar adegan, dan jam
   // berkelanjutan untuk partikel.
   late final AnimationController _sc = AnimationController(
-      vsync: this, duration: Duration(milliseconds: _prologue[0].ms));
+    vsync: this,
+    duration: Duration(milliseconds: _prologue[0].ms),
+  );
   late final AnimationController _xf = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1400));
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
   late final AnimationController _loop = AnimationController(
-      vsync: this, duration: const Duration(seconds: 120))
-    ..repeat();
+    vsync: this,
+    duration: const Duration(seconds: 120),
+  )..repeat();
   bool _seedFired = false;
   bool _precached = false;
 
@@ -243,7 +268,9 @@ class _PrologueFlowState extends State<PrologueFlow>
   // lalu layar memudar ke gelap sebelum kocok kartu.
   bool _closing = false;
   late final AnimationController _outro = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100));
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
 
   /// Shader atmosfer prolog; null = pakai painter lama (kabut/cahaya/bulir).
   ui.FragmentShader? _fx;
@@ -282,9 +309,12 @@ class _PrologueFlowState extends State<PrologueFlow>
       });
       if (widget.resume && !_charChosen && step == _Step.role) _enterPick();
       if (role == 'antagonis' && widget.antagonistCount == 2) {
-        widget.repo.terbisikPartner(widget.gameId).then((id) {
-          if (mounted) setState(() => _partnerId = id);
-        }).catchError((_) {});
+        widget.repo
+            .terbisikPartner(widget.gameId)
+            .then((id) {
+              if (mounted) setState(() => _partnerId = id);
+            })
+            .catchError((_) {});
       }
     });
     _rosterSub = widget.repo.players(widget.gameId).listen((rows) {
@@ -336,8 +366,10 @@ class _PrologueFlowState extends State<PrologueFlow>
     for (final stem in stems) {
       final p = sceneryPath(stem);
       if (p != null) {
-        precacheImage(ResizeImage(AssetImage(p), width: 1280), context)
-            .catchError((_) {});
+        precacheImage(
+          ResizeImage(AssetImage(p), width: 1280),
+          context,
+        ).catchError((_) {});
       }
     }
   }
@@ -355,7 +387,9 @@ class _PrologueFlowState extends State<PrologueFlow>
       _seedFired = true;
       HapticFeedback.heavyImpact();
       Future.delayed(
-          const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
+        const Duration(milliseconds: 150),
+        HapticFeedback.heavyImpact,
+      );
     }
   }
 
@@ -457,9 +491,7 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   /// Tiga kartu baik acak dengan judul berbeda satu sama lain.
   List<String> _rollGood() {
-    final pool = protagonistStems()
-        .where((s) => s != 'default')
-        .toList()
+    final pool = protagonistStems().where((s) => s != 'default').toList()
       ..shuffle(Random());
     final seen = <String>{};
     final out = <String>[];
@@ -488,6 +520,16 @@ class _PrologueFlowState extends State<PrologueFlow>
   /// ulang (mis. kartunya baru saja diambil pemain lain).
   Future<String?> _pickGood(int i) async {
     final stem = _goodOptions[i];
+    if (!CharacterCatalog.isEnabled(stem)) {
+      if (mounted) {
+        setState(() {
+          _goodOptions = _rollGood();
+          _pickEpoch++;
+          _pickNote = 'Kartu ini sekarang terkunci. Pilih kartu lain.';
+        });
+      }
+      return 'Kartu ini terkunci.';
+    }
     try {
       await widget.repo.chooseCharacter(widget.gameId, stem);
       myCard = stem;
@@ -585,7 +627,8 @@ class _PrologueFlowState extends State<PrologueFlow>
   void _enterWaiting() {
     if (!mounted) return;
     setState(() => step = _Step.waiting);
-    void report() => widget.repo.finishPrologue(widget.gameId).catchError((_) {});
+    void report() =>
+        widget.repo.finishPrologue(widget.gameId).catchError((_) {});
     report();
     _waitTimer?.cancel();
     _waitTimer = Timer.periodic(const Duration(seconds: 5), (_) => report());
@@ -626,10 +669,7 @@ class _PrologueFlowState extends State<PrologueFlow>
   @override
   Widget build(BuildContext context) {
     if (step == _Step.story) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF050A08),
-        body: _story(),
-      );
+      return Scaffold(backgroundColor: const Color(0xFF050A08), body: _story());
     }
     return Scaffold(
       body: Stack(
@@ -643,7 +683,8 @@ class _PrologueFlowState extends State<PrologueFlow>
               child: CardPick(
                 key: ValueKey('pick$_pickEpoch'),
                 title: 'Pilih Kartu Karaktermu',
-                hint: 'Ketuk satu kartu tertutup, lalu kunci pilihanmu. '
+                hint:
+                    'Ketuk satu kartu tertutup, lalu kunci pilihanmu. '
                     'Kartu itu akan dibuka pada pengungkapan peran.',
                 options: [
                   for (final s in _goodOptions)
@@ -656,26 +697,26 @@ class _PrologueFlowState extends State<PrologueFlow>
               ),
             )
           else if (step == _Step.cast || step == _Step.waiting)
-              CastIntroduction(
-                key: const ValueKey('cast'),
-                players: _roster,
-                myId: widget.repo.myId,
-                waiting: step == _Step.waiting,
-                onContinue: _enterWaiting,
-              )
-            else
-              RoleReveal(
-                role: role,
-                antagonistCount: widget.antagonistCount,
-                partnerName: _partnerName,
-                cardPath: _roleCardPath(),
-                // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
-                // sebelum kartu gelapnya terungkap.
-                disguisePath: protagonistPath(myCard),
-                disguiseName: characterTitle(myCard),
-                twistGate: _antagGate,
-                onContinue: role == null ? () {} : _afterReveal,
-              ),
+            CastIntroduction(
+              key: const ValueKey('cast'),
+              players: _roster,
+              myId: widget.repo.myId,
+              waiting: step == _Step.waiting,
+              onContinue: _enterWaiting,
+            )
+          else
+            RoleReveal(
+              role: role,
+              antagonistCount: widget.antagonistCount,
+              partnerName: _partnerName,
+              cardPath: _roleCardPath(),
+              // Kartu baik samaran: dibuka lebih dulu oleh Si Terbisik
+              // sebelum kartu gelapnya terungkap.
+              disguisePath: protagonistPath(myCard),
+              disguiseName: characterTitle(myCard),
+              twistGate: _antagGate,
+              onContinue: role == null ? () {} : _afterReveal,
+            ),
           // Hanya Si Terbisik: peringatan lalu pilihan wajah gelap.
           if (_omen)
             Positioned.fill(child: DarkOmen(onContinue: _omenContinue)),
@@ -696,12 +737,15 @@ class _PrologueFlowState extends State<PrologueFlow>
             key: const ValueKey('darkpick'),
             dark: true,
             title: 'Pilih Wajah Gelapmu',
-            hint: 'Pilih satu kartu tertutup. Hanya kamu yang akan melihat '
+            hint:
+                'Pilih satu kartu tertutup. Hanya kamu yang akan melihat '
                 'wajah gelap yang kamu ambil.',
             options: [
               for (final i in _darkOptions)
-                PickOption(AssetCatalog.I.file(antagonisDir, stems[i]),
-                    'Wajah gelap'),
+                PickOption(
+                  AssetCatalog.I.file(antagonisDir, stems[i]),
+                  'Wajah gelap',
+                ),
             ],
             onPick: _pickDark,
             onDone: _darkPicked,
@@ -775,10 +819,12 @@ class _PrologueFlowState extends State<PrologueFlow>
           width: 56 * t,
           height: 1.5,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              EmbunColors.gold.withValues(alpha: 0),
-              EmbunColors.gold.withValues(alpha: 0.9),
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                EmbunColors.gold.withValues(alpha: 0),
+                EmbunColors.gold.withValues(alpha: 0.9),
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -791,8 +837,9 @@ class _PrologueFlowState extends State<PrologueFlow>
               color: EmbunColors.gold,
               boxShadow: [
                 BoxShadow(
-                    color: EmbunColors.gold.withValues(alpha: 0.7),
-                    blurRadius: 8),
+                  color: EmbunColors.gold.withValues(alpha: 0.7),
+                  blurRadius: 8,
+                ),
               ],
             ),
           ),
@@ -802,10 +849,12 @@ class _PrologueFlowState extends State<PrologueFlow>
           width: 56 * t,
           height: 1.5,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              EmbunColors.gold.withValues(alpha: 0.9),
-              EmbunColors.gold.withValues(alpha: 0),
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                EmbunColors.gold.withValues(alpha: 0.9),
+                EmbunColors.gold.withValues(alpha: 0),
+              ],
+            ),
           ),
         ),
       ],
@@ -828,31 +877,33 @@ class _PrologueFlowState extends State<PrologueFlow>
             _ornament(ornT),
             const SizedBox(height: 12),
             for (var i = 0; i < lines.length; i++)
-              Builder(builder: (_) {
-                final delay = 700.0 + i * 1250;
-                final lt = _smooth(_seg(ms, delay, delay + 1300));
-                return Opacity(
-                  opacity: lt,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - lt) * 14),
-                    child: Text(
-                      lines[i],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 21,
-                        height: 1.6,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1.6 - 1.0 * lt,
-                        color: EmbunColors.cream,
-                        shadows: const [
-                          Shadow(color: Colors.black, blurRadius: 14),
-                          Shadow(color: Colors.black, blurRadius: 4),
-                        ],
+              Builder(
+                builder: (_) {
+                  final delay = 700.0 + i * 1250;
+                  final lt = _smooth(_seg(ms, delay, delay + 1300));
+                  return Opacity(
+                    opacity: lt,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - lt) * 14),
+                      child: Text(
+                        lines[i],
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          height: 1.6,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.6 - 1.0 * lt,
+                          color: EmbunColors.cream,
+                          shadows: const [
+                            Shadow(color: Colors.black, blurRadius: 14),
+                            Shadow(color: Colors.black, blurRadius: 4),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                },
+              ),
             const SizedBox(height: 12),
             _ornament(ornT),
           ],
@@ -886,175 +937,184 @@ class _PrologueFlowState extends State<PrologueFlow>
   );
 
   Widget _story() {
-    return LayoutBuilder(builder: (context, box) {
-      final h = box.maxHeight;
-      return AnimatedBuilder(
-        animation: Listenable.merge([_sc, _xf, _loop, _outro]),
-        builder: (context, _) {
-          final s = _prologue[line];
-          final p = _sc.value;
-          final x = Curves.easeInOut.transform(_xf.value);
-          final ms = p * s.ms;
-          final time = _loop.value * 120;
-          final d = s.decayFrom + (s.decayTo - s.decayFrom) * p;
-          final open = line == 0 ? x : 1.0;
-          final barH = min(h * 0.065, 44.0) * Curves.easeOut.transform(open);
-          final vignette = 0.42 + 0.25 * d;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final h = box.maxHeight;
+        return AnimatedBuilder(
+          animation: Listenable.merge([_sc, _xf, _loop, _outro]),
+          builder: (context, _) {
+            final s = _prologue[line];
+            final p = _sc.value;
+            final x = Curves.easeInOut.transform(_xf.value);
+            final ms = p * s.ms;
+            final time = _loop.value * 120;
+            final d = s.decayFrom + (s.decayTo - s.decayFrom) * p;
+            final open = line == 0 ? x : 1.0;
+            final barH = min(h * 0.065, 44.0) * Curves.easeOut.transform(open);
+            final vignette = 0.42 + 0.25 * d;
 
-          // Atmosfer shader: tampilan tiap adegan dicampur dengan adegan
-          // sebelumnya selama silang-pudar, supaya warna kabut tak melompat.
-          var look = _FxLook.of(s.mood, d, p);
-          if (_prev != null && x < 1) {
-            final ps = _prologue[_prev!];
-            look = _FxLook.lerp(_FxLook.of(ps.mood, ps.decayTo, 1.0), look, x);
-          }
-          final seedOn = s.mood == _Mood.dark;
-          final seedBeat = pow(max(0.0, sin(time * 2.6)), 6).toDouble();
-          final pulse = seedOn ? _seg(p, 0.52, 0.72) * seedBeat : 0.0;
-          final shockT = seedOn ? _seg(p, 0.52, 0.80) : 0.0;
-          final shock = (shockT > 0 && shockT < 1) ? shockT : -1.0;
-          final fx = _fx;
+            // Atmosfer shader: tampilan tiap adegan dicampur dengan adegan
+            // sebelumnya selama silang-pudar, supaya warna kabut tak melompat.
+            var look = _FxLook.of(s.mood, d, p);
+            if (_prev != null && x < 1) {
+              final ps = _prologue[_prev!];
+              look = _FxLook.lerp(
+                _FxLook.of(ps.mood, ps.decayTo, 1.0),
+                look,
+                x,
+              );
+            }
+            final seedOn = s.mood == _Mood.dark;
+            final seedBeat = pow(max(0.0, sin(time * 2.6)), 6).toDouble();
+            final pulse = seedOn ? _seg(p, 0.52, 0.72) * seedBeat : 0.0;
+            final shockT = seedOn ? _seg(p, 0.52, 0.80) : 0.0;
+            final shock = (shockT > 0 && shockT < 1) ? shockT : -1.0;
+            final fx = _fx;
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_prev != null && x < 1) _sceneImage(_prev!, 1.0),
-              Opacity(opacity: x, child: _sceneImage(line, p)),
-              // atmosfer shader: kabut volumetrik, berkas cahaya, bulir, benih
-              if (fx != null)
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                if (_prev != null && x < 1) _sceneImage(_prev!, 1.0),
+                Opacity(opacity: x, child: _sceneImage(line, p)),
+                // atmosfer shader: kabut volumetrik, berkas cahaya, bulir, benih
+                if (fx != null)
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _FogPainter(
+                        shader: fx,
+                        look: look,
+                        time: time,
+                        p: p,
+                        intro: line == 0 ? x : 1.0,
+                        shock: shock,
+                        pulse: pulse,
+                      ),
+                      size: Size.infinite,
+                    ),
+                  ),
+                // daun, debu, benih (dan kabut/cahaya/bulir bila tanpa shader)
                 IgnorePointer(
                   child: CustomPaint(
-                    painter: _FogPainter(
-                      shader: fx,
-                      look: look,
+                    painter: _FxPainter(
+                      mood: s.mood,
                       time: time,
                       p: p,
-                      intro: line == 0 ? x : 1.0,
-                      shock: shock,
-                      pulse: pulse,
-                    ),
-                    size: Size.infinite,
-                  ),
-                ),
-              // daun, debu, benih (dan kabut/cahaya/bulir bila tanpa shader)
-              IgnorePointer(
-                child: CustomPaint(
-                  painter: _FxPainter(
-                    mood: s.mood,
-                    time: time,
-                    p: p,
-                    decay: d,
-                    intro: x,
-                    shaderOn: fx != null,
-                  ),
-                ),
-              ),
-              // vinyet
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      radius: 1.0,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: vignette),
-                      ],
-                      stops: const [0.5, 1.0],
+                      decay: d,
+                      intro: x,
+                      shaderOn: fx != null,
                     ),
                   ),
                 ),
-              ),
-              // bayangan bawah agar teks terbaca
-              IgnorePointer(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: FractionallySizedBox(
-                    heightFactor: 0.55,
-                    widthFactor: 1,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.8),
-                          ],
+                // vinyet
+                IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        radius: 1.0,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: vignette),
+                        ],
+                        stops: const [0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // bayangan bawah agar teks terbaca
+                IgnorePointer(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: FractionallySizedBox(
+                      heightFactor: 0.55,
+                      widthFactor: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.8),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // bilah sinema
-              Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
+                // bilah sinema
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
                     height: barH,
                     width: double.infinity,
-                    child: const ColoredBox(color: Colors.black)),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: SizedBox(
+                    child: const ColoredBox(color: Colors.black),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
                     height: barH,
                     width: double.infinity,
-                    child: const ColoredBox(color: Colors.black)),
-              ),
-              // teks
-              Positioned(
-                left: 24,
-                right: 24,
-                bottom: barH + 62,
-                child: Center(child: _storyText(s, ms)),
-              ),
-              // bilah kemajuan + lewati
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 8, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: _progressBar(p),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Tak ada lagi yang dilewati saat penutup berjalan.
-                        AnimatedOpacity(
-                          opacity: _closing ? 0 : 1,
-                          duration: const Duration(milliseconds: 400),
-                          child: IgnorePointer(
-                            ignoring: _closing,
-                            child: MedallionButton(
-                              icon: 'skip2',
-                              label: _iSkipped ? 'Batal' : 'Lewati',
-                              size: 40,
-                              selected: _iSkipped,
-                              badge:
-                              _total > 0 ? '$_skipCount/$_total' : null,
-                              onTap: _toggleSkip,
+                    child: const ColoredBox(color: Colors.black),
+                  ),
+                ),
+                // teks
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: barH + 62,
+                  child: Center(child: _storyText(s, ms)),
+                ),
+                // bilah kemajuan + lewati
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 8, 0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: _progressBar(p),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          // Tak ada lagi yang dilewati saat penutup berjalan.
+                          AnimatedOpacity(
+                            opacity: _closing ? 0 : 1,
+                            duration: const Duration(milliseconds: 400),
+                            child: IgnorePointer(
+                              ignoring: _closing,
+                              child: MedallionButton(
+                                icon: 'skip2',
+                                label: _iSkipped ? 'Batal' : 'Lewati',
+                                size: 40,
+                                selected: _iSkipped,
+                                badge: _total > 0
+                                    ? '$_skipCount/$_total'
+                                    : null,
+                                onTap: _toggleSkip,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              // memudar ke gelap setelah narasi habis
-              sceneVeil(Curves.easeInOut.transform(_outro.value)),
-            ],
-          );
-        },
-      );
-    });
+                // memudar ke gelap setelah narasi habis
+                sceneVeil(Curves.easeInOut.transform(_outro.value)),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // ====================== kocok kartu & peran ======================
@@ -1067,12 +1127,15 @@ class _PrologueFlowState extends State<PrologueFlow>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Mengocok nasib dan peran di desa...',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.6,
-                  color: EmbunColors.gold)),
+          const Text(
+            'Mengocok nasib dan peran di desa...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.6,
+              color: EmbunColors.gold,
+            ),
+          ),
           const SizedBox(height: 24),
           AnimatedBuilder(
             animation: _shuffleCtrl,
@@ -1095,7 +1158,9 @@ class _PrologueFlowState extends State<PrologueFlow>
   /// warga. Null selama peran belum dimuat.
   String? _roleCardPath() {
     if (role == null) return null;
-    return role == 'antagonis' ? darkCardPath(darkSeed) : protagonistPath(myCard);
+    return role == 'antagonis'
+        ? darkCardPath(darkSeed)
+        : protagonistPath(myCard);
   }
 }
 
@@ -1152,7 +1217,10 @@ class _FxPainter extends CustomPainter {
       final dir = i.isEven ? 1.0 : -1.0;
       final x = (i * 0.27 + time * 0.012 * dir) % 1.3 - 0.15;
       canvas.drawCircle(
-          Offset(w * x, h * (0.55 + 0.09 * i)), max(w, h) * 0.2, paint);
+        Offset(w * x, h * (0.55 + 0.09 * i)),
+        max(w, h) * 0.2,
+        paint,
+      );
     }
   }
 
@@ -1167,10 +1235,14 @@ class _FxPainter extends CustomPainter {
       final dir = Offset(cos(ang), sin(ang));
       final path = Path()
         ..moveTo(origin.dx, origin.dy)
-        ..lineTo(origin.dx + cos(ang - half) * len,
-            origin.dy + sin(ang - half) * len)
-        ..lineTo(origin.dx + cos(ang + half) * len,
-            origin.dy + sin(ang + half) * len)
+        ..lineTo(
+          origin.dx + cos(ang - half) * len,
+          origin.dy + sin(ang - half) * len,
+        )
+        ..lineTo(
+          origin.dx + cos(ang + half) * len,
+          origin.dy + sin(ang + half) * len,
+        )
         ..close();
       final a = strength * intro * (0.7 + 0.3 * sin(time * 0.6 + i * 1.3));
       canvas.drawPath(
@@ -1178,14 +1250,10 @@ class _FxPainter extends CustomPainter {
         Paint()
           ..blendMode = BlendMode.plus
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
-          ..shader = ui.Gradient.linear(
-            origin,
-            origin + dir * len,
-            [
-              const Color(0xFFFFF1C0).withValues(alpha: a.clamp(0.0, 1.0)),
-              const Color(0xFFFFF1C0).withValues(alpha: 0),
-            ],
-          ),
+          ..shader = ui.Gradient.linear(origin, origin + dir * len, [
+            const Color(0xFFFFF1C0).withValues(alpha: a.clamp(0.0, 1.0)),
+            const Color(0xFFFFF1C0).withValues(alpha: 0),
+          ]),
       );
     }
   }
@@ -1213,18 +1281,26 @@ class _FxPainter extends CustomPainter {
       final tw = 1.2 + rnd.nextDouble() * 2;
       final f = (y0 - time * sp) % 1.0;
       final o = Offset((x0 + sin(time * 0.35 + ph) * 0.03) * w, f * h);
-      final a = (0.35 + 0.65 * (0.5 + 0.5 * sin(time * tw + ph))) *
+      final a =
+          (0.35 + 0.65 * (0.5 + 0.5 * sin(time * tw + ph))) *
           sin(f * pi) *
           intro;
       final col = cols[i % cols.length];
-      canvas.drawCircle(o, sz * 3,
-          Paint()..color = col.withValues(alpha: (0.16 * a).clamp(0.0, 1.0)));
       canvas.drawCircle(
-          o,
-          sz,
-          Paint()
-            ..color = Color.lerp(col, Colors.white, 0.5)!
-                .withValues(alpha: (0.9 * a).clamp(0.0, 1.0)));
+        o,
+        sz * 3,
+        Paint()..color = col.withValues(alpha: (0.16 * a).clamp(0.0, 1.0)),
+      );
+      canvas.drawCircle(
+        o,
+        sz,
+        Paint()
+          ..color = Color.lerp(
+            col,
+            Colors.white,
+            0.5,
+          )!.withValues(alpha: (0.9 * a).clamp(0.0, 1.0)),
+      );
     }
   }
 
@@ -1243,8 +1319,11 @@ class _FxPainter extends CustomPainter {
       final y = (-0.05 + f * 1.1) * h;
       final rot = f * 8 + ph * 6;
       final Color col = fading
-          ? Color.lerp(const Color(0xFF6FBF73), const Color(0xFF9A7440),
-          (decay * 1.6).clamp(0.0, 1.0))!
+          ? Color.lerp(
+              const Color(0xFF6FBF73),
+              const Color(0xFF9A7440),
+              (decay * 1.6).clamp(0.0, 1.0),
+            )!
           : (i.isEven ? const Color(0xFF8A6A3A) : const Color(0xFFB08A4A));
       final a = (sin(f * pi) * 0.9 * intro).clamp(0.0, 1.0);
       canvas.save();
@@ -1291,10 +1370,12 @@ class _FxPainter extends CustomPainter {
       c,
       glowR,
       Paint()
-        ..shader = RadialGradient(colors: [
-          violet.withValues(alpha: 0.55 * t * (0.6 + 0.4 * beat)),
-          violet.withValues(alpha: 0),
-        ]).createShader(Rect.fromCircle(center: c, radius: glowR)),
+        ..shader = RadialGradient(
+          colors: [
+            violet.withValues(alpha: 0.55 * t * (0.6 + 0.4 * beat)),
+            violet.withValues(alpha: 0),
+          ],
+        ).createShader(Rect.fromCircle(center: c, radius: glowR)),
     );
 
     for (var k = 0; k < 3; k++) {
@@ -1309,8 +1390,8 @@ class _FxPainter extends CustomPainter {
       );
     }
 
-    final body = r * (0.6 + 0.4 * Curves.easeOutBack.transform(t)) *
-        (1 + 0.12 * beat);
+    final body =
+        r * (0.6 + 0.4 * Curves.easeOutBack.transform(t)) * (1 + 0.12 * beat);
     canvas.drawCircle(
       c,
       body,
@@ -1350,22 +1431,50 @@ class _FxLook {
 
   static _FxLook of(_Mood m, double decay, double p) => switch (m) {
     _Mood.lush => const _FxLook(
-        fog: 0.30, rays: 0.55, motes: 0.8, lightX: 0.15, dark: 0.0,
-        fogCol: Color(0xFFDFF3E6), lightCol: Color(0xFFFFE9A8)),
+      fog: 0.30,
+      rays: 0.55,
+      motes: 0.8,
+      lightX: 0.15,
+      dark: 0.0,
+      fogCol: Color(0xFFDFF3E6),
+      lightCol: Color(0xFFFFE9A8),
+    ),
     _Mood.hope => const _FxLook(
-        fog: 0.25, rays: 1.0, motes: 1.0, lightX: 0.5, dark: 0.0,
-        fogCol: Color(0xFFFFE9B0), lightCol: Color(0xFFFFD98A)),
+      fog: 0.25,
+      rays: 1.0,
+      motes: 1.0,
+      lightX: 0.5,
+      dark: 0.0,
+      fogCol: Color(0xFFFFE9B0),
+      lightCol: Color(0xFFFFD98A),
+    ),
     _Mood.fading => _FxLook(
-        fog: 0.45 + 0.30 * decay, rays: 0.15, motes: 0.2, lightX: 0.3,
-        dark: 0.10 + 0.15 * decay,
-        fogCol: const Color(0xFFD8D4C8), lightCol: const Color(0xFFE6D8A8)),
+      fog: 0.45 + 0.30 * decay,
+      rays: 0.15,
+      motes: 0.2,
+      lightX: 0.3,
+      dark: 0.10 + 0.15 * decay,
+      fogCol: const Color(0xFFD8D4C8),
+      lightCol: const Color(0xFFE6D8A8),
+    ),
     _Mood.barren => const _FxLook(
-        fog: 0.55, rays: 0.0, motes: 0.0, lightX: 0.3, dark: 0.30,
-        fogCol: Color(0xFFC9C3B6), lightCol: Color(0xFFD8C79A)),
+      fog: 0.55,
+      rays: 0.0,
+      motes: 0.0,
+      lightX: 0.3,
+      dark: 0.30,
+      fogCol: Color(0xFFC9C3B6),
+      lightCol: Color(0xFFD8C79A),
+    ),
     _Mood.dark => _FxLook(
-        fog: 0.60 + 0.30 * p, rays: 0.0, motes: 0.5, lightX: 0.5,
-        dark: 0.35 + 0.50 * p,
-        fogCol: const Color(0xFFB07CE8), lightCol: const Color(0xFFB07CE8)),
+      fog: 0.60 + 0.30 * p,
+      rays: 0.0,
+      motes: 0.5,
+      lightX: 0.5,
+      dark: 0.35 + 0.50 * p,
+      fogCol: const Color(0xFFB07CE8),
+      lightCol: const Color(0xFFB07CE8),
+    ),
   };
 
   static _FxLook lerp(_FxLook a, _FxLook b, double t) {

@@ -10,6 +10,7 @@ import '../../data/game_rules.dart';
 import '../../data/hayu_parts.dart';
 import '../../data/lobby_repository.dart';
 import '../common/art.dart';
+import '../common/character_lock.dart';
 import '../common/tutor_companion.dart';
 import '../common/ornate.dart';
 import '../table/ability_panel.dart';
@@ -1009,12 +1010,18 @@ class _HowToTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Kenali desa Hayu', style: TextStyle(
-                  color: EmbunColors.cream, fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                )),
+                const Text(
+                  'Kenali desa Hayu',
+                  style: TextStyle(
+                    color: EmbunColors.cream,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                _para('Mulai dari tujuan, lalu kenali kartu dan tempat yang bisa kamu kunjungi.'),
+                _para(
+                  'Mulai dari tujuan, lalu kenali kartu dan tempat yang bisa kamu kunjungi.',
+                ),
               ],
             ),
           ),
@@ -1323,11 +1330,15 @@ class _HowToTab extends StatelessWidget {
 class _Char {
   final String? path;
   final String label;
-  const _Char(this.path, this.label);
+  final String? stem;
+  bool get locked => stem != null && !CharacterCatalog.isEnabled(stem!);
+  const _Char(this.path, this.label, {this.stem});
 }
 
 List<_Char> _protagonists() {
-  final stems = protagonistStems().where((s) => s != 'default').toList();
+  final stems = protagonistStems(
+    includeLocked: true,
+  ).where((s) => s != 'default').toList();
   final counts = <String, int>{};
   for (final s in stems) {
     counts[characterTitle(s)] = (counts[characterTitle(s)] ?? 0) + 1;
@@ -1338,7 +1349,11 @@ List<_Char> _protagonists() {
       () {
         final t = characterTitle(s);
         final i = seen[t] = (seen[t] ?? 0) + 1;
-        return _Char(protagonistPath(s), (counts[t] ?? 1) > 1 ? '$t $i' : t);
+        return _Char(
+          protagonistPath(s),
+          (counts[t] ?? 1) > 1 ? '$t $i' : t,
+          stem: s,
+        );
       }(),
   ];
 }
@@ -1355,6 +1370,7 @@ List<_Char> _antagonists() {
 }
 
 void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
+  if (c.locked) return;
   showDialog<void>(
     context: context,
     builder: (ctx) => Dialog(
@@ -1369,11 +1385,20 @@ void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CardArt(
-                  path: c.path,
-                  width: min(210.0, MediaQuery.sizeOf(ctx).height * 0.42),
-                  glow: dark ? EmbunColors.mist : EmbunColors.leaf,
-                ),
+                if (c.stem != null)
+                  CharacterLock(
+                    id: c.stem!,
+                    child: CardArt(
+                      path: c.path,
+                      width: min(210.0, MediaQuery.sizeOf(ctx).height * 0.42),
+                    ),
+                  )
+                else
+                  CardArt(
+                    path: c.path,
+                    width: min(210.0, MediaQuery.sizeOf(ctx).height * 0.42),
+                    glow: dark ? EmbunColors.mist : EmbunColors.leaf,
+                  ),
                 const SizedBox(height: 14),
                 Text(
                   c.label,
@@ -1425,6 +1450,22 @@ class _CharactersTabState extends State<_CharactersTab>
     with AutomaticKeepAliveClientMixin {
   int faction = 0; // 0 = warga (baik), 1 = Si Terbisik (jahat)
 
+  void _catalogChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    CharacterCatalog.revision.addListener(_catalogChanged);
+  }
+
+  @override
+  void dispose() {
+    CharacterCatalog.revision.removeListener(_catalogChanged);
+    super.dispose();
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -1464,7 +1505,8 @@ class _CharactersTabState extends State<_CharactersTab>
                           'permainan berakhir. Ketuk kartu untuk memperbesar.'
                     : 'Dibagikan acak di awal; namamu mengikuti kartu ini '
                           '(diberi nomor bila kembar). Hanya penampilan, tidak '
-                          'mengubah kekuatan. Ketuk kartu untuk memperbesar.',
+                          'mengubah kekuatan. Kartu terkunci tidak bisa dipakai. '
+                          'Ketuk kartu aktif untuk memperbesar.',
               ),
               if (list.isEmpty)
                 const Padding(
@@ -1482,8 +1524,9 @@ class _CharactersTabState extends State<_CharactersTab>
                   count: list.length,
                   minCell: 108,
                   item: (i, w) => GestureDetector(
-                    onTap: () =>
-                        _previewCharacter(context, list[i], dark: dark),
+                    onTap: list[i].locked
+                        ? null
+                        : () => _previewCharacter(context, list[i], dark: dark),
                     child: Column(
                       children: [
                         _GuideFlip(
@@ -1492,11 +1535,16 @@ class _CharactersTabState extends State<_CharactersTab>
                           backPath: cardBackPath(dark: dark),
                           dark: dark,
                           glow: dark ? EmbunColors.mist : EmbunColors.leaf,
-                          front: CardArt(
-                            path: list[i].path,
-                            width: w,
-                            glow: dark ? EmbunColors.mist : null,
-                          ),
+                          front: list[i].stem == null
+                              ? CardArt(
+                                  path: list[i].path,
+                                  width: w,
+                                  glow: dark ? EmbunColors.mist : null,
+                                )
+                              : CharacterLock(
+                                  id: list[i].stem!,
+                                  child: CardArt(path: list[i].path, width: w),
+                                ),
                         ),
                         const SizedBox(height: 8),
                         _caption(
