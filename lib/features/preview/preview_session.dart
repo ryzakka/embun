@@ -122,6 +122,8 @@ class PreviewSession
   late PreviewRow _game;
   bool _active = false;
   bool _holdPrologue = false;
+  bool _holdManhwaDraft = false;
+  final Map<String, String> _previewUsernames = {};
   bool _charChosen = true;
   bool _darkChosen = true;
   bool _revealReady = false, _castStarted = false, _castDone = false;
@@ -165,6 +167,8 @@ class PreviewSession
   void prepare({
     String phase = 'day',
     String role = 'warga',
+    String characterTheme = 'default',
+    String? manhwaCharacter,
     int antagonists = 2,
     String? winner,
     bool waitingRoom = false,
@@ -177,6 +181,8 @@ class PreviewSession
   }) {
     this.role = role;
     _manhwaChoices.clear();
+    _holdManhwaDraft = false;
+    _previewUsernames.clear();
     _manhwaCursor = 0;
     _manhwaStage = 'none';
     _active = waitingRoom;
@@ -206,6 +212,7 @@ class PreviewSession
     }.contains(phase);
     _game = {
       'id': gameId,
+      'character_theme': characterTheme,
       'code': roomCode,
       'host_id': myId,
       'status': winner != null
@@ -289,6 +296,26 @@ class PreviewSession
             'joined_at': _stamp,
           },
       ]);
+    for (var i = 0; i < _players.length; i++) {
+      _previewUsernames[_players[i]['user_id'] as String] = 'Penguji ${i + 1}';
+    }
+    if (characterTheme == manhwaTheme) {
+      final preferred = manhwaNames.containsKey(manhwaCharacter)
+          ? manhwaCharacter!
+          : manhwaNames.keys.first;
+      final ids = [
+        preferred,
+        ...manhwaNames.keys.where((id) => id != preferred),
+      ];
+      for (var i = 0; i < _players.length; i++) {
+        _players[i] = {
+          ..._players[i],
+          'name': waitingRoom ? 'Penguji ${i + 1}' : manhwaNames[ids[i]],
+          'character_card': manhwaPrimaryCard(ids[i]),
+        };
+      }
+      _charChosen = true;
+    }
     _visits.clear();
     _inspectionReports.clear();
     _wellBonus = 0;
@@ -424,7 +451,12 @@ class PreviewSession
     int antagonistCount = 1,
     String characterTheme = 'default',
   }) async {
-    prepare(waitingRoom: true, antagonists: antagonistCount, role: role);
+    prepare(
+      waitingRoom: true,
+      antagonists: antagonistCount,
+      role: role,
+      characterTheme: characterTheme,
+    );
     _game.addAll({
       'is_public': isPublic,
       'cycles': cycles,
@@ -502,6 +534,14 @@ class PreviewSession
     if (roster.length < minimum || roster.any((p) => p['ready'] != true)) {
       throw StateError('Minimal $minimum pemain dan semuanya harus siap.');
     }
+    _previewUsernames
+      ..clear()
+      ..addAll({
+        for (final p in roster) p['user_id'] as String: p['name'] as String,
+      });
+    _revealReady = false;
+    _castStarted = false;
+    _castDone = false;
     _charChosen = false;
     _darkChosen = false;
     _pickedAbility = null;
@@ -572,7 +612,8 @@ class PreviewSession
   }
 
   void _advanceManhwaPreview() {
-    while (_manhwaStage == 'characters' &&
+    while (!_holdManhwaDraft &&
+        _manhwaStage == 'characters' &&
         _manhwaCursor < roster.length &&
         roster[_manhwaCursor]['user_id'] != myId) {
       final id = roster[_manhwaCursor]['user_id'] as String;
@@ -591,7 +632,8 @@ class PreviewSession
               .id;
       }
     }
-    if (_manhwaStage == 'outfits' &&
+    if (!_holdManhwaDraft &&
+        _manhwaStage == 'outfits' &&
         _manhwaChoices.values.every((x) => x['outfit_card'] != null)) {
       _manhwaStage = 'complete';
       _charChosen = true;
@@ -608,6 +650,61 @@ class PreviewSession
     }
   }
 
+  /// Fixtures use the production Manhwa screen and the current shared catalog.
+  void prepareManhwaDraft({
+    required String characterId,
+    String stage = 'characters',
+    bool waiting = false,
+    bool locked = false,
+    String role = 'warga',
+    int antagonists = 2,
+  }) {
+    if (!manhwaNames.containsKey(characterId))
+      throw StateError('Tokoh tidak tersedia');
+    prepare(
+      waitingRoom: true,
+      role: role,
+      antagonists: antagonists,
+      pickDark: true,
+      characterTheme: manhwaTheme,
+      manhwaCharacter: characterId,
+    );
+    _game = {..._game, 'status': 'prologue'};
+    _manhwaStage = stage;
+    _manhwaCursor = 0;
+    if (stage == 'outfits') {
+      final ids = [
+        characterId,
+        ...manhwaNames.keys.where((id) => id != characterId),
+      ];
+      _manhwaCursor = roster.length;
+      for (var i = 0; i < roster.length; i++) {
+        _manhwaChoices[roster[i]['user_id'] as String] = {
+          'character_id': ids[i],
+          'outfit_card': i == 0 && !locked ? null : manhwaPrimaryCard(ids[i]),
+        };
+      }
+      if (locked) {
+        _holdManhwaDraft = true;
+        _manhwaChoices[other['user_id']]!['outfit_card'] = null;
+      }
+    } else if (waiting) {
+      _manhwaChoices[myId] = {'character_id': characterId, 'outfit_card': null};
+      _manhwaCursor = 1;
+      _holdManhwaDraft = true;
+    }
+    _update();
+  }
+
+  void prepareCastPreview() {
+    _game = {..._game, 'prologue_until': _stamp};
+    _holdPrologue = true;
+    _revealReady = true;
+    _castStarted = true;
+    _castDone = false;
+    _update();
+  }
+
   @override
   Future<PreviewRow> manhwaDraft(String gameId) async {
     _advanceManhwaPreview();
@@ -622,7 +719,7 @@ class PreviewSession
       'turn': _manhwaCursor < roster.length
           ? roster[_manhwaCursor]['user_id']
           : null,
-      'seconds_left': 45,
+      'seconds_left': _manhwaStage == 'outfits' ? 60 : 45,
       'own': own,
       'players': [
         for (final p in roster) {...p, ...?_manhwaChoices[p['user_id']]},
@@ -651,6 +748,14 @@ class PreviewSession
     String gameId,
     String characterId,
   ) async {
+    if (_game['status'] != 'prologue' ||
+        _manhwaStage != 'characters' ||
+        _manhwaCursor >= roster.length ||
+        roster[_manhwaCursor]['user_id'] != myId) {
+      throw StateError('Belum giliranmu memilih tokoh');
+    }
+    if (!manhwaNames.containsKey(characterId))
+      throw StateError('Tokoh tidak tersedia');
     if (_manhwaChoices.values.any((c) => c['character_id'] == characterId))
       throw StateError('Tokoh sudah dipilih');
     _manhwaChoices[myId] = {'character_id': characterId, 'outfit_card': null};
@@ -660,6 +765,14 @@ class PreviewSession
 
   @override
   Future<PreviewRow> chooseManhwaOutfit(String gameId, String cardId) async {
+    if (_game['status'] != 'prologue' || _manhwaStage != 'outfits') {
+      throw StateError('Belum waktunya memilih pakaian');
+    }
+    if (_manhwaChoices[myId]?['outfit_card'] != null) {
+      if (_manhwaChoices[myId]!['outfit_card'] != cardId)
+        throw StateError('Pakaianmu sudah terkunci');
+      return manhwaDraft(gameId);
+    }
     if (manhwaOutfits[cardId]?.characterId !=
         _manhwaChoices[myId]?['character_id'])
       throw StateError('Pakaian tidak sesuai');
@@ -698,7 +811,12 @@ class PreviewSession
       'total': roster.length,
       'seconds_left': 200,
       'auto_completed': false,
-      'players': _castStarted ? roster : [],
+      'players': _castStarted
+          ? [
+              for (final p in roster)
+                {...p, 'name': _previewUsernames[p['user_id']] ?? p['name']},
+            ]
+          : [],
     };
   }
 
@@ -1134,7 +1252,8 @@ class PreviewSession
   @override
   Future<Map<String, String>> usernames(String gameId) async => {
     for (var i = 0; i < roster.length; i++)
-      roster[i]['user_id'] as String: 'Penguji ${i + 1}',
+      roster[i]['user_id'] as String:
+          _previewUsernames[roster[i]['user_id']] ?? 'Penguji ${i + 1}',
   };
 
   @override

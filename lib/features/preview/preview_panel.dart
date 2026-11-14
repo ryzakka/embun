@@ -14,6 +14,7 @@ import '../lobby/public_rooms_page.dart';
 import '../prologue/character_pick.dart';
 import '../prologue/dark_omen.dart';
 import '../prologue/prologue_page.dart';
+import '../prologue/manhwa_draft_page.dart';
 import '../table/ability_panel.dart';
 import '../table/bow_dialog.dart';
 import '../table/card_tile.dart';
@@ -53,6 +54,11 @@ enum _Screen {
   story('Cerita prolog'),
   shuffle('Kocok kartu karakter'),
   character('Pilih kartu karakter'),
+  manhwaCharacters('Manhwa · Pilih tokoh'),
+  manhwaWaiting('Manhwa · Menunggu giliran'),
+  manhwaOutfits('Manhwa · Pilih pakaian'),
+  manhwaLocked('Manhwa · Pakaian terkunci'),
+  manhwaCast('Manhwa · Pengungkapan pemain'),
   role('Pengungkapan peran'),
   omen('Peringatan awan gelap'),
   darkFace('Pilih wajah gelap'),
@@ -139,6 +145,11 @@ const _sections = [
       _Screen.story,
       _Screen.shuffle,
       _Screen.character,
+      _Screen.manhwaCharacters,
+      _Screen.manhwaWaiting,
+      _Screen.manhwaOutfits,
+      _Screen.manhwaLocked,
+      _Screen.manhwaCast,
       _Screen.role,
       _Screen.omen,
       _Screen.darkFace,
@@ -266,6 +277,8 @@ class _PreviewPanelState extends State<_PreviewPanel> {
   String _query = '';
   bool _dark = false;
   int _antagonists = 2;
+  String _characterTheme = defaultTheme;
+  String _manhwaCharacter = manhwaNames.keys.first;
 
   Future<void> _open(_Screen screen) async {
     final role = switch (screen) {
@@ -281,6 +294,10 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     };
     _session.prepare(
       role: role,
+      characterTheme: screen == _Screen.manhwaCast
+          ? manhwaTheme
+          : _characterTheme,
+      manhwaCharacter: _manhwaCharacter,
       antagonists: screen == _Screen.secretChat ? 2 : _antagonists,
       phase: switch (screen) {
         _Screen.village ||
@@ -308,11 +325,39 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         _Screen.story,
         _Screen.shuffle,
       }.contains(screen),
-      holdPrologue: screen == _Screen.prologueWait,
+      holdPrologue: const {
+        _Screen.story,
+        _Screen.shuffle,
+        _Screen.character,
+        _Screen.role,
+        _Screen.prologueWait,
+      }.contains(screen),
       jailed: screen == _Screen.jailed,
       eliminated: screen == _Screen.spectator,
       locked: screen == _Screen.lockedVote,
     );
+
+    if (const {
+          _Screen.manhwaCharacters,
+          _Screen.manhwaWaiting,
+          _Screen.manhwaOutfits,
+          _Screen.manhwaLocked,
+        }.contains(screen) ||
+        (screen == _Screen.character && _characterTheme == manhwaTheme)) {
+      _session.prepareManhwaDraft(
+        characterId: _manhwaCharacter,
+        role: role,
+        antagonists: _antagonists,
+        stage: screen == _Screen.manhwaOutfits || screen == _Screen.manhwaLocked
+            ? 'outfits'
+            : 'characters',
+        waiting: screen == _Screen.manhwaWaiting,
+        locked: screen == _Screen.manhwaLocked,
+      );
+    }
+    if (screen == _Screen.manhwaCast || screen == _Screen.prologueWait) {
+      _session.prepareCastPreview();
+    }
 
     final place = switch (screen) {
       _Screen.well => 'sumur',
@@ -391,12 +436,29 @@ class _PreviewPanelState extends State<_PreviewPanel> {
           _Screen.abilities,
         ].indexOf(screen);
         return GuidePage(initialTab: tab);
+      case _Screen.manhwaCharacters:
+      case _Screen.manhwaWaiting:
+      case _Screen.manhwaOutfits:
+      case _Screen.manhwaLocked:
+        return ManhwaDraftPage(repo: _session, gameId: _gameId);
+      case _Screen.manhwaCast:
+        return PrologueFlow(
+          gameId: _gameId,
+          repo: _session,
+          characterTheme: manhwaTheme,
+          resume: true,
+          antagonistCount: _session.antagonistCount,
+        );
       case _Screen.story:
       case _Screen.shuffle:
       case _Screen.character:
       case _Screen.role:
       case _Screen.prologueWait:
+        if (screen == _Screen.character && _characterTheme == manhwaTheme) {
+          return ManhwaDraftPage(repo: _session, gameId: _gameId);
+        }
         return PrologueFlow(
+          characterTheme: _characterTheme,
           gameId: _gameId,
           repo: _session,
           antagonistCount: _session.antagonistCount,
@@ -698,6 +760,42 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                       onSelected: (_) => setState(() => _antagonists = 2),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Default'),
+                      selected: _characterTheme == defaultTheme,
+                      onSelected: (_) =>
+                          setState(() => _characterTheme = defaultTheme),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Manhwa Style'),
+                      selected: _characterTheme == manhwaTheme,
+                      onSelected: (_) =>
+                          setState(() => _characterTheme = manhwaTheme),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('Tokoh untuk contoh Manhwa'),
+                DropdownButton<String>(
+                  key: const ValueKey('preview-manhwa-character'),
+                  isExpanded: true,
+                  value: _manhwaCharacter,
+                  items: [
+                    for (final e in manhwaNames.entries)
+                      DropdownMenuItem(value: e.key, child: Text(e.value)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _manhwaCharacter = v);
+                  },
+                ),
+                Text(
+                  '${manhwaNames.length} tokoh · ${manhwaOutfits.length} kartu · tampilan awal kartu utama',
                 ),
                 const SizedBox(height: 12),
                 TextField(
