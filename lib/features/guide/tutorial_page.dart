@@ -863,6 +863,13 @@ class _HiCard extends StatelessWidget {
         ),
       ],
     ),
+    foregroundDecoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: EmbunColors.gold.withValues(alpha: 0.35),
+        width: 0.8,
+      ),
+    ),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: GameImage(path: path, cacheWidth: (width * 5).round()),
@@ -1132,7 +1139,23 @@ class _CardCol extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        // bayangan lantai lembut: kartu terasa berdiri, bukan menempel
+        Container(
+          width: w * 0.78,
+          height: 7,
+          margin: const EdgeInsets.only(top: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: (glow ?? Colors.black).withValues(alpha: 0.5),
+                blurRadius: 14,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
         SizedBox(
           width: w + 10,
           child: Text(
@@ -1140,9 +1163,11 @@ class _CardCol extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             style: const TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               height: 1.2,
-              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              shadows: [Shadow(color: Colors.black, blurRadius: 8)],
             ),
           ),
         ),
@@ -1184,9 +1209,18 @@ class _CycleStrip extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.4),
+                    gradient: RadialGradient(
+                      colors: [
+                        EmbunColors.gold.withValues(
+                          alpha: i == active ? 0.5 : 0.1,
+                        ),
+                        Colors.black.withValues(alpha: 0.35),
+                      ],
+                    ),
                     border: Border.all(
-                      color: i == active ? EmbunColors.gold : Colors.white24,
+                      color: i == active
+                          ? EmbunColors.gold
+                          : EmbunColors.goldDim.withValues(alpha: 0.5),
                       width: i == active ? 2 : 1,
                     ),
                     boxShadow: i == active
@@ -1225,12 +1259,12 @@ class _CycleStrip extends StatelessWidget {
           ),
         ),
         if (i < _items.length - 1)
-          const Padding(
-            padding: EdgeInsets.only(top: 10),
-            child: Icon(
-              Icons.chevron_right_rounded,
-              size: 14,
-              color: Colors.white30,
+          Padding(
+            padding: const EdgeInsets.only(top: 19),
+            child: Container(
+              width: 8,
+              height: 1.5,
+              color: EmbunColors.goldDim.withValues(alpha: 0.6),
             ),
           ),
       ],
@@ -1296,29 +1330,39 @@ class _HayuGrow extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (paths.isNotEmpty)
-                    GameImage(path: paths[lo], cacheWidth: 1400),
-                  if (paths.isNotEmpty && hi != lo)
-                    Opacity(
-                      opacity: fr,
-                      child: GameImage(path: paths[hi], cacheWidth: 1400),
-                    ),
-                  Positioned(
-                    left: 10,
-                    bottom: 10,
-                    child: _Chip(
-                      'Daun $leaves / $kLeavesMax',
-                      fwd ? EmbunColors.leaf : EmbunColors.blood,
-                      pill: true,
-                    ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (r) => const RadialGradient(
+                    radius: 0.8,
+                    colors: [Colors.white, Colors.white, Colors.transparent],
+                    stops: [0.0, 0.7, 1.0],
+                  ).createShader(r),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (paths.isNotEmpty)
+                        GameImage(path: paths[lo], cacheWidth: 1400),
+                      if (paths.isNotEmpty && hi != lo)
+                        Opacity(
+                          opacity: fr,
+                          child: GameImage(path: paths[hi], cacheWidth: 1400),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Positioned(
+                  left: 10,
+                  bottom: 6,
+                  child: _Chip(
+                    'Daun $leaves / $kLeavesMax',
+                    fwd ? EmbunColors.leaf : EmbunColors.blood,
+                    pill: true,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
@@ -1685,14 +1729,13 @@ class _FuseDemo extends StatelessWidget {
     height: w * kTallAspect,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(
-        color: on
-            ? EmbunColors.gold
-            : EmbunColors.goldDim.withValues(alpha: 0.5),
-        width: on ? 1.6 : 1,
+      borderRadius: BorderRadius.circular(14),
+      gradient: RadialGradient(
+        colors: [
+          EmbunColors.gold.withValues(alpha: on ? 0.34 : 0.10),
+          Colors.transparent,
+        ],
       ),
-      color: Colors.black.withValues(alpha: 0.3),
     ),
     child: child,
   );
