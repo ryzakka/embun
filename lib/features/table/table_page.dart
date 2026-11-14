@@ -174,7 +174,6 @@ class _TablePageState extends State<TablePage> {
   String abilityId = 'biasa';
   bool abilityUsed = false;
   bool _abilityKnown = false;
-  bool _abilityRevealed = false;
   final ValueNotifier<int> _marketTick = ValueNotifier<int>(0);
   Future<Map<String, Map<String, dynamic>>>? secretsFuture;
   Future<Map<String, dynamic>?>? recapFuture;
@@ -263,7 +262,7 @@ class _TablePageState extends State<TablePage> {
           if (mounted) setState(() => abilityDefs = d);
         })
         .catchError((_) {});
-    _loadAbility(reveal: true);
+    _loadAbility();
 
     final id = widget.gameId;
     _subs.add(lobby.game(id).listen(_onGame, onError: (_) {}));
@@ -1325,7 +1324,7 @@ class _TablePageState extends State<TablePage> {
 
   /// Memuat kemampuan milikku dari server. Si Terbisik tidak punya kemampuan
   /// (ia memakai kartu), jadi tidak ada yang ditampilkan untuknya.
-  Future<void> _loadAbility({bool reveal = false}) async {
+  Future<void> _loadAbility() async {
     if (isAntag) return;
     try {
       final s = await lobby.mySecret(widget.gameId);
@@ -1335,34 +1334,10 @@ class _TablePageState extends State<TablePage> {
         abilityUsed = s['ability_used'] == true;
         _abilityKnown = true;
       });
-      if (reveal) _tryRevealAbility();
+      // Pengungkapan kemampuan kini selesai di prolog, bukan popup meja.
     } catch (_) {
       // Kolom belum ada (migrasi belum dijalankan): sembunyikan saja.
     }
-  }
-
-  /// Pengungkapan di awal permainan, setelah adegan pembuka selesai.
-  void _tryRevealAbility([int attempt = 0]) {
-    if (_abilityRevealed || !_abilityKnown || isAntag) return;
-    if (((game?['day'] as int?) ?? 0) > 1) {
-      _abilityRevealed = true;
-      return;
-    }
-    Future.delayed(Duration(milliseconds: attempt == 0 ? 2800 : 1500), () {
-      if (!mounted || _abilityRevealed) return;
-      // Data hari dapat tiba setelah pengambilan kemampuan pertama.
-      // Pengantar kemampuan hari pertama tidak menutupi laporan musyawarah.
-      if (((game?['day'] as int?) ?? 0) > 1) {
-        _abilityRevealed = true;
-        return;
-      }
-      if ((_dayIntro != null || _inspectionOpen) && attempt < 8) {
-        _tryRevealAbility(attempt + 1);
-        return;
-      }
-      _abilityRevealed = true;
-      _openAbility(intro: true);
-    });
   }
 
   Future<void> _openAbility({bool intro = false}) async {

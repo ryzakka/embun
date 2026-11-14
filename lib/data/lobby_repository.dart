@@ -113,6 +113,21 @@ class LobbyRepository {
     }
   }
 
+  /// Pilihan biru hanya untuk pemilik. Kartu tertutup diwakili nomor slot.
+  Future<Map<String, dynamic>> myAbilityDraft(String gameId) async =>
+      Map<String, dynamic>.from(
+        await _db.rpc('my_ability_draft', params: {'p_game': gameId}) as Map,
+      );
+
+  Future<Map<String, dynamic>> chooseAbility(String gameId, int slot) async =>
+      Map<String, dynamic>.from(
+        await _db.rpc(
+              'choose_ability',
+              params: {'p_game': gameId, 'p_slot': slot},
+            )
+            as Map,
+      );
+
   /// Prolog: Si Terbisik memilih wajah gelapnya (indeks gambar antagonis).
   Future<void> chooseDark(String gameId, int seed) =>
       _db.rpc('choose_dark', params: {'p_game': gameId, 'p_seed': seed});

@@ -2121,14 +2121,16 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _bullet(
-                'Tiap warga mendapat **satu kemampuan acak**. Tidak '
-                'bisa dibeli dan tidak ada yang kembar.',
+                'Setelah kartu karakter hijau terbuka, tiap warga memilih '
+                '**satu dari tiga kartu biru tertutup**. Pilihan diacak server '
+                'dan hasilnya hanya terlihat oleh pemilik.',
                 dot: accent,
                 bold: accent,
               ),
               _bullet(
-                'Jumlah kemampuan nyata: **0** (3 pemain), **1** '
-                '(4-5), **2** (6-7), **3** (8). Sisanya warga biasa.',
+                'Kartu biru tidak bisa dibeli. Kemampuan khusus tidak kembar; '
+                '**Hanya Orang Biasa** tetap bisa diperoleh lebih dari satu warga. '
+                'Terbisik membuka kartu merah pada tahap yang sama.',
                 dot: accent,
                 bold: accent,
               ),

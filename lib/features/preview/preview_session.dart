@@ -123,6 +123,9 @@ class PreviewSession
   bool _holdPrologue = false;
   bool _charChosen = true;
   bool _darkChosen = true;
+  String? _pickedAbility;
+  int? _abilitySlot;
+  List<String> _abilityOffers = [];
   bool _usedAbility = false;
   int _seed = 0;
   int _sequence = 0;
@@ -142,11 +145,13 @@ class PreviewSession
   List<PreviewRow> get hand => List.unmodifiable(_hand);
   PreviewRow get me => _players.first;
   PreviewRow get other => _players[1];
-  String get _ability => switch (_game['phase']) {
-    'voting' => 'palu_hakim',
-    'discussion' => 'arloji_khayal',
-    _ => 'jangan_bohong',
-  };
+  String get _ability =>
+      _pickedAbility ??
+      switch (_game['phase']) {
+        'voting' => 'palu_hakim',
+        'discussion' => 'arloji_khayal',
+        _ => 'jangan_bohong',
+      };
 
   void dispose() => _changes.close();
 
@@ -168,6 +173,11 @@ class PreviewSession
     _holdPrologue = holdPrologue;
     _charChosen = !pickCharacter;
     _darkChosen = !pickDark;
+    _pickedAbility = null;
+    _abilitySlot = null;
+    _abilityOffers = (previewAbilities.keys.toList()..shuffle())
+        .take(3)
+        .toList();
     _usedAbility = false;
     _seed = 0;
     _sequence = 0;
@@ -474,6 +484,9 @@ class PreviewSession
     }
     _charChosen = false;
     _darkChosen = false;
+    _pickedAbility = null;
+    _abilitySlot = null;
+    _abilityOffers = (previewAbilities.keys.toList()..shuffle()).take(3).toList();
     _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
     _phase('day', nextDay: 1);
   }
@@ -500,6 +513,33 @@ class PreviewSession
     final name = (me['name'] as String);
     await updateCharacter(gameId, name, card);
     return name;
+  }
+
+  @override
+  Future<PreviewRow> myAbilityDraft(String gameId) async {
+    if (_dark) throw StateError('Pilihan biru hanya untuk warga');
+    return {
+      'count': _abilityOffers.length,
+      'chosen': _pickedAbility != null,
+      'selected_slot': _abilitySlot,
+      'ability': _pickedAbility == null
+          ? null
+          : previewAbilities[_pickedAbility],
+    };
+  }
+
+  @override
+  Future<PreviewRow> chooseAbility(String gameId, int slot) async {
+    if (_dark) throw StateError('Pilihan biru hanya untuk warga');
+    if (_abilitySlot != null && _abilitySlot != slot) {
+      throw StateError('Pilihan kemampuan sudah terkunci');
+    }
+    if (slot < 1 || slot > _abilityOffers.length) {
+      throw StateError('Pilihan tidak valid');
+    }
+    _abilitySlot = slot;
+    _pickedAbility = _abilityOffers[slot - 1];
+    return myAbilityDraft(gameId);
   }
 
   @override

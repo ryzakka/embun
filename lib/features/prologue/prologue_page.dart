@@ -14,6 +14,7 @@ import '../common/scene_flow.dart';
 import '../common/sfx.dart';
 import '../table/table_page.dart';
 import 'character_pick.dart';
+import 'ability_pick.dart';
 import 'cast_introduction.dart';
 import 'dark_omen.dart';
 import 'role_reveal.dart';
@@ -231,6 +232,8 @@ class _PrologueFlowState extends State<PrologueFlow>
   int _pickEpoch = 0; // naik tiap pilihan dikocok ulang (kunci widget)
   String? _pickNote; // pesan galat dari percobaan sebelumnya
   bool _omen = false; // peringatan awan gelap sedang tampil
+  bool _abilityPick = false;
+  Completer<void>? _abilityGate;
   bool _darkPick = false; // pilihan wajah gelap sedang tampil
   Completer<void>? _darkGate;
 
@@ -558,6 +561,25 @@ class _PrologueFlowState extends State<PrologueFlow>
     _goodDone();
   }
 
+  // ====================== pilih kemampuan warga ======================
+
+  Future<void> _wargaGate() async {
+    if (!mounted || role != 'warga') return;
+    final gate = Completer<void>();
+    _abilityGate = gate;
+    setState(() => _abilityPick = true);
+    await gate.future;
+  }
+
+  void _abilityPicked() {
+    if (!mounted) return;
+    setState(() => _abilityPick = false);
+    if (_abilityGate?.isCompleted == false) _abilityGate!.complete();
+    _abilityGate = null;
+    // Penjelasan biru menjadi penutup pengungkapan warga; langsung ke pemeran.
+    _afterReveal();
+  }
+
   // ====================== pilih wajah gelap ======================
 
   /// Tiga indeks gambar antagonis acak.
@@ -650,6 +672,8 @@ class _PrologueFlowState extends State<PrologueFlow>
 
   @override
   void dispose() {
+    if (_abilityGate?.isCompleted == false) _abilityGate!.complete();
+    if (_darkGate?.isCompleted == false) _darkGate!.complete();
     _beat?.cancel();
     _waitTimer?.cancel();
     _gameSub?.cancel();
@@ -715,7 +739,16 @@ class _PrologueFlowState extends State<PrologueFlow>
               disguisePath: protagonistPath(myCard),
               disguiseName: characterTitle(myCard),
               twistGate: _antagGate,
+              wargaGate: _wargaGate,
               onContinue: role == null ? () {} : _afterReveal,
+            ),
+          if (_abilityPick)
+            Positioned.fill(
+              child: AbilityPick(
+                repo: widget.repo,
+                gameId: widget.gameId,
+                onDone: _abilityPicked,
+              ),
             ),
           // Hanya Si Terbisik: peringatan lalu pilihan wajah gelap.
           if (_omen)

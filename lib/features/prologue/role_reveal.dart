@@ -95,6 +95,9 @@ class RoleReveal extends StatefulWidget {
   /// sebelum putar balik dimulai. null = langsung putar balik.
   final Future<void> Function()? twistGate;
 
+  /// Gerbang biru warga setelah kartu karakter hijau terbuka.
+  final Future<void> Function()? wargaGate;
+
   const RoleReveal({
     super.key,
     required this.role,
@@ -103,6 +106,7 @@ class RoleReveal extends StatefulWidget {
     this.disguisePath,
     this.disguiseName,
     this.twistGate,
+    this.wargaGate,
     this.antagonistCount = 1,
     this.partnerName,
   });
@@ -113,18 +117,29 @@ class RoleReveal extends StatefulWidget {
 
 class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   late final AnimationController _intro = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 3000));
+    vsync: this,
+    duration: const Duration(milliseconds: 3000),
+  );
   late final AnimationController _charge = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100));
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
   late final AnimationController _burst = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 2800));
+    vsync: this,
+    duration: const Duration(milliseconds: 2800),
+  );
   late final AnimationController _face = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 800));
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  );
   late final AnimationController _twist = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 2600));
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  );
   late final AnimationController _loop = AnimationController(
-      vsync: this, duration: const Duration(seconds: 600))
-    ..repeat();
+    vsync: this,
+    duration: const Duration(seconds: 600),
+  )..repeat();
 
   final Set<int> _fired = {};
   bool _holding = false;
@@ -132,6 +147,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   bool _pressActive = false;
   bool _ignoreNextUp = false;
   bool _twistStarted = false;
+  bool _wargaGateStarted = false;
+  bool _wargaGateDone = false;
 
   // ---- shader (null bila dimatikan / gagal dimuat -> painter lama) ----
   ui.FragmentShader? _atmo; // kabut + asap
@@ -149,10 +166,10 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   /// Larut kartu aktif: shader + kedua gambar siap + ada kartu samaran.
   bool get _morphOn =>
       _antag &&
-          _morph != null &&
-          _imgA != null &&
-          _imgB != null &&
-          widget.disguisePath != null;
+      _morph != null &&
+      _imgA != null &&
+      _imgB != null &&
+      widget.disguisePath != null;
 
   /// Kemajuan putar balik (0..1); selalu 0 untuk warga.
   double get _tw => _twist.value;
@@ -176,7 +193,13 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       if (s == AnimationStatus.completed) _trigger();
     });
     _burst.addStatusListener((s) {
-      if (s == AnimationStatus.completed && _antag) _startTwist();
+      if (s == AnimationStatus.completed) {
+        if (_antag) {
+          _startTwist();
+        } else {
+          _startWargaGate();
+        }
+      }
     });
     _twist.addListener(_onTwistTick);
     // Shader yang sama untuk kedua peran (tidak membocorkan apa pun).
@@ -248,6 +271,14 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
 
   /// Setelah kartu baik terbuka: jalankan gerbang induk (peringatan awan
   /// gelap + pilih wajah gelap) bila ada, jeda sejenak, lalu putar balik.
+  Future<void> _startWargaGate() async {
+    if (_wargaGateStarted) return;
+    _wargaGateStarted = true;
+    final gate = widget.wargaGate;
+    if (gate != null) await gate();
+    if (mounted) setState(() => _wargaGateDone = true);
+  }
+
   void _startTwist() {
     if (_twistStarted) return;
     _twistStarted = true;
@@ -268,9 +299,13 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     if (t >= 0.36 && _fired.add(23)) {
       HapticFeedback.heavyImpact();
       Future.delayed(
-          const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
+        const Duration(milliseconds: 150),
+        HapticFeedback.heavyImpact,
+      );
       Future.delayed(
-          const Duration(milliseconds: 420), HapticFeedback.mediumImpact);
+        const Duration(milliseconds: 420),
+        HapticFeedback.mediumImpact,
+      );
     }
   }
 
@@ -283,7 +318,9 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     // putar balik, supaya tidak ada yang bocor lebih awal.
     HapticFeedback.heavyImpact();
     Future.delayed(
-        const Duration(milliseconds: 220), HapticFeedback.mediumImpact);
+      const Duration(milliseconds: 220),
+      HapticFeedback.mediumImpact,
+    );
     _burst.forward(from: 0);
     _face.duration = const Duration(milliseconds: 800);
     Future.delayed(const Duration(milliseconds: 160), () {
@@ -341,134 +378,150 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation:
-      Listenable.merge([_intro, _charge, _burst, _twist, _face, _loop]),
+      animation: Listenable.merge([
+        _intro,
+        _charge,
+        _burst,
+        _twist,
+        _face,
+        _loop,
+      ]),
       builder: (context, _) => _scene(context),
     );
   }
 
   Widget _scene(BuildContext context) {
     final mq = MediaQuery.of(context);
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth, h = c.maxHeight;
-      final land = w > h * 1.2;
-      final aspect = cardAspectFor(widget.cardPath);
-      var cardH = (land ? h * 0.72 : h * 0.46).clamp(170.0, 420.0).toDouble();
-      var cardW = cardH / aspect;
-      final maxW = land ? w * 0.4 : w * 0.66;
-      if (cardW > maxW) {
-        cardW = maxW;
-        cardH = cardW * aspect;
-      }
-      final center = land ? Offset(w * 0.29, h * 0.5) : Offset(w / 2, h * 0.38);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth, h = c.maxHeight;
+        final land = w > h * 1.2;
+        final aspect = cardAspectFor(widget.cardPath);
+        var cardH = (land ? h * 0.72 : h * 0.46).clamp(170.0, 420.0).toDouble();
+        var cardW = cardH / aspect;
+        final maxW = land ? w * 0.4 : w * 0.66;
+        if (cardW > maxW) {
+          cardW = maxW;
+          cardH = cardW * aspect;
+        }
+        final center = land
+            ? Offset(w * 0.29, h * 0.5)
+            : Offset(w / 2, h * 0.38);
 
-      final it = _intro.value;
-      final bt = _burst.value;
-      final ch = _charge.value;
-      final tw = _tw;
-      final mix = _smooth(_seg(bt, 0, 0.25));
-      final bEnv = _smooth(_seg(bt, 0.05, 0.3)) * (1 - 0.3 * _seg(bt, 0.7, 1));
-      final twEnv =
-          _smooth(_seg(tw, 0.05, 0.4)) * (1 - 0.3 * _seg(tw, 0.75, 1));
-      final twMix = _smooth(_seg(tw, 0.2, 0.5));
-      final fx = _fx;
-      final deep = Color.lerp(_wargaFx.deep, fx.deep, twMix)!;
+        final it = _intro.value;
+        final bt = _burst.value;
+        final ch = _charge.value;
+        final tw = _tw;
+        final mix = _smooth(_seg(bt, 0, 0.25));
+        final bEnv =
+            _smooth(_seg(bt, 0.05, 0.3)) * (1 - 0.3 * _seg(bt, 0.7, 1));
+        final twEnv =
+            _smooth(_seg(tw, 0.05, 0.4)) * (1 - 0.3 * _seg(tw, 0.75, 1));
+        final twMix = _smooth(_seg(tw, 0.2, 0.5));
+        final fx = _fx;
+        final deep = Color.lerp(_wargaFx.deep, fx.deep, twMix)!;
 
-      // Terang saat kartu baik terbuka; Si Terbisik kembali menggelap
-      // ketika putar balik.
-      final dim = (0.30 +
-          0.35 * _smooth(_seg(it, 0, 0.6)) +
-          0.10 * ch -
-          0.18 * bEnv * (1 - twMix) +
-          0.22 * twEnv)
-          .clamp(0.0, 0.95)
-          .toDouble();
+        // Terang saat kartu baik terbuka; Si Terbisik kembali menggelap
+        // ketika putar balik.
+        final dim =
+            (0.30 +
+                    0.35 * _smooth(_seg(it, 0, 0.6)) +
+                    0.10 * ch -
+                    0.18 * bEnv * (1 - twMix) +
+                    0.22 * twEnv)
+                .clamp(0.0, 0.95)
+                .toDouble();
 
-      // Entakan layar: ringan saat kartu baik terbuka; Si Terbisik
-      // bergetar naik lalu tersentak keras saat putar balik.
-      var shake = Offset.zero;
-      if (bt > 0.04 && bt < 0.32) {
-        final q = (bt * 60).floor();
-        final fall = 1 - _seg(bt, 0.04, 0.32);
-        final amp = 6.0 * fall;
-        shake = Offset((_rnd(q, 11) - 0.5) * amp, (_rnd(q, 12) - 0.5) * amp);
-      }
-      if (_antag && tw > 0 && tw < 0.62) {
-        final q = (tw * 60).floor();
-        final ramp = tw < 0.30 ? 3.0 * _seg(tw, 0, 0.30) : 0.0;
-        final hit = tw >= 0.30 ? 14.0 * (1 - _seg(tw, 0.30, 0.62)) : 0.0;
-        final amp = ramp + hit;
-        shake += Offset((_rnd(q, 13) - 0.5) * amp, (_rnd(q, 14) - 0.5) * amp);
-      }
+        // Entakan layar: ringan saat kartu baik terbuka; Si Terbisik
+        // bergetar naik lalu tersentak keras saat putar balik.
+        var shake = Offset.zero;
+        if (bt > 0.04 && bt < 0.32) {
+          final q = (bt * 60).floor();
+          final fall = 1 - _seg(bt, 0.04, 0.32);
+          final amp = 6.0 * fall;
+          shake = Offset((_rnd(q, 11) - 0.5) * amp, (_rnd(q, 12) - 0.5) * amp);
+        }
+        if (_antag && tw > 0 && tw < 0.62) {
+          final q = (tw * 60).floor();
+          final ramp = tw < 0.30 ? 3.0 * _seg(tw, 0, 0.30) : 0.0;
+          final hit = tw >= 0.30 ? 14.0 * (1 - _seg(tw, 0.30, 0.62)) : 0.0;
+          final amp = ramp + hit;
+          shake += Offset((_rnd(q, 13) - 0.5) * amp, (_rnd(q, 14) - 0.5) * amp);
+        }
 
-      final pr = _Pr(
-        fx: fx,
-        antag: _antag,
-        twist: tw,
-        center: center,
-        cw: cardW,
-        ch: cardH,
-        intro: it,
-        charge: ch,
-        burst: bt,
-        time: _time,
-        mix: mix,
-        deep: deep,
-        atmo: _atmo,
-        rays: _raysFx,
-      );
+        final pr = _Pr(
+          fx: fx,
+          antag: _antag,
+          twist: tw,
+          center: center,
+          cw: cardW,
+          ch: cardH,
+          intro: it,
+          charge: ch,
+          burst: bt,
+          time: _time,
+          mix: mix,
+          deep: deep,
+          atmo: _atmo,
+          rays: _raysFx,
+        );
 
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(color: deep.withValues(alpha: dim)),
-          Transform.translate(
-            offset: shake,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                IgnorePointer(
-                  child: CustomPaint(
-                      painter: _BackPainter(pr), size: Size.infinite),
-                ),
-                Positioned(
-                  left: center.dx - cardW / 2,
-                  top: center.dy - cardH / 2,
-                  width: cardW,
-                  height: cardH,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapDown: (_) => _down(),
-                    onTapUp: (_) => _up(),
-                    onTapCancel: _cancel,
-                    child: _card(cardW, cardH),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: deep.withValues(alpha: dim)),
+            Transform.translate(
+              offset: shake,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _BackPainter(pr),
+                      size: Size.infinite,
+                    ),
                   ),
-                ),
-                IgnorePointer(
-                  child: CustomPaint(
-                      painter: _FrontPainter(pr), size: Size.infinite),
-                ),
-              ],
+                  Positioned(
+                    left: center.dx - cardW / 2,
+                    top: center.dy - cardH / 2,
+                    width: cardW,
+                    height: cardH,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (_) => _down(),
+                      onTapUp: (_) => _up(),
+                      onTapCancel: _cancel,
+                      child: _card(cardW, cardH),
+                    ),
+                  ),
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _FrontPainter(pr),
+                      size: Size.infinite,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (land)
-            Positioned(
-              left: w * 0.52,
-              right: 24,
-              top: 0,
-              bottom: 0,
-              child: Center(child: _textBlock()),
-            )
-          else
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: mq.padding.bottom + 18,
-              child: _textBlock(),
-            ),
-        ],
-      );
-    });
+            if (land)
+              Positioned(
+                left: w * 0.52,
+                right: 24,
+                top: 0,
+                bottom: 0,
+                child: Center(child: _textBlock()),
+              )
+            else
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: mq.padding.bottom + 18,
+                child: _textBlock(),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _back(double w, double h) => Container(
@@ -515,7 +568,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     final sh = _foil;
     if (sh == null) return null;
     final tw = _tw;
-    var env = _smooth(_seg(_burst.value, 0.55, 0.9)) *
+    var env =
+        _smooth(_seg(_burst.value, 0.55, 0.9)) *
         _smooth(_seg(_face.value, 0.6, 1.0));
     env *= 1 - 0.5 * _smooth(_seg(tw, 0.05, 0.4)) * (1 - _seg(tw, 0.75, 1.0));
     if (env <= 0.01) return null;
@@ -526,7 +580,12 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
         height: chh,
         child: CustomPaint(
           painter: _FoilPainter(
-              shader: sh, time: _time, env: env, soft: f.soft, hue: f.main),
+            shader: sh,
+            time: _time,
+            env: env,
+            soft: f.soft,
+            hue: f.main,
+          ),
         ),
       ),
     );
@@ -548,19 +607,21 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
     final tw = _tw;
     final twTremble = _antag && tw > 0
         ? math.sin(time * 90) *
-        3 *
-        _seg(tw, 0, 0.34) *
-        (1 - _seg(tw, 0.34, 0.5))
+              3 *
+              _seg(tw, 0, 0.34) *
+              (1 - _seg(tw, 0.34, 0.5))
         : 0.0;
     final shakeX =
         (charging ? math.sin(time * 70) * c * c * 4 : 0.0) + twTremble;
     final shakeY = charging ? math.cos(time * 83) * c * c * 3 : 0.0;
-    final scale = _lerp(0.25, 1.0, entry) *
+    final scale =
+        _lerp(0.25, 1.0, entry) *
         (1 + 0.05 * (charging ? c : 0.0)) *
         (1 + 0.14 * math.sin(math.pi * _seg(bt, 0.04, 0.34))) *
         (1 + 0.10 * math.sin(math.pi * _seg(tw, 0.28, 0.55))) *
         (1 + 0.06 * peak);
-    final dy = (1 - entry) * -70 +
+    final dy =
+        (1 - entry) * -70 +
         (it >= 1 ? math.sin(time * 1.5) * 5 : 0.0) -
         peak * 16 +
         shakeY;
@@ -570,25 +631,28 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       // Si Terbisik: muka pertama adalah kartu baik samarannya; kartu gelap
       // baru muncul di titik tukar putar balik.
       final hasDis = _antag && widget.disguisePath != null;
-      final facePath =
-      (hasDis && !_swapped) ? widget.disguisePath : widget.cardPath;
+      final facePath = (hasDis && !_swapped)
+          ? widget.disguisePath
+          : widget.cardPath;
       Widget art = CardArt(path: facePath, width: cw, glow: _fx.main);
       if (_antag && tw > 0 && !_swapped && !_morphOn) {
         // Kartu baik menggelap sebelum retak (cadangan bila shader mati).
         art = ColorFiltered(
           colorFilter: ColorFilter.mode(
-              const Color(0xFF0A0714)
-                  .withValues(alpha: 0.55 * _smooth(_seg(tw, 0.0, 0.34))),
-              BlendMode.srcATop),
+            const Color(
+              0xFF0A0714,
+            ).withValues(alpha: 0.55 * _smooth(_seg(tw, 0.0, 0.34))),
+            BlendMode.srcATop,
+          ),
           child: art,
         );
       }
       final faceW = showFront
           ? Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.rotationY(math.pi),
-        child: art,
-      )
+              alignment: Alignment.center,
+              transform: Matrix4.rotationY(math.pi),
+              child: art,
+            )
           : _back(cw, chh);
       return Transform(
         alignment: Alignment.center,
@@ -606,20 +670,26 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
       final q = (tw * 55).floor();
       final g = _seg(tw, 0.26, 0.32) * (1 - _seg(tw, 0.42, 0.62));
       for (var k = 0; k < 2; k++) {
-        layers.add(Transform.translate(
-          offset: Offset((_rnd(q, k + 1) - 0.5) * 30 * g,
-              (_rnd(q, k + 4) - 0.5) * 8 * g),
-          child: Opacity(
-            opacity: (0.5 * g).clamp(0.0, 1.0).toDouble(),
-            child: ColorFiltered(
-              colorFilter: ColorFilter.mode(
-                  (k == 0 ? EmbunColors.blood : EmbunColors.mist)
-                      .withValues(alpha: 0.75),
-                  BlendMode.srcATop),
-              child: core(),
+        layers.add(
+          Transform.translate(
+            offset: Offset(
+              (_rnd(q, k + 1) - 0.5) * 30 * g,
+              (_rnd(q, k + 4) - 0.5) * 8 * g,
+            ),
+            child: Opacity(
+              opacity: (0.5 * g).clamp(0.0, 1.0).toDouble(),
+              child: ColorFiltered(
+                colorFilter: ColorFilter.mode(
+                  (k == 0 ? EmbunColors.blood : EmbunColors.mist).withValues(
+                    alpha: 0.75,
+                  ),
+                  BlendMode.srcATop,
+                ),
+                child: core(),
+              ),
             ),
           ),
-        ));
+        );
       }
     }
     layers.add(core());
@@ -695,7 +765,9 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
         : 0.0;
     final btnOpacity = _antag
         ? _smooth(_seg(tw, 0.72, 0.95))
-        : _smooth(_seg(bt, 0.72, 0.92));
+        : ((widget.wargaGate == null || _wargaGateDone)
+              ? _smooth(_seg(bt, 0.72, 0.92))
+              : 0.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -717,9 +789,11 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                         const SizedBox(width: 6),
                       ],
                       Flexible(
-                        child: Text(hintText,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white70)),
+                        child: Text(
+                          hintText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white70),
+                        ),
                       ),
                     ],
                   ),
@@ -745,8 +819,9 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                               color: fx.main,
                               shadows: [
                                 Shadow(
-                                    color: fx.main.withValues(alpha: 0.7),
-                                    blurRadius: 18),
+                                  color: fx.main.withValues(alpha: 0.7),
+                                  blurRadius: 18,
+                                ),
                               ],
                             ),
                           ),
@@ -759,11 +834,11 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                       child: Text(
                         dark
                             ? (widget.partnerName == null
-                                ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
-                                : 'Rekan Terbisikmu adalah ${widget.partnerName}. Temui dia di obrolan rahasia.')
+                                  ? 'Kabut menitipkan bulir hitam padamu. Hancurkan Hayu tanpa ketahuan.'
+                                  : 'Rekan Terbisikmu adalah ${widget.partnerName}. Temui dia di obrolan rahasia.')
                             : widget.antagonistCount == 2
-                                ? 'Selamatkan Hayu. Dua Terbisik bersembunyi di antara kalian.'
-                                : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
+                            ? 'Selamatkan Hayu. Dua Terbisik bersembunyi di antara kalian.'
+                            : 'Selamatkan Hayu. Waspadai satu pengkhianat di antara kalian.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(height: 1.35),
                       ),
@@ -779,8 +854,8 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                               color: Colors.black.withValues(alpha: 0.38),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color:
-                                  EmbunColors.gold.withValues(alpha: 0.55)),
+                                color: EmbunColors.gold.withValues(alpha: 0.55),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -799,7 +874,9 @@ class _RoleRevealState extends State<RoleReveal> with TickerProviderStateMixin {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                        fontSize: 12.5, color: Colors.white70),
+                                      fontSize: 12.5,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -942,20 +1019,23 @@ class _BackPainter extends CustomPainter {
     final pull = math.max(_smooth(_seg(p.intro, 0.3, 0.7)), p.charge);
     final paint = Paint();
     for (var i = 0; i < 16; i++) {
-      final ang = _rnd(i, 1) * 2 * math.pi + p.time * 0.06 * (i.isEven ? 1 : -1);
+      final ang =
+          _rnd(i, 1) * 2 * math.pi + p.time * 0.06 * (i.isEven ? 1 : -1);
       final dist =
           size.longestSide * (0.18 + 0.42 * _rnd(i, 2)) * (1 - 0.35 * pull);
-      final pos = p.center +
-          Offset(math.cos(ang) * dist, math.sin(ang) * dist * 0.75);
+      final pos =
+          p.center + Offset(math.cos(ang) * dist, math.sin(ang) * dist * 0.75);
       final r = size.shortestSide * (0.28 + 0.32 * _rnd(i, 3));
-      final a = ((0.07 + 0.07 * _rnd(i, 4)) *
-          mi *
-          (1 + 0.3 * p.bEnv + 1.4 * p.twEnv))
-          .clamp(0.0, 1.0)
-          .toDouble();
+      final a =
+          ((0.07 + 0.07 * _rnd(i, 4)) * mi * (1 + 0.3 * p.bEnv + 1.4 * p.twEnv))
+              .clamp(0.0, 1.0)
+              .toDouble();
       final base = i % 3 == 0 ? _neutralMist : p.col;
       paint.shader = RadialGradient(
-        colors: [base.withValues(alpha: a), base.withValues(alpha: 0)],
+        colors: [
+          base.withValues(alpha: a),
+          base.withValues(alpha: 0),
+        ],
       ).createShader(Rect.fromCircle(center: pos, radius: r));
       canvas.drawCircle(pos, r, paint);
     }
@@ -967,21 +1047,19 @@ class _BackPainter extends CustomPainter {
     final orbIn = _smooth(_seg(it, 0.05, 0.25));
     final orbOut = 1 - _smooth(_seg(it, 0.5, 0.7));
     if (orbIn <= 0 || orbOut <= 0) return;
-    double beat(double at) =>
-        it < at ? 0.0 : math.exp(-(it - at) / 0.05 * 4);
+    double beat(double at) => it < at ? 0.0 : math.exp(-(it - at) / 0.05 * 4);
     final b = math.min(1.0, beat(0.20) + beat(0.38) + 0.8 * beat(0.52));
     final orbR = 10 + 8 * b + 40 * _smooth(_seg(it, 0.45, 0.6));
     final a = (0.9 * orbIn * orbOut).clamp(0.0, 1.0).toDouble();
     final paint = Paint()
-      ..shader = RadialGradient(colors: [
-        Colors.white.withValues(alpha: a),
-        EmbunColors.gold.withValues(alpha: a * 0.55),
-        EmbunColors.gold.withValues(alpha: 0),
-      ], stops: const [
-        0.0,
-        0.35,
-        1.0
-      ]).createShader(Rect.fromCircle(center: p.center, radius: orbR * 2.5));
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withValues(alpha: a),
+          EmbunColors.gold.withValues(alpha: a * 0.55),
+          EmbunColors.gold.withValues(alpha: 0),
+        ],
+        stops: const [0.0, 0.35, 1.0],
+      ).createShader(Rect.fromCircle(center: p.center, radius: orbR * 2.5));
     canvas.drawCircle(p.center, orbR * 2.5, paint);
   }
 
@@ -990,20 +1068,19 @@ class _BackPainter extends CustomPainter {
     if (ai <= 0) return;
     final pulse = p.burst > 0 ? math.sin(math.pi * _seg(p.burst, 0, 0.5)) : 0.0;
     final tp = p.twist > 0 ? math.sin(math.pi * _seg(p.twist, 0, 0.6)) : 0.0;
-    final a = ((0.16 +
-        0.26 * p.charge +
-        0.55 * pulse +
-        0.25 * p.bEnv +
-        0.45 * tp) *
-        ai)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final a =
+        ((0.16 + 0.26 * p.charge + 0.55 * pulse + 0.25 * p.bEnv + 0.45 * tp) *
+                ai)
+            .clamp(0.0, 1.0)
+            .toDouble();
     final ar = p.r * (0.85 + 0.35 * p.charge + 0.5 * pulse + 0.35 * tp);
     final paint = Paint()
-      ..shader = RadialGradient(colors: [
-        p.col.withValues(alpha: a),
-        p.col.withValues(alpha: 0),
-      ]).createShader(Rect.fromCircle(center: p.center, radius: ar * 1.4));
+      ..shader = RadialGradient(
+        colors: [
+          p.col.withValues(alpha: a),
+          p.col.withValues(alpha: 0),
+        ],
+      ).createShader(Rect.fromCircle(center: p.center, radius: ar * 1.4));
     canvas.drawCircle(p.center, ar * 1.4, paint);
   }
 
@@ -1082,15 +1159,21 @@ class _BackPainter extends CustomPainter {
       final l = len * (0.6 + 0.4 * _rnd(i, 7));
       final path = Path()
         ..moveTo(p.center.dx, p.center.dy)
-        ..lineTo(p.center.dx + math.cos(ang - w) * l,
-            p.center.dy + math.sin(ang - w) * l)
-        ..lineTo(p.center.dx + math.cos(ang + w) * l,
-            p.center.dy + math.sin(ang + w) * l)
+        ..lineTo(
+          p.center.dx + math.cos(ang - w) * l,
+          p.center.dy + math.sin(ang - w) * l,
+        )
+        ..lineTo(
+          p.center.dx + math.cos(ang + w) * l,
+          p.center.dy + math.sin(ang + w) * l,
+        )
         ..close();
-      paint.shader = RadialGradient(colors: [
-        p.fx.soft.withValues(alpha: 0.30 * env),
-        p.fx.soft.withValues(alpha: 0),
-      ]).createShader(Rect.fromCircle(center: p.center, radius: l));
+      paint.shader = RadialGradient(
+        colors: [
+          p.fx.soft.withValues(alpha: 0.30 * env),
+          p.fx.soft.withValues(alpha: 0),
+        ],
+      ).createShader(Rect.fromCircle(center: p.center, radius: l));
       canvas.drawPath(path, paint);
     }
   }
@@ -1101,18 +1184,25 @@ class _BackPainter extends CustomPainter {
       final st = 0.28 + 0.30 * _rnd(i, 1);
       final u = _seg(p.twist, st, st + 0.50);
       if (u <= 0 || u >= 1) continue;
-      final start = p.center +
+      final start =
+          p.center +
           Offset((_rnd(i, 2) - 0.5) * p.cw, p.ch * (0.15 + 0.35 * _rnd(i, 3)));
-      final pos = start +
-          Offset(math.sin(u * 3 + i) * p.cw * 0.25,
-              -u * p.ch * (0.7 + 0.9 * _rnd(i, 4)));
+      final pos =
+          start +
+          Offset(
+            math.sin(u * 3 + i) * p.cw * 0.25,
+            -u * p.ch * (0.7 + 0.9 * _rnd(i, 4)),
+          );
       final r = p.cw * (0.18 + 0.34 * u) * (0.7 + 0.7 * _rnd(i, 5));
       final a = math.sin(u * math.pi) * 0.6;
       final col = i % 3 == 0
           ? const Color(0xFF05020A)
           : (i.isEven ? EmbunColors.mist : _smokeGrey);
       paint.shader = RadialGradient(
-        colors: [col.withValues(alpha: a), col.withValues(alpha: 0)],
+        colors: [
+          col.withValues(alpha: a),
+          col.withValues(alpha: 0),
+        ],
       ).createShader(Rect.fromCircle(center: pos, radius: r));
       canvas.drawCircle(pos, r, paint);
     }
@@ -1150,25 +1240,35 @@ class _FrontPainter extends CustomPainter {
         .toDouble();
     if (a <= 0) return;
     final c = Color.lerp(Colors.white, _wargaFx.soft, 0.4)!;
-    canvas.drawRect(Offset.zero & size,
-        Paint()..color = c.withValues(alpha: a));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = c.withValues(alpha: a),
+    );
   }
 
   /// Kilatan ungu di titik tukar kartu baik -> kartu gelap.
   void _twistFlash(Canvas canvas, Size size) {
     final tw = p.twist;
     if (!p.antag || tw <= 0) return;
-    final a = (_seg(tw, 0.30, 0.36) * (1 - _smooth(_seg(tw, 0.36, 0.56))) * 0.85)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final a =
+        (_seg(tw, 0.30, 0.36) * (1 - _smooth(_seg(tw, 0.36, 0.56))) * 0.85)
+            .clamp(0.0, 1.0)
+            .toDouble();
     if (a <= 0) return;
     final c = Color.lerp(Colors.white, _antagFx.soft, 0.55)!;
-    canvas.drawRect(Offset.zero & size,
-        Paint()..color = c.withValues(alpha: a));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = c.withValues(alpha: a),
+    );
   }
 
-  void _rings(Canvas canvas, Size size, double prog, List<double> starts,
-      Color color) {
+  void _rings(
+    Canvas canvas,
+    Size size,
+    double prog,
+    List<double> starts,
+    Color color,
+  ) {
     if (prog <= 0) return;
     final maxR = size.longestSide * 0.6;
     for (final s in starts) {
@@ -1213,19 +1313,22 @@ class _FrontPainter extends CustomPainter {
       final e = Curves.easeOutCubic.transform(u);
       final ang = _rnd(i, 2) * 2 * math.pi;
       final dist = p.cw * (0.7 + 1.7 * _rnd(i, 3)) * e;
-      final pos = p.center +
+      final pos =
+          p.center +
           Offset.fromDirection(ang, dist) +
           Offset(math.sin(u * 5 + i) * 6, -u * u * p.ch * 0.5);
-      final alpha =
-      (math.min(1.0, u * 8) * (1 - u)).clamp(0.0, 1.0).toDouble();
+      final alpha = (math.min(1.0, u * 8) * (1 - u)).clamp(0.0, 1.0).toDouble();
       final s = 6 + 9 * _rnd(i, 4);
       final rot = _rnd(i, 5) * 2 * math.pi + u * 6 * (_rnd(i, 6) - 0.5);
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(rot);
       if (!shards) {
-        fill.color = Color.lerp(_wargaFx.main, EmbunColors.gold, _rnd(i, 7))!
-            .withValues(alpha: alpha);
+        fill.color = Color.lerp(
+          _wargaFx.main,
+          EmbunColors.gold,
+          _rnd(i, 7),
+        )!.withValues(alpha: alpha);
         canvas.drawPath(_leaf(s), fill);
       } else {
         fill.color = const Color(0xFF0B0612).withValues(alpha: alpha);
@@ -1242,13 +1345,18 @@ class _FrontPainter extends CustomPainter {
   void _motes(Canvas canvas, Size size) {
     final env = _smooth(_seg(p.burst, 0.55, 1.0));
     if (env <= 0) return;
-    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    final paint = Paint()
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
     // Emas dulu; Si Terbisik berubah jadi bara ungu saat putar balik.
-    final c = Color.lerp(_wargaFx.soft, EmbunColors.mist,
-        p.antag ? _smooth(_seg(p.twist, 0.30, 0.60)) : 0.0)!;
+    final c = Color.lerp(
+      _wargaFx.soft,
+      EmbunColors.mist,
+      p.antag ? _smooth(_seg(p.twist, 0.30, 0.60)) : 0.0,
+    )!;
     for (var i = 0; i < 16; i++) {
       final u = (p.time * 0.12 + _rnd(i, 1)) % 1.0;
-      final x = p.center.dx +
+      final x =
+          p.center.dx +
           (_rnd(i, 2) - 0.5) * size.width * 0.9 +
           math.sin(p.time * 0.8 + i) * 10;
       final y = size.height * (1.05 - 1.1 * u);
@@ -1272,7 +1380,10 @@ class _FrontPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           radius: 0.95,
-          colors: [Colors.transparent, p.deep.withValues(alpha: v)],
+          colors: [
+            Colors.transparent,
+            p.deep.withValues(alpha: v),
+          ],
           stops: const [0.5, 1.0],
         ).createShader(Offset.zero & size),
     );

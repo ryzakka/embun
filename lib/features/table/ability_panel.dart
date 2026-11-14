@@ -96,35 +96,50 @@ class AbilityCardView extends StatelessWidget {
           children: [
             if (art != null)
               GameImage(
-                path: art, fit: BoxFit.contain, cacheWidth: (width * 2).round(),
+                path: art,
+                fit: BoxFit.contain,
+                cacheWidth: (width * 2).round(),
               )
             else
               Padding(
                 padding: EdgeInsets.all(width * 0.08),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(abilityIcon(id), size: width * 0.38, color: accent),
-                    SizedBox(height: width * 0.07),
-                    Text(
-                      '${def['name']}',
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: width * 0.105,
-                        height: 1.15,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.gold,
-                      ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: SizedBox(
+                    width: width * 0.84,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          abilityIcon(id),
+                          size: width * 0.38,
+                          color: accent,
+                        ),
+                        SizedBox(height: width * 0.07),
+                        Text(
+                          '${def['name']}',
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: width * 0.105,
+                            height: 1.15,
+                            fontWeight: FontWeight.w800,
+                            color: EmbunColors.gold,
+                          ),
+                        ),
+                        SizedBox(height: width * 0.04),
+                        Text(
+                          def['kind'] == 'pasif' ? 'Pasif' : 'Sekali pakai',
+                          style: TextStyle(
+                            fontSize: width * 0.075,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: width * 0.04),
-                    Text(
-                      def['kind'] == 'pasif' ? 'Pasif' : 'Sekali pakai',
-                      style: TextStyle(
-                          fontSize: width * 0.075, color: Colors.white54),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             if (used) ...[
@@ -136,17 +151,22 @@ class AbilityCardView extends StatelessWidget {
                   angle: -0.2,
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: width * 0.08, vertical: width * 0.03),
+                      horizontal: width * 0.08,
+                      vertical: width * 0.03,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: EmbunColors.blood, width: 2.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(def['kind'] == 'pasif' ? 'NONAKTIF' : 'TERPAKAI',
-                        style: TextStyle(
-                            fontSize: width * 0.11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                            color: EmbunColors.blood)),
+                    child: Text(
+                      def['kind'] == 'pasif' ? 'NONAKTIF' : 'TERPAKAI',
+                      style: TextStyle(
+                        fontSize: width * 0.11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: EmbunColors.blood,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -161,39 +181,38 @@ class AbilityCardView extends StatelessWidget {
 /// Dialog kemampuan: kartu, penjelasan, dan (bila bisa) tombol pemakaian.
 /// [intro] true = pengungkapan di awal permainan.
 Future<void> showAbilityDialog(
-    BuildContext context, {
-      required Map<String, dynamic> def,
-      required bool used,
-      required GameRepository repo,
-      required String gameId,
-      required String phase,
-      required bool jailed,
-      required List<Map<String, dynamic>> others,
+  BuildContext context, {
+  required Map<String, dynamic> def,
+  required bool used,
+  required GameRepository repo,
+  required String gameId,
+  required String phase,
+  required bool jailed,
+  required List<Map<String, dynamic>> others,
 
-      /// Semua pemain yang masih di desa, termasuk diri sendiri (Kunci Segel
-      /// boleh membebaskan diri sendiri).
-      required List<Map<String, dynamic>> everyone,
-      required int day,
-      required VoidCallback onUsed,
-      bool intro = false,
-    }) =>
-    showDialog<void>(
-      context: context,
-      barrierDismissible: !intro,
-      builder: (_) => _AbilityDialog(
-        def: def,
-        used: used,
-        repo: repo,
-        gameId: gameId,
-        phase: phase,
-        jailed: jailed,
-        others: others,
-        everyone: everyone,
-        day: day,
-        onUsed: onUsed,
-        intro: intro,
-      ),
-    );
+  /// Semua pemain yang masih di desa, termasuk diri sendiri (Kunci Segel
+  /// boleh membebaskan diri sendiri).
+  required List<Map<String, dynamic>> everyone,
+  required int day,
+  required VoidCallback onUsed,
+  bool intro = false,
+}) => showDialog<void>(
+  context: context,
+  barrierDismissible: !intro,
+  builder: (_) => _AbilityDialog(
+    def: def,
+    used: used,
+    repo: repo,
+    gameId: gameId,
+    phase: phase,
+    jailed: jailed,
+    others: others,
+    everyone: everyone,
+    day: day,
+    onUsed: onUsed,
+    intro: intro,
+  ),
+);
 
 class _AbilityDialog extends StatefulWidget {
   final Map<String, dynamic> def;
@@ -241,8 +260,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
       error = null;
     });
     try {
-      final r = await widget.repo
-          .useAbility(widget.gameId, target: target, option: option);
+      final r = await widget.repo.useAbility(
+        widget.gameId,
+        target: target,
+        option: option,
+      );
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       setState(() => result = r);
@@ -256,9 +278,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
 
   Widget _note(String text, {Color color = Colors.white60}) => Padding(
     padding: const EdgeInsets.only(top: 4),
-    child: Text(text,
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 12.5, height: 1.4, color: color)),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 12.5, height: 1.4, color: color),
+    ),
   );
 
   Widget _resultPanel() {
@@ -287,22 +311,36 @@ class _AbilityDialogState extends State<_AbilityDialog> {
             Icon(abilityIcon(_id), size: 36, color: color),
           const SizedBox(height: 6),
           if (isRead) ...[
-            Text('Firasatmu tentang ${r['target']}',
-                style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
+            Text(
+              'Firasatmu tentang ${r['target']}',
+              style: const TextStyle(fontSize: 12.5, color: Colors.white70),
+            ),
             const SizedBox(height: 4),
-            Text('"${r['phrase']}"',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 19, fontWeight: FontWeight.w800, color: color)),
+            Text(
+              '"${r['phrase']}"',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 6),
-            const Text('Firasat bisa keliru. Hanya kamu yang mendengarnya.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11.5, color: Colors.white54)),
+            const Text(
+              'Firasat bisa keliru. Hanya kamu yang mendengarnya.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, color: Colors.white54),
+            ),
           ] else
-            Text('${r['message']}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w700, color: color)),
+            Text(
+              '${r['message']}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
         ],
       ),
     );
@@ -311,8 +349,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
   bool get _phaseOk => switch (_id) {
     'mata_suci' => widget.phase == 'day' || widget.phase == 'discussion',
     'kamera_rekaan' => widget.phase == 'day',
-    'arloji_khayal' =>
-    widget.phase == 'discussion' || widget.phase == 'voting',
+    'arloji_khayal' => widget.phase == 'discussion' || widget.phase == 'voting',
     'jemari_magis' => widget.phase == 'day',
     'kunci_segel' => widget.phase == 'day',
     _ => false,
@@ -321,8 +358,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
   String get _phaseHint => switch (_id) {
     'mata_suci' => 'Mata batin hanya terbuka saat hari biasa atau musyawarah.',
     'kamera_rekaan' => 'Kamera hanya bisa dipasang di hari biasa.',
-    'arloji_khayal' =>
-    'Arloji hanya bisa diputar saat musyawarah atau voting.',
+    'arloji_khayal' => 'Arloji hanya bisa diputar saat musyawarah atau voting.',
     'jemari_magis' => 'Jemari hanya bisa menyentuh Hayu di hari biasa.',
     'kunci_segel' => 'Kunci Segel hanya bisa dipakai di hari biasa.',
     _ => '',
@@ -349,9 +385,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
               path: protagonistPath(p['character_card'] as String),
               size: 24,
             ),
-            label: Text(p['user_id'] == widget.repo.myId
-                ? '${p['name']} (kamu)'
-                : p['name'] as String),
+            label: Text(
+              p['user_id'] == widget.repo.myId
+                  ? '${p['name']} (kamu)'
+                  : p['name'] as String,
+            ),
             selected: target == p['user_id'],
             showCheckmark: false,
             selectedColor: abilityAccent(_id).withValues(alpha: 0.28),
@@ -369,15 +407,18 @@ class _AbilityDialogState extends State<_AbilityDialog> {
       builder: (ctx) => AlertDialog(
         title: const Text('Berkorban untuk Hayu?'),
         content: const Text(
-            'Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam '
-                'tiba. Jika Hayu mencapai 30 daun, pengorbanan dibayar saat itu.'),
+          'Hayu langsung +10 daun, tetapi kamu keluar dari desa saat malam '
+          'tiba. Jika Hayu mencapai 30 daun, pengorbanan dibayar saat itu.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Berkorban')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Berkorban'),
+          ),
         ],
       ),
     );
@@ -393,11 +434,15 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Harga: 1 nyawa, dibayar pada malam hari biasa berikutnya.',
-                color: EmbunColors.gold),
+            _note(
+              'Harga: 1 nyawa, dibayar pada malam hari biasa berikutnya.',
+              color: EmbunColors.gold,
+            ),
             gap,
-            const Text('Pilih satu pemain:',
-                style: TextStyle(fontSize: 12.5, color: EmbunColors.gold)),
+            const Text(
+              'Pilih satu pemain:',
+              style: TextStyle(fontSize: 12.5, color: EmbunColors.gold),
+            ),
             const SizedBox(height: 8),
             _picker(widget.others, 'Tidak ada pemain lain.'),
             const SizedBox(height: 12),
@@ -413,8 +458,10 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Hasilnya muncul pada musyawarah berikutnya. Kamera mencatat '
-                'serangan yang dilancarkan, termasuk bila tertangkis.'),
+            _note(
+              'Hasilnya muncul pada musyawarah berikutnya. Kamera mencatat '
+              'serangan yang dilancarkan, termasuk bila tertangkis.',
+            ),
             gap,
             EmbunButton(
               label: 'Pasang kamera',
@@ -428,8 +475,10 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Menambah 60 detik pada fase yang sedang berjalan, tanpa '
-                'menyebut namamu.'),
+            _note(
+              'Menambah 60 detik pada fase yang sedang berjalan, tanpa '
+              'menyebut namamu.',
+            ),
             gap,
             EmbunButton(
               label: 'Putar arloji',
@@ -443,8 +492,10 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _note('Harga dibayar malam ini. Jika Hayu mencapai 30 daun, '
-                'harga dibayar saat itu dan warga menang.'),
+            _note(
+              'Harga dibayar malam ini. Jika Hayu mencapai 30 daun, '
+              'harga dibayar saat itu dan warga menang.',
+            ),
             gap,
             EmbunButton(
               label: '+5 daun, harga 1 nyawa',
@@ -464,12 +515,17 @@ class _AbilityDialogState extends State<_AbilityDialog> {
           ],
         );
       case 'kunci_segel':
-        final jailed = [for (final p in widget.everyone) if (_hasJail(p)) p];
+        final jailed = [
+          for (final p in widget.everyone)
+            if (_hasJail(p)) p,
+        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Pilih pemain yang dikurung:',
-                style: TextStyle(fontSize: 12.5, color: EmbunColors.gold)),
+            const Text(
+              'Pilih pemain yang dikurung:',
+              style: TextStyle(fontSize: 12.5, color: EmbunColors.gold),
+            ),
             const SizedBox(height: 8),
             _picker(jailed, 'Tidak ada yang sedang dikurung.'),
             const SizedBox(height: 12),
@@ -491,21 +547,25 @@ class _AbilityDialogState extends State<_AbilityDialog> {
 
     if (!abilityIsManual(_id)) {
       final text = switch (_id) {
-        'tumbuhan' => _usedNow
-            ? 'Bonus laju embun sudah dinonaktifkan.'
-            : 'Bekerja otomatis. Laju dasar embunmu naik 0,75 sejak awal.',
-        'lidah_manis' => _usedNow
-            ? 'Si Lidah Manis sudah tidak aktif.'
-            : 'Bekerja otomatis pada tuduhan mayoritas pertama yang akan '
-                'mengurungmu. Tuduhan tetap tercatat.',
-        'kebangkitan_arwah' => _usedNow
-            ? 'Kebangkitan Arwah sudah tidak aktif.'
-            : 'Bekerja otomatis jika kamu akan tersingkir karena voting atau '
-                'Busur Terakhir. Kamu bangkit dengan 1 nyawa sebagai warga biasa.',
-        'palu_hakim' => _usedNow
-            ? 'Palu sudah tidak tersedia untuk voting berikutnya.'
-            : 'Dipakai di layar voting: nyalakan "Patuhilah Padaku" sebelum '
-            'mengunci tuduhan. Suaramu berbobot 2.',
+        'tumbuhan' =>
+          _usedNow
+              ? 'Bonus laju embun sudah dinonaktifkan.'
+              : 'Bekerja otomatis. Laju dasar embunmu naik 0,75 sejak awal.',
+        'lidah_manis' =>
+          _usedNow
+              ? 'Si Lidah Manis sudah tidak aktif.'
+              : 'Bekerja otomatis pada tuduhan mayoritas pertama yang akan '
+                    'mengurungmu. Tuduhan tetap tercatat.',
+        'kebangkitan_arwah' =>
+          _usedNow
+              ? 'Kebangkitan Arwah sudah tidak aktif.'
+              : 'Bekerja otomatis jika kamu akan tersingkir karena voting atau '
+                    'Busur Terakhir. Kamu bangkit dengan 1 nyawa sebagai warga biasa.',
+        'palu_hakim' =>
+          _usedNow
+              ? 'Palu sudah tidak tersedia untuk voting berikutnya.'
+              : 'Dipakai di layar voting: nyalakan "Patuhilah Padaku" sebelum '
+                    'mengunci tuduhan. Suaramu berbobot 2.',
         _ => 'Tidak ada yang perlu dipakai. Kamu warga desa biasa.',
       };
       return _note(text);
@@ -519,13 +579,16 @@ class _AbilityDialogState extends State<_AbilityDialog> {
       final can = widget.phase == 'day' || widget.phase == 'discussion';
       if (!can) {
         return _note(
-            'Firasat hanya bisa didengar saat hari biasa atau musyawarah.');
+          'Firasat hanya bisa didengar saat hari biasa atau musyawarah.',
+        );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Pilih satu pemain:',
-              style: TextStyle(fontSize: 12.5, color: EmbunColors.gold)),
+          const Text(
+            'Pilih satu pemain:',
+            style: TextStyle(fontSize: 12.5, color: EmbunColors.gold),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -568,8 +631,10 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _note('Kartu termahal di Pasar Pagimu hari ini yang belum kamu beli '
-            'akan menjadi milikmu, gratis.'),
+        _note(
+          'Kartu termahal di Pasar Pagimu hari ini yang belum kamu beli '
+          'akan menjadi milikmu, gratis.',
+        ),
         const SizedBox(height: 10),
         EmbunButton(
           label: 'Panggil pedagang',
@@ -599,13 +664,16 @@ class _AbilityDialogState extends State<_AbilityDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (widget.intro) ...[
-                  const Text('Kemampuan rahasiamu',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          color: EmbunColors.gold)),
+                  const Text(
+                    'Kemampuan rahasiamu',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: EmbunColors.gold,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                 ],
                 // Pengungkapan di awal: kartu muncul sebagai punggung
@@ -613,58 +681,80 @@ class _AbilityDialogState extends State<_AbilityDialog> {
                 Center(
                   child: widget.intro
                       ? FlipCard(
-                    index: 0,
-                    width: 170,
-                    height: 170 * abilityCardAspect,
-                    revealed: true,
-                    glow: _cardBlue,
-                    backPath: abilityBackPath(),
-                    backFit: BoxFit.contain,
-                    front: AbilityCardView(
-                        def: widget.def, used: _usedNow, width: 170),
-                  )
+                          index: 0,
+                          width: 170,
+                          height: 170 * abilityCardAspect,
+                          revealed: true,
+                          glow: _cardBlue,
+                          backPath: abilityBackPath(),
+                          backFit: BoxFit.contain,
+                          front: AbilityCardView(
+                            def: widget.def,
+                            used: _usedNow,
+                            width: 170,
+                          ),
+                        )
                       : AbilityCardView(
-                      def: widget.def, used: _usedNow, width: 170),
+                          def: widget.def,
+                          used: _usedNow,
+                          width: 170,
+                        ),
                 ),
                 const SizedBox(height: 14),
-                Text('${widget.def['name']}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: accent)),
+                Text(
+                  '${widget.def['name']}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: accent,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Center(
                   child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: accent.withValues(alpha: 0.7)),
                     ),
-                    child: Text(kind,
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: accent)),
+                    child: Text(
+                      kind,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text('${widget.def['description']}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, height: 1.4)),
+                Text(
+                  '${widget.def['description']}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
                 if (widget.intro)
-                  _note('Hanya kamu yang tahu kemampuan ini. Kamu boleh '
-                      'mengaku punya kemampuan apa pun, atau tidak sama sekali.'),
+                  _note(
+                    'Hanya kamu yang tahu kemampuan ini. Kamu boleh '
+                    'mengaku punya kemampuan apa pun, atau tidak sama sekali.',
+                  ),
                 const Divider(height: 24),
                 _actions(),
                 if (error != null) ...[
                   const SizedBox(height: 8),
-                  Text(error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 12.5, color: EmbunColors.blood)),
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: EmbunColors.blood,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 14),
                 EmbunButton(
