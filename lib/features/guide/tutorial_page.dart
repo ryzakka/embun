@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -373,7 +372,7 @@ class _TutorialPageState extends State<TutorialPage>
               child: Backdrop(
                 path: _sceneFor(_page),
                 dark: _darkPages.contains(_page),
-                dim: 0.58,
+                dim: 0.42,
               ),
             ),
             AnimatedContainer(
@@ -395,6 +394,16 @@ class _TutorialPageState extends State<TutorialPage>
                 ),
               ),
             ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0xB3000000)],
+                  stops: [0.5, 1.0],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -412,17 +421,19 @@ class _TutorialPageState extends State<TutorialPage>
   }
 
   Widget _controls(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 360;
     final stepLabel = 'Langkah ${_page + 1} dari ${_steps.length}';
     final step = _steps[_page];
     final last = _page == _steps.length - 1;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        border: Border(top: learningRule(step.accent)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.72)],
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.fromLTRB(4, 16, 10, 6),
         child: Row(
           children: [
             IconButton(
@@ -438,30 +449,42 @@ class _TutorialPageState extends State<TutorialPage>
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        compact ? '${_page + 1} / ${_steps.length}' : stepLabel,
-                        semanticsLabel: stepLabel,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: (_page + 1) / _steps.length,
-                        color: step.accent,
-                        backgroundColor: Colors.white12,
-                        minHeight: 3,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ],
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Semantics(
+                    label: stepLabel,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _steps.length; i++)
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _pc.animateToPage(
+                                i,
+                                duration: const Duration(milliseconds: 420),
+                                curve: Curves.easeOutCubic,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 1.5,
+                                  vertical: 10,
+                                ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  height: i == _page ? 5 : 3,
+                                  decoration: BoxDecoration(
+                                    color: i == _page
+                                        ? step.accent
+                                        : i < _page
+                                        ? step.accent.withValues(alpha: 0.55)
+                                        : Colors.white24,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -496,170 +519,168 @@ class _TutorialPageState extends State<TutorialPage>
       ? 'SIDANG'
       : 'AKHIR';
 
-  Widget _pageOf(_Step step, int index) => LayoutBuilder(
-    builder: (context, box) {
-      final short = box.maxHeight < 385;
-      final wide = box.maxWidth >= (short ? 510 : 650);
-      const shadow = [Shadow(color: Colors.black87, blurRadius: 14)];
-      final heading = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  /// Posisi halaman saat ini (pecahan selama digeser) dikurangi [index].
+  double _delta(int index) {
+    final cur = _pc.hasClients && _pc.position.haveDimensions
+        ? (_pc.page ?? _page.toDouble())
+        : _page.toDouble();
+    return cur - index;
+  }
+
+  static const _shadow = [Shadow(color: Colors.black87, blurRadius: 16)];
+
+  Widget _heading(_Step step, int index, {required bool big}) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 18, height: 2, color: step.accent),
-              const SizedBox(width: 8),
-              Text(
-                _chapter(index),
-                style: TextStyle(
-                  color: step.accent,
-                  fontSize: 11,
-                  letterSpacing: 2.4,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Semantics(
-            header: true,
-            child: Text(
-              step.title,
-              style: TextStyle(
-                fontSize: wide && !short ? 36 : 26,
-                height: 1.1,
-                fontWeight: FontWeight.w900,
-                color: EmbunColors.cream,
-                shadows: shadow,
-              ),
+          Container(width: 26, height: 2, color: step.accent),
+          const SizedBox(width: 8),
+          Text(
+            _chapter(index),
+            style: TextStyle(
+              color: step.accent,
+              fontSize: 11.5,
+              letterSpacing: 2.6,
+              fontWeight: FontWeight.w800,
+              shadows: _shadow,
             ),
           ),
         ],
-      );
-      final figPath = _figurePath(step.pose);
-      // Dengan gambar karakter penuh, judul berdiri sendiri; bila gambarnya
-      // belum ada, tetap memakai TutorCompanion seperti sebelumnya.
-      final head = figPath != null
-          ? heading
-          : TutorCompanion(
-        key: ValueKey('tutor-${step.pose.name}'),
-        pose: step.pose,
-        compact: short || !wide,
-        large: wide && !short,
-        accent: step.accent,
-        child: heading,
-      );
-      final figure = figPath == null
-          ? null
-          : _figure(figPath, step.accent, step.pose.name);
-      final hero = _hero(step, index, wide: wide);
-      final text = _textPanel(
-        step,
-        head,
-        sideFigure: (!wide && figure != null) ? figure : null,
-      );
-
-      return Padding(
-        padding: EdgeInsets.fromLTRB(
-          wide ? 18 : 10,
-          short ? 6 : 10,
-          wide ? 18 : 10,
-          8,
+      ),
+      const SizedBox(height: 4),
+      Semantics(
+        header: true,
+        child: Text(
+          step.title,
+          style: TextStyle(
+            fontSize: big ? 46 : 30,
+            height: 1.05,
+            fontWeight: FontWeight.w900,
+            color: EmbunColors.cream,
+            shadows: _shadow,
+          ),
         ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: wide ? 1100 : 560),
-            child: wide
-                ? Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 13, child: hero),
-                SizedBox(width: short ? 14 : 24),
-                SizedBox(
-                  width: math.min(400, box.maxWidth * 0.36),
-                  child: figure == null
-                      ? Center(
-                    child: ConstrainedBox(
+      ),
+    ],
+  );
+
+  /// Satu halaman = satu adegan penuh, tanpa wadah: karakter besar berdiri
+  /// di latar, demo melayang bebas, teks langsung di atas adegan.
+  Widget _pageOf(_Step step, int index) => LayoutBuilder(
+    builder: (context, box) {
+      final h = box.maxHeight, w = box.maxWidth;
+      final short = h < 385;
+      final wide = w >= (short ? 510 : 650);
+      final fig = _figurePath(step.pose, index);
+      final hero = _hero(step, index);
+
+      if (wide) {
+        final charH = h * 1.06;
+        final charW = charH * 2 / 3;
+        final left = fig == null ? 0.0 : charW * 0.72;
+        final body = _rich(step.body, step.accent, size: short ? 15 : 17);
+        return Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            if (fig != null)
+              Positioned(
+                left: -charW * 0.08,
+                bottom: -h * 0.05,
+                width: charW,
+                height: charH,
+                child: _character(fig, step.accent, step.pose.name, index, w),
+              ),
+            Positioned.fill(
+              left: left,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(8, short ? 4 : 12, 30, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _heading(step, index, big: !short),
+                    const SizedBox(height: 4),
+                    Expanded(child: hero),
+                    const SizedBox(height: 6),
+                    ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxHeight: math.max(120, box.maxHeight - 20),
+                        maxWidth: 660,
+                        maxHeight: h * 0.4,
                       ),
-                      child: text,
+                      child: SingleChildScrollView(child: body),
                     ),
-                  )
-                      : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: figure),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: box.maxHeight * 0.5,
-                        ),
-                        child: text,
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            )
-                : Column(
+              ),
+            ),
+          ],
+        );
+      }
+
+      final charH = math.min(h * 0.52, w * 1.35);
+      final charW = charH * 2 / 3;
+      return Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          if (fig != null)
+            Positioned(
+              right: -charW * 0.1,
+              top: 0,
+              width: charW,
+              height: charH,
+              child: _character(fig, step.accent, step.pose.name, index, w),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: fig == null ? 1 : 0.58,
+                  child: _heading(step, index, big: false),
+                ),
+                const SizedBox(height: 4),
                 Expanded(child: hero),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: box.maxHeight * (short ? 0.5 : 0.4),
+                  constraints: BoxConstraints(maxHeight: h * 0.34),
+                  child: SingleChildScrollView(
+                    child: _rich(step.body, step.accent, size: 15.5),
                   ),
-                  child: text,
                 ),
               ],
             ),
           ),
-        ),
+        ],
       );
     },
   );
 
-  /// Panel teks kaca buram: judul dan penjelasan, aksen emas di tepi atas.
-  Widget _textPanel(_Step step, Widget head, {Widget? sideFigure}) {
-    final content = SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          head,
-          const SizedBox(height: 10),
-          _rich(step.body, step.accent),
-        ],
-      ),
-    );
-    return _panelShell(
-      step,
-      sideFigure == null
-          ? Flexible(child: content)
-          : Flexible(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(width: 116, child: sideFigure),
-            Expanded(child: content),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Karakter tutor sebagai sosok besar tanpa bingkai: berdiri di balik panel
-  /// teks, dengan cahaya aksen dan gerak napas pelan.
-  Widget _figure(String path, Color accent, String poseKey) => ClipRect(
+  /// Karakter tutor besar tanpa bingkai: bernapas pelan, bergeser sedikit
+  /// lebih cepat dari halaman saat digeser (kedalaman), dan masuk dari kiri.
+  Widget _character(
+      String path,
+      Color accent,
+      String poseKey,
+      int index,
+      double pageW,
+      ) => AnimatedBuilder(
+    animation: _pc,
+    builder: (context, child) => Transform.translate(
+      offset: Offset(-_delta(index) * pageW * 0.22, 0),
+      child: child,
+    ),
     child: TweenAnimationBuilder<double>(
-      key: ValueKey('fig-$poseKey'),
+      key: ValueKey('fig-$poseKey-$index'),
       tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 900),
       curve: Curves.easeOutCubic,
       builder: (context, v, child) => Opacity(
         opacity: v,
-        child: Transform.translate(offset: Offset(40 * (1 - v), 0), child: child),
+        child: Transform.translate(offset: Offset(-50 * (1 - v), 0), child: child),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -667,23 +688,24 @@ class _TutorialPageState extends State<TutorialPage>
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: const Alignment(0, -0.2),
-                radius: 0.8,
-                colors: [accent.withValues(alpha: 0.38), Colors.transparent],
+                center: const Alignment(0, -0.1),
+                radius: 0.85,
+                colors: [accent.withValues(alpha: 0.42), Colors.transparent],
               ),
             ),
           ),
           AnimatedBuilder(
             animation: _pulse,
-            builder: (context, child) => Transform.translate(
-              offset: Offset(0, -4 * Curves.easeInOut.transform(_pulse.value)),
+            builder: (context, child) => Transform.scale(
+              scale: 1 + 0.012 * Curves.easeInOut.transform(_pulse.value),
+              alignment: Alignment.bottomCenter,
               child: child,
             ),
             child: GameImage(
               path: path,
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, -0.85),
-              cacheWidth: 900,
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              cacheWidth: 1100,
             ),
           ),
         ],
@@ -698,74 +720,28 @@ class _TutorialPageState extends State<TutorialPage>
     // 'greeting': 'popupchar-tutor-<nama-berkas>',
   };
 
-  String? _figurePath(TutorPose pose) {
-    final stem = _figureStems[pose.name];
-    return stem == null ? null : AssetCatalog.I.anywhere(stem);
+  /// Gambar karakter untuk pose ini. Pose yang belum punya gambar memakai
+  /// salah satu gambar yang ada (bergantian) supaya karakter tetap tampil.
+  String? _figurePath(TutorPose pose, int index) {
+    final cat = AssetCatalog.I;
+    final own = cat.anywhere(
+      _figureStems[pose.name] ?? 'popupchar-tutor-${pose.name.toLowerCase()}',
+    );
+    if (own != null) return own;
+    final stems = _figureStems.values.toList();
+    for (var k = 0; k < stems.length; k++) {
+      final hit = cat.anywhere(stems[(index + k) % stems.length]);
+      if (hit != null) return hit;
+    }
+    return null;
   }
 
-  Widget _panelShell(_Step step, Widget body) => ClipRRect(
-    borderRadius: BorderRadius.circular(20),
-    child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.48),
-              Colors.black.withValues(alpha: 0.74),
-            ],
-          ),
-          border: Border.all(color: step.accent.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    step.accent.withValues(alpha: 0),
-                    step.accent,
-                    step.accent.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-            body,
-          ],
-        ),
-      ),
-    ),
-  );
-
-  /// Visual utama: mengisi seluruh ruang yang ada, masuk dengan gerak
-  /// membesar, dan mengecil-meredup saat digeser keluar.
-  Widget _hero(_Step step, int index, {required bool wide}) =>
-      LayoutBuilder(
-        builder: (context, c) {
-          final h = math.min(c.maxHeight, c.maxWidth * (wide ? 0.8 : 1.15));
-          return Center(
-            child: SizedBox(
-              width: c.maxWidth,
-              height: h,
-              child: _heroBody(step, index),
-            ),
-          );
-        },
-      );
-
-  Widget _heroBody(_Step step, int index) => AnimatedBuilder(
+  /// Demo melayang bebas (tanpa bingkai): cahaya aksen berdenyut di
+  /// belakangnya, bulir cahaya naik, isi diperbesar memenuhi ruang.
+  Widget _hero(_Step step, int index) => AnimatedBuilder(
     animation: _pc,
     builder: (context, child) {
-      final cur = _pc.hasClients && _pc.position.haveDimensions
-          ? (_pc.page ?? _page.toDouble())
-          : _page.toDouble();
-      final d = (cur - index).abs().clamp(0.0, 1.0).toDouble();
+      final d = _delta(index).abs().clamp(0.0, 1.0).toDouble();
       return Opacity(
         opacity: 1 - 0.85 * d,
         child: Transform.scale(scale: 1 - 0.14 * d, child: child),
@@ -787,83 +763,58 @@ class _TutorialPageState extends State<TutorialPage>
     ),
   );
 
-  /// Panggung gambar: bingkai bercahaya yang berdenyut, bulir cahaya yang
-  /// naik, dan isi yang diperbesar sampai memenuhi ruang.
-  Widget _stage(Color accent, Widget child) => AnimatedBuilder(
-    animation: _pulse,
-    builder: (context, inner) {
-      final p = Curves.easeInOut.transform(_pulse.value);
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.2),
-            radius: 0.95,
-            colors: [
-              accent.withValues(alpha: 0.16 + 0.08 * p),
-              Colors.black.withValues(alpha: 0.55),
-            ],
-          ),
-          border: Border.all(
-            color: accent.withValues(alpha: 0.45 + 0.2 * p),
-            width: 1.4,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.22 + 0.14 * p),
-              blurRadius: 36 + 16 * p,
-              spreadRadius: 1,
-            ),
-            const BoxShadow(
-              color: Colors.black87,
-              blurRadius: 24,
-              offset: Offset(0, 12),
-            ),
-          ],
-        ),
-        child: inner,
-      );
-    },
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(child: _Motes(color: accent)),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            // SizedBox.expand memberi batas ketat, sehingga FittedBox benar-benar
-            // memperbesar isi (sebelumnya ia hanya menyusut ke ukuran aslinya).
-            child: SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: _kStageDesignWidth,
-                  child: MediaQuery.withClampedTextScaling(
-                    maxScaleFactor: 1.15,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 6,
-                      ),
-                      child: child,
-                    ),
-                  ),
+  Widget _stage(Color accent, Widget child) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Positioned.fill(
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, _) {
+            final p = Curves.easeInOut.transform(_pulse.value);
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 0.75,
+                  colors: [
+                    accent.withValues(alpha: 0.20 + 0.10 * p),
+                    Colors.transparent,
+                  ],
                 ),
+              ),
+            );
+          },
+        ),
+      ),
+      Positioned.fill(child: _Motes(color: accent)),
+      SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: _kStageDesignWidth,
+            child: MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.15,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: child,
               ),
             ),
           ),
-        ],
+        ),
       ),
-    ),
+    ],
   );
 
-  /// Teks dengan **tebal** berwarna aksen.
-  Widget _rich(String s, Color accent) {
+  /// Teks dengan **tebal** berwarna aksen, langsung di atas adegan.
+  Widget _rich(String s, Color accent, {double size = 16}) {
     final parts = s.split('**');
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 16, height: 1.55, color: Colors.white),
+        style: TextStyle(
+          fontSize: size,
+          height: 1.55,
+          color: Colors.white,
+          shadows: _shadow,
+        ),
         children: [
           for (var i = 0; i < parts.length; i++)
             TextSpan(
@@ -1044,25 +995,50 @@ String? _art(String kind, String side, String stem) =>
 class _Chip extends StatelessWidget {
   final String text;
   final Color color;
-  const _Chip(this.text, this.color);
+
+  /// true = label kecil berlatar gelap (untuk di atas gambar/kartu);
+  /// false = teks berwarna dengan titik, tanpa wadah.
+  final bool pill;
+  const _Chip(this.text, this.color, {this.pill = false});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withValues(alpha: 0.7)),
-    ),
-    child: Text(
+  Widget build(BuildContext context) {
+    final label = Text(
       text,
       style: TextStyle(
         fontSize: 12.5,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         color: color,
+        shadows: const [Shadow(color: Colors.black87, blurRadius: 8)],
       ),
-    ),
-  );
+    );
+    if (pill) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.66),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: label,
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            boxShadow: [BoxShadow(color: color, blurRadius: 6)],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(child: label),
+      ],
+    );
+  }
 }
 
 // ------------------------- gambar per halaman -------------------------
@@ -1139,7 +1115,11 @@ class _CardCol extends StatelessWidget {
           children: [
             _HiCard(path: path, width: w, glow: glow),
             if (badge != null)
-              Positioned(right: -8, top: -8, child: _Chip(badge!, badgeColor)),
+              Positioned(
+                right: -8,
+                top: -8,
+                child: _Chip(badge!, badgeColor, pill: true),
+              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -1248,23 +1228,26 @@ class _CycleStrip extends StatelessWidget {
   );
 }
 
-/// Kotak keterangan yang berganti halus.
+/// Keterangan berganti halus: teks saja, tanpa kotak.
 Widget _caption(Object key, String text, {Color color = Colors.white}) =>
     AnimatedSwitcher(
       duration: const Duration(milliseconds: 260),
-      child: Container(
+      child: SizedBox(
         key: ValueKey(key),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, height: 1.3, color: color),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+              color: color,
+              shadows: const [Shadow(color: Colors.black, blurRadius: 10)],
+            ),
+          ),
         ),
       ),
     );
@@ -1321,6 +1304,7 @@ class _HayuGrow extends StatelessWidget {
                     child: _Chip(
                       'Daun $leaves / $kLeavesMax',
                       fwd ? EmbunColors.leaf : EmbunColors.blood,
+                      pill: true,
                     ),
                   ),
                 ],
@@ -2019,7 +2003,7 @@ class _OfferDemo extends StatelessWidget {
                           Positioned(
                             right: -6,
                             top: -8,
-                            child: _Chip('${counts[i]}', EmbunColors.gold),
+                            child: _Chip('${counts[i]}', EmbunColors.gold, pill: true),
                           ),
                       ],
                     ),
