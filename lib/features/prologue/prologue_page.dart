@@ -181,11 +181,13 @@ class PrologueFlow extends StatefulWidget {
   /// dibuka ulang): lewati cerita, langsung ke pilihan kartu (bila belum
   /// memilih) atau pengungkapan peran.
   final bool resume;
+  final String characterTheme;
   const PrologueFlow({
     super.key,
     required this.gameId,
     required this.repo,
     this.resume = false,
+    this.characterTheme = 'default',
     this.antagonistCount = 1,
     this.startAtWaiting = false,
     this.startAtShuffling = false,
@@ -295,7 +297,9 @@ class _PrologueFlowState extends State<PrologueFlow>
     } else if (widget.resume) {
       step = _Step.role;
     }
-    randomStems = protagonistStems();
+    randomStems = widget.characterTheme == 'manhwa'
+        ? manhwaOutfits.keys.toList()
+        : protagonistStems();
     _shuffleCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),

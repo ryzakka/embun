@@ -1,3 +1,5 @@
+import 'manhwa_catalog.dart';
+export 'manhwa_catalog.dart';
 import 'dart:math';
 import 'character_catalog.dart';
 export 'character_catalog.dart';
@@ -104,6 +106,9 @@ List<String> protagonistStems({bool includeLocked = false}) =>
       ..sort();
 
 String? protagonistPath(String id) =>
+    (manhwaOutfits.containsKey(id)
+        ? AssetCatalog.I.file(manhwaDir, id)
+        : null) ??
     AssetCatalog.I.file(protagonisPriaDir, id) ??
     AssetCatalog.I.file(protagonisWanitaDir, id);
 
@@ -411,6 +416,8 @@ double cardAspectForDef(Map<String, dynamic>? def) => kTallAspect;
 /// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
 /// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
+  final manhwaName = manhwaNames[manhwaOutfits[stem]?.characterId];
+  if (manhwaName != null) return manhwaName;
   final current = characterDefinitions[stem];
   if (current != null) return current.title;
   if (stem == 'default') return 'Belum memilih';

@@ -41,6 +41,7 @@ flutter:
     - assets/pohon/
     - assets/kartu/CharPro/CharPro-Pria/
     - assets/kartu/CharPro/CharPro-Wanita/
+    - assets/kartu/CharProManhwaEdition/
     - assets/kartu/CharAnta/
     - assets/kartu/itemPerawatan/
     - assets/kartu/ItemPro/

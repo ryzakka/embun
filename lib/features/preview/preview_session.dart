@@ -1,3 +1,4 @@
+import '../../data/manhwa_catalog.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../data/inspection.dart';
@@ -126,6 +127,9 @@ class PreviewSession
   String? _pickedAbility;
   int? _abilitySlot;
   List<String> _abilityOffers = [];
+  final Map<String, PreviewRow> _manhwaChoices = {};
+  int _manhwaCursor = 0;
+  String _manhwaStage = 'none';
   bool _usedAbility = false;
   PreviewRow? _meetingPoll;
   final List<PreviewRow> _meetingEvents = [];
@@ -171,6 +175,9 @@ class PreviewSession
     bool locked = false,
   }) {
     this.role = role;
+    _manhwaChoices.clear();
+    _manhwaCursor = 0;
+    _manhwaStage = 'none';
     _active = waitingRoom;
     _holdPrologue = holdPrologue;
     _charChosen = !pickCharacter;
@@ -411,9 +418,14 @@ class PreviewSession
     bool isPublic = false,
     int cycles = 4,
     int antagonistCount = 1,
+    String characterTheme = 'default',
   }) async {
     prepare(waitingRoom: true, antagonists: antagonistCount, role: role);
-    _game.addAll({'is_public': isPublic, 'cycles': cycles});
+    _game.addAll({
+      'is_public': isPublic,
+      'cycles': cycles,
+      'character_theme': characterTheme,
+    });
     _players[0] = {...me, 'name': name, 'character_card': card};
     _chat
       ..clear()
@@ -493,6 +505,13 @@ class PreviewSession
     _abilityOffers = (previewAbilities.keys.toList()..shuffle())
         .take(3)
         .toList();
+    if (_game['character_theme'] == 'manhwa') {
+      _manhwaStage = 'characters';
+      _manhwaCursor = 0;
+      _game = {..._game, 'status': 'prologue'};
+      _update();
+      return;
+    }
     _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
     _phase('day', nextDay: 1);
   }
@@ -548,6 +567,104 @@ class PreviewSession
     return myAbilityDraft(gameId);
   }
 
+  void _advanceManhwaPreview() {
+    while (_manhwaStage == 'characters' &&
+        _manhwaCursor < roster.length &&
+        roster[_manhwaCursor]['user_id'] != myId) {
+      final id = roster[_manhwaCursor]['user_id'] as String;
+      final c = manhwaNames.keys.firstWhere(
+        (c) => !_manhwaChoices.values.any((x) => x['character_id'] == c),
+      );
+      _manhwaChoices[id] = {'character_id': c, 'outfit_card': null};
+      _manhwaCursor++;
+    }
+    if (_manhwaStage == 'characters' && _manhwaCursor >= roster.length) {
+      _manhwaStage = 'outfits';
+      for (final entry in _manhwaChoices.entries) {
+        if (entry.key != myId)
+          entry.value['outfit_card'] = manhwaOutfits.values
+              .firstWhere((o) => o.characterId == entry.value['character_id'])
+              .id;
+      }
+    }
+    if (_manhwaStage == 'outfits' &&
+        _manhwaChoices.values.every((x) => x['outfit_card'] != null)) {
+      _manhwaStage = 'complete';
+      _charChosen = true;
+      for (var i = 0; i < _players.length; i++) {
+        final c = _manhwaChoices[_players[i]['user_id']]!;
+        _players[i] = {
+          ..._players[i],
+          'character_card': c['outfit_card'],
+          'name': manhwaNames[c['character_id']],
+        };
+      }
+      _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
+      _phase('day', nextDay: 1);
+    }
+  }
+
+  @override
+  Future<PreviewRow> manhwaDraft(String gameId) async {
+    _advanceManhwaPreview();
+    final own = _manhwaChoices[myId];
+    return {
+      'status': _game['status'],
+      'stage': _manhwaStage,
+      'theme': 'manhwa',
+      'my_id': myId,
+      'host_id': myId,
+      'antagonist_count': antagonistCount,
+      'turn': _manhwaCursor < roster.length
+          ? roster[_manhwaCursor]['user_id']
+          : null,
+      'seconds_left': 45,
+      'own': own,
+      'players': [
+        for (final p in roster) {...p, ...?_manhwaChoices[p['user_id']]},
+      ],
+      'characters': [
+        for (final e in manhwaNames.entries)
+          {
+            'id': e.key,
+            'name': e.value,
+            'taken': _manhwaChoices.values.any(
+              (c) => c['character_id'] == e.key,
+            ),
+            'preview': manhwaOutfits.values
+                .firstWhere((o) => o.characterId == e.key)
+                .id,
+          },
+      ],
+      'outfits': [
+        for (final o in manhwaOutfits.values)
+          if (o.characterId == own?['character_id'])
+            {'id': o.id, 'label': o.label},
+      ],
+    };
+  }
+
+  @override
+  Future<PreviewRow> chooseManhwaCharacter(
+    String gameId,
+    String characterId,
+  ) async {
+    if (_manhwaChoices.values.any((c) => c['character_id'] == characterId))
+      throw StateError('Tokoh sudah dipilih');
+    _manhwaChoices[myId] = {'character_id': characterId, 'outfit_card': null};
+    _manhwaCursor++;
+    return manhwaDraft(gameId);
+  }
+
+  @override
+  Future<PreviewRow> chooseManhwaOutfit(String gameId, String cardId) async {
+    if (manhwaOutfits[cardId]?.characterId !=
+        _manhwaChoices[myId]?['character_id'])
+      throw StateError('Pakaian tidak sesuai');
+    _manhwaChoices[myId]!['outfit_card'] = cardId;
+    return manhwaDraft(gameId);
+  }
+
   @override
   Future<void> chooseDark(String gameId, int seed) async {
     _darkChosen = true;
@@ -576,17 +693,21 @@ class PreviewSession
       _dark && antagonistCount == 2 ? other['user_id'] as String : null;
 
   @override
-  Future<String?> myRole(String gameId) async => role;
+  Future<String?> myRole(String gameId) async =>
+      _game['status'] == 'prologue' ? null : role;
 
   @override
-  Future<PreviewRow?> mySecret(String gameId) async => {
-    'role': role,
-    'dark_seed': _seed,
-    'ability': _ability,
-    'ability_used': _usedAbility,
-    'char_chosen': _charChosen,
-    'dark_chosen': _darkChosen,
-  };
+  Future<PreviewRow?> mySecret(String gameId) async =>
+      _game['status'] == 'prologue'
+      ? null
+      : {
+          'role': role,
+          'dark_seed': _seed,
+          'ability': _ability,
+          'ability_used': _usedAbility,
+          'char_chosen': _charChosen,
+          'dark_chosen': _darkChosen,
+        };
 
   @override
   Future<Map<String, PreviewRow>> allSecrets(String gameId) async => {

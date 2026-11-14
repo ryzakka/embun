@@ -13,6 +13,7 @@ import 'room_entry_view.dart';
 
 class WaitingRoomView extends StatefulWidget {
   final String code;
+  final String characterTheme;
   final bool isPublic;
   final int antagonistCount;
   final String hostId;
@@ -29,6 +30,7 @@ class WaitingRoomView extends StatefulWidget {
   const WaitingRoomView({
     super.key,
     required this.code,
+    this.characterTheme = 'default',
     required this.isPublic,
     required this.antagonistCount,
     required this.hostId,
@@ -363,6 +365,12 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                 color: EmbunColors.cream,
               ),
             ),
+            Text(
+              widget.characterTheme == 'manhwa'
+                  ? 'Tema: Manhwa Style · tokoh dipilih bergiliran'
+                  : 'Tema: Default',
+              style: const TextStyle(color: Colors.white70),
+            ),
             if (widget.antagonistCount == 2)
               Text(
                 antagonistModeLabel(widget.antagonistCount),
@@ -484,12 +492,14 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
             ),
             if (viewer)
               IconButton(
-                tooltip: ready
+                tooltip: widget.characterTheme == 'manhwa'
+                    ? 'Tokoh dipilih setelah Mulai'
+                    : ready
                     ? 'Karakter terkunci selama siap'
                     : 'Ganti karakter',
                 icon: GameIcon(ready ? 'lock' : 'change', size: 21),
                 color: EmbunColors.gold,
-                onPressed: _busy || ready
+                onPressed: _busy || ready || widget.characterTheme == 'manhwa'
                     ? null
                     : () => _act(() => widget.onEditCharacter(player)),
               ),

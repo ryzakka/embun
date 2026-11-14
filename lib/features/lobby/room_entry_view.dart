@@ -94,6 +94,8 @@ class CreateRoomView extends StatefulWidget {
   final int cycles;
   final int antagonistCount;
   final bool busy;
+  final String characterTheme;
+  final ValueChanged<String>? onThemeChanged;
   final ValueChanged<bool> onVisibilityChanged;
   final ValueChanged<int> onDurationChanged;
   final ValueChanged<int> onAntagonistCountChanged;
@@ -107,6 +109,8 @@ class CreateRoomView extends StatefulWidget {
     required this.cycles,
     required this.antagonistCount,
     required this.busy,
+    this.characterTheme = 'default',
+    this.onThemeChanged,
     required this.onVisibilityChanged,
     required this.onDurationChanged,
     required this.onAntagonistCountChanged,
@@ -242,22 +246,41 @@ class _CreateRoomViewState extends State<CreateRoomView> {
         ),
       ),
       const SizedBox(height: 18),
+      _label('Tema kartu karakter'),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          for (final entry in const {
+            'default': 'Default',
+            'manhwa': 'Manhwa Style',
+          }.entries)
+            ChoiceChip(
+              label: Text(entry.value),
+              selected: widget.characterTheme == entry.key,
+              onSelected: widget.busy
+                  ? null
+                  : (_) => widget.onThemeChanged?.call(entry.key),
+            ),
+        ],
+      ),
+      const SizedBox(height: 6),
+      Text(
+        widget.characterTheme == 'manhwa'
+            ? 'Tokoh dipilih bergiliran, lalu semua pemain memilih pakaian masing-masing.'
+            : 'Pemilihan kartu karakter seperti biasa.',
+        style: const TextStyle(color: Colors.white70),
+      ),
+      const SizedBox(height: 18),
       _label('Akses ruangan'),
       const SizedBox(height: 5),
       DecoratedBox(
         decoration: BoxDecoration(border: Border(bottom: roomEntryRule())),
         child: Row(
           children: [
-            Expanded(
-              child: _visibilityChoice(
-                false,
-                'Privat',
-                'lock',
-              ),
-            ),
-            Expanded(
-              child: _visibilityChoice(true, 'Publik', 'persona'),
-            ),
+            Expanded(child: _visibilityChoice(false, 'Privat', 'lock')),
+            Expanded(child: _visibilityChoice(true, 'Publik', 'persona')),
           ],
         ),
       ),

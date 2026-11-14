@@ -24,6 +24,7 @@ class LobbyRepository {
     bool isPublic = false,
     int cycles = 4,
     int antagonistCount = 1,
+    String characterTheme = 'default',
   }) async {
     await ensureSignedIn();
     _requireCharacter(card);
@@ -33,6 +34,17 @@ class LobbyRepository {
       'p_public': isPublic,
       'p_cycles': cycles,
     };
+    if (characterTheme != 'default') {
+      return await _db.rpc(
+            'create_themed_game',
+            params: {
+              ...params,
+              'p_antagonist_count': antagonistCount,
+              'p_theme': characterTheme,
+            },
+          )
+          as String;
+    }
     if (antagonistCount == 1) {
       return await _db.rpc('create_game', params: params) as String;
     }
@@ -42,6 +54,31 @@ class LobbyRepository {
         )
         as String;
   }
+
+  Future<Map<String, dynamic>> manhwaDraft(String gameId) async =>
+      Map<String, dynamic>.from(
+        await _db.rpc('manhwa_draft_status', params: {'p_game': gameId}) as Map,
+      );
+  Future<Map<String, dynamic>> chooseManhwaCharacter(
+    String gameId,
+    String characterId,
+  ) async => Map<String, dynamic>.from(
+    await _db.rpc(
+          'choose_manhwa_character',
+          params: {'p_game': gameId, 'p_character': characterId},
+        )
+        as Map,
+  );
+  Future<Map<String, dynamic>> chooseManhwaOutfit(
+    String gameId,
+    String cardId,
+  ) async => Map<String, dynamic>.from(
+    await _db.rpc(
+          'choose_manhwa_outfit',
+          params: {'p_game': gameId, 'p_outfit': cardId},
+        )
+        as Map,
+  );
 
   /// Host: ubah ruangan lobi menjadi publik / privat.
   Future<void> setRoomPublic(String gameId, bool value) =>

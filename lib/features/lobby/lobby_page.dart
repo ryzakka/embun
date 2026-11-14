@@ -1,3 +1,4 @@
+import '../prologue/manhwa_draft_page.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -64,6 +65,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   String? gameId;
   bool busy = false;
   bool _navigated = false;
+  String _characterTheme = 'default';
 
   ({
     String id,
@@ -141,6 +143,15 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           setState(() => gameId = id);
           return;
         }
+        if (g['character_theme'] == 'manhwa' && g['status'] == 'prologue') {
+          Sfx.I.stopMenuMusic();
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => ManhwaDraftPage(repo: repo, gameId: id),
+            ),
+          );
+          return;
+        }
         final role = await repo.myRole(id);
         if (!mounted) return;
         if (role != null) {
@@ -154,6 +165,8 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                       gameId: id,
                       repo: repo,
                       resume: true,
+                      characterTheme:
+                          (g['character_theme'] as String?) ?? 'default',
                       antagonistCount: (g['antagonist_count'] as int?) ?? 1,
                     )
                   : TablePage(gameId: id, role: role),
@@ -179,6 +192,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
         isPublic: _createPublic,
         cycles: _createCycles,
         antagonistCount: _createAntagonists,
+        characterTheme: _characterTheme,
       );
       if (mounted) setState(() => gameId = id);
     } catch (e) {
@@ -390,6 +404,8 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                 setState(() => _createCycles = cycles),
             onAntagonistCountChanged: (count) =>
                 setState(() => _createAntagonists = count),
+            characterTheme: _characterTheme,
+            onThemeChanged: (value) => setState(() => _characterTheme = value),
             onCreate: _createRoom,
             onBack: () => setState(() => _stage = _Stage.menu),
           );
@@ -1040,11 +1056,17 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               if (!mounted || gameId != id) return;
               Navigator.of(context).pushReplacement(
                 ClothTransition.route(
-                  PrologueFlow(
-                    gameId: id,
-                    repo: repo,
-                    antagonistCount: (game['antagonist_count'] as int?) ?? 1,
-                  ),
+                  game['character_theme'] == 'manhwa' &&
+                          game['status'] == 'prologue'
+                      ? ManhwaDraftPage(repo: repo, gameId: id)
+                      : PrologueFlow(
+                          gameId: id,
+                          repo: repo,
+                          characterTheme:
+                              (game['character_theme'] as String?) ?? 'default',
+                          antagonistCount:
+                              (game['antagonist_count'] as int?) ?? 1,
+                        ),
                 ),
               );
             });
@@ -1056,6 +1078,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           builder: (context, snapshot) {
             final players = snapshot.data ?? [];
             return WaitingRoomView(
+              characterTheme: (game['character_theme'] as String?) ?? 'default',
               code: game['code'] as String,
               isPublic: game['is_public'] == true,
               antagonistCount: (game['antagonist_count'] as int?) ?? 1,
