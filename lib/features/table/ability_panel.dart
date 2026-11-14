@@ -7,11 +7,17 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'flip_card.dart';
 import 'player_status.dart';
+import 'meeting_abilities.dart';
 
 /// Kemampuan acak khusus warga. Definisinya ada di tabel `ability_definitions`;
 /// berkas ini hanya tampilan dan pemakaiannya.
 
 IconData abilityIcon(String id) => switch (id) {
+  'buktikan_tuduhan' => Icons.gavel_rounded,
+  'sidang_terbuka' => Icons.forum_rounded,
+  'penanggung_luka' => Icons.health_and_safety_rounded,
+  'pembaca_niat' => Icons.manage_search_rounded,
+  'warisan_suara' => Icons.how_to_vote_rounded,
   'jangan_bohong' => Icons.visibility_rounded,
   'tumbuhan' => Icons.spa_rounded,
   'pedagang' => Icons.storefront_rounded,
@@ -27,6 +33,11 @@ IconData abilityIcon(String id) => switch (id) {
 };
 
 Color abilityAccent(String id) => switch (id) {
+  'buktikan_tuduhan' => const Color(0xFFF09A85),
+  'sidang_terbuka' => const Color(0xFF8FCBFF),
+  'penanggung_luka' => const Color(0xFF9BE0AD),
+  'pembaca_niat' => const Color(0xFFBEA8FF),
+  'warisan_suara' => const Color(0xFFBFE8FF),
   'jangan_bohong' => const Color(0xFF8FC1FF),
   'tumbuhan' => EmbunColors.leaf,
   'pedagang' => EmbunColors.gold,
@@ -43,6 +54,10 @@ Color abilityAccent(String id) => switch (id) {
 
 /// Kemampuan yang dipakai dengan menekan tombol (selain itu bekerja sendiri).
 bool abilityIsManual(String id) => const {
+  'buktikan_tuduhan',
+  'sidang_terbuka',
+  'penanggung_luka',
+  'pembaca_niat',
   'jangan_bohong',
   'pedagang',
   'mata_suci',
@@ -310,6 +325,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
           else
             Icon(abilityIcon(_id), size: 36, color: color),
           const SizedBox(height: 6),
+          if (_id == 'buktikan_tuduhan')
+            Text(
+              r['correct'] == true ? 'Tuduhanmu benar.' : 'Tuduhanmu salah.',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           if (isRead) ...[
             Text(
               'Firasatmu tentang ${r['target']}',
@@ -561,6 +581,8 @@ class _AbilityDialogState extends State<_AbilityDialog> {
               ? 'Kebangkitan Arwah sudah tidak aktif.'
               : 'Bekerja otomatis jika kamu akan tersingkir karena voting atau '
                     'Busur Terakhir. Kamu bangkit dengan 1 nyawa sebagai warga biasa.',
+        'warisan_suara' =>
+          'Bekerja otomatis saat tersingkir dalam musyawarah atau voting. Hak satu suara tetap mengikuti jadwalnya; tidak memberi aksi lain.',
         'palu_hakim' =>
           _usedNow
               ? 'Palu sudah tidak tersedia untuk voting berikutnya.'
@@ -573,6 +595,24 @@ class _AbilityDialogState extends State<_AbilityDialog> {
 
     if (_usedNow) return _note('Kemampuan ini sudah terpakai.');
 
+    if (const {
+      'buktikan_tuduhan',
+      'sidang_terbuka',
+      'penanggung_luka',
+      'pembaca_niat',
+    }.contains(_id)) {
+      return MeetingAbilityActions(
+        id: _id,
+        phase: widget.phase,
+        repo: widget.repo,
+        gameId: widget.gameId,
+        players: _id == 'pembaca_niat' ? widget.everyone : widget.others,
+        target: target,
+        busy: busy,
+        onTarget: (value) => setState(() => target = value),
+        onUse: () => _use(),
+      );
+    }
     if (_id != 'jangan_bohong' && _id != 'pedagang') return _newActions();
 
     if (_id == 'jangan_bohong') {

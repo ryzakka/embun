@@ -127,6 +127,8 @@ class PreviewSession
   int? _abilitySlot;
   List<String> _abilityOffers = [];
   bool _usedAbility = false;
+  PreviewRow? _meetingPoll;
+  final List<PreviewRow> _meetingEvents = [];
   int _seed = 0;
   int _sequence = 0;
   int _seen = 0;
@@ -179,6 +181,8 @@ class PreviewSession
         .take(3)
         .toList();
     _usedAbility = false;
+    _meetingPoll = null;
+    _meetingEvents.clear();
     _seed = 0;
     _sequence = 0;
     _balance = 74.7;
@@ -486,7 +490,9 @@ class PreviewSession
     _darkChosen = false;
     _pickedAbility = null;
     _abilitySlot = null;
-    _abilityOffers = (previewAbilities.keys.toList()..shuffle()).take(3).toList();
+    _abilityOffers = (previewAbilities.keys.toList()..shuffle())
+        .take(3)
+        .toList();
     _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
     _phase('day', nextDay: 1);
   }
@@ -1099,13 +1105,74 @@ class PreviewSession
   }
 
   @override
+  Future<PreviewRow> meetingStatus(String gameId) async => {
+    'poll': _meetingPoll,
+    'events': List.of(_meetingEvents),
+    'can_vote': me['out_day'] == null,
+    'heritage': false,
+    'voted': me['ready'] == true,
+    'eligible_total': roster.where((p) => p['out_day'] == null).length,
+    'locked_voters': [for (final v in voteRows) v['voter_id']],
+  };
+
+  @override
+  Future<PreviewRow> submitMeetingOpinion(
+    String gameId,
+    String pollId,
+    String choice,
+  ) async {
+    if (_meetingPoll == null || _meetingPoll!['closed'] == true)
+      throw StateError('Sidang sudah ditutup');
+    if (_meetingPoll!['my_choice'] != null)
+      throw StateError('Jawaban sudah terkunci');
+    _meetingPoll = {
+      ..._meetingPoll!,
+      'my_choice': choice,
+      'closed': true,
+      'can_answer': false,
+      'answered': roster.length,
+      'counts': {
+        'curiga': 2 + (choice == 'curiga' ? 1 : 0),
+        'ragu': choice == 'ragu' ? 1 : 0,
+        'percaya': roster.length - 3 + (choice == 'percaya' ? 1 : 0),
+      },
+    };
+    return meetingStatus(gameId);
+  }
+
+  @override
   Future<PreviewRow> useAbility(
     String gameId, {
     String? target,
     String? option,
   }) async {
+    if (_usedAbility) throw StateError('Kemampuan sudah terpakai');
     _usedAbility = true;
-    return {'result': 'ok', 'message': 'Kemampuan dipakai dalam sesi contoh.'};
+    if (_ability == 'sidang_terbuka') {
+      _meetingPoll = {
+        'id': 'preview-poll',
+        'target': roster.where((p) => p['user_id'] == target).first['name'],
+        'closed': false,
+        'closes_at': DateTime.now()
+            .toUtc()
+            .add(const Duration(seconds: 25))
+            .toIso8601String(),
+        'total': roster.length,
+        'answered': 0,
+        'counts': null,
+        'my_choice': null,
+        'can_answer': true,
+      };
+      _meetingEvents.add({
+        'id': 'preview-poll-event',
+        'text': 'Rapat: Sidang Terbuka dimulai.',
+      });
+    }
+    return {
+      'result': 'ok',
+      'message': 'Kemampuan dipakai dalam sesi contoh.',
+      if (_ability == 'buktikan_tuduhan') 'correct': true,
+    };
   }
 
   @override

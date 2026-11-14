@@ -186,7 +186,23 @@ class LobbyRepository {
           .eq('game_id', gameId)
           .eq('user_id', uid)
           .maybeSingle();
-      return row == null ? null : Map<String, dynamic>.from(row);
+      if (row != null) return Map<String, dynamic>.from(row);
+      // Warisan tetap dapat dibuka ulang setelah rahasia pemain dihapus saat eliminasi.
+      try {
+        final state = Map<String, dynamic>.from(
+          await _db.rpc('my_meeting_status', params: {'p_game': gameId}) as Map,
+        );
+        if (state['heritage'] == true) {
+          return {
+            'role': 'warga',
+            'ability': 'warisan_suara',
+            'ability_used': true,
+            'char_chosen': true,
+            'dark_chosen': true,
+          };
+        }
+      } catch (_) {}
+      return null;
     }
 
     try {

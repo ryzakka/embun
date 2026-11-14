@@ -2121,6 +2121,12 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _bullet(
+                'Lima kemampuan rapat baru tidak bisa ditangkis atau dipadamkan kartu kuning/ungu. Penanggung Luka hanya memindahkan satu luka. Warisan Suara memberi satu suara terakhir sesuai jadwal, tanpa mengembalikan aksi pemain.',
+                dot: accent,
+                bold: accent,
+              ),
+
+              _bullet(
                 'Setelah kartu karakter hijau terbuka, tiap warga memilih '
                 '**satu dari tiga kartu biru tertutup**. Pilihan diacak server '
                 'dan hasilnya hanya terlihat oleh pemilik.',

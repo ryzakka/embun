@@ -492,6 +492,17 @@ class GameRepository {
         params: {'p_game': gameId, 'p_hand_id': handId, 'p_target': target},
       );
 
+  Future<Map<String, dynamic>> meetingStatus(String gameId) =>
+      _visitRpc('my_meeting_status', gameId);
+  Future<Map<String, dynamic>> submitMeetingOpinion(
+    String gameId,
+    String pollId,
+    String choice,
+  ) => _visitRpc('submit_meeting_opinion', gameId, {
+    'p_poll': pollId,
+    'p_choice': choice,
+  });
+
   // ---- kemampuan warga ----
   Future<Map<String, Map<String, dynamic>>> abilityDefs() async {
     final rows = await _db.from('ability_definitions').select();

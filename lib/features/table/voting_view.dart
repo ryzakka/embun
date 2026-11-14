@@ -58,8 +58,7 @@ class VotingView extends StatefulWidget {
   State<VotingView> createState() => _VotingViewState();
 }
 
-class _VotingViewState extends State<VotingView>
-    with TickerProviderStateMixin {
+class _VotingViewState extends State<VotingView> with TickerProviderStateMixin {
   String? target;
   bool busy = false;
   bool _hammer = false; // pakai Patuhilah Padaku pada suara ini
@@ -121,8 +120,11 @@ class _VotingViewState extends State<VotingView>
 
   void _skipIntro() {
     if (_intro.value >= 0.5) return;
-    _intro.animateTo(1.0,
-        duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
+    _intro.animateTo(
+      1.0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+    );
   }
 
   Map<String, dynamic>? _player(String? id) {
@@ -162,7 +164,9 @@ class _VotingViewState extends State<VotingView>
     });
     HapticFeedback.heavyImpact();
     Future.delayed(
-        const Duration(milliseconds: 380), HapticFeedback.heavyImpact);
+      const Duration(milliseconds: 380),
+      HapticFeedback.heavyImpact,
+    );
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     var ok = false;
@@ -209,7 +213,8 @@ class _VotingViewState extends State<VotingView>
                   ),
                 ),
                 const TextSpan(
-                  text: 'Tuduhan pertama: dikurung sampai musyawarah '
+                  text:
+                      'Tuduhan pertama: dikurung sampai musyawarah '
                       'berikutnya dan Hayu kehilangan 1 daun.\n\n'
                       'Tuduhan kedua: Si Terbisik tertangkap, tapi warga '
                       'yang salah tuduh keluar dari desa.\n\n'
@@ -235,9 +240,11 @@ class _VotingViewState extends State<VotingView>
   /// header / deretan desa di ponsel.
   @override
   Widget build(BuildContext context) {
-    final others =
-    widget.players.where((p) => p['user_id'] != widget.repo.myId).toList();
-    final need = widget.players.length ~/ 2 + 1;
+    final others = widget.players
+        .where((p) => p['user_id'] != widget.repo.myId)
+        .toList();
+    final need =
+        (widget.total > 0 ? widget.total : widget.players.length) ~/ 2 + 1;
     final showLocked = widget.locked || _sent;
 
     return MediaQuery.withClampedTextScaling(
@@ -247,66 +254,72 @@ class _VotingViewState extends State<VotingView>
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 450),
-            layoutBuilder: (current, previous) => Stack(
-              fit: StackFit.expand,
-              children: [...previous, ?current],
-            ),
+            layoutBuilder: (current, previous) =>
+                Stack(fit: StackFit.expand, children: [...previous, ?current]),
             child: showLocked
                 ? _LockedView(
-              key: const ValueKey('locked'),
-              known: _sent,
-              target: _player(_sentTarget),
-              ready: widget.readyCount,
-              total: widget.total,
-            )
+                    key: const ValueKey('locked'),
+                    known: _sent,
+                    target: _player(_sentTarget),
+                    ready: widget.readyCount,
+                    total: widget.total,
+                  )
                 : KeyedSubtree(
-              key: const ValueKey('open'),
-              child: LayoutBuilder(builder: (context, box) {
-                // Ponsel miring: daftar di kiri, aksi di kanan.
-                final side = box.maxWidth >= 600 && box.maxHeight < 440;
-                final compact = side || box.maxHeight < 520;
-                final list = Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _header(need, compact),
-                    SizedBox(height: compact ? 2 : 4),
-                    Expanded(child: _suspects(others, compact)),
-                  ],
-                );
-                if (side) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: list),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 250,
-                        child: Center(
-                          child: SingleChildScrollView(
-                            child: _actionBar(compact: true, vertical: true),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: list),
-                    SizedBox(height: compact ? 6 : 8),
-                    _actionBar(compact: compact, vertical: false),
-                  ],
-                );
-              }),
-            ),
+                    key: const ValueKey('open'),
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        // Ponsel miring: daftar di kiri, aksi di kanan.
+                        final side = box.maxWidth >= 600 && box.maxHeight < 440;
+                        final compact = side || box.maxHeight < 520;
+                        final list = Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _header(need, compact),
+                            SizedBox(height: compact ? 2 : 4),
+                            Expanded(child: _suspects(others, compact)),
+                          ],
+                        );
+                        if (side) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(child: list),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: 250,
+                                child: Center(
+                                  child: SingleChildScrollView(
+                                    child: _actionBar(
+                                      compact: true,
+                                      vertical: true,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: list),
+                            SizedBox(height: compact ? 6 : 8),
+                            _actionBar(compact: compact, vertical: false),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
           ),
           if (stamping)
             Positioned.fill(child: _VoteStamp(player: _player(stampId))),
           if (!showLocked)
             Positioned.fill(
               child: _SessionIntro(
-                  t: _intro, day: widget.day, onSkip: _skipIntro),
+                t: _intro,
+                day: widget.day,
+                onSkip: _skipIntro,
+              ),
             ),
         ],
       ),
@@ -320,7 +333,9 @@ class _VotingViewState extends State<VotingView>
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-              color: EmbunColors.gold.withValues(alpha: 0.35), width: 1.2),
+            color: EmbunColors.gold.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
         ),
       ),
       child: Row(
@@ -346,14 +361,16 @@ class _VotingViewState extends State<VotingView>
               color: EmbunColors.gold.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: EmbunColors.gold.withValues(alpha: 0.6)),
+                color: EmbunColors.gold.withValues(alpha: 0.6),
+              ),
             ),
             child: Text(
               'Butuh $need suara',
               style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: EmbunColors.gold),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: EmbunColors.gold,
+              ),
             ),
           ),
           IconButton(
@@ -377,109 +394,120 @@ class _VotingViewState extends State<VotingView>
   Widget _suspects(List<Map<String, dynamic>> others, bool compact) {
     if (others.isEmpty) {
       return const Center(
-        child: Text('Belum ada pemain lain di desa.',
-            style: TextStyle(color: Colors.white60)),
-      );
-    }
-    return LayoutBuilder(builder: (context, c) {
-      const hPad = 8.0;
-      final vPad = compact ? 8.0 : 12.0;
-      final gap = compact ? 8.0 : 12.0;
-      final availW = math.max(c.maxWidth - hPad * 2, 60.0);
-      final availH = math.max(c.maxHeight - vPad * 2, 60.0);
-      final n = others.length;
-      // Batas kartu yang masih nyaman dibaca / disentuh.
-      const minW = 74.0;
-      final maxW = c.maxWidth < 420 ? 128.0 : (c.maxWidth < 800 ? 150.0 : 168.0);
-
-      double widthFor(int cols) => math.min(
-          (availW - (cols - 1) * gap) / cols, maxW);
-
-      // 1) Susunan terbesar yang seluruhnya muat tanpa menggulir.
-      var cols = 0;
-      var cardW = 0.0;
-      for (var k = 1; k <= n; k++) {
-        final w = widthFor(k);
-        if (w < minW) break;
-        final rows = (n / k).ceil();
-        final total = rows * w * kProtagonistAspect + (rows - 1) * gap;
-        if (total <= availH) {
-          cols = k;
-          cardW = w;
-          break;
-        }
-      }
-      // 2) Tak muat: pakai lebar kartu nyaman (~104) dan biarkan menggulir.
-      if (cols == 0) {
-        cols = math.max(1, ((availW + gap) / (104 + gap)).floor());
-        cols = math.min(cols, n);
-        cardW = math.max(widthFor(cols), math.min(minW, availW));
-      }
-      cardW = cardW.floorToDouble();
-      final cardH = cardW * kProtagonistAspect;
-
-      final items = <Widget>[
-        for (var i = 0; i < n; i++)
-              () {
-            final p = others[i];
-            final id = p['user_id'] as String;
-            final sel = target == id;
-            final slot = math.min(i, 7);
-            final opacity = busy && !sel
-                ? 0.45
-                : (target != null && !sel ? 0.7 : 1.0);
-            return SizedBox(
-              width: cardW,
-              height: cardH,
-              child: AnimatedBuilder(
-                animation: _intro,
-                builder: (context, child) {
-                  final t = Curves.easeOutBack.transform(_seg(
-                      _intro.value, 0.50 + 0.03 * slot, 0.78 + 0.03 * slot));
-                  return Opacity(
-                    opacity: t.clamp(0.0, 1.0).toDouble(),
-                    child: Transform.translate(
-                      offset: Offset(0, 46 * (1 - t)),
-                      child: Transform.rotate(
-                        angle: (i.isEven ? -0.07 : 0.07) * (1 - t),
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: _SuspectCard(
-                  player: p,
-                  width: cardW,
-                  selected: sel,
-                  opacity: opacity,
-                  enabled: !busy,
-                  jailed: isJailed(p, widget.day),
-                  pulse: _pulse,
-                  onTap: () => _select(id),
-                ),
-              ),
-            );
-          }(),
-      ];
-
-      return SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
-        child: ConstrainedBox(
-          // Muat tanpa gulir: kartu berada di tengah ruang yang tersedia.
-          constraints: BoxConstraints(minHeight: availH),
-          child: Center(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              runAlignment: WrapAlignment.center,
-              spacing: gap,
-              runSpacing: gap,
-              children: items,
-            ),
-          ),
+        child: Text(
+          'Belum ada pemain lain di desa.',
+          style: TextStyle(color: Colors.white60),
         ),
       );
-    });
+    }
+    return LayoutBuilder(
+      builder: (context, c) {
+        const hPad = 8.0;
+        final vPad = compact ? 8.0 : 12.0;
+        final gap = compact ? 8.0 : 12.0;
+        final availW = math.max(c.maxWidth - hPad * 2, 60.0);
+        final availH = math.max(c.maxHeight - vPad * 2, 60.0);
+        final n = others.length;
+        // Batas kartu yang masih nyaman dibaca / disentuh.
+        const minW = 74.0;
+        final maxW = c.maxWidth < 420
+            ? 128.0
+            : (c.maxWidth < 800 ? 150.0 : 168.0);
+
+        double widthFor(int cols) =>
+            math.min((availW - (cols - 1) * gap) / cols, maxW);
+
+        // 1) Susunan terbesar yang seluruhnya muat tanpa menggulir.
+        var cols = 0;
+        var cardW = 0.0;
+        for (var k = 1; k <= n; k++) {
+          final w = widthFor(k);
+          if (w < minW) break;
+          final rows = (n / k).ceil();
+          final total = rows * w * kProtagonistAspect + (rows - 1) * gap;
+          if (total <= availH) {
+            cols = k;
+            cardW = w;
+            break;
+          }
+        }
+        // 2) Tak muat: pakai lebar kartu nyaman (~104) dan biarkan menggulir.
+        if (cols == 0) {
+          cols = math.max(1, ((availW + gap) / (104 + gap)).floor());
+          cols = math.min(cols, n);
+          cardW = math.max(widthFor(cols), math.min(minW, availW));
+        }
+        cardW = cardW.floorToDouble();
+        final cardH = cardW * kProtagonistAspect;
+
+        final items = <Widget>[
+          for (var i = 0; i < n; i++)
+            () {
+              final p = others[i];
+              final id = p['user_id'] as String;
+              final sel = target == id;
+              final slot = math.min(i, 7);
+              final opacity = busy && !sel
+                  ? 0.45
+                  : (target != null && !sel ? 0.7 : 1.0);
+              return SizedBox(
+                width: cardW,
+                height: cardH,
+                child: AnimatedBuilder(
+                  animation: _intro,
+                  builder: (context, child) {
+                    final t = Curves.easeOutBack.transform(
+                      _seg(
+                        _intro.value,
+                        0.50 + 0.03 * slot,
+                        0.78 + 0.03 * slot,
+                      ),
+                    );
+                    return Opacity(
+                      opacity: t.clamp(0.0, 1.0).toDouble(),
+                      child: Transform.translate(
+                        offset: Offset(0, 46 * (1 - t)),
+                        child: Transform.rotate(
+                          angle: (i.isEven ? -0.07 : 0.07) * (1 - t),
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _SuspectCard(
+                    player: p,
+                    width: cardW,
+                    selected: sel,
+                    opacity: opacity,
+                    enabled: !busy,
+                    jailed: isJailed(p, widget.day),
+                    pulse: _pulse,
+                    onTap: () => _select(id),
+                  ),
+                ),
+              );
+            }(),
+        ];
+
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+          child: ConstrainedBox(
+            // Muat tanpa gulir: kartu berada di tengah ruang yang tersedia.
+            constraints: BoxConstraints(minHeight: availH),
+            child: Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                runAlignment: WrapAlignment.center,
+                spacing: gap,
+                runSpacing: gap,
+                children: items,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Bilah aksi: selalu terlihat. Status pilihan (atau galat) satu-dua
@@ -521,7 +549,8 @@ class _VotingViewState extends State<VotingView>
             ),
             if (strikesOf(chosen) >= 1)
               const TextSpan(
-                text: '\nSudah dituduh sekali: bila mayoritas sepakat, '
+                text:
+                    '\nSudah dituduh sekali: bila mayoritas sepakat, '
                     'ia KELUAR dari desa (Si Terbisik: tertangkap).',
                 style: TextStyle(
                   fontSize: 11.5,
@@ -544,93 +573,107 @@ class _VotingViewState extends State<VotingView>
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: Container(
-          padding: EdgeInsets.fromLTRB(10, compact ? 6 : 8, 10, compact ? 6 : 8),
+          padding: EdgeInsets.fromLTRB(
+            10,
+            compact ? 6 : 8,
+            10,
+            compact ? 6 : 8,
+          ),
           decoration: tableEdge(
             target != null ? EmbunColors.blood : EmbunColors.gold,
             vertical: vertical,
             top: !vertical,
           ),
-          child: LayoutBuilder(builder: (context, c) {
-            final stacked = vertical || c.maxWidth < 300;
-            final wideLabel = c.maxWidth >= 400;
-            final lock = EmbunButton(
-              label: 'Kunci suara',
-              icon: 'lock',
-              expand: true,
-              height: btnH,
-              onPressed: canLock ? () => _submit(target) : null,
-            );
-            final skip = EmbunButton(
-              label: wideLabel || stacked ? 'Tidak memilih' : 'Lewati',
-              icon: 'skip',
-              kind: EmbunButtonKind.secondary,
-              expand: true,
-              height: stacked ? 42 : btnH,
-              onPressed: busy ? null : () => _submit(null),
-            );
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  alignment: Alignment.topCenter,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: status,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final stacked = vertical || c.maxWidth < 300;
+              final wideLabel = c.maxWidth >= 400;
+              final lock = EmbunButton(
+                label: 'Kunci suara',
+                icon: 'lock',
+                expand: true,
+                height: btnH,
+                onPressed: canLock ? () => _submit(target) : null,
+              );
+              final skip = EmbunButton(
+                label: wideLabel || stacked ? 'Tidak memilih' : 'Lewati',
+                icon: 'skip',
+                kind: EmbunButtonKind.secondary,
+                expand: true,
+                height: stacked ? 42 : btnH,
+                onPressed: busy ? null : () => _submit(null),
+              );
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 180),
+                    alignment: Alignment.topCenter,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: status,
+                    ),
                   ),
-                ),
-                SizedBox(height: compact ? 6 : 8),
-                if (widget.hasHammer && target != null && !busy) ...[
-                  InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _hammer = !_hammer);
-                    },
-                    child: Padding(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      child: Row(
-                        children: [
-                          Icon(Icons.gavel_rounded,
+                  SizedBox(height: compact ? 6 : 8),
+                  if (widget.hasHammer && target != null && !busy) ...[
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _hammer = !_hammer);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.gavel_rounded,
                               size: 20,
-                              color: _hammer ? EmbunColors.gold : Colors.white54),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Pakai Patuhilah Padaku: suaramu bernilai 2',
-                              style: TextStyle(
+                              color: _hammer
+                                  ? EmbunColors.gold
+                                  : Colors.white54,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Pakai Patuhilah Padaku: suaramu bernilai 2',
+                                style: TextStyle(
                                   fontSize: 12.5,
                                   color: _hammer
                                       ? EmbunColors.gold
-                                      : Colors.white60),
+                                      : Colors.white60,
+                                ),
+                              ),
                             ),
-                          ),
-                          Switch(
-                            value: _hammer,
-                            onChanged: (v) => setState(() => _hammer = v),
-                          ),
-                        ],
+                            Switch(
+                              value: _hammer,
+                              onChanged: (v) => setState(() => _hammer = v),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: compact ? 4 : 6),
+                    SizedBox(height: compact ? 4 : 6),
+                  ],
+                  if (stacked) ...[
+                    lock,
+                    const SizedBox(height: 8),
+                    skip,
+                  ] else
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: lock),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 2, child: skip),
+                      ],
+                    ),
                 ],
-                if (stacked) ...[
-                  lock,
-                  const SizedBox(height: 8),
-                  skip,
-                ] else
-                  Row(
-                    children: [
-                      Expanded(flex: 3, child: lock),
-                      const SizedBox(width: 10),
-                      Expanded(flex: 2, child: skip),
-                    ],
-                  ),
-              ],
-            );
-          }),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -708,9 +751,10 @@ class _SuspectCard extends StatelessWidget {
                       )
                     else
                       const BoxShadow(
-                          color: Color(0x66000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 3)),
+                        color: Color(0x66000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
                   ],
                 ),
                 child: child,
@@ -749,8 +793,9 @@ class _SuspectCard extends StatelessWidget {
                   // Semburat merah saat dipilih.
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
-                    color: EmbunColors.blood
-                        .withValues(alpha: selected ? 0.20 : 0.0),
+                    color: EmbunColors.blood.withValues(
+                      alpha: selected ? 0.20 : 0.0,
+                    ),
                   ),
                   Positioned(
                     left: pad,
@@ -767,8 +812,9 @@ class _SuspectCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: nameSize,
                             height: 1.15,
-                            fontWeight:
-                            selected ? FontWeight.w900 : FontWeight.w700,
+                            fontWeight: selected
+                                ? FontWeight.w900
+                                : FontWeight.w700,
                             color: Colors.white,
                             shadows: const [
                               Shadow(color: Colors.black, blurRadius: 4),
@@ -791,9 +837,10 @@ class _SuspectCard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.topLeft,
                           child: const StatusTag(
-                              text: 'Dikurung',
-                              color: EmbunColors.blood,
-                              asset: 'lock'),
+                            text: 'Dikurung',
+                            color: EmbunColors.blood,
+                            asset: 'lock',
+                          ),
                         ),
                       ),
                     ),
@@ -810,9 +857,7 @@ class _SuspectCard extends StatelessWidget {
                   Positioned.fill(
                     child: Material(
                       type: MaterialType.transparency,
-                      child: InkWell(
-                        onTap: enabled ? onTap : null,
-                      ),
+                      child: InkWell(onTap: enabled ? onTap : null),
                     ),
                   ),
                 ],
@@ -862,7 +907,8 @@ class _SessionIntro extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               ColoredBox(
-                  color: const Color(0xFF080306).withValues(alpha: scrim)),
+                color: const Color(0xFF080306).withValues(alpha: scrim),
+              ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
@@ -900,8 +946,9 @@ class _SessionIntro extends StatelessWidget {
                                 color: EmbunColors.blood,
                                 shadows: [
                                   Shadow(
-                                    color: EmbunColors.blood
-                                        .withValues(alpha: 0.7),
+                                    color: EmbunColors.blood.withValues(
+                                      alpha: 0.7,
+                                    ),
                                     blurRadius: 24,
                                   ),
                                 ],
@@ -912,8 +959,7 @@ class _SessionIntro extends StatelessWidget {
                               width: 220 * line,
                               height: 2,
                               child: ColoredBox(
-                                color:
-                                EmbunColors.blood.withValues(alpha: 0.8),
+                                color: EmbunColors.blood.withValues(alpha: 0.8),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -922,7 +968,9 @@ class _SessionIntro extends StatelessWidget {
                               child: Text(
                                 'Hari $day  ·  satu suara bisa mengubah segalanya',
                                 style: const TextStyle(
-                                    fontSize: 13.5, color: Colors.white70),
+                                  fontSize: 13.5,
+                                  color: Colors.white70,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -931,7 +979,9 @@ class _SessionIntro extends StatelessWidget {
                               child: const Text(
                                 'Ketuk untuk melewati',
                                 style: TextStyle(
-                                    fontSize: 11, color: Colors.white38),
+                                  fontSize: 11,
+                                  color: Colors.white38,
+                                ),
                               ),
                             ),
                           ],
@@ -993,12 +1043,16 @@ class _LockedViewState extends State<_LockedView>
   Widget _choice() {
     final t = widget.target;
     if (!widget.known) {
-      return const Text('Suaramu sudah dijatuhkan.',
-          style: TextStyle(fontSize: 14, color: Colors.white70));
+      return const Text(
+        'Suaramu sudah dijatuhkan.',
+        style: TextStyle(fontSize: 14, color: Colors.white70),
+      );
     }
     if (t == null) {
-      return const Text('Kamu memilih untuk tidak memilih.',
-          style: TextStyle(fontSize: 14, color: Colors.white70));
+      return const Text(
+        'Kamu memilih untuk tidak memilih.',
+        style: TextStyle(fontSize: 14, color: Colors.white70),
+      );
     }
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1051,16 +1105,14 @@ class _LockedViewState extends State<_LockedView>
               ),
               boxShadow: i < ready
                   ? [
-                BoxShadow(
-                  color: EmbunColors.blood.withValues(alpha: 0.5),
-                  blurRadius: 10,
-                ),
-              ]
+                      BoxShadow(
+                        color: EmbunColors.blood.withValues(alpha: 0.5),
+                        blurRadius: 10,
+                      ),
+                    ]
                   : null,
             ),
-            child: i < ready
-                ? const GameIcon('centang', size: 16)
-                : null,
+            child: i < ready ? const GameIcon('centang', size: 16) : null,
           ),
       ],
     );
@@ -1100,12 +1152,15 @@ class _LockedViewState extends State<_LockedView>
                               const Color(0xFF2A0C0C),
                             ],
                           ),
-                          border:
-                          Border.all(color: EmbunColors.blood, width: 2.5),
+                          border: Border.all(
+                            color: EmbunColors.blood,
+                            width: 2.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: EmbunColors.blood
-                                  .withValues(alpha: 0.35 + 0.35 * beat),
+                              color: EmbunColors.blood.withValues(
+                                alpha: 0.35 + 0.35 * beat,
+                              ),
                               blurRadius: 18 + 20 * beat,
                               spreadRadius: 2 * beat,
                             ),
@@ -1134,7 +1189,9 @@ class _LockedViewState extends State<_LockedView>
                           ? 'Menunggu $left suara lagi...'
                           : 'Semua suara terkunci. Pintu balai ditutup...',
                       style: const TextStyle(
-                          fontSize: 13, color: Colors.white70),
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
@@ -1164,8 +1221,9 @@ class _VoteStamp extends StatelessWidget {
     final abstain = player == null;
     final color = abstain ? Colors.white60 : Colors.redAccent;
     final size = MediaQuery.sizeOf(context);
-    final avatar =
-    (math.min(size.width, size.height) * 0.28).clamp(64.0, 130.0).toDouble();
+    final avatar = (math.min(size.width, size.height) * 0.28)
+        .clamp(64.0, 130.0)
+        .toDouble();
     final stampW = (size.width * 0.6).clamp(160.0, 260.0).toDouble();
 
     return AbsorbPointer(
@@ -1173,14 +1231,18 @@ class _VoteStamp extends StatelessWidget {
         tween: Tween<double>(begin: 0, end: 1),
         duration: const Duration(milliseconds: 700),
         builder: (context, t, _) {
-          final dimT = Curves.easeOut
-              .transform((t / 0.3).clamp(0.0, 1.0).toDouble());
-          final land = Curves.easeOutBack
-              .transform((t / 0.5).clamp(0.0, 1.0).toDouble());
-          final st = Curves.easeOutBack
-              .transform(((t - 0.4) / 0.4).clamp(0.0, 1.0).toDouble());
-          final flash =
-          (1 - (t - 0.45).abs() / 0.08).clamp(0.0, 1.0).toDouble();
+          final dimT = Curves.easeOut.transform(
+            (t / 0.3).clamp(0.0, 1.0).toDouble(),
+          );
+          final land = Curves.easeOutBack.transform(
+            (t / 0.5).clamp(0.0, 1.0).toDouble(),
+          );
+          final st = Curves.easeOutBack.transform(
+            ((t - 0.4) / 0.4).clamp(0.0, 1.0).toDouble(),
+          );
+          final flash = (1 - (t - 0.45).abs() / 0.08)
+              .clamp(0.0, 1.0)
+              .toDouble();
           // Getar singkat saat cap menghantam, lalu mereda.
           final k = ((t - 0.45) / 0.25).clamp(0.0, 1.0).toDouble();
           final shake = (t > 0.45 && t < 0.7)
@@ -1227,7 +1289,8 @@ class _VoteStamp extends StatelessWidget {
                                 scale: 2.2 - 1.2 * land,
                                 child: PlayerAvatar(
                                   path: protagonistPath(
-                                      player!['character_card'] as String),
+                                    player!['character_card'] as String,
+                                  ),
                                   size: avatar,
                                   ring: Colors.redAccent,
                                 ),
@@ -1238,7 +1301,9 @@ class _VoteStamp extends StatelessWidget {
                             Text(
                               player!['name'] as String,
                               style: const TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           const SizedBox(height: 16),
                           Opacity(
@@ -1249,27 +1314,34 @@ class _VoteStamp extends StatelessWidget {
                                 scale: 2.6 - 1.6 * st,
                                 child: abstain
                                     ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: color, width: 4),
-                                    borderRadius:
-                                    BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    'TIDAK MEMILIH',
-                                    style: TextStyle(
-                                      color: color,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 4,
-                                    ),
-                                  ),
-                                )
-                                    : GameIcon('tertuduh',
-                                    width: stampW,
-                                    height: stampW * 90 / 220),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: color,
+                                            width: 4,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'TIDAK MEMILIH',
+                                          style: TextStyle(
+                                            color: color,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 4,
+                                          ),
+                                        ),
+                                      )
+                                    : GameIcon(
+                                        'tertuduh',
+                                        width: stampW,
+                                        height: stampW * 90 / 220,
+                                      ),
                               ),
                             ),
                           ),
@@ -1280,8 +1352,7 @@ class _VoteStamp extends StatelessWidget {
                 ),
               ),
               if (flash > 0.01)
-                ColoredBox(
-                    color: Colors.white.withValues(alpha: 0.35 * flash)),
+                ColoredBox(color: Colors.white.withValues(alpha: 0.35 * flash)),
             ],
           );
         },

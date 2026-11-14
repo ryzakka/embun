@@ -48,7 +48,7 @@ import 'parts_strip.dart';
 import 'phase_title.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
-import 'voting_view.dart';
+import 'meeting_abilities.dart';
 
 class TablePage extends StatefulWidget {
   final String gameId;
@@ -1350,13 +1350,13 @@ class _TablePageState extends State<TablePage> {
     await showAbilityDialog(
       context,
       def: def,
-      used: abilityUsed,
+      used: abilityUsed || (_meRow != null && isOut(_meRow!)),
       repo: repo,
       gameId: widget.gameId,
       phase: (game?['phase'] as String?) ?? '',
       jailed: me != null && isJailed(me, day),
       others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
-      everyone: _alive,
+      everyone: players,
       day: day,
       intro: intro,
       onUsed: () {
@@ -1374,7 +1374,10 @@ class _TablePageState extends State<TablePage> {
     if (isAntag || !_abilityKnown || def == null) {
       return const SizedBox.shrink();
     }
-    final ready = !abilityUsed && abilityIsManual(abilityId);
+    final ready =
+        !abilityUsed &&
+        abilityIsManual(abilityId) &&
+        (_meRow == null || !isOut(_meRow!));
     return Badge(
       isLabelVisible: ready,
       smallSize: 10,
@@ -1801,24 +1804,16 @@ class _TablePageState extends State<TablePage> {
     } else if (phase == 'voting') {
       // VotingView dipertahankan (kuncinya tetap) setelah suara dikunci,
       // supaya layar "Suaramu terkunci" dan pilihanmu tidak hilang.
-      body = iAmOut
-          ? _waiting(
-              readyCount,
-              alive.length,
-              'Kamu hanya menonton pemungutan suara...',
-            )
-          : VotingView(
-              key: ValueKey('vote$day'),
-              repo: repo,
-              gameId: widget.gameId,
-              players: alive,
-              day: day,
-              locked: iAmReady,
-              readyCount: readyCount,
-              total: alive.length,
-              hasHammer: !isAntag && abilityId == 'palu_hakim' && !abilityUsed,
-              onHammerUsed: () => _loadAbility(),
-            );
+      body = HeritageVotingView(
+        key: ValueKey('vote$day'),
+        repo: repo,
+        gameId: widget.gameId,
+        day: day,
+        players: alive,
+        readyCount: readyCount,
+        hasHammer: !isAntag && abilityId == 'palu_hakim' && !abilityUsed,
+        onHammerUsed: () => _loadAbility(),
+      );
     } else if (phase == 'offering') {
       body = OfferingView(
         key: ValueKey('off$day'),
@@ -1934,6 +1929,20 @@ class _TablePageState extends State<TablePage> {
         phase == 'day' &&
         _dayIntro == null &&
         _verdictHiddenDay != day;
+
+    if (phase == 'discussion' || phase == 'voting') {
+      body = Column(
+        children: [
+          MeetingPanel(
+            key: ValueKey('meeting-$day'),
+            repo: repo,
+            gameId: widget.gameId,
+            day: day,
+          ),
+          Expanded(child: body),
+        ],
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -2630,18 +2639,6 @@ class _TablePageState extends State<TablePage> {
       people: people,
     );
   }
-
-  Widget _waiting(int ready, int total, String text) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const GameIcon('wait', size: 72),
-        const SizedBox(height: 16),
-        Text(text),
-        Text('$ready/$total siap'),
-      ],
-    ),
-  );
 
   // ---------- hasil + rekap ----------
 
