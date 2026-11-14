@@ -382,12 +382,12 @@ class _TutorialPageState extends State<TutorialPage>
   /// Latar tiap langkah: nama berkas di assets/bentang (tanpa ekstensi).
   /// Ganti di sini bila ingin adegan lain untuk satu langkah.
   static const _sceneByTitle = {
-    'Selamat datang': 'Lembah Desa di Bawah Pohon Suci',
-    'Desa Hayu': 'Desa Hijau di Bawah Pohon Suci',
+    'Selamat datang': 'newDesa-bentang4',
+    'Desa Hayu': 'newDesa-bentang1',
     'Warga desa': 'alunalun-tiangberpita',
-    'Tempat di desa': 'Desa Teduh di Bawah Pohon Suci',
+    'Tempat di desa': 'newDesa-bentang3',
     'Peran': 'balkon-siang',
-    'Satu siklus': 'Desa Pegunungan dalam Cahaya Fajar',
+    'Satu siklus': 'newDesa-bentang2',
     'Embun': 'sumur-sianghari',
     'Pagi berbelanja': 'pasar-sianghari',
     'Pasar Riset': 'gerobakdankeranjang',
@@ -395,8 +395,8 @@ class _TutorialPageState extends State<TutorialPage>
     'Informasi palsu': 'menaralonceng-sianghari',
     'Musyawarah dan voting': 'balaidesa-luarsiang',
     'Nyawa': 'tepisungai-tanggaterjalsianghari',
-    'Bagian Hayu': 'Lembah Desa Fantasi dan Pohon Suci',
-    'Kemenangan': 'Lembah Desa Pegunungan dan Pohon Suci',
+    'Bagian Hayu': 'newDesa-bentang5',
+    'Kemenangan': 'newDesa-bentang7',
   };
 
   String? _sceneFor(int i) {
@@ -1127,10 +1127,10 @@ class _VillageTour extends StatelessWidget {
   const _VillageTour();
 
   static const _stops = [
-    ('Desa Hijau di Bawah Pohon Suci', 'Lembah Hayu, dijaga pohon suci'),
+    ('newDesa-bentang1', 'Lembah Hayu, dijaga pohon suci'),
     ('alunalun-tiangberpita', 'Alun-alun: tempat warga berkumpul'),
     ('menaralonceng-sianghari', 'Menara lonceng di tengah desa'),
-    ('Desa Pegunungan dalam Cahaya Fajar', 'Fajar di lembah Hayu'),
+    ('newDesa-bentang2', 'Fajar di lembah Hayu'),
   ];
 
   @override

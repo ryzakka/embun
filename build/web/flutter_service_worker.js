@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "09beae37f9e04b77222c5e84a40d6a15",
-"assets/AssetManifest.bin.json": "b822872b1532701ae2b9c082ca81d676",
+const RESOURCES = {"assets/AssetManifest.bin": "5dddff560702105678fc76e39486386e",
+"assets/AssetManifest.bin.json": "237509f1af812af58100688490dfed1a",
 "assets/assets/bentang/alunalun-tiangberpita.webp": "250ce118405c1d83668adf39ad9a40ff",
 "assets/assets/bentang/anyaman-gelap.webp": "5322aff6e036276cb3e8960a77599f9b",
 "assets/assets/bentang/anyaman-rusak.webp": "21b76bbe9458a9952369cf8d1b451492",
@@ -52,6 +52,13 @@ const RESOURCES = {"assets/AssetManifest.bin": "09beae37f9e04b77222c5e84a40d6a15
 "assets/assets/bentang/lembah-malamkering.webp": "432af36eb5dc1887aa53ded081e7ed10",
 "assets/assets/bentang/mejaku.webp": "3d743c23e52e9da1de9e42729facfdbb",
 "assets/assets/bentang/menaralonceng-sianghari.webp": "228d9ce03cba55898f5afa216847a5d5",
+"assets/assets/bentang/newDesa-bentang1.webp": "2c08a66c42ae3de92ac32fefd8e0a1af",
+"assets/assets/bentang/newDesa-bentang2.webp": "bdd6daf2e24d6d90b1e501e99d0990e5",
+"assets/assets/bentang/newDesa-bentang3.webp": "bece615322b5a2839c75679a4939134a",
+"assets/assets/bentang/newDesa-bentang4.webp": "7a64a47bd3fc8eedc9b1cad5f4f1e401",
+"assets/assets/bentang/newDesa-bentang5.webp": "5e684e21f82120d95cd9fec837389e33",
+"assets/assets/bentang/newDesa-bentang6.webp": "3ce1d9a2f07d051d21bb792c90a499d7",
+"assets/assets/bentang/newDesa-bentang7.webp": "757b668eace92ef51ec9c628fc310dcb",
 "assets/assets/bentang/pasar-sianghari.webp": "035015d998144f95bdbeb20da04ba201",
 "assets/assets/bentang/perpustakaantua.webp": "b02ee8c873ad49f39cfcf2647af239f7",
 "assets/assets/bentang/peternakan-sianghari.webp": "7d656476e9f503a4ce28725447ede0fc",
@@ -461,7 +468,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "09beae37f9e04b77222c5e84a40d6a15
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "0743815d7d2badc29fc84dddb52aec8e",
+"flutter_bootstrap.js": "79058d483f5a508190e8d74f4dcf1fa8",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -472,7 +479,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "09beae37f9e04b77222c5e84a40d6a15
 "icons/Icon-maskable-512.webp": "21d7710de6b473107c3376fe3a48a797",
 "index.html": "e8810c49a8158ad25b7df982a3df3ea5",
 "/": "e8810c49a8158ad25b7df982a3df3ea5",
-"main.dart.js": "a37707fdf189a0a3a4ac80ee754f5081",
+"main.dart.js": "a0a77bbc80f87e4e015e9dfadb3dc87a",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "version.json": "0c2c27559c0bfd79046d10a3ff8b2335",
 "_headers": "37cb9ac50993ed26a84190a1031c15c3"};
