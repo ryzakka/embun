@@ -130,6 +130,36 @@ class _TutorialPageState extends State<TutorialPage>
       pose: TutorPose.greeting,
     ),
     _Step(
+      'Desa Hayu',
+      'Di lembah yang dikelilingi pegunungan berdiri desa **Hayu**, dijaga '
+          'satu **pohon suci** di tengahnya. Selama pohon itu **rimbun**, desa '
+          'makmur. Karena itu kesehatan Hayu menjadi urusan **semua warga**.',
+      EmbunColors.leaf,
+          (p) => const _VillageTour(),
+      hasNarration: false,
+      pose: TutorPose.encourage,
+    ),
+    _Step(
+      'Warga desa',
+      'Tiap pemain menjadi seorang **warga desa** dengan wajah dan nama '
+          'sendiri. Mereka bekerja sama merawat Hayu. Tetapi ingat: di '
+          'antara mereka ada **Si Terbisik** yang menyimpan **wajah gelap**.',
+      EmbunColors.gold,
+          (p) => const _ResidentsDemo(),
+      hasNarration: false,
+      pose: TutorPose.choosing,
+    ),
+    _Step(
+      'Tempat di desa',
+      'Desa punya beberapa tempat untuk dikunjungi: **Pasar**, **Sumur**, '
+          '**Bengkel**, **Pondok**, dan **Balai**. Tiap tempat punya layanan '
+          'berbeda, dan kamu akan memakainya di bab-bab berikutnya.',
+      EmbunColors.cream,
+          (p) => const _PlacesDemo(),
+      hasNarration: false,
+      pose: TutorPose.shopping,
+    ),
+    _Step(
       'Peran',
       'Tiap pemain mendapat peran rahasia. **Warga** bekerja sama menjaga '
           'Hayu; **Si Terbisik** menyusup dan menggagalkannya. Jangan sampai '
@@ -342,17 +372,42 @@ class _TutorialPageState extends State<TutorialPage>
 
   // ----------------------- latar sinematik per bab -----------------------
 
-  static const _darkPages = {8, 9, 11, 12};
-  static const _sceneLeaves = [30, 22, 18, 24, 20, 15, 26, 12, 12, 12, 10, 6, 4, 20, 30];
+  static const _darkTitles = {
+    'Serangan malam',
+    'Malam persembahan',
+    'Nyawa',
+    'Dua Terbisik',
+  };
+
+  /// Latar tiap langkah: nama berkas di assets/bentang (tanpa ekstensi).
+  /// Ganti di sini bila ingin adegan lain untuk satu langkah.
+  static const _sceneByTitle = {
+    'Selamat datang': 'Lembah Desa di Bawah Pohon Suci',
+    'Desa Hayu': 'Desa Hijau di Bawah Pohon Suci',
+    'Warga desa': 'alunalun-tiangberpita',
+    'Tempat di desa': 'Desa Teduh di Bawah Pohon Suci',
+    'Peran': 'balkon-siang',
+    'Satu siklus': 'Desa Pegunungan dalam Cahaya Fajar',
+    'Embun': 'sumur-sianghari',
+    'Pagi berbelanja': 'pasar-sianghari',
+    'Pasar Riset': 'gerobakdankeranjang',
+    'Kartu kombinasi': 'sinarmataharikedalamrumah',
+    'Informasi palsu': 'menaralonceng-sianghari',
+    'Musyawarah dan voting': 'balaidesa-luarsiang',
+    'Nyawa': 'tepisungai-tanggaterjalsianghari',
+    'Bagian Hayu': 'Lembah Desa Fantasi dan Pohon Suci',
+    'Kemenangan': 'Lembah Desa Pegunungan dan Pohon Suci',
+  };
 
   String? _sceneFor(int i) {
-    final path = switch (i) {
-      8 => nightSkyPath(attack: true),
-      9 => nightSkyPath(attack: false),
-      12 => nightValleyPath(attack: true),
-      _ => landscapePath(_sceneLeaves[i % _sceneLeaves.length]),
+    final title = _steps[i].title;
+    final path = switch (title) {
+      'Serangan malam' => nightSkyPath(attack: true),
+      'Malam persembahan' => nightSkyPath(attack: false),
+      'Dua Terbisik' => nightValleyPath(attack: true),
+      _ => _bentang(_sceneByTitle[title]),
     };
-    return path ?? sceneryPath('balkon-siang');
+    return path ?? landscapePath(20) ?? sceneryPath('balkon-siang');
   }
 
   /// Latar bentangan yang bernapas pelan, diberi cahaya aksen dan vinyet.
@@ -371,7 +426,7 @@ class _TutorialPageState extends State<TutorialPage>
               ),
               child: Backdrop(
                 path: _sceneFor(_page),
-                dark: _darkPages.contains(_page),
+                dark: _darkTitles.contains(_steps[_page].title),
                 dim: 0.42,
               ),
             ),
@@ -507,17 +562,25 @@ class _TutorialPageState extends State<TutorialPage>
     );
   }
 
-  static String _chapter(int i) => i < 2
-      ? 'DASAR'
-      : i < 4
-      ? 'ALUR'
-      : i < 8
-      ? 'KARTU'
-      : i < 10
-      ? 'MALAM'
-      : i < 12
-      ? 'SIDANG'
-      : 'AKHIR';
+  /// Jumlah langkah pengenalan desa yang disisipkan setelah "Selamat datang".
+  static const _prologue = 3;
+
+  static String _chapter(int i) {
+    if (i == 0) return 'DASAR';
+    if (i <= _prologue) return 'DESA';
+    final j = i - _prologue; // indeks pada urutan lama
+    return j < 2
+        ? 'DASAR'
+        : j < 4
+        ? 'ALUR'
+        : j < 8
+        ? 'KARTU'
+        : j < 10
+        ? 'MALAM'
+        : j < 12
+        ? 'SIDANG'
+        : 'AKHIR';
+  }
 
   /// Posisi halaman saat ini (pecahan selama digeser) dikurangi [index].
   double _delta(int index) {
@@ -998,6 +1061,198 @@ class _TwinDemo extends StatelessWidget {
             'Saling kenal, berunding diam-diam, berbagi satu serangan',
             color: EmbunColors.mist,
           ),
+        ],
+      );
+    },
+  );
+}
+
+// ------------------------- pengenalan desa -------------------------
+
+/// Adegan bentangan (assets/bentang) dengan nama berkas tanpa ekstensi.
+/// Bila nama persisnya meleset, dicari berkas yang diawali nama itu.
+String? _bentang(String? stem) {
+  if (stem == null) return null;
+  return sceneryPath(stem) ??
+      AssetCatalog.I.byPrefix(bentangDir, stem.substring(0, math.min(10, stem.length)));
+}
+
+/// Tepi memudar halus (tanpa bingkai) untuk gambar lebar.
+class _Feathered extends StatelessWidget {
+  final Widget child;
+  const _Feathered({required this.child});
+
+  @override
+  Widget build(BuildContext context) => ShaderMask(
+    blendMode: BlendMode.dstIn,
+    shaderCallback: (r) => const RadialGradient(
+      radius: 0.8,
+      colors: [Colors.white, Colors.white, Colors.transparent],
+      stops: [0.0, 0.7, 1.0],
+    ).createShader(r),
+    child: child,
+  );
+}
+
+/// Beberapa adegan bergantian dengan zoom pelan dan lebur silang; [t] 0..1.
+Widget _sceneBlend(List<String?> paths, double t) {
+  final n = paths.length;
+  final pos = t * n;
+  final i = pos.floor().clamp(0, n - 1).toInt();
+  final seg = pos - i;
+  final next = (i + 1) % n;
+  final fade = _sm(_sg(seg, 0.82, 1.0));
+  Widget img(int k, double scale, double opacity) => Opacity(
+    opacity: opacity,
+    child: Transform.scale(
+      scale: scale,
+      child: GameImage(path: paths[k], cacheWidth: 1400),
+    ),
+  );
+  return AspectRatio(
+    aspectRatio: 16 / 9,
+    child: _Feathered(
+      child: ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [img(i, 1.0 + 0.08 * seg, 1), img(next, 1.0, fade)],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Pengenalan: keliling desa Hayu.
+class _VillageTour extends StatelessWidget {
+  const _VillageTour();
+
+  static const _stops = [
+    ('Desa Hijau di Bawah Pohon Suci', 'Lembah Hayu, dijaga pohon suci'),
+    ('alunalun-tiangberpita', 'Alun-alun: tempat warga berkumpul'),
+    ('menaralonceng-sianghari', 'Menara lonceng di tengah desa'),
+    ('Desa Pegunungan dalam Cahaya Fajar', 'Fajar di lembah Hayu'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => _Loop(
+    ms: 15000,
+    builder: (context, t, _) {
+      final i = (t * _stops.length).floor().clamp(0, _stops.length - 1).toInt();
+      return Column(
+        children: [
+          _sceneBlend([for (final s in _stops) _bentang(s.$1)], t),
+          const SizedBox(height: 8),
+          _caption(i, _stops[i].$2, color: EmbunColors.leaf),
+        ],
+      );
+    },
+  );
+}
+
+/// Pengenalan: warga desa, lalu satu wajah gelap.
+class _ResidentsDemo extends StatelessWidget {
+  const _ResidentsDemo();
+
+  @override
+  Widget build(BuildContext context) => _Loop(
+    ms: 10000,
+    builder: (context, t, _) {
+      final stems = protagonistStems();
+      final ids = <String>[];
+      if (stems.isNotEmpty) {
+        for (final f in const [0.0, 0.34, 0.67, 1.0]) {
+          final id = stems[(f * (stems.length - 1)).round()];
+          if (!ids.contains(id)) ids.add(id);
+        }
+      }
+      final paths = <String?>[
+        for (final id in ids) protagonistPath(id),
+        if (ids.isEmpty) ...[cardBackPath(), cardBackPath(), cardBackPath()],
+      ];
+      final dark = darkCardPath(1) ?? cardBackPath(dark: true);
+      final count = paths.length + 1;
+      final active = (t * count).floor().clamp(0, count - 1).toInt();
+      final isDark = active == paths.length;
+      return LayoutBuilder(
+        builder: (context, c) {
+          final w = ((c.maxWidth - 14 * count) / count).clamp(50.0, 84.0).toDouble();
+          return Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < count; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: _CardCol(
+                        path: i < paths.length ? paths[i] : dark,
+                        label: i < paths.length ? 'Warga' : 'Si Terbisik',
+                        w: w,
+                        glow: active == i
+                            ? (i < paths.length ? EmbunColors.leaf : EmbunColors.blood)
+                            : null,
+                        opacity: active == i ? 1 : 0.5,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _caption(
+                isDark,
+                isDark
+                    ? 'Tetapi di antara warga, ada yang menyimpan wajah gelap'
+                    : 'Tiap pemain menjadi seorang warga desa',
+                color: isDark ? EmbunColors.blood : EmbunColors.gold,
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+/// Pengenalan: tempat-tempat di desa.
+class _PlacesDemo extends StatelessWidget {
+  const _PlacesDemo();
+
+  static const _places = [
+    ('pasar-sianghari', 'Pasar', 'Pasar Riset: beli kartu poin, lanjutan, dan surat perawatan'),
+    ('sumur-sianghari', 'Sumur', 'Salah satu tempat kunjungan sebelum malam persembahan'),
+    ('gerobakdankeranjang', 'Bengkel', 'Bengkel Desa: gabungkan kartu dan tingkatkan Stetoskop'),
+    ('sinarmataharikedalamrumah', 'Pondok', 'Salah satu tempat kunjungan sebelum malam persembahan'),
+    ('balaidesa-luarsiang', 'Balai', 'Balai Pertukaran: tukar kartu dengan pemain lain'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => _Loop(
+    ms: 15000,
+    builder: (context, t, _) {
+      final i = (t * _places.length).floor().clamp(0, _places.length - 1).toInt();
+      return Column(
+        children: [
+          _sceneBlend([for (final s in _places) _bentang(s.$1)], t),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (var k = 0; k < _places.length; k++)
+                Expanded(
+                  child: Text(
+                    _places[k].$2,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: k == i ? FontWeight.w900 : FontWeight.w500,
+                      color: k == i ? EmbunColors.gold : Colors.white60,
+                      shadows: const [Shadow(color: Colors.black, blurRadius: 8)],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          _caption(i, _places[i].$3, color: EmbunColors.cream),
         ],
       );
     },
