@@ -70,6 +70,9 @@ class _Step {
 
 const _kBlue = Color(0xFF5B9BE8);
 
+/// Lebar rancangan semua demo; panggung memperbesarnya sampai memenuhi ruang.
+const double _kStageDesignWidth = 340;
+
 class _TutorialPageState extends State<TutorialPage>
     with SingleTickerProviderStateMixin {
   final _pc = PageController();
@@ -533,7 +536,12 @@ class _TutorialPageState extends State<TutorialPage>
           ),
         ],
       );
-      final companion = TutorCompanion(
+      final figPath = _figurePath(step.pose);
+      // Dengan gambar karakter penuh, judul berdiri sendiri; bila gambarnya
+      // belum ada, tetap memakai TutorCompanion seperti sebelumnya.
+      final head = figPath != null
+          ? heading
+          : TutorCompanion(
         key: ValueKey('tutor-${step.pose.name}'),
         pose: step.pose,
         compact: short || !wide,
@@ -541,8 +549,15 @@ class _TutorialPageState extends State<TutorialPage>
         accent: step.accent,
         child: heading,
       );
-      final hero = _hero(step, index);
-      final text = _textPanel(step, companion);
+      final figure = figPath == null
+          ? null
+          : _figure(figPath, step.accent, step.pose.name);
+      final hero = _hero(step, index, wide: wide);
+      final text = _textPanel(
+        step,
+        head,
+        sideFigure: (!wide && figure != null) ? figure : null,
+      );
 
       return Padding(
         padding: EdgeInsets.fromLTRB(
@@ -562,13 +577,26 @@ class _TutorialPageState extends State<TutorialPage>
                 SizedBox(width: short ? 14 : 24),
                 SizedBox(
                   width: math.min(400, box.maxWidth * 0.36),
-                  child: Center(
+                  child: figure == null
+                      ? Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         maxHeight: math.max(120, box.maxHeight - 20),
                       ),
                       child: text,
                     ),
+                  )
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: figure),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: box.maxHeight * 0.5,
+                        ),
+                        child: text,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -593,7 +621,89 @@ class _TutorialPageState extends State<TutorialPage>
   );
 
   /// Panel teks kaca buram: judul dan penjelasan, aksen emas di tepi atas.
-  Widget _textPanel(_Step step, Widget companion) => ClipRRect(
+  Widget _textPanel(_Step step, Widget head, {Widget? sideFigure}) {
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          head,
+          const SizedBox(height: 10),
+          _rich(step.body, step.accent),
+        ],
+      ),
+    );
+    return _panelShell(
+      step,
+      sideFigure == null
+          ? Flexible(child: content)
+          : Flexible(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(width: 116, child: sideFigure),
+            Expanded(child: content),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Karakter tutor sebagai sosok besar tanpa bingkai: berdiri di balik panel
+  /// teks, dengan cahaya aksen dan gerak napas pelan.
+  Widget _figure(String path, Color accent, String poseKey) => ClipRect(
+    child: TweenAnimationBuilder<double>(
+      key: ValueKey('fig-$poseKey'),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(offset: Offset(40 * (1 - v), 0), child: child),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.2),
+                radius: 0.8,
+                colors: [accent.withValues(alpha: 0.38), Colors.transparent],
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(0, -4 * Curves.easeInOut.transform(_pulse.value)),
+              child: child,
+            ),
+            child: GameImage(
+              path: path,
+              fit: BoxFit.cover,
+              alignment: const Alignment(0, -0.85),
+              cacheWidth: 900,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  static const _figureStems = {
+    'heavyWater': 'popupchar-tutor-emberberatair',
+    'counting': 'popupchar-tutor-menghitung',
+    // Tambahkan pose lain di sini begitu gambarnya ada, mis.
+    // 'greeting': 'popupchar-tutor-<nama-berkas>',
+  };
+
+  String? _figurePath(TutorPose pose) {
+    final stem = _figureStems[pose.name];
+    return stem == null ? null : AssetCatalog.I.anywhere(stem);
+  }
+
+  Widget _panelShell(_Step step, Widget body) => ClipRRect(
     borderRadius: BorderRadius.circular(20),
     child: BackdropFilter(
       filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -626,19 +736,7 @@ class _TutorialPageState extends State<TutorialPage>
                 ),
               ),
             ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    companion,
-                    const SizedBox(height: 10),
-                    _rich(step.body, step.accent),
-                  ],
-                ),
-              ),
-            ),
+            body,
           ],
         ),
       ),
@@ -647,7 +745,21 @@ class _TutorialPageState extends State<TutorialPage>
 
   /// Visual utama: mengisi seluruh ruang yang ada, masuk dengan gerak
   /// membesar, dan mengecil-meredup saat digeser keluar.
-  Widget _hero(_Step step, int index) => AnimatedBuilder(
+  Widget _hero(_Step step, int index, {required bool wide}) =>
+      LayoutBuilder(
+        builder: (context, c) {
+          final h = math.min(c.maxHeight, c.maxWidth * (wide ? 0.8 : 1.15));
+          return Center(
+            child: SizedBox(
+              width: c.maxWidth,
+              height: h,
+              child: _heroBody(step, index),
+            ),
+          );
+        },
+      );
+
+  Widget _heroBody(_Step step, int index) => AnimatedBuilder(
     animation: _pc,
     builder: (context, child) {
       final cur = _pc.hasClients && _pc.position.haveDimensions
@@ -719,23 +831,22 @@ class _TutorialPageState extends State<TutorialPage>
         children: [
           Positioned.fill(child: _Motes(color: accent)),
           Padding(
-            padding: const EdgeInsets.all(10),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 820, maxHeight: 640),
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox(
-                    width: 400,
-                    child: MediaQuery.withClampedTextScaling(
-                      maxScaleFactor: 1.15,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 7,
-                        ),
-                        child: child,
+            padding: const EdgeInsets.all(12),
+            // SizedBox.expand memberi batas ketat, sehingga FittedBox benar-benar
+            // memperbesar isi (sebelumnya ia hanya menyusut ke ukuran aslinya).
+            child: SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: _kStageDesignWidth,
+                  child: MediaQuery.withClampedTextScaling(
+                    maxScaleFactor: 1.15,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 6,
                       ),
+                      child: child,
                     ),
                   ),
                 ),
@@ -1107,15 +1218,17 @@ class _CycleStrip extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                _items[i].$3,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: i == active ? FontWeight.w800 : FontWeight.w500,
-                  color: i == active ? EmbunColors.gold : Colors.white54,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _items[i].$3,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: i == active ? FontWeight.w800 : FontWeight.w500,
+                    color: i == active ? EmbunColors.gold : Colors.white54,
+                  ),
                 ),
               ),
             ],

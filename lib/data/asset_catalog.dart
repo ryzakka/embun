@@ -44,9 +44,9 @@ class AssetCatalog {
         final lower = path.toLowerCase();
         final isImage =
             lower.endsWith('.png') ||
-            lower.endsWith('.webp') ||
-            lower.endsWith('.jpg') ||
-            lower.endsWith('.jpeg');
+                lower.endsWith('.webp') ||
+                lower.endsWith('.jpg') ||
+                lower.endsWith('.jpeg');
         if (!path.startsWith('assets/') || !isImage) continue;
         final slash = path.lastIndexOf('/');
         final file = path.substring(slash + 1);
@@ -61,6 +61,16 @@ class AssetCatalog {
   }
 
   String? file(String folder, String stem) => _byFolder[folder]?[stem];
+
+  /// Berkas bernama [stem] di folder mana pun (untuk aset yang letak
+  /// foldernya tidak tetap, mis. gambar karakter tutor).
+  String? anywhere(String stem) {
+    for (final folder in _byFolder.values) {
+      final hit = folder[stem];
+      if (hit != null) return hit;
+    }
+    return null;
+  }
 
   /// Berkas pertama (urut abjad) yang namanya diawali [prefix]. Dipakai bila
   /// nama lengkapnya tak pasti atau panjang.
@@ -83,7 +93,7 @@ List<String> protagonistStems() => [
 
 String? protagonistPath(String id) =>
     AssetCatalog.I.file(protagonisPriaDir, id) ??
-    AssetCatalog.I.file(protagonisWanitaDir, id);
+        AssetCatalog.I.file(protagonisWanitaDir, id);
 
 String randomProtagonist() {
   final s = protagonistStems();
@@ -157,20 +167,20 @@ String? phaseScenery(String phase, int day, int leaves) {
     case 'day':
       pick = leaves >= 20
           ? _rotate(const [
-              'pasar-sianghari',
-              'balaidesa-luarsiang',
-              'peternakan-sianghari',
-              'sumur-sianghari',
-              'menaralonceng-sianghari',
-              'gerobakdankeranjang',
-              'tepisungai-tanggaterjalsianghari',
-              'balkon-siang',
-            ], day)
+        'pasar-sianghari',
+        'balaidesa-luarsiang',
+        'peternakan-sianghari',
+        'sumur-sianghari',
+        'menaralonceng-sianghari',
+        'gerobakdankeranjang',
+        'tepisungai-tanggaterjalsianghari',
+        'balkon-siang',
+      ], day)
           : _rotate(const [
-              'ladang-gersang',
-              'rumahdesa2-gersang',
-              'rumahdesa-gersang',
-            ], day);
+        'ladang-gersang',
+        'rumahdesa2-gersang',
+        'rumahdesa-gersang',
+      ], day);
     case 'research':
       pick = _rotate(const [
         'kedai-karturiset',
@@ -307,7 +317,7 @@ String? itemBackPath({
           ? 'punggungitemantagonis'
           : 'punggungitemprotagonis',
     ) ??
-    cardBackPath(dark: dark || night);
+        cardBackPath(dark: dark || night);
 
 /// Punggung item menurut definisinya (`side`, `kind`). Hanya untuk kartu milik
 /// sendiri, mis. pasar pribadi: kartu `malam` (serangan malam) berpunggung
@@ -345,9 +355,9 @@ String? cardArtPath(Map<String, dynamic>? def) {
     // jatuh ke folder item biasa.
     final bad = def['side'] == 'antagonis';
     return AssetCatalog.I.file(
-          bad ? kartuRekayasaDir : kartuRegenerasiDir,
-          stem,
-        ) ??
+      bad ? kartuRekayasaDir : kartuRegenerasiDir,
+      stem,
+    ) ??
         AssetCatalog.I.file(bad ? kartuAntagDir : kartuWargaDir, stem);
   }
   if (def['kind'] == 'siang') {
