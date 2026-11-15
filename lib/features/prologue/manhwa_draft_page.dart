@@ -14,6 +14,14 @@ import 'prologue_page.dart';
 
 /// Warna aksen tiap tokoh: dipakai untuk cahaya latar, glow kartu, dan cincin.
 const _accents = <String, Color>{
+  'laylaalzahra': Color(0xFFD8B187),
+  'zaydalharith': Color(0xFF78A696),
+  'kavehshirazi': Color(0xFFC68D69),
+  'udomsakchanthavong': Color(0xFFC4A35D),
+  'callummacgregor': Color(0xFFB1795D),
+  'alejandronavarro': Color(0xFFD2A15D),
+  'ragnarsigurdsson': Color(0xFF8EAEC9),
+
   'arystanbeknurlanuly': Color(0xFFD0AE75),
   'fujiwaraaoi': Color(0xFFE99EB2),
   'junghyunwoo': Color(0xFF5D9ACB),

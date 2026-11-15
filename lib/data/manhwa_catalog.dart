@@ -27,6 +27,13 @@ const manhwaNames = <String, String>{
   "suqinghuan": "Su Qinghuan",
   "xuwenjing": "Xu Wenjing",
   "zhangmingzhe": "Zhang Mingzhe",
+  "laylaalzahra": "Layla Al-Zahra",
+  "zaydalharith": "Zayd al-Harith",
+  "kavehshirazi": "Kaveh Shirazi",
+  "udomsakchanthavong": "Udomsak Chanthavong",
+  "callummacgregor": "Callum MacGregor",
+  "alejandronavarro": "Alejandro Navarro",
+  "ragnarsigurdsson": "Ragnar Sigurdsson",
 };
 
 const manhwaOutfits = <String, ManhwaOutfit>{
@@ -422,6 +429,141 @@ const manhwaOutfits = <String, ManhwaOutfit>{
     "zhangmingzhe-jakethitam",
     "zhangmingzhe",
     "Jaket hitam",
+  ),
+  "laylaalzahra-utama": ManhwaOutfit(
+    "laylaalzahra-utama",
+    "laylaalzahra",
+    "Kartu utama",
+  ),
+  "laylaalzahra-tudung": ManhwaOutfit(
+    "laylaalzahra-tudung",
+    "laylaalzahra",
+    "Tudung dan cadar ringan",
+  ),
+  "zaydalharith-utama": ManhwaOutfit(
+    "zaydalharith-utama",
+    "zaydalharith",
+    "Kartu utama",
+  ),
+  "zaydalharith-kemejahijautelepon": ManhwaOutfit(
+    "zaydalharith-kemejahijautelepon",
+    "zaydalharith",
+    "Kemeja hijau · menelepon",
+  ),
+  "zaydalharith-kaosabuabumobil": ManhwaOutfit(
+    "zaydalharith-kaosabuabumobil",
+    "zaydalharith",
+    "Kaos abu-abu · kunci mobil",
+  ),
+  "zaydalharith-tradisional": ManhwaOutfit(
+    "zaydalharith-tradisional",
+    "zaydalharith",
+    "Pakaian tradisional",
+  ),
+  "kavehshirazi-utama": ManhwaOutfit(
+    "kavehshirazi-utama",
+    "kavehshirazi",
+    "Kartu utama",
+  ),
+  "kavehshirazi-sweeterkremduduk": ManhwaOutfit(
+    "kavehshirazi-sweeterkremduduk",
+    "kavehshirazi",
+    "Sweter krem · duduk",
+  ),
+  "kavehshirazi-kaosputihtasselempangponsel": ManhwaOutfit(
+    "kavehshirazi-kaosputihtasselempangponsel",
+    "kavehshirazi",
+    "Kaos putih · tas selempang dan ponsel",
+  ),
+  "kavehshirazi-tradisionalmerahbata": ManhwaOutfit(
+    "kavehshirazi-tradisionalmerahbata",
+    "kavehshirazi",
+    "Tradisional merah bata",
+  ),
+  "kavehshirazi-tradisionalputih": ManhwaOutfit(
+    "kavehshirazi-tradisionalputih",
+    "kavehshirazi",
+    "Tradisional putih",
+  ),
+  "udomsakchanthavong-utama": ManhwaOutfit(
+    "udomsakchanthavong-utama",
+    "udomsakchanthavong",
+    "Kartu utama",
+  ),
+  "udomsakchanthavong-tradisional": ManhwaOutfit(
+    "udomsakchanthavong-tradisional",
+    "udomsakchanthavong",
+    "Pakaian tradisional",
+  ),
+  "udomsakchanthavong-sepaktakraw": ManhwaOutfit(
+    "udomsakchanthavong-sepaktakraw",
+    "udomsakchanthavong",
+    "Pakaian sepak takraw",
+  ),
+  "callummacgregor-utama": ManhwaOutfit(
+    "callummacgregor-utama",
+    "callummacgregor",
+    "Kartu utama",
+  ),
+  "callummacgregor-jaketcokelatkacamatahitam": ManhwaOutfit(
+    "callummacgregor-jaketcokelatkacamatahitam",
+    "callummacgregor",
+    "Jaket cokelat · kacamata hitam",
+  ),
+  "callummacgregor-voli": ManhwaOutfit(
+    "callummacgregor-voli",
+    "callummacgregor",
+    "Pakaian voli",
+  ),
+  "callummacgregor-tradisional": ManhwaOutfit(
+    "callummacgregor-tradisional",
+    "callummacgregor",
+    "Pakaian tradisional",
+  ),
+  "alejandronavarro-utama": ManhwaOutfit(
+    "alejandronavarro-utama",
+    "alejandronavarro",
+    "Kartu utama",
+  ),
+  "alejandronavarro-gym": ManhwaOutfit(
+    "alejandronavarro-gym",
+    "alejandronavarro",
+    "Pakaian gym",
+  ),
+  "alejandronavarro-kaossingletbungaikat": ManhwaOutfit(
+    "alejandronavarro-kaossingletbungaikat",
+    "alejandronavarro",
+    "Singlet · bunga ikat",
+  ),
+  "alejandronavarro-kaostanpalengansantai": ManhwaOutfit(
+    "alejandronavarro-kaostanpalengansantai",
+    "alejandronavarro",
+    "Kaos tanpa lengan · santai",
+  ),
+  "alejandronavarro-kaosolahragacokelat": ManhwaOutfit(
+    "alejandronavarro-kaosolahragacokelat",
+    "alejandronavarro",
+    "Kaos olahraga cokelat",
+  ),
+  "ragnarsigurdsson-utama": ManhwaOutfit(
+    "ragnarsigurdsson-utama",
+    "ragnarsigurdsson",
+    "Kartu utama",
+  ),
+  "ragnarsigurdsson-gym": ManhwaOutfit(
+    "ragnarsigurdsson-gym",
+    "ragnarsigurdsson",
+    "Pakaian gym",
+  ),
+  "ragnarsigurdsson-kemejasalju": ManhwaOutfit(
+    "ragnarsigurdsson-kemejasalju",
+    "ragnarsigurdsson",
+    "Kemeja dan jaket · salju",
+  ),
+  "ragnarsigurdsson-kantorkemejabirulangit": ManhwaOutfit(
+    "ragnarsigurdsson-kantorkemejabirulangit",
+    "ragnarsigurdsson",
+    "Kemeja biru langit · kantor",
   ),
 };
 
