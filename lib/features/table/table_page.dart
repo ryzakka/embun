@@ -49,6 +49,8 @@ import 'phase_title.dart';
 import 'player_status.dart';
 import 'village_strip.dart';
 import 'meeting_abilities.dart';
+import 'meeting_board_events.dart';
+import 'meeting_board_scene.dart';
 
 class TablePage extends StatefulWidget {
   final String gameId;
@@ -135,6 +137,12 @@ class _TablePageState extends State<TablePage> {
   // dibuka dan SEBELUM adegan kurungan / fajar / akhir.
   // _evict['row'] null = data masih diambil (layar gelap sebentar).
   Map<String, dynamic>? _evict;
+  final _boardTracker = MeetingBoardTracker();
+  final List<MeetingMoment> _boardMoments = [];
+  final Set<String> _boardOutSeen = {};
+  final _sceneStackKey = GlobalKey();
+  Rect? _discussionChatBounds;
+  bool _abilityOpen = false;
 
   // Layar malam di antara dua hari biasa (pengumuman serangan Si Terbisik).
   // Sama seperti pembukaan suara: menahan adegan fajar sampai selesai.
@@ -210,7 +218,10 @@ class _TablePageState extends State<TablePage> {
 
   /// Adegan yang harus selesai dulu sebelum fajar / adegan persembahan.
   bool get _holdIntro =>
-      _voteReveal != null || _evict != null || _nightScene != null;
+      _voteReveal != null ||
+      _evict != null ||
+      _nightScene != null ||
+      _boardMoments.isNotEmpty;
 
   /// Pemain yang masih di desa (yang sudah keluar tidak dihitung).
   List<Map<String, dynamic>> get _alive =>
@@ -269,7 +280,16 @@ class _TablePageState extends State<TablePage> {
     _subs.add(
       lobby.players(id).listen((p) {
         if (!mounted) return;
-        setState(() => players = p);
+        setState(() {
+          _enqueueBoard(
+            _boardTracker.observePlayers(
+              p,
+              day: (game?['day'] as int?) ?? 0,
+              phase: '${game?['phase'] ?? ''}',
+            ),
+          );
+          players = p;
+        });
         _syncTerbisikChat();
       }, onError: (_) {}),
     );
@@ -290,7 +310,13 @@ class _TablePageState extends State<TablePage> {
     );
     _subs.add(
       repo.villageEvents(id).listen((e) {
-        if (mounted) setState(() => events = e);
+        if (mounted)
+          setState(() {
+            events = e;
+            _enqueueBoard(
+              _boardTracker.observeEvents(e, day: (game?['day'] as int?) ?? 0),
+            );
+          });
         _noteEvents(e);
       }, onError: (_) {}),
     );
@@ -339,7 +365,8 @@ class _TablePageState extends State<TablePage> {
   GlobalKey _avatarKey(String id) =>
       _avatarKeys.putIfAbsent(id, () => GlobalKey());
 
-  bool get _fxBlocked => _dayIntro != null || _holdIntro || _inspectionOpen;
+  bool get _fxBlocked =>
+      _dayIntro != null || _holdIntro || _inspectionOpen || _abilityOpen;
 
   /// Persegi avatar pemain di deretan desa; bila tak tampil, jatuh ke deretan
   /// desa secara umum, lalu ke tengah atas layar.
@@ -677,6 +704,7 @@ class _TablePageState extends State<TablePage> {
     final holdOld = _startClothToDiscussion(prev, g);
     setState(() {
       game = g;
+      if (g['phase'] != 'discussion') _discussionChatBounds = null;
       if (holdOld) _heldGame = prev;
       _checkVoteReveal(prev, g);
       _checkNight(prev, g);
@@ -920,8 +948,68 @@ class _TablePageState extends State<TablePage> {
         _evict = null; // tidak ketemu: lewati adegan
       } else {
         cur['row'] = rows.first;
+        final row = rows.first;
+        _enqueueBoard([
+          MeetingMoment(
+            id: 'vote-out-$day-${row['user_id']}',
+            kind: MeetingMomentKind.eliminated,
+            before: {
+              ...row,
+              'out_day': null,
+              'strikes': ((row['strikes'] as int?) ?? 2) - 1,
+            },
+            after: Map.of(row),
+            day: day,
+          ),
+        ]);
       }
     });
+  }
+
+  void _enqueueBoard(List<MeetingMoment> moments) {
+    for (final m in moments) {
+      if (m.kind == MeetingMomentKind.recovered) {
+        _boardOutSeen.removeWhere((k) => k.startsWith('${m.playerId}:'));
+      }
+      if (m.eliminated &&
+          !_boardOutSeen.add('${m.playerId}:${m.after['out_day'] ?? m.day}'))
+        continue;
+      _boardMoments.add(m);
+    }
+  }
+
+  bool get _boardMayPlay =>
+      _boardMoments.isNotEmpty &&
+      _voteReveal == null &&
+      _nightScene == null &&
+      !_nightOn &&
+      !(game?['status'] == 'playing' && game?['phase'] == 'voting') &&
+      _heldGame == null &&
+      !_inspectionOpen &&
+      !_abilityOpen &&
+      !_chatOpen &&
+      !_leaving &&
+      (ModalRoute.of(context)?.isCurrent ?? false);
+
+  Widget _boardLayer() {
+    final m = _boardMoments.first;
+    final staged = {
+      for (final p in players) '${p['user_id']}': Map<String, dynamic>.of(p),
+    };
+    // Pending victims remain unmarked until their own scene reaches impact.
+    for (final pending in _boardMoments.reversed) {
+      staged[pending.playerId] = pending.before;
+    }
+    return MeetingBoardScene(
+      key: ValueKey(m.id),
+      moment: m,
+      players: staged.values.toList(),
+      myId: repo.myId,
+      onDone: () {
+        if (mounted)
+          setState(() => _boardMoments.removeWhere((e) => e.id == m.id));
+      },
+    );
   }
 
   Widget _evictLayer() {
@@ -1347,24 +1435,31 @@ class _TablePageState extends State<TablePage> {
     if (!mounted || def == null) return;
     final day = (game?['day'] as int?) ?? 0;
     final me = _meRow;
-    await showAbilityDialog(
-      context,
-      def: def,
-      used: abilityUsed || (_meRow != null && isOut(_meRow!)),
-      repo: repo,
-      gameId: widget.gameId,
-      phase: (game?['phase'] as String?) ?? '',
-      jailed: me != null && isJailed(me, day),
-      others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
-      everyone: players,
-      day: day,
-      intro: intro,
-      onUsed: () {
-        _loadAbility();
-        _refreshHand();
-        _marketTick.value++;
-      },
-    );
+    setState(() => _abilityOpen = true);
+    try {
+      await showAbilityDialog(
+        context,
+        def: def,
+        used: abilityUsed || (_meRow != null && isOut(_meRow!)),
+        repo: repo,
+        gameId: widget.gameId,
+        phase: (game?['phase'] as String?) ?? '',
+        jailed: me != null && isJailed(me, day),
+        others: _alive.where((p) => p['user_id'] != repo.myId).toList(),
+        everyone: players,
+        day: day,
+        intro: intro,
+        playersStream: lobby.players(widget.gameId),
+        gameStream: lobby.game(widget.gameId),
+        onUsed: () {
+          _loadAbility();
+          _refreshHand();
+          _marketTick.value++;
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _abilityOpen = false);
+    }
   }
 
   /// Tombol kemampuan di bar atas (hanya untuk warga). Titik kecil muncul
@@ -1475,21 +1570,30 @@ class _TablePageState extends State<TablePage> {
     final phase = (g['phase'] as String?) ?? 'day';
     return chatFx &&
         !_chatOpen &&
+        !_abilityOpen &&
+        !_inspectionOpen &&
+        _boardMoments.isEmpty &&
+        _voteReveal == null &&
+        _evict == null &&
+        _nightScene == null &&
         _heldGame == null &&
         _dayIntro == null &&
-        (phase == 'day' || phase == 'discussion');
+        (phase == 'day' ||
+            (phase == 'discussion' && _discussionChatBounds != null));
   }
 
   /// Ada adegan layar penuh yang berjalan: musik meja diredam (adegan punya
   /// suaranya sendiri). Saat game selesai, peredaman diurus EndingCinematic.
   bool _sceneDuck(Map<String, dynamic>? g) {
     if (g == null) return false;
-    if (g['status'] == 'finished') return _nightScene != null;
+    if (g['status'] == 'finished')
+      return _nightScene != null || _boardMoments.isNotEmpty;
     return (_dayIntro != null && !_holdIntro) ||
         _evict != null ||
         _voteReveal != null ||
         _nightOn ||
         _nightScene != null ||
+        _boardMoments.isNotEmpty ||
         _heldGame != null ||
         g['phase'] == 'effects';
   }
@@ -1499,10 +1603,16 @@ class _TablePageState extends State<TablePage> {
   @override
   Widget build(BuildContext context) {
     final g = game;
+    final discussion = g?['phase'] == 'discussion';
+    final root = globalRectOf(_sceneStackKey);
+    final chatRect = discussion
+        ? _discussionChatBounds?.shift(-(root?.topLeft ?? Offset.zero))
+        : null;
     Sfx.I.setDuck(this, _sceneDuck(g));
     return Scaffold(
       backgroundColor: const Color(0xFF0B1512),
       body: Stack(
+        key: _sceneStackKey,
         fit: StackFit.expand,
         children: [
           g == null
@@ -1510,7 +1620,8 @@ class _TablePageState extends State<TablePage> {
               : _content(_heldGame ?? g),
           // Dipasang di sini (bukan di _content) supaya tetap hidup antar
           // fase dan tidak memutar ulang pesan lama.
-          Positioned.fill(
+          Positioned.fromRect(
+            rect: chatRect ?? (Offset.zero & MediaQuery.sizeOf(context)),
             child: ChatSpotlightLayer(
               messages: chatMsgs,
               players: players,
@@ -1518,9 +1629,9 @@ class _TablePageState extends State<TablePage> {
               enabled: _spotlightOn(g),
               // Tanpa sidebar di ponsel: adegan memakai lebar penuh dan
               // lebih pendek supaya tidak menutupi kartu terlalu banyak.
-              leftInset: _narrow ? 12 : 137,
-              topInset: _narrow ? 140 : 190,
-              bottomInset: _narrow ? 96 : 130,
+              leftInset: discussion ? 6 : (_narrow ? 12 : 137),
+              topInset: discussion ? 6 : (_narrow ? 140 : 190),
+              bottomInset: discussion ? 6 : (_narrow ? 96 : 130),
               sceneHeight: _narrow ? 190 : 240,
             ),
           ),
@@ -1552,8 +1663,9 @@ class _TablePageState extends State<TablePage> {
             ),
           // Pengusiran: tampil setelah suara dibuka (di bawah lapisan itu,
           // jadi baru mulai berputar begitu pembukaan suara selesai).
-          if (_evict != null && _voteReveal == null)
+          if (_evict != null && _voteReveal == null && _boardMoments.isEmpty)
             Positioned.fill(child: _evictLayer()),
+          if (_boardMayPlay) Positioned.fill(child: _boardLayer()),
           // Paling atas: menahan adegan lain sampai semua suara dibuka.
           if (_voteReveal != null) Positioned.fill(child: _voteRevealLayer()),
           if (_nightOn && _nightScene == null)
@@ -1800,6 +1912,14 @@ class _TablePageState extends State<TablePage> {
         events: events,
         readOnly: iAmOut,
         showBisikanReports: !disguiseMode,
+        onAbility: !isAntag && _abilityKnown && !iAmOut
+            ? () => _openAbility()
+            : null,
+        onPlayerTap: (p) => _openPlayer(p, phase),
+        onChatBounds: (r) {
+          if (mounted && _discussionChatBounds != r)
+            setState(() => _discussionChatBounds = r);
+        },
       );
     } else if (phase == 'voting') {
       // VotingView dipertahankan (kuncinya tetap) setelah suara dikunci,
@@ -2644,7 +2764,10 @@ class _TablePageState extends State<TablePage> {
 
   Widget _result(Map<String, dynamic> g) {
     // Voting yang mengakhiri permainan: buka suara dulu, baru sinematik akhir.
-    if (_voteReveal != null || _evict != null || _nightScene != null) {
+    if (_voteReveal != null ||
+        _evict != null ||
+        _nightScene != null ||
+        _boardMoments.isNotEmpty) {
       return const ColoredBox(color: Color(0xFF05080F));
     }
     final wargaMenang = g['winner'] == 'warga';

@@ -5,6 +5,7 @@ import '../../data/game_repository.dart';
 import '../common/ornate.dart';
 import 'player_status.dart';
 import 'voting_view.dart';
+import 'meeting_player_grid.dart';
 
 /// Actions stay inside the existing private ability dialog.
 class MeetingAbilityActions extends StatefulWidget {
@@ -19,6 +20,7 @@ class MeetingAbilityActions extends StatefulWidget {
     required this.onTarget,
     required this.onUse,
     required this.busy,
+    this.day = 0,
   });
   final String id, phase, gameId;
   final GameRepository repo;
@@ -27,6 +29,7 @@ class MeetingAbilityActions extends StatefulWidget {
   final ValueChanged<String> onTarget;
   final Future<void> Function() onUse;
   final bool busy;
+  final int day;
   @override
   State<MeetingAbilityActions> createState() => _MeetingAbilityActionsState();
 }
@@ -69,23 +72,33 @@ class _MeetingAbilityActionsState extends State<MeetingAbilityActions> {
     super.dispose();
   }
 
+  bool _confirming = false;
   Future<void> _activate() async {
-    if (widget.busy || widget.target == null) return;
-    if (widget.id == 'buktikan_tuduhan') {
-      final name =
-          widget.players
-              .where((p) => p['user_id'] == widget.target)
-              .firstOrNull?['name'] ??
-          'pemain ini';
+    if (widget.busy || _confirming || widget.target == null) return;
+    _confirming = true;
+    final id = widget.target;
+    final name =
+        widget.players.where((p) => p['user_id'] == id).firstOrNull?['name'] ??
+        'pemain ini';
+    final title = widget.id == 'buktikan_tuduhan'
+        ? 'Tuduh $name sebagai Terbisik?'
+        : 'Gunakan kemampuan pada $name?';
+    final message = switch (widget.id) {
+      'buktikan_tuduhan' =>
+        'Jika benar, target kehilangan 1 nyawa. Jika salah, kamu kehilangan 1 nyawa. Kartu barang tidak bisa menangkis; hukuman salah tuduh tidak dapat dialihkan.',
+      'sidang_terbuka' =>
+        'Buka jajak pendapat anonim tentang pemain ini. Tidak memberi hukuman dan tidak membuka fraksi.',
+      'penanggung_luka' =>
+        'Satu luka serangan rapat berikutnya terhadap pemain ini akan kamu tanggung pada musyawarah ini.',
+      _ =>
+        'Lihat suara yang telah dikunci pemain ini. Hasil hanya terlihat olehmu.',
+    };
+    try {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Tuduh $name sebagai Terbisik?'),
-          content: const SingleChildScrollView(
-            child: Text(
-              'Jika benar, target kehilangan 1 nyawa. Jika salah, kamu kehilangan 1 nyawa. Kartu barang tidak bisa menangkis; hukuman salah tuduh tidak dapat dialihkan.',
-            ),
-          ),
+          title: Text(title),
+          content: SingleChildScrollView(child: Text(message)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -93,14 +106,18 @@ class _MeetingAbilityActionsState extends State<MeetingAbilityActions> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Buktikan'),
+              child: Text(
+                widget.id == 'buktikan_tuduhan' ? 'Buktikan' : 'Gunakan',
+              ),
             ),
           ],
         ),
       );
-      if (ok != true || !mounted) return;
+      if (ok == true && mounted && widget.target == id && !widget.busy)
+        await widget.onUse();
+    } finally {
+      _confirming = false;
     }
-    await widget.onUse();
   }
 
   @override
@@ -139,19 +156,15 @@ class _MeetingAbilityActionsState extends State<MeetingAbilityActions> {
                 : 'Tidak ada sasaran yang tersedia.',
             textAlign: TextAlign.center,
           ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            for (final p in list)
-              ChoiceChip(
-                label: Text('${p['name']}'),
-                selected: widget.target == p['user_id'],
-                onSelected: widget.busy
-                    ? null
-                    : (_) => widget.onTarget(p['user_id'] as String),
-              ),
-          ],
+        MeetingPlayerGrid(
+          players: widget.players,
+          day: widget.day,
+          myId: widget.repo.myId,
+          eligibleIds: list.map((p) => '${p['user_id']}').toSet(),
+          selectedId: widget.target,
+          busy: widget.busy,
+          shrinkWrap: true,
+          onSelected: widget.onTarget,
         ),
         const SizedBox(height: 12),
         EmbunButton(

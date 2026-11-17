@@ -16,6 +16,8 @@ import '../prologue/dark_omen.dart';
 import '../prologue/prologue_page.dart';
 import '../prologue/manhwa_draft_page.dart';
 import '../table/ability_panel.dart';
+import '../table/meeting_board_events.dart';
+import '../table/meeting_board_scene.dart';
 import '../table/bow_dialog.dart';
 import '../table/card_tile.dart';
 import '../table/chat_sheet.dart';
@@ -75,6 +77,9 @@ enum _Screen {
   ceremony('Adegan melempar persembahan'),
   effects('Hasil persembahan dan reaksi Hayu'),
   discussion('Musyawarah'),
+  meetingTarget('Musyawarah · Kisi sasaran kemampuan'),
+  meetingHit('Musyawarah · Animasi luka'),
+  meetingOut('Musyawarah · Pencoretan tersingkir'),
   voting('Voting · Pilih sasaran'),
   lockedVote('Voting · Suara terkunci'),
   night('Malam · Pilih aksi'),
@@ -171,6 +176,9 @@ const _sections = [
       _Screen.ceremony,
       _Screen.effects,
       _Screen.discussion,
+      _Screen.meetingTarget,
+      _Screen.meetingHit,
+      _Screen.meetingOut,
       _Screen.voting,
       _Screen.lockedVote,
       _Screen.night,
@@ -279,6 +287,16 @@ class _PreviewPanelState extends State<_PreviewPanel> {
   int _antagonists = 2;
   String _characterTheme = defaultTheme;
   String _manhwaCharacter = manhwaNames.keys.first;
+  String _previewAbility = 'buktikan_tuduhan';
+
+  String get _abilityPreviewPhase => switch (_previewAbility) {
+    'pembaca_niat' || 'palu_hakim' || 'warisan_suara' => 'voting',
+    'buktikan_tuduhan' ||
+    'sidang_terbuka' ||
+    'penanggung_luka' ||
+    'arloji_khayal' => 'discussion',
+    _ => 'day',
+  };
 
   Future<void> _open(_Screen screen) async {
     final role = switch (screen) {
@@ -287,6 +305,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       _Screen.omen ||
       _Screen.darkFace => 'antagonis',
       _Screen.ability ||
+      _Screen.meetingTarget ||
       _Screen.bowTarget ||
       _Screen.guardTarget ||
       _Screen.guard => 'warga',
@@ -306,9 +325,13 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         _Screen.research ||
         _Screen.merge ||
         _Screen.hall => 'visits',
+        _Screen.ability => _abilityPreviewPhase,
         _Screen.offering => 'offering',
         _Screen.ceremony || _Screen.effects => 'effects',
-        _Screen.discussion => 'discussion',
+        _Screen.discussion ||
+        _Screen.meetingTarget ||
+        _Screen.meetingHit ||
+        _Screen.meetingOut => 'discussion',
         _Screen.voting || _Screen.lockedVote => 'voting',
         _Screen.night || _Screen.nightPlan => 'night',
         _ => 'day',
@@ -334,7 +357,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       }.contains(screen),
       jailed: screen == _Screen.jailed,
       eliminated: screen == _Screen.spectator,
-      locked: screen == _Screen.lockedVote,
+      locked:
+          screen == _Screen.lockedVote ||
+          (screen == _Screen.ability && _previewAbility == 'pembaca_niat'),
     );
 
     if (const {
@@ -359,6 +384,16 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       _session.prepareCastPreview();
     }
 
+    if (role == 'warga' &&
+        const {
+          _Screen.discussion,
+          _Screen.ability,
+          _Screen.meetingTarget,
+        }.contains(screen)) {
+      _session.selectPreviewAbility(
+        screen == _Screen.meetingTarget ? 'buktikan_tuduhan' : _previewAbility,
+      );
+    }
     final place = switch (screen) {
       _Screen.well => 'sumur',
       _Screen.clinic => 'pondok',
@@ -495,6 +530,56 @@ class _PreviewPanelState extends State<_PreviewPanel> {
               ),
             ],
           ),
+        );
+      case _Screen.ability:
+        return _DialogPreview(
+          child: const ColoredBox(color: Color(0xFF0B1512)),
+          show: (ctx) => _showDialog(ctx, screen),
+        );
+      case _Screen.meetingTarget:
+        return _DialogPreview(
+          child: const ColoredBox(color: Color(0xFF0B1512)),
+          show: (ctx) => showAbilityDialog(
+            ctx,
+            def: previewAbilities['buktikan_tuduhan']!,
+            used: false,
+            repo: _session,
+            gameId: _gameId,
+            phase: 'discussion',
+            jailed: false,
+            others: _session.roster
+                .where((p) => p['user_id'] != _session.myId)
+                .toList(),
+            everyone: _session.roster,
+            day: day,
+            onUsed: () {},
+            playersStream: _session.players(_gameId),
+            gameStream: _session.game(_gameId),
+          ),
+        );
+      case _Screen.meetingHit:
+      case _Screen.meetingOut:
+        final before = Map<String, dynamic>.of(
+          screen == _Screen.meetingHit ? me : _session.other,
+        );
+        final after = {
+          ...before,
+          'strikes': screen == _Screen.meetingOut ? 2 : 1,
+          if (screen == _Screen.meetingOut) 'out_day': day,
+        };
+        return MeetingBoardScene(
+          moment: MeetingMoment(
+            id: screen.name,
+            kind: screen == _Screen.meetingOut
+                ? MeetingMomentKind.eliminated
+                : MeetingMomentKind.wound,
+            before: before,
+            after: after,
+            day: day,
+          ),
+          players: _session.roster,
+          myId: _session.myId,
+          onDone: close,
         );
       case _Screen.dawn:
         return DayTransition(
@@ -653,15 +738,17 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       case _Screen.ability:
         await showAbilityDialog(
           context,
-          def: previewAbilities['jangan_bohong']!,
+          def: previewAbilities[_previewAbility]!,
           used: false,
           repo: s,
           gameId: _gameId,
-          phase: 'day',
+          phase: _abilityPreviewPhase,
           jailed: false,
           others: s.roster.skip(1).toList(),
           everyone: s.roster,
           day: s.day,
+          playersStream: s.players(_gameId),
+          gameStream: s.game(_gameId),
           onUsed: () {},
         );
       case _Screen.card:
@@ -796,6 +883,23 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                 ),
                 Text(
                   '${manhwaNames.length} tokoh · ${manhwaOutfits.length} kartu · tampilan awal kartu utama',
+                ),
+                const SizedBox(height: 8),
+                const Text('Kemampuan contoh untuk musyawarah/panel kemampuan'),
+                DropdownButton<String>(
+                  key: const ValueKey('preview-meeting-ability'),
+                  isExpanded: true,
+                  value: _previewAbility,
+                  items: [
+                    for (final e in previewAbilities.entries)
+                      DropdownMenuItem(
+                        value: e.key,
+                        child: Text('${e.value['name']}'),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _previewAbility = v);
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextField(

@@ -1235,6 +1235,7 @@ class PreviewSession
         'kind': 'kabar',
         'text': 'Embun turun lebih deras pagi ini.',
       },
+      ..._meetingEvents,
     ],
   );
 
@@ -1417,6 +1418,13 @@ class PreviewSession
     return meetingStatus(gameId);
   }
 
+  void selectPreviewAbility(String id) {
+    if (!previewAbilities.containsKey(id))
+      throw StateError('Kemampuan tidak tersedia');
+    _pickedAbility = id;
+    _usedAbility = false;
+  }
+
   @override
   Future<PreviewRow> useAbility(
     String gameId, {
@@ -1424,11 +1432,36 @@ class PreviewSession
     String? option,
   }) async {
     if (_usedAbility) throw StateError('Kemampuan sudah terpakai');
+    final meeting = const [
+      'buktikan_tuduhan',
+      'sidang_terbuka',
+      'penanggung_luka',
+    ].contains(_ability);
+    final victim = roster.where((p) => p['user_id'] == target).firstOrNull;
+    if (meeting &&
+        (victim == null ||
+            victim['out_day'] != null ||
+            target == myId ||
+            _game['phase'] != 'discussion')) {
+      throw StateError('Pilih pemain lain yang masih di desa saat musyawarah');
+    }
     _usedAbility = true;
+    var message = 'Kemampuan dipakai dalam sesi contoh.';
+    if (_ability == 'buktikan_tuduhan') {
+      final i = _players.indexWhere((p) => p['user_id'] == target);
+      final strikes = ((_players[i]['strikes'] as int?) ?? 0) + 1;
+      _players[i] = {
+        ..._players[i],
+        'strikes': strikes.clamp(0, 2),
+        if (strikes >= 2) 'out_day': day,
+      };
+      message =
+          '${victim!['name']} kehilangan 1 nyawa${strikes >= 2 ? ' dan tersingkir' : ''}.';
+    }
     if (_ability == 'sidang_terbuka') {
       _meetingPoll = {
         'id': 'preview-poll',
-        'target': roster.where((p) => p['user_id'] == target).first['name'],
+        'target': victim!['name'],
         'closed': false,
         'closes_at': DateTime.now()
             .toUtc()
@@ -1440,14 +1473,26 @@ class PreviewSession
         'my_choice': null,
         'can_answer': true,
       };
-      _meetingEvents.add({
-        'id': 'preview-poll-event',
-        'text': 'Rapat: Sidang Terbuka dimulai.',
-      });
+      message = 'Sidang Terbuka dimulai tentang ${victim['name']}.';
     }
+    if (_ability == 'penanggung_luka')
+      message =
+          '${me['name']} bersedia menanggung satu luka untuk ${victim!['name']}.';
+    if (meeting)
+      _meetingEvents.add({
+        'id': 'preview-meeting-${++_sequence}',
+        'day': day,
+        'kind': 'kabar',
+        'actor_id': myId,
+        'target_id': target,
+        'created_at': _stamp,
+        'text':
+            'Rapat: ${_ability == 'buktikan_tuduhan' ? '${me['name']} menggunakan Buktikan Tuduhanmu. ' : ''}$message',
+      });
+    _update();
     return {
       'result': 'ok',
-      'message': 'Kemampuan dipakai dalam sesi contoh.',
+      'message': message,
       if (_ability == 'buktikan_tuduhan') 'correct': true,
     };
   }

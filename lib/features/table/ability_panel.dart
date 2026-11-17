@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -8,6 +9,7 @@ import '../common/ornate.dart';
 import 'flip_card.dart';
 import 'player_status.dart';
 import 'meeting_abilities.dart';
+import 'meeting_player_grid.dart';
 
 /// Kemampuan acak khusus warga. Definisinya ada di tabel `ability_definitions`;
 /// berkas ini hanya tampilan dan pemakaiannya.
@@ -211,6 +213,8 @@ Future<void> showAbilityDialog(
   required int day,
   required VoidCallback onUsed,
   bool intro = false,
+  Stream<List<Map<String, dynamic>>>? playersStream,
+  Stream<Map<String, dynamic>?>? gameStream,
 }) => showDialog<void>(
   context: context,
   barrierDismissible: !intro,
@@ -226,6 +230,8 @@ Future<void> showAbilityDialog(
     day: day,
     onUsed: onUsed,
     intro: intro,
+    playersStream: playersStream,
+    gameStream: gameStream,
   ),
 );
 
@@ -241,6 +247,8 @@ class _AbilityDialog extends StatefulWidget {
   final int day;
   final VoidCallback onUsed;
   final bool intro;
+  final Stream<List<Map<String, dynamic>>>? playersStream;
+  final Stream<Map<String, dynamic>?>? gameStream;
 
   const _AbilityDialog({
     required this.def,
@@ -254,6 +262,8 @@ class _AbilityDialog extends StatefulWidget {
     required this.day,
     required this.onUsed,
     required this.intro,
+    this.playersStream,
+    this.gameStream,
   });
 
   @override
@@ -261,13 +271,56 @@ class _AbilityDialog extends StatefulWidget {
 }
 
 class _AbilityDialogState extends State<_AbilityDialog> {
+  List<Map<String, dynamic>>? _livePlayers;
+  late String _phase = widget.phase;
+  late int _day = widget.day;
+  StreamSubscription<List<Map<String, dynamic>>>? _playersSub;
+  StreamSubscription<Map<String, dynamic>?>? _gameSub;
+  List<Map<String, dynamic>> get _everyone => _livePlayers ?? widget.everyone;
+  List<Map<String, dynamic>> get _others => _livePlayers == null
+      ? widget.others
+      : _livePlayers!
+            .where((p) => p['user_id'] != widget.repo.myId && !isOut(p))
+            .toList();
+  @override
+  void initState() {
+    super.initState();
+    _playersSub = widget.playersStream?.listen((rows) {
+      if (!mounted) return;
+      setState(() {
+        _livePlayers = rows;
+        if (target != null) {
+          final p = rows.where((p) => p['user_id'] == target).firstOrNull;
+          if (p == null || (_id != 'pembaca_niat' && isOut(p))) target = null;
+        }
+      });
+    }, onError: (_) {});
+    _gameSub = widget.gameStream?.listen((g) {
+      if (!mounted || g == null) return;
+      setState(() {
+        _phase = g['status'] == 'playing' ? '${g['phase']}' : 'finished';
+        _day = (g['day'] as int?) ?? _day;
+      });
+    }, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _playersSub?.cancel();
+    _gameSub?.cancel();
+    super.dispose();
+  }
+
   String? target;
   bool busy = false;
   String? error;
   Map<String, dynamic>? result;
 
   String get _id => '${widget.def['id']}';
-  bool get _usedNow => widget.used || result != null;
+  bool get _usedNow =>
+      widget.used ||
+      result != null ||
+      _everyone.any((p) => p['user_id'] == widget.repo.myId && isOut(p));
 
   Future<void> _use({String? option}) async {
     setState(() {
@@ -367,11 +420,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
   }
 
   bool get _phaseOk => switch (_id) {
-    'mata_suci' => widget.phase == 'day' || widget.phase == 'discussion',
-    'kamera_rekaan' => widget.phase == 'day',
-    'arloji_khayal' => widget.phase == 'discussion' || widget.phase == 'voting',
-    'jemari_magis' => widget.phase == 'day',
-    'kunci_segel' => widget.phase == 'day',
+    'mata_suci' => _phase == 'day' || _phase == 'discussion',
+    'kamera_rekaan' => _phase == 'day',
+    'arloji_khayal' => _phase == 'discussion' || _phase == 'voting',
+    'jemari_magis' => _phase == 'day',
+    'kunci_segel' => _phase == 'day',
     _ => false,
   };
 
@@ -390,35 +443,49 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     final from = p['jailed_day'] as int?;
     if (from == null) return false;
     final until = (p['jailed_until'] as int?) ?? from;
-    return until >= widget.day;
+    return until >= _day;
   }
 
   Widget _picker(List<Map<String, dynamic>> list, String empty) {
     if (list.isEmpty) return _note(empty);
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        for (final p in list)
-          ChoiceChip(
-            avatar: PlayerAvatar(
-              path: protagonistPath(p['character_card'] as String),
-              size: 24,
-            ),
-            label: Text(
-              p['user_id'] == widget.repo.myId
-                  ? '${p['name']} (kamu)'
-                  : p['name'] as String,
-            ),
-            selected: target == p['user_id'],
-            showCheckmark: false,
-            selectedColor: abilityAccent(_id).withValues(alpha: 0.28),
-            onSelected: busy
-                ? null
-                : (_) => setState(() => target = p['user_id'] as String),
-          ),
-      ],
+    return MeetingPlayerGrid(
+      players: _everyone,
+      day: _day,
+      myId: widget.repo.myId,
+      eligibleIds: list.map((p) => '${p['user_id']}').toSet(),
+      selectedId: target,
+      busy: busy,
+      shrinkWrap: true,
+      onSelected: (id) => setState(() => target = id),
     );
+  }
+
+  Future<void> _confirmMataSuci() async {
+    final id = target;
+    if (id == null || busy) return;
+    final name =
+        _everyone.where((p) => p['user_id'] == id).firstOrNull?['name'] ??
+        'pemain ini';
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Periksa persembahan $name?'),
+        content: const Text(
+          'Hasil hanya terlihat olehmu. Harga 1 nyawa dibayar pada malam hari biasa berikutnya.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Periksa'),
+          ),
+        ],
+      ),
+    );
+    if (yes == true && mounted && target == id && !busy) await _use();
   }
 
   Future<void> _confirmSacrifice() async {
@@ -464,13 +531,13 @@ class _AbilityDialogState extends State<_AbilityDialog> {
               style: TextStyle(fontSize: 12.5, color: EmbunColors.gold),
             ),
             const SizedBox(height: 8),
-            _picker(widget.others, 'Tidak ada pemain lain.'),
+            _picker(_others, 'Tidak ada pemain lain.'),
             const SizedBox(height: 12),
             EmbunButton(
               label: 'Buka mata batin',
               icon: 'show',
               expand: true,
-              onPressed: busy || target == null ? null : () => _use(),
+              onPressed: busy || target == null ? null : _confirmMataSuci,
             ),
           ],
         );
@@ -536,7 +603,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
         );
       case 'kunci_segel':
         final jailed = [
-          for (final p in widget.everyone)
+          for (final p in _everyone)
             if (_hasJail(p)) p,
         ];
         return Column(
@@ -603,10 +670,11 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     }.contains(_id)) {
       return MeetingAbilityActions(
         id: _id,
-        phase: widget.phase,
+        phase: _phase,
         repo: widget.repo,
         gameId: widget.gameId,
-        players: _id == 'pembaca_niat' ? widget.everyone : widget.others,
+        players: _everyone,
+        day: _day,
         target: target,
         busy: busy,
         onTarget: (value) => setState(() => target = value),
@@ -616,7 +684,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     if (_id != 'jangan_bohong' && _id != 'pedagang') return _newActions();
 
     if (_id == 'jangan_bohong') {
-      final can = widget.phase == 'day' || widget.phase == 'discussion';
+      final can = _phase == 'day' || _phase == 'discussion';
       if (!can) {
         return _note(
           'Firasat hanya bisa didengar saat hari biasa atau musyawarah.',
@@ -630,26 +698,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
             style: TextStyle(fontSize: 12.5, color: EmbunColors.gold),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              for (final p in widget.others)
-                ChoiceChip(
-                  avatar: PlayerAvatar(
-                    path: protagonistPath(p['character_card'] as String),
-                    size: 24,
-                  ),
-                  label: Text(p['name'] as String),
-                  selected: target == p['user_id'],
-                  showCheckmark: false,
-                  selectedColor: EmbunColors.gold.withValues(alpha: 0.28),
-                  onSelected: busy
-                      ? null
-                      : (_) => setState(() => target = p['user_id'] as String),
-                ),
-            ],
-          ),
+          _picker(_others, 'Tidak ada pemain lain.'),
           const SizedBox(height: 12),
           EmbunButton(
             label: 'Dengarkan firasat',
@@ -662,7 +711,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
     }
 
     // pedagang
-    if (widget.phase != 'day') {
+    if (_phase != 'day') {
       return _note('Pedagang hanya datang saat hari biasa.');
     }
     if (widget.jailed) {

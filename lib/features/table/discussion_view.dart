@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
@@ -5,6 +6,8 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'chat_sheet.dart' show sortChat;
 import 'day_chrome.dart';
+import 'meeting_player_grid.dart';
+import 'player_status.dart';
 
 class DiscussionView extends StatefulWidget {
   final GameRepository repo;
@@ -20,6 +23,9 @@ class DiscussionView extends StatefulWidget {
   /// Sudah keluar dari desa: boleh membaca obrolan, tidak boleh menulis.
   final bool readOnly;
   final bool showBisikanReports;
+  final VoidCallback? onAbility;
+  final ValueChanged<Map<String, dynamic>>? onPlayerTap;
+  final ValueChanged<Rect?>? onChatBounds;
 
   const DiscussionView({
     super.key,
@@ -34,6 +40,9 @@ class DiscussionView extends StatefulWidget {
     this.events = const [],
     this.readOnly = false,
     this.showBisikanReports = true,
+    this.onAbility,
+    this.onPlayerTap,
+    this.onChatBounds,
   });
 
   @override
@@ -45,6 +54,16 @@ class _DiscussionViewState extends State<DiscussionView> {
   late final Stream<List<Map<String, dynamic>>> chatStream = widget.repo.chat(
     widget.gameId,
   );
+  List<Map<String, dynamic>> _messages = [];
+  final _seenChat = <String>{};
+  bool _chatPrimed = false, _chatTab = false, _wideLayout = false;
+  int _unread = 0;
+  String? _speaker;
+  StreamSubscription<List<Map<String, dynamic>>>? _chatSub;
+  Timer? _speakerTimer;
+  final _chatBox = GlobalKey();
+  Rect? _lastBounds;
+  bool _measuring = false;
   List<Map<String, dynamic>> effectLogs = [];
   List<String> mySecrets = [];
   bool _privateNotesFailed = false;
@@ -85,6 +104,29 @@ class _DiscussionViewState extends State<DiscussionView> {
   void initState() {
     super.initState();
     _loadLogs();
+    _chatSub = chatStream.listen((rows) {
+      if (!mounted) return;
+      final relevant = sortChat(
+        rows.where((m) => m['day'] == widget.day).toList(),
+      );
+      final fresh = relevant
+          .where((m) => !_seenChat.contains('${m['id']}'))
+          .toList();
+      _seenChat.addAll(relevant.map((m) => '${m['id']}'));
+      if (_chatPrimed && fresh.isNotEmpty) {
+        _speaker = '${fresh.last['user_id']}';
+        if (!_chatTab && !_wideLayout)
+          _unread += fresh
+              .where((m) => m['user_id'] != widget.repo.myId)
+              .length;
+        _speakerTimer?.cancel();
+        _speakerTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _speaker = null);
+        });
+      }
+      _chatPrimed = true;
+      setState(() => _messages = relevant.reversed.toList());
+    }, onError: (_) {});
   }
 
   void _loadLogs() {
@@ -131,6 +173,8 @@ class _DiscussionViewState extends State<DiscussionView> {
 
   @override
   void dispose() {
+    _chatSub?.cancel();
+    _speakerTimer?.cancel();
     ctrl.dispose();
     super.dispose();
   }
@@ -147,6 +191,7 @@ class _DiscussionViewState extends State<DiscussionView> {
   }
 
   Future<void> _send() async {
+    if (widget.readOnly) return;
     final t = ctrl.text.trim();
     if (t.isEmpty) return;
     ctrl.clear();
@@ -342,99 +387,205 @@ class _DiscussionViewState extends State<DiscussionView> {
     ),
   );
 
-  Widget _chatArea() => StreamBuilder<List<Map<String, dynamic>>>(
-    stream: chatStream,
-    builder: (context, s) {
-      final msgs = sortChat(
-        (s.data ?? []).where((m) => m['day'] == widget.day).toList(),
-      ).reversed.toList();
-      if (msgs.isEmpty) {
-        return const Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
+  void _measureChat() {
+    if (_measuring) return;
+    _measuring = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measuring = false;
+      if (!mounted) return;
+      final box = _chatBox.currentContext?.findRenderObject();
+      final bounds = box is RenderBox && box.hasSize
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null;
+      if (bounds == _lastBounds) return;
+      _lastBounds = bounds;
+      widget.onChatBounds?.call(bounds);
+    });
+  }
+
+  Widget _chatArea() {
+    final msgs = _messages;
+    if (msgs.isEmpty)
+      return const Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GameIcon('discuss', size: 34),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada yang bicara',
+                style: TextStyle(color: Colors.white54),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Sampaikan petunjuk atau kecurigaanmu.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.all(10),
+      itemCount: msgs.length,
+      itemBuilder: (context, i) {
+        final m = msgs[i], mine = m['user_id'] == widget.repo.myId;
+        return Align(
+          alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 390),
+            margin: const EdgeInsets.only(bottom: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: mine ? const Color(0xFF1F4A38) : const Color(0xFF1B2523),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: mine
+                    ? EmbunColors.gold.withValues(alpha: .35)
+                    : Colors.white12,
+              ),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GameIcon('discuss', size: 34),
-                SizedBox(height: 8),
                 Text(
-                  'Belum ada yang bicara',
-                  style: TextStyle(color: Colors.white54),
+                  '${m['name']}',
+                  style: const TextStyle(
+                    color: EmbunColors.gold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'Mulailah dengan menyebut siapa yang kamu curigai.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11.5, color: Colors.white38),
-                ),
+                const SizedBox(height: 3),
+                Text('${m['body']}'),
               ],
             ),
           ),
         );
-      }
-      return ListView.builder(
-        reverse: true,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        itemCount: msgs.length,
-        itemBuilder: (_, i) {
-          final m = msgs[i];
-          final mine = m['user_id'] == widget.repo.myId;
-          // Pesan lebih lama ada di indeks berikutnya (daftar terbalik).
-          final older = i + 1 < msgs.length ? msgs[i + 1] : null;
-          final head = older == null || older['user_id'] != m['user_id'];
-          return Align(
-            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              margin: EdgeInsets.only(top: head ? 10 : 2),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              constraints: const BoxConstraints(maxWidth: 360),
-              decoration: BoxDecoration(
-                color: mine ? const Color(0xFF1F4A38) : const Color(0xFF1B2523),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(!mine && head ? 4 : 14),
-                  topRight: Radius.circular(mine && head ? 4 : 14),
-                  bottomLeft: const Radius.circular(14),
-                  bottomRight: const Radius.circular(14),
+      },
+    );
+  }
+
+  void _inspect(Map<String, dynamic> p) {
+    if (widget.onPlayerTap != null) {
+      widget.onPlayerTap!(p);
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${p['name']}'),
+        content: Text(
+          isOut(p)
+              ? 'Sudah tersingkir'
+              : isJailed(p, widget.day)
+              ? 'Sedang dikurung'
+              : 'Masih di desa · ${livesLeft(p)} nyawa',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _board() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+        child: Text(
+          '${widget.players.where((p) => !isOut(p)).length} bertahan · ${widget.players.where(isOut).length} tersingkir',
+          style: dayCaption,
+        ),
+      ),
+      Expanded(
+        child: MeetingPlayerGrid(
+          players: widget.players,
+          day: widget.day,
+          myId: widget.repo.myId,
+          speakingId: _speaker,
+          onInspect: _inspect,
+        ),
+      ),
+    ],
+  );
+
+  Widget _composer(bool chatVisible) {
+    if (widget.readOnly)
+      return const Padding(
+        padding: EdgeInsets.all(8),
+        child: Text(
+          'Kamu sudah keluar dari desa. Kamu hanya bisa menonton.',
+          textAlign: TextAlign.center,
+          style: dayCaption,
+        ),
+      );
+    return Container(
+      decoration: tableEdge(EmbunColors.gold, top: true),
+      padding: const EdgeInsets.all(5),
+      child: Row(
+        children: [
+          if (chatVisible) ...[
+            Expanded(
+              child: TextField(
+                controller: ctrl,
+                maxLength: 200,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                decoration: const InputDecoration(
+                  hintText: 'Tulis pesan…',
+                  counterText: '',
+                  isDense: true,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
                 ),
-                border: Border.all(
-                  color: mine
-                      ? EmbunColors.gold.withValues(alpha: 0.4)
-                      : Colors.white12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (head && !mine)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        m['name'] as String,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: EmbunColors.gold,
-                        ),
-                      ),
-                    ),
-                  Text(m['body'] as String),
-                ],
               ),
             ),
-          );
-        },
-      );
-    },
-  );
+            IconButton(
+              tooltip: 'Kirim pesan',
+              onPressed: _send,
+              icon: const GameIcon('kirim', size: 23),
+            ),
+          ] else
+            const Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Text('Buka Obrolan untuk berdiskusi', style: dayCaption),
+              ),
+            ),
+          SizedBox(
+            width: 124,
+            child: EmbunButton(
+              label: widget.iAmReady
+                  ? 'Siap ${widget.readyCount}/${widget.total}'
+                  : 'Siap memilih',
+              height: 42,
+              expand: true,
+              onPressed: widget.iAmReady ? null : _ready,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final clues = _clues;
-    final privateNotes = _visibleNotes;
-    final notes = clues.length + privateNotes.length + (counts.isEmpty ? 0 : 1);
+    _measureChat();
+    final clues = _clues,
+        notes = clues.length + _visibleNotes.length + (counts.isEmpty ? 0 : 1);
     final spotlight =
-        privateNotes.where(_isRumor).firstOrNull ??
-        privateNotes.where(_isReport).firstOrNull;
+        _visibleNotes.where(_isRumor).firstOrNull ??
+        _visibleNotes.where(_isReport).firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -452,19 +603,27 @@ class _DiscussionViewState extends State<DiscussionView> {
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
               ),
+              if (widget.onAbility != null)
+                IconButton(
+                  tooltip: 'Kemampuan',
+                  onPressed: widget.onAbility,
+                  icon: const Icon(
+                    Icons.auto_awesome,
+                    color: EmbunColors.gold,
+                    size: 22,
+                  ),
+                ),
               if (notes > 0)
                 Badge(
                   label: Text('$notes'),
                   child: IconButton(
                     tooltip: 'Catatan musyawarah',
-                    visualDensity: VisualDensity.compact,
                     onPressed: () => _showNotes(clues),
                     icon: const GameIcon('info', size: 22),
                   ),
                 ),
               IconButton(
                 tooltip: 'Log persembahan',
-                visualDensity: VisualDensity.compact,
                 onPressed: _showEffectLogSheet,
                 icon: const GameIcon('logorhistory', size: 23),
               ),
@@ -482,59 +641,70 @@ class _DiscussionViewState extends State<DiscussionView> {
               label: const Text('Muat ulang catatan pribadi'),
             ),
           ),
-        Expanded(child: _chatArea()),
-        if (widget.readOnly)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Kamu sudah keluar dari desa. Kamu hanya bisa menonton.',
-              textAlign: TextAlign.center,
-              style: dayCaption,
-            ),
-          )
-        else
-          Container(
-            decoration: tableEdge(EmbunColors.gold, top: true),
-            padding: const EdgeInsets.fromLTRB(4, 4, 2, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: ctrl,
-                    maxLength: 200,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _send(),
-                    decoration: const InputDecoration(
-                      hintText: 'Tulis pesan…',
-                      counterText: '',
-                      isDense: true,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                    ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final wide = box.maxWidth >= 760;
+              _wideLayout = wide;
+              final chat = SizedBox.expand(key: _chatBox, child: _chatArea());
+              if (wide)
+                return Row(
+                  children: [
+                    Expanded(flex: 5, child: _board()),
+                    const VerticalDivider(width: 14),
+                    Expanded(flex: 4, child: chat),
+                  ],
+                );
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          key: const ValueKey('discussion-players-tab'),
+                          onPressed: () => setState(() => _chatTab = false),
+                          child: Text(
+                            'Pemain',
+                            style: TextStyle(
+                              color: !_chatTab
+                                  ? EmbunColors.gold
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextButton(
+                          key: const ValueKey('discussion-chat-tab'),
+                          onPressed: () => setState(() {
+                            _chatTab = true;
+                            _unread = 0;
+                          }),
+                          child: Badge(
+                            isLabelVisible: _unread > 0,
+                            label: Text('$_unread'),
+                            child: Text(
+                              'Obrolan',
+                              style: TextStyle(
+                                color: _chatTab
+                                    ? EmbunColors.gold
+                                    : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Kirim pesan',
-                  onPressed: _send,
-                  icon: const GameIcon('kirim', size: 23),
-                ),
-                const SizedBox(width: 5),
-                SizedBox(
-                  width: 124,
-                  child: EmbunButton(
-                    label: widget.iAmReady
-                        ? 'Siap ${widget.readyCount}/${widget.total}'
-                        : 'Siap memilih',
-                    height: 40,
-                    expand: true,
-                    onPressed: widget.iAmReady ? null : _ready,
-                  ),
-                ),
-              ],
-            ),
+                  Expanded(child: _chatTab ? chat : _board()),
+                ],
+              );
+            },
           ),
+        ),
+        LayoutBuilder(
+          builder: (context, box) => _composer(box.maxWidth >= 760 || _chatTab),
+        ),
       ],
     );
   }
