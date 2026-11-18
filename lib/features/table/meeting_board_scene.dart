@@ -67,6 +67,14 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
     });
   }
 
+  /// Sel pemain = potret + nama + status. Efek diarahkan ke potretnya saja
+  /// (posisi dan ukuran potret tetap: 38x56 + bingkai, 3px dari atas sel).
+  Rect _portraitRect(Rect cell) => Rect.fromCenter(
+    center: Offset(cell.center.dx, cell.top + 32.5),
+    width: 44,
+    height: 62,
+  );
+
   bool _reduced = false;
   @override
   void initState() {
@@ -332,7 +340,7 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
               if (!_reduced && _targetRect != null)
                 Positioned.fill(
                   child: IgnorePointer(
-                    child: CustomPaint(painter: _SpotPaint(t, _targetRect!)),
+                    child: CustomPaint(painter: _SpotPaint(t, _portraitRect(_targetRect!))),
                   ),
                 ),
               if (!_reduced && _targetRect != null)
@@ -341,7 +349,7 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
                     child: CustomPaint(
                       painter: _OperationPaint(
                         t,
-                        _targetRect!,
+                        _portraitRect(_targetRect!),
                         accent,
                         m.kind,
                       ),
@@ -803,7 +811,7 @@ class _OperationPaint extends CustomPainter {
     final area = rect.inflate(2);
     c.save();
     c.clipRRect(RRect.fromRectAndRadius(area, const Radius.circular(14)));
-    const n = 6;
+    const n = 4;
     for (var i = 0; i < n; i++) {
       final x = area.left + area.width * (i + .5) / n;
       final t0 = .20 + i * .02;
@@ -811,7 +819,7 @@ class _OperationPaint extends CustomPainter {
       if (k <= 0) continue;
       final drop = Curves.bounceOut.transform(k);
       final top = area.top - area.height * (1 - drop);
-      final bar = Rect.fromLTWH(x - 3, top, 6, area.height + 4);
+      final bar = Rect.fromLTWH(x - 2.5, top, 5, area.height + 4);
       c.drawRect(
         bar,
         Paint()
