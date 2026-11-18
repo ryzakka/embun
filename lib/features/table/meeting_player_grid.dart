@@ -6,12 +6,13 @@ import '../common/ornate.dart';
 import 'player_status.dart';
 
 /// Public portraits and public status only. A target whitelist is supplied by
-/// the ability owner; selecting a tile never sends an action by itself.
+/// the ability owner; selecting a plate never sends an action by itself.
 ///
-/// Tampilan: roster rapat, hanya dua tingkat per pemain (potret + nama).
-/// Tanpa kotak; nyawa dan status ditaruh di atas potret (hati di dasar potret,
-/// ikon kecil di pojok, cincin berwarna). Parameter publik TIDAK berubah dari
-/// versi awal; [focusFlash] (0..1) adalah tambahan opsional untuk adegan papan.
+/// Tampilan "papan nama desa": dua kolom papan hijau tua bersudut tersayat
+/// (kiri-atas dan kanan-bawah dipotong), potret di kiri, nama + nyawa + status
+/// di kanan. Pembicara ditandai batang suara emas dan papan yang menyala,
+/// yang dikurung berjeruji dan berpapan amber, yang keluar memudar kelabu
+/// dengan label merah. Parameter publik TIDAK berubah dari versi sebelumnya.
 class MeetingPlayerGrid extends StatelessWidget {
   const MeetingPlayerGrid({
     super.key,
@@ -42,34 +43,45 @@ class MeetingPlayerGrid extends StatelessWidget {
   final GlobalKey? focusAnchor;
   final bool shrinkWrap, busy;
 
-  /// Ukuran potret (di dalam bingkai). Dipakai juga oleh adegan papan untuk
-  /// mengarahkan efek; ubah di dua tempat bila angkanya diganti.
-  static const double portraitW = 52, portraitH = 74;
+  /// Ukuran potret dan jarak potret dari tepi kiri papan.
+  static const double portraitW = 48, portraitH = 58, portraitInset = 7;
+
+  /// Tinggi dasar satu papan (bertambah mengikuti skala teks).
+  static const double cellHeight = 68;
+
+  /// Posisi potret di dalam [cell] (rect papan dari [focusAnchor]).
+  /// Dipakai adegan papan untuk mengarahkan sorotan dan efek.
+  static Rect portraitRectIn(Rect cell) => Rect.fromLTWH(
+    cell.left + portraitInset,
+    cell.center.dy - portraitH / 2,
+    portraitW,
+    portraitH,
+  );
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final reduced = MediaQuery.disableAnimationsOf(context);
-      // Sel dibuat sepanjang potret + sedikit, supaya pemain rapat satu sama lain.
-      final cols = (box.maxWidth / 72).floor().clamp(3, 6);
-      final height = 102.0 + math.max(0, scale - 1) * 22;
+      final cols = box.maxWidth >= 600 ? 3 : 2;
+      final height = cellHeight + math.max(0, scale - 1) * 20;
       return GridView.builder(
         key: const ValueKey('meeting-player-grid'),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         shrinkWrap: shrinkWrap,
         physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         itemCount: players.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: cols,
           mainAxisExtent: height,
-          crossAxisSpacing: 0,
-          mainAxisSpacing: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
         itemBuilder: (context, i) {
           final p = players[i];
           final id = '${p['user_id']}';
           final out = isOut(p), jailed = isJailed(p, day);
+          final me = id == myId;
           final targeting = eligibleIds != null;
           final enabled =
               !busy &&
@@ -86,6 +98,8 @@ class MeetingPlayerGrid extends StatelessWidget {
               ? EmbunColors.gold
               : jailed
               ? const Color(0xFFE5B96C)
+              : me && !out
+              ? EmbunColors.mist
               : const Color(0xFF547360);
           final cross = focused && focusCross != null
               ? focusCross!
@@ -94,10 +108,10 @@ class MeetingPlayerGrid extends StatelessWidget {
               : 0.0;
           final flash = focused ? (focusFlash ?? 0.0) : 0.0;
           Widget tile = RepaintBoundary(
-            child: _PlayerCell(
+            child: _PlayerPlate(
               player: p,
               id: id,
-              myId: myId,
+              me: me,
               out: out,
               jailed: jailed,
               targeting: targeting,
@@ -120,9 +134,8 @@ class MeetingPlayerGrid extends StatelessWidget {
                   : null,
             ),
           );
-          // Masuk hampir serempak (jeda sangat tipis) agar tidak terlihat
-          // bertahap. Tidak menggeser posisi, supaya titik sasaran efek di
-          // adegan papan tetap akurat.
+          // Masuk hampir serempak dan tidak menggeser posisi, supaya titik
+          // sasaran efek di adegan papan tetap akurat.
           if (!reduced) {
             tile = TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
@@ -142,11 +155,23 @@ class MeetingPlayerGrid extends StatelessWidget {
   );
 }
 
-class _PlayerCell extends StatelessWidget {
-  const _PlayerCell({
+/// Papan bersudut tersayat: kiri-atas dan kanan-bawah dipotong lebar,
+/// dua sudut lainnya hanya sedikit. Memberi siluet khas, bukan kotak biasa.
+ShapeBorder _plateShape(Color border, double width) => BeveledRectangleBorder(
+  borderRadius: const BorderRadius.only(
+    topLeft: Radius.circular(16),
+    bottomRight: Radius.circular(16),
+    topRight: Radius.circular(4),
+    bottomLeft: Radius.circular(4),
+  ),
+  side: BorderSide(color: border, width: width),
+);
+
+class _PlayerPlate extends StatelessWidget {
+  const _PlayerPlate({
     required this.player,
     required this.id,
-    required this.myId,
+    required this.me,
     required this.out,
     required this.jailed,
     required this.targeting,
@@ -162,33 +187,49 @@ class _PlayerCell extends StatelessWidget {
   });
   final Map<String, dynamic> player;
   final String id;
-  final String? myId;
-  final bool out, jailed, targeting, enabled, selected, focused, speaking;
+  final bool me, out, jailed, targeting, enabled, selected, focused, speaking;
   final Color accent;
   final double cross, flash;
   final GlobalKey? anchor;
   final VoidCallback? onTap;
 
+  static const _gold = Color(0xFFE5B96C);
+  static const _red = Color(0xFFE85F64);
+  static const _sky = Color(0xFF8FCBFF);
+
   @override
   Widget build(BuildContext context) {
     final p = player;
-    final me = id == myId;
+    final lives = livesLeft(p);
     final stateText = out
         ? 'tersingkir'
         : jailed
         ? 'dikurung'
-        : '${livesLeft(p)} nyawa';
+        : '$lives nyawa';
+    final glow = selected || focused || speaking;
     final nameColor = out
         ? Colors.white54
         : selected
-        ? const Color(0xFF8FCBFF)
-        : me
-        ? EmbunColors.mist
+        ? _sky
         : EmbunColors.cream;
+    final plate = out
+        ? const [Color(0xFF1B201D), Color(0xFF111513)]
+        : selected
+        ? const [Color(0xFF1B3A4A), Color(0xFF11262F)]
+        : jailed
+        ? const [Color(0xFF3A2F18), Color(0xFF241C0F)]
+        : speaking
+        ? const [Color(0xFF34391C), Color(0xFF1F2310)]
+        : const [Color(0xFF1C3D2E), Color(0xFF12281E)];
+    final shape = _plateShape(
+      accent.withValues(alpha: glow || jailed || (me && !out) ? .95 : .55),
+      1.6,
+    );
 
     return Semantics(
       key: anchor,
-      label: '${p['name']}${me ? ', kamu' : ''}, $stateText',
+      label:
+      '${p['name']}${me ? ', kamu' : ''}, $stateText${speaking ? ', sedang bicara' : ''}',
       selected: selected,
       button: enabled,
       child: AnimatedOpacity(
@@ -196,86 +237,146 @@ class _PlayerCell extends StatelessWidget {
         opacity: targeting && !enabled && !selected
             ? .42
             : out
-            ? .7
+            ? .78
             : 1,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: ValueKey('meeting-player-$id'),
-            borderRadius: BorderRadius.circular(10),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _Portrait(
-                        cardId: '${p['character_card'] ?? 'default'}',
-                        lives: livesLeft(p),
-                        out: out,
-                        jailed: jailed,
-                        me: me,
-                        speaking: speaking,
-                        selected: selected,
-                        focused: focused,
-                        accent: accent,
-                        cross: cross,
-                        flash: flash,
-                      ),
-                      if (selected)
-                        Positioned(
-                          top: -6,
-                          right: -6,
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.4, end: 1.0),
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.easeOutBack,
-                            builder: (context, v, child) =>
-                                Transform.scale(scale: v, child: child),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFF07130F),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          decoration: ShapeDecoration(
+            shape: shape,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: plate,
+            ),
+            shadows: glow
+                ? [
+              BoxShadow(
+                color: accent.withValues(alpha: .38),
+                blurRadius: 14,
+              ),
+            ]
+                : null,
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: ValueKey('meeting-player-$id'),
+              customBorder: shape,
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  MeetingPlayerGrid.portraitInset,
+                  4,
+                  8,
+                  4,
+                ),
+                child: Row(
+                  children: [
+                    _Portrait(
+                      cardId: '${p['character_card'] ?? 'default'}',
+                      out: out,
+                      jailed: jailed,
+                      selected: selected,
+                      focused: focused,
+                      speaking: speaking,
+                      accent: accent,
+                      cross: cross,
+                      flash: flash,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nama mengecil sendiri bila panjang.
+                          Stack(
+                            alignment: Alignment.centerLeft,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (me && !out) ...[
+                                      const Icon(
+                                        Icons.person_rounded,
+                                        size: 14,
+                                        color: EmbunColors.mist,
+                                      ),
+                                      const SizedBox(width: 3),
+                                    ],
+                                    Text(
+                                      '${p['name'] ?? 'Pemain'}',
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        height: 1.15,
+                                        fontWeight: FontWeight.w800,
+                                        color: nameColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF8FCBFF),
-                                size: 18,
-                              ),
+                              if (cross > 0)
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: _NameStrike(cross),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: out
+                                ? const StatusTag(
+                              text: 'Keluar',
+                              color: _red,
+                              icon: Icons.close_rounded,
+                            )
+                                : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                LivesRow(lives: lives, size: 14),
+                                if (jailed) ...[
+                                  const SizedBox(width: 6),
+                                  const StatusTag(
+                                    text: 'Dikurung',
+                                    color: _gold,
+                                    icon: Icons.lock_rounded,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                        ),
+                        ],
+                      ),
+                    ),
+                    if (speaking) ...[
+                      const SizedBox(width: 4),
+                      const _VoiceBars(),
                     ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Nama mengecil sendiri bila panjang, supaya tetap terbaca
-                  // utuh dan tinggi semua sel seragam.
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          '${p['name'] ?? 'Pemain'}',
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.15,
-                            fontWeight: FontWeight.w800,
-                            color: nameColor,
-                          ),
+                    if (selected) ...[
+                      const SizedBox(width: 4),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.4, end: 1.0),
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutBack,
+                        builder: (context, v, child) =>
+                            Transform.scale(scale: v, child: child),
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: _sky,
+                          size: 20,
                         ),
                       ),
-                      if (cross > 0)
-                        Positioned.fill(
-                          child: CustomPaint(painter: _NameStrike(cross)),
-                        ),
                     ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -288,140 +389,135 @@ class _PlayerCell extends StatelessWidget {
 class _Portrait extends StatelessWidget {
   const _Portrait({
     required this.cardId,
-    required this.lives,
     required this.out,
     required this.jailed,
-    required this.me,
-    required this.speaking,
     required this.selected,
     required this.focused,
+    required this.speaking,
     required this.accent,
     required this.cross,
     required this.flash,
   });
   final String cardId;
-  final int lives;
-  final bool out, jailed, me, speaking, selected, focused;
+  final bool out, jailed, selected, focused, speaking;
   final Color accent;
   final double cross, flash;
 
   @override
   Widget build(BuildContext context) {
     final glow = selected || focused || speaking;
-    final cornerIcon = speaking
-        ? Icons.graphic_eq_rounded
-        : me && !out
-        ? Icons.person_rounded
-        : null;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: accent.withValues(alpha: glow || jailed ? .95 : .5),
-              width: 1.6,
-            ),
-            boxShadow: glow
-                ? [
-              BoxShadow(
-                color: accent.withValues(alpha: .4),
-                blurRadius: 12,
+    return SizedBox(
+      width: MeetingPlayerGrid.portraitW,
+      height: MeetingPlayerGrid.portraitH,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: accent.withValues(alpha: glow || jailed ? .95 : .5),
+                  width: 1.4,
+                ),
               ),
-              // cincin tambahan tanpa mengubah ukuran sel
-              if (selected)
-                BoxShadow(color: accent, spreadRadius: 1.4),
-            ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8.5),
-            child: SizedBox(
-              width: MeetingPlayerGrid.portraitW,
-              height: MeetingPlayerGrid.portraitH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColorFiltered(
-                    colorFilter: out
-                        ? const ColorFilter.mode(
-                      Colors.grey,
-                      BlendMode.saturation,
-                    )
-                        : const ColorFilter.mode(
-                      Colors.transparent,
-                      BlendMode.srcOver,
-                    ),
-                    child: GameImage(
-                      path: protagonistPath(cardId),
-                      fit: BoxFit.cover,
-                      cacheWidth: 160,
-                    ),
-                  ),
-                  if (jailed) const CustomPaint(painter: _BarsPaint()),
-                  // Nyawa di dasar potret, di atas gradasi gelap tipis.
-                  if (!out)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        padding: const EdgeInsets.only(top: 10, bottom: 2),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: .72),
-                            ],
-                          ),
-                        ),
-                        child: Center(child: LivesRow(lives: lives, size: 12)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7.6),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColorFiltered(
+                      colorFilter: out
+                          ? const ColorFilter.mode(
+                        Colors.grey,
+                        BlendMode.saturation,
+                      )
+                          : const ColorFilter.mode(
+                        Colors.transparent,
+                        BlendMode.srcOver,
+                      ),
+                      child: GameImage(
+                        path: protagonistPath(cardId),
+                        fit: BoxFit.cover,
+                        cacheWidth: 160,
                       ),
                     ),
-                  if (flash > 0)
-                    ColoredBox(
-                      color: Color.lerp(
-                        Colors.white,
-                        accent,
-                        .35,
-                      )!.withValues(alpha: (flash * .55).clamp(0.0, .65)),
-                    ),
-                ],
+                    if (jailed) const CustomPaint(painter: _BarsPaint()),
+                    if (flash > 0)
+                      ColoredBox(
+                        color: Color.lerp(
+                          Colors.white,
+                          accent,
+                          .35,
+                        )!.withValues(alpha: (flash * .55).clamp(0.0, .65)),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        if (cornerIcon != null)
-          Positioned(
-            top: 3,
-            left: 4,
-            child: Icon(
-              cornerIcon,
-              size: 14,
-              color: speaking ? EmbunColors.gold : EmbunColors.mist,
-              shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
-            ),
-          ),
-        if (jailed)
-          Positioned(
-            top: 3,
-            right: 4,
-            child: Icon(
-              Icons.lock_rounded,
-              size: 14,
-              color: const Color(0xFFE5B96C),
-              shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
-            ),
-          ),
-        if (cross > 0)
-          Positioned.fill(child: CustomPaint(painter: _CrossPaint(cross))),
-      ],
+          if (cross > 0)
+            Positioned.fill(child: CustomPaint(painter: _CrossPaint(cross))),
+        ],
+      ),
     );
   }
+}
+
+/// Tiga batang suara emas yang bergerak; diam bila animasi dimatikan.
+class _VoiceBars extends StatefulWidget {
+  const _VoiceBars();
+  @override
+  State<_VoiceBars> createState() => _VoiceBarsState();
+}
+
+class _VoiceBarsState extends State<_VoiceBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 20,
+    child: AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (var i = 0; i < 3; i++)
+            Container(
+              width: 3.5,
+              height:
+              6 + 12 * (.5 + .5 * math.sin(2 * math.pi * (_c.value + i * .27))),
+              margin: EdgeInsets.only(left: i == 0 ? 0 : 2),
+              decoration: BoxDecoration(
+                color: EmbunColors.gold,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Jeruji tipis di atas potret pemain yang sedang dikurung.
@@ -436,7 +532,7 @@ class _BarsPaint extends CustomPainter {
     final p = Paint()
       ..color = const Color(0xFFE5B96C).withValues(alpha: .6)
       ..strokeWidth = 1.8;
-    const n = 5;
+    const n = 4;
     for (var i = 1; i <= n; i++) {
       final x = s.width * i / (n + 1);
       c.drawLine(Offset(x, 0), Offset(x, s.height), p);
