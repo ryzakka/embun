@@ -8,9 +8,9 @@ import 'player_status.dart';
 /// Public portraits and public status only. A target whitelist is supplied by
 /// the ability owner; selecting a tile never sends an action by itself.
 ///
-/// Tampilan: roster datar. Tanpa kotak/gelembung per pemain; satu-satunya
-/// "bingkai" adalah potretnya. Status ditandai lewat cincin potret, warna teks
-/// kecil, dan ikon, bukan lewat wadah. Parameter publik TIDAK berubah dari
+/// Tampilan: roster rapat, hanya dua tingkat per pemain (potret + nama).
+/// Tanpa kotak; nyawa dan status ditaruh di atas potret (hati di dasar potret,
+/// ikon kecil di pojok, cincin berwarna). Parameter publik TIDAK berubah dari
 /// versi awal; [focusFlash] (0..1) adalah tambahan opsional untuk adegan papan.
 class MeetingPlayerGrid extends StatelessWidget {
   const MeetingPlayerGrid({
@@ -42,28 +42,28 @@ class MeetingPlayerGrid extends StatelessWidget {
   final GlobalKey? focusAnchor;
   final bool shrinkWrap, busy;
 
+  /// Ukuran potret (di dalam bingkai). Dipakai juga oleh adegan papan untuk
+  /// mengarahkan efek; ubah di dua tempat bila angkanya diganti.
+  static const double portraitW = 52, portraitH = 74;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final reduced = MediaQuery.disableAnimationsOf(context);
-      // Banyak kolom kecil, bukan sedikit kolom lebar.
-      final cols = box.maxWidth >= 480
-          ? 4
-          : box.maxWidth >= 300
-          ? 3
-          : 2;
-      final height = 98.0 + math.max(0, scale - 1) * 30;
+      // Sel dibuat sepanjang potret + sedikit, supaya pemain rapat satu sama lain.
+      final cols = (box.maxWidth / 72).floor().clamp(3, 6);
+      final height = 102.0 + math.max(0, scale - 1) * 22;
       return GridView.builder(
         key: const ValueKey('meeting-player-grid'),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         shrinkWrap: shrinkWrap,
         physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         itemCount: players.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: cols,
           mainAxisExtent: height,
-          crossAxisSpacing: 4,
+          crossAxisSpacing: 0,
           mainAxisSpacing: 2,
         ),
         itemBuilder: (context, i) {
@@ -120,16 +120,17 @@ class MeetingPlayerGrid extends StatelessWidget {
                   : null,
             ),
           );
-          // Masuk berurutan: muncul + membesar sedikit. Tidak menggeser posisi,
-          // supaya titik sasaran efek di adegan papan tetap akurat.
+          // Masuk hampir serempak (jeda sangat tipis) agar tidak terlihat
+          // bertahap. Tidak menggeser posisi, supaya titik sasaran efek di
+          // adegan papan tetap akurat.
           if (!reduced) {
             tile = TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 260 + math.min(i, 10) * 35),
+              duration: Duration(milliseconds: 240 + math.min(i, 5) * 20),
               curve: Curves.easeOutCubic,
               builder: (context, v, child) => Opacity(
                 opacity: v.clamp(0.0, 1.0).toDouble(),
-                child: Transform.scale(scale: 0.94 + 0.06 * v, child: child),
+                child: Transform.scale(scale: 0.95 + 0.05 * v, child: child),
               ),
               child: tile,
             );
@@ -172,35 +173,17 @@ class _PlayerCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = player;
     final me = id == myId;
-    final strong = selected || focused || speaking;
     final stateText = out
         ? 'tersingkir'
         : jailed
         ? 'dikurung'
         : '${livesLeft(p)} nyawa';
-
-    final statusText = out
-        ? 'Tersingkir'
-        : jailed
-        ? 'Dikurung'
-        : me
-        ? 'Kamu'
-        : speaking
-        ? 'Sedang bicara'
-        : 'Aktif';
-    final statusColor = out
-        ? const Color(0xFFB4686B)
-        : jailed
-        ? const Color(0xFFE5B96C)
-        : me
-        ? EmbunColors.mist
-        : speaking
-        ? EmbunColors.gold
-        : EmbunColors.leaf.withValues(alpha: .75);
     final nameColor = out
         ? Colors.white54
         : selected
         ? const Color(0xFF8FCBFF)
+        : me
+        ? EmbunColors.mist
         : EmbunColors.cream;
 
     return Semantics(
@@ -222,7 +205,7 @@ class _PlayerCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -231,18 +214,21 @@ class _PlayerCell extends StatelessWidget {
                     children: [
                       _Portrait(
                         cardId: '${p['character_card'] ?? 'default'}',
+                        lives: livesLeft(p),
                         out: out,
                         jailed: jailed,
-                        glow: strong,
+                        me: me,
+                        speaking: speaking,
                         selected: selected,
+                        focused: focused,
                         accent: accent,
                         cross: cross,
                         flash: flash,
                       ),
                       if (selected)
                         Positioned(
-                          top: -5,
-                          right: -7,
+                          top: -6,
+                          right: -6,
                           child: TweenAnimationBuilder<double>(
                             tween: Tween(begin: 0.4, end: 1.0),
                             duration: const Duration(milliseconds: 260),
@@ -264,51 +250,29 @@ class _PlayerCell extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
+                  // Nama mengecil sendiri bila panjang, supaya tetap terbaca
+                  // utuh dan tinggi semua sel seragam.
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      Text(
-                        '${p['name'] ?? 'Pemain'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.15,
-                          fontWeight: FontWeight.w800,
-                          color: nameColor,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${p['name'] ?? 'Pemain'}',
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.15,
+                            fontWeight: FontWeight.w800,
+                            color: nameColor,
+                          ),
                         ),
                       ),
                       if (cross > 0)
                         Positioned.fill(
                           child: CustomPaint(painter: _NameStrike(cross)),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  // Status berupa teks kecil berwarna (tanpa wadah) + nyawa.
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          statusText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            height: 1.1,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
-                          ),
-                        ),
-                      ),
-                      if (!out) ...[
-                        const SizedBox(width: 4),
-                        LivesRow(lives: livesLeft(p), size: 11),
-                      ],
                     ],
                   ),
                 ],
@@ -324,95 +288,140 @@ class _PlayerCell extends StatelessWidget {
 class _Portrait extends StatelessWidget {
   const _Portrait({
     required this.cardId,
+    required this.lives,
     required this.out,
     required this.jailed,
-    required this.glow,
+    required this.me,
+    required this.speaking,
     required this.selected,
+    required this.focused,
     required this.accent,
     required this.cross,
     required this.flash,
   });
   final String cardId;
-  final bool out, jailed, glow, selected;
+  final int lives;
+  final bool out, jailed, me, speaking, selected, focused;
   final Color accent;
   final double cross, flash;
 
   @override
-  Widget build(BuildContext context) => Stack(
-    clipBehavior: Clip.none,
-    children: [
-      AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: accent.withValues(alpha: glow ? .95 : .5),
-            width: selected ? 2.2 : 1.4,
+  Widget build(BuildContext context) {
+    final glow = selected || focused || speaking;
+    final cornerIcon = speaking
+        ? Icons.graphic_eq_rounded
+        : me && !out
+        ? Icons.person_rounded
+        : null;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: accent.withValues(alpha: glow || jailed ? .95 : .5),
+              width: 1.6,
+            ),
+            boxShadow: glow
+                ? [
+              BoxShadow(
+                color: accent.withValues(alpha: .4),
+                blurRadius: 12,
+              ),
+              // cincin tambahan tanpa mengubah ukuran sel
+              if (selected)
+                BoxShadow(color: accent, spreadRadius: 1.4),
+            ]
+                : null,
           ),
-          boxShadow: glow
-              ? [BoxShadow(color: accent.withValues(alpha: .4), blurRadius: 12)]
-              : null,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8.5),
-          child: SizedBox(
-            width: 38,
-            height: 56,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColorFiltered(
-                  colorFilter: out
-                      ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
-                      : const ColorFilter.mode(
-                    Colors.transparent,
-                    BlendMode.srcOver,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8.5),
+            child: SizedBox(
+              width: MeetingPlayerGrid.portraitW,
+              height: MeetingPlayerGrid.portraitH,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColorFiltered(
+                    colorFilter: out
+                        ? const ColorFilter.mode(
+                      Colors.grey,
+                      BlendMode.saturation,
+                    )
+                        : const ColorFilter.mode(
+                      Colors.transparent,
+                      BlendMode.srcOver,
+                    ),
+                    child: GameImage(
+                      path: protagonistPath(cardId),
+                      fit: BoxFit.cover,
+                      cacheWidth: 160,
+                    ),
                   ),
-                  child: GameImage(
-                    path: protagonistPath(cardId),
-                    fit: BoxFit.cover,
-                    cacheWidth: 160,
-                  ),
-                ),
-                if (flash > 0)
-                  ColoredBox(
-                    color: Color.lerp(
-                      Colors.white,
-                      accent,
-                      .35,
-                    )!.withValues(alpha: (flash * .55).clamp(0.0, .65)),
-                  ),
-              ],
+                  if (jailed) const CustomPaint(painter: _BarsPaint()),
+                  // Nyawa di dasar potret, di atas gradasi gelap tipis.
+                  if (!out)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.only(top: 10, bottom: 2),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: .72),
+                            ],
+                          ),
+                        ),
+                        child: Center(child: LivesRow(lives: lives, size: 12)),
+                      ),
+                    ),
+                  if (flash > 0)
+                    ColoredBox(
+                      color: Color.lerp(
+                        Colors.white,
+                        accent,
+                        .35,
+                      )!.withValues(alpha: (flash * .55).clamp(0.0, .65)),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      if (jailed)
-        const Positioned.fill(
-          child: IgnorePointer(child: CustomPaint(painter: _BarsPaint())),
-        ),
-      if (cross > 0)
-        Positioned.fill(child: CustomPaint(painter: _CrossPaint(cross))),
-      if (jailed)
-        Positioned(
-          right: -4,
-          bottom: -4,
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF1A1405),
-              border: Border.all(color: const Color(0xFFE5B96C), width: 1.2),
+        if (cornerIcon != null)
+          Positioned(
+            top: 3,
+            left: 4,
+            child: Icon(
+              cornerIcon,
+              size: 14,
+              color: speaking ? EmbunColors.gold : EmbunColors.mist,
+              shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
             ),
-            child: const Icon(
+          ),
+        if (jailed)
+          Positioned(
+            top: 3,
+            right: 4,
+            child: Icon(
               Icons.lock_rounded,
-              color: Color(0xFFE5B96C),
-              size: 11,
+              size: 14,
+              color: const Color(0xFFE5B96C),
+              shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
             ),
           ),
-        ),
-    ],
-  );
+        if (cross > 0)
+          Positioned.fill(child: CustomPaint(painter: _CrossPaint(cross))),
+      ],
+    );
+  }
 }
 
 /// Jeruji tipis di atas potret pemain yang sedang dikurung.
@@ -420,12 +429,6 @@ class _BarsPaint extends CustomPainter {
   const _BarsPaint();
   @override
   void paint(Canvas c, Size s) {
-    final r = RRect.fromRectAndRadius(
-      Offset.zero & s,
-      const Radius.circular(10),
-    );
-    c.save();
-    c.clipRRect(r);
     c.drawRect(
       Offset.zero & s,
       Paint()..color = Colors.black.withValues(alpha: .22),
@@ -433,12 +436,11 @@ class _BarsPaint extends CustomPainter {
     final p = Paint()
       ..color = const Color(0xFFE5B96C).withValues(alpha: .6)
       ..strokeWidth = 1.8;
-    const n = 4;
+    const n = 5;
     for (var i = 1; i <= n; i++) {
       final x = s.width * i / (n + 1);
       c.drawLine(Offset(x, 0), Offset(x, s.height), p);
     }
-    c.restore();
   }
 
   @override

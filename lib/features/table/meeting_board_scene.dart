@@ -67,12 +67,13 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
     });
   }
 
-  /// Sel pemain = potret + nama + status. Efek diarahkan ke potretnya saja
-  /// (posisi dan ukuran potret tetap: 38x56 + bingkai, 3px dari atas sel).
+  /// Sel pemain = potret (52x74 + bingkai) + nama. Efek diarahkan ke potretnya
+  /// saja; potret berada kira-kira 4px dari atas sel. Sesuaikan bila ukuran
+  /// potret di meeting_player_grid.dart diubah.
   Rect _portraitRect(Rect cell) => Rect.fromCenter(
-    center: Offset(cell.center.dx, cell.top + 32.5),
-    width: 44,
-    height: 62,
+    center: Offset(cell.center.dx, cell.top + 42.6),
+    width: 56,
+    height: 78,
   );
 
   bool _reduced = false;
