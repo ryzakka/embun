@@ -1,3 +1,6 @@
+// Keep explicit collection guards for compatibility with the Dart 3.10 analyzer.
+// ignore_for_file: use_null_aware_elements
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +11,7 @@ import '../common/scene_flow.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import 'card_tile.dart';
+import '../flame/offering_flame_layer.dart';
 
 double _seg(double u, double a, double b) =>
     ((u - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -20,17 +24,35 @@ List<double> _sat(double s) {
   final inv = 1 - s;
   final r = 0.2126 * inv, g = 0.7152 * inv, b = 0.0722 * inv;
   return [
-    r + s, g, b, 0, 0,
-    r, g + s, b, 0, 0,
-    r, g, b + s, 0, 0,
-    0, 0, 0, 1, 0,
+    r + s,
+    g,
+    b,
+    0,
+    0,
+    r,
+    g + s,
+    b,
+    0,
+    0,
+    r,
+    g,
+    b + s,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 
 Offset _bz(Offset p0, Offset c, Offset p1, double e) {
   final a = (1 - e) * (1 - e), b = 2 * (1 - e) * e, d = e * e;
   return Offset(
-      a * p0.dx + b * c.dx + d * p1.dx, a * p0.dy + b * c.dy + d * p1.dy);
+    a * p0.dx + b * c.dx + d * p1.dx,
+    a * p0.dy + b * c.dy + d * p1.dy,
+  );
 }
 
 /// Palet pendaran khusus kartu lanjutan (kind 'lanjutan'), berbeda dari kartu
@@ -42,9 +64,17 @@ class _AdvPal {
 }
 
 const _regenPal = _AdvPal(
-    Color(0xFF3DDC84), Color(0xFF7DF9E0), Color(0xFFD6FFE9), Color(0xFF0B2A1C));
+  Color(0xFF3DDC84),
+  Color(0xFF7DF9E0),
+  Color(0xFFD6FFE9),
+  Color(0xFF0B2A1C),
+);
 const _rekayasaPal = _AdvPal(
-    Color(0xFFFF3B4E), Color(0xFFFF8A5C), Color(0xFFFFD0C8), Color(0xFF30090F));
+  Color(0xFFFF3B4E),
+  Color(0xFFFF8A5C),
+  Color(0xFFFFD0C8),
+  Color(0xFF30090F),
+);
 
 /// Gambar pohon menurut jumlah daun: pohon0 (rimbun) ... pohon9 (mati);
 /// 30 daun (sempurna) memakai pohon0-sakura.
@@ -82,6 +112,10 @@ class OfferingCeremony extends StatefulWidget {
   final int fallbackLeaves;
   final Map<String, Map<String, dynamic>> defs;
   final bool dark;
+
+  /// Experimental visual renderer; false keeps the original Flutter scene.
+  final bool useFlame;
+
   /// [covered] true bila adegan berjalan sampai selesai DAN menampilkan hasil
   /// tiap kartu; layar nilai lalu hanya menampilkan sisa efek (kabut, dsb.).
   final void Function(bool covered) onDone;
@@ -99,6 +133,7 @@ class OfferingCeremony extends StatefulWidget {
     required this.onDone,
     this.winLeaves = 20,
     this.dark = false,
+    this.useFlame = true,
   });
 
   @override
@@ -120,6 +155,26 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   /// Efek per kartu (effect_log.card_seq) dan apakah adegan sampai selesai.
   List<Map<String, dynamic>> _fx = [];
   bool _completed = false;
+  bool _flameFailed = false;
+  bool _flameStarted = false;
+  Timer? _flameLoadTimer;
+  Timer? _heartbeatTimer;
+  bool get _flameActive => widget.useFlame && !_flameFailed;
+
+  void _onFlameReady() {
+    if (!mounted || _done || !_flameActive || _flameStarted) return;
+    _flameStarted = true;
+    _flameLoadTimer?.cancel();
+    _ctl?.forward();
+  }
+
+  void _onFlameFailure() {
+    if (!mounted || _done || !_flameActive) return;
+    _flameLoadTimer?.cancel();
+    setState(() => _flameFailed = true);
+    _ctl?.forward();
+  }
+
   bool get _hasBound => _fx.any((r) => r['card_seq'] != null);
 
   static const _lead = 900; // jeda awal (ms): pohon muncul dari gelap
@@ -143,7 +198,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       cards = r[0] as List<String>;
       before = r[1] as int?;
     } catch (_) {}
-    if (!mounted) return;
+    if (!mounted || _done) return;
     if (cards.isEmpty) {
       _finish();
       return;
@@ -152,11 +207,13 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     try {
       fx = await widget.repo.effects(widget.gameId, widget.day);
     } catch (_) {}
-    if (!mounted) return;
+    if (!mounted || _done) return;
     _per = cards.length <= 6 ? 2400 : 1800;
     final total = _lead + cards.length * _per + _tail;
     final c = AnimationController(
-        vsync: this, duration: Duration(milliseconds: total));
+      vsync: this,
+      duration: Duration(milliseconds: total),
+    );
     c.addListener(_onTick);
     c.addStatusListener((s) {
       if (s == AnimationStatus.completed) {
@@ -171,12 +228,21 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       _ctl = c;
       _loaded = true;
     });
-    c.forward();
+    if (_flameActive) {
+      // Do not consume the ceremony clock while textures are still loading.
+      // An unavailable renderer must never hold the game on this scene.
+      _flameLoadTimer = Timer(const Duration(seconds: 8), _onFlameFailure);
+    } else {
+      c.forward();
+    }
   }
 
   void _finish() {
     if (_done) return;
     _done = true;
+    _flameLoadTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    _ctl?.stop();
     if (mounted) widget.onDone(_completed && _hasBound);
   }
 
@@ -189,12 +255,17 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   }
 
   void _onTick() {
+    if (_done) return;
     for (var i = 0; i < _cards.length; i++) {
       final u = _local(i) / _per;
       if (u >= 0.40 && _hapFlip.add(i)) HapticFeedback.selectionClick();
       if (u >= 0.86 && _hapHit.add(i)) {
-        Sfx.I.play(_isBad(i) ? Snd.slashPedang : Snd.slashCahaya,
-            owner: this, tag: 'hit', replace: true);
+        Sfx.I.play(
+          _isBad(i) ? Snd.slashPedang : Snd.slashCahaya,
+          owner: this,
+          tag: 'hit',
+          replace: true,
+        );
         if (_isBad(i)) {
           HapticFeedback.heavyImpact();
         } else {
@@ -209,8 +280,9 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       if (t >= _cards.length * _per + 200) {
         _hapTail = true;
         HapticFeedback.mediumImpact();
-        Future.delayed(
-            const Duration(milliseconds: 170), HapticFeedback.heavyImpact);
+        _heartbeatTimer = Timer(const Duration(milliseconds: 170), () {
+          if (mounted && !_done) HapticFeedback.heavyImpact();
+        });
       }
     }
   }
@@ -226,6 +298,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
   @override
   void dispose() {
+    _flameLoadTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _ctl?.dispose();
     Sfx.I.release(this);
     super.dispose();
@@ -242,21 +316,23 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         // saat adegan mulai, yang dulu tampak seperti kedipan).
         child: !_loaded
             ? Stack(
-          fit: StackFit.expand,
-          children: [
-            Backdrop(
-                path: landscapePath(_leaves),
-                dark: widget.dark,
-                dim: 0.78),
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 650),
-              builder: (context, a, child) => ColoredBox(
-                  color: const Color(0xFF050A08).withValues(alpha: a)),
-            ),
-            const EmbunLoading(text: 'Menuju Hayu...'),
-          ],
-        )
+                fit: StackFit.expand,
+                children: [
+                  Backdrop(
+                    path: landscapePath(_leaves),
+                    dark: widget.dark,
+                    dim: 0.78,
+                  ),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 650),
+                    builder: (context, a, child) => ColoredBox(
+                      color: const Color(0xFF050A08).withValues(alpha: a),
+                    ),
+                  ),
+                  const EmbunLoading(text: 'Menuju Hayu...'),
+                ],
+              )
             : LayoutBuilder(builder: (context, box) => _stage(box)),
       ),
     );
@@ -282,9 +358,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         final cur = (t / _per).floor().clamp(0, n - 1).toInt();
         final endCards = n * _per.toDouble();
         final tail = ((t - endCards) / _tail).clamp(0.0, 1.0).toDouble();
-        final beat = math
-            .pow(math.max(0.0, math.sin(ms / 1000 * 2.4)), 8)
-            .toDouble() *
+        final beat =
+            math.pow(math.max(0.0, math.sin(ms / 1000 * 2.4)), 8).toDouble() *
             (1 + 1.5 * tail);
 
         // Kartu yang sudah mendarat: menentukan aura dan titik kemajuan.
@@ -303,7 +378,10 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         var mix = landed == 0 ? 0.0 : badN / landed;
         if (widget.dark) mix = 0.5 + 0.5 * mix;
         final aura = Color.lerp(
-            const Color(0xFFFFD866), const Color(0xFFB07CE8), mix)!;
+          const Color(0xFFFFD866),
+          const Color(0xFFB07CE8),
+          mix,
+        )!;
 
         // Dampak kartu sekarang dan sebelumnya.
         var goodP = 0.0, badP = 0.0, dx = 0.0, dy = 0.0;
@@ -332,8 +410,9 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         final shown = (t / _per).floor().clamp(-1, n - 1).toInt() + 1;
 
         // ---- pohon layar penuh ----
-        final kb =
-        Curves.easeInOut.transform((ms / totalMs).clamp(0.0, 1.0).toDouble());
+        final kb = Curves.easeInOut.transform(
+          (ms / totalMs).clamp(0.0, 1.0).toDouble(),
+        );
         final treeScale = 1.0 + 0.10 * kb + 0.010 * beat + 0.025 * goodP;
         final sat = (1 - 0.65 * badP - 0.15 * tail).clamp(0.0, 1.0).toDouble();
         final tree = ClipRect(
@@ -359,12 +438,12 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
         Widget? advFx;
         final ghosts = <Widget>[];
         final u = _local(cur) / _per;
-        if (u >= 0 && u < 0.86) {
+        if (u >= 0 && u < 0.86 && !_flameActive) {
           final id = _cards[cur];
           final bad = _isBad(cur);
           final pal = _advPal(cur);
-          final glow = pal?.core ??
-              (bad ? EmbunColors.mist : const Color(0xFFFFD866));
+          final glow =
+              pal?.core ?? (bad ? EmbunColors.mist : const Color(0xFFFFD866));
           final dir = cur.isEven ? 1.0 : -1.0;
           final a = Curves.easeOutCubic.transform(_seg(u, 0, 0.26));
           final f = Curves.easeInOut.transform(_seg(u, 0.26, 0.46));
@@ -373,13 +452,18 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           thFx = thRaw;
           thBad = bad;
           final hover = _seg(u, 0.40, 0.50) * (1 - _seg(u, 0.62, 0.66));
-          final ctrl = Offset(W / 2 - dir * W * 0.30,
-              (mid.dy + target.dy) / 2 - H * 0.12);
+          final ctrl = Offset(
+            W / 2 - dir * W * 0.30,
+            (mid.dy + target.dy) / 2 - H * 0.12,
+          );
 
           Offset posAt(double thv) {
             if (thv > 0) return _bz(mid, ctrl, target, thv);
-            return Offset.lerp(start, mid, a)!
-                .translate(0, math.sin(u * math.pi * 7) * 4 * hover);
+            return Offset.lerp(
+              start,
+              mid,
+              a,
+            )!.translate(0, math.sin(u * math.pi * 7) * 4 * hover);
           }
 
           double scaleAt(double thv) => thv > 0
@@ -400,10 +484,12 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      glow.withValues(alpha: 0.38 * hover),
-                      glow.withValues(alpha: 0),
-                    ]),
+                    gradient: RadialGradient(
+                      colors: [
+                        glow.withValues(alpha: 0.38 * hover),
+                        glow.withValues(alpha: 0),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -413,21 +499,24 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           // Jejak bayangan saat dilempar.
           if (th > 0) {
             for (var k = 4; k >= 1; k--) {
-              final thk = Curves.easeInCubic
-                  .transform((thRaw - k * 0.055).clamp(0.0, 1.0).toDouble());
+              final thk = Curves.easeInCubic.transform(
+                (thRaw - k * 0.055).clamp(0.0, 1.0).toDouble(),
+              );
               if (thk <= 0) continue;
-              ghosts.add(_flyingCard(
-                pos: posAt(thk),
-                spin: spinAt(thk),
-                scale: scaleAt(thk),
-                flip: math.pi,
-                w: cardW,
-                h: cardH,
-                glow: glow,
-                opacity: (1 - k / 5) * 0.32,
-                back: _back(cardW, cardH),
-                front: _back(cardW, cardH),
-              ));
+              ghosts.add(
+                _flyingCard(
+                  pos: posAt(thk),
+                  spin: spinAt(thk),
+                  scale: scaleAt(thk),
+                  flip: math.pi,
+                  w: cardW,
+                  h: cardH,
+                  glow: glow,
+                  opacity: (1 - k / 5) * 0.32,
+                  back: _back(cardW, cardH),
+                  front: _back(cardW, cardH),
+                ),
+              );
             }
           }
 
@@ -440,8 +529,14 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             h: cardH,
             glow: glow,
             back: _back(cardW, cardH),
-            front: _front(id, cardW, cardH, glow,
-                pal: pal, pulse: 0.5 + 0.5 * math.sin(ms / 1000 * 7)),
+            front: _front(
+              id,
+              cardW,
+              cardH,
+              glow,
+              pal: pal,
+              pulse: 0.5 + 0.5 * math.sin(ms / 1000 * 7),
+            ),
           );
 
           // Pendaran khusus kartu lanjutan. Mulai setelah kartu berbalik
@@ -453,7 +548,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
               if (th > 0) {
                 for (var k = 1; k <= 6; k++) {
                   final thk = Curves.easeInCubic.transform(
-                      (thRaw - k * 0.05).clamp(0.0, 1.0).toDouble());
+                    (thRaw - k * 0.05).clamp(0.0, 1.0).toDouble(),
+                  );
                   if (thk <= 0) continue;
                   trail.add((posAt(thk), scaleAt(thk)));
                 }
@@ -477,8 +573,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             }
           }
 
-          final pt = _smooth(_seg(u, 0.30, 0.40)) *
-              (1 - _smooth(_seg(u, 0.58, 0.66)));
+          final pt =
+              _smooth(_seg(u, 0.30, 0.40)) * (1 - _smooth(_seg(u, 0.58, 0.66)));
           if (pt > 0.01) {
             plate = Positioned(
               left: 0,
@@ -497,13 +593,32 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
           }
         }
 
+        // The original Flutter nameplate stays above the Flame canvas.
+        if (_flameActive && u >= 0.36 && u < 0.66) {
+          final opacity =
+              _smooth(_seg(u, 0.36, 0.42)) * (1 - _smooth(_seg(u, 0.58, 0.66)));
+          plate = Positioned(
+            left: 12,
+            right: 12,
+            top: mid.dy + cardH * 0.5 * 1.16 + 10,
+            child: IgnorePointer(
+              child: Center(
+                child: Opacity(
+                  opacity: opacity,
+                  child: _plate(_cards[cur], _isBad(cur), _advPal(cur)),
+                ),
+              ),
+            ),
+          );
+        }
+
         // ---- penutup / pembuka layar ----
         final fadeIn = 1 - _smooth(_seg(ms, 0, 800));
-        final fadeOut =
-        _smooth(_seg(ms, totalMs - kSceneFadeOutMs, totalMs));
+        final fadeOut = _smooth(_seg(ms, totalMs - kSceneFadeOutMs, totalMs));
         final blackA = math.max(fadeIn, fadeOut);
 
-        final capT = _smooth(_seg(tail, 0.12, 0.38)) *
+        final capT =
+            _smooth(_seg(tail, 0.12, 0.38)) *
             (1 - _smooth(_seg(tail, 0.82, 1.0)));
         final dots = '.' * (1 + ((ms / 350).floor() % 3));
 
@@ -530,7 +645,8 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             Positioned.fill(
               child: IgnorePointer(
                 child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.26 + 0.2 * tail)),
+                  color: Colors.black.withValues(alpha: 0.26 + 0.2 * tail),
+                ),
               ),
             ),
             Positioned.fill(
@@ -549,56 +665,85 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                 ),
               ),
             ),
-            // aura, kabut, butiran cahaya berpusar menuju Hayu
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _Atmos(
-                    ms: ms,
-                    target: target,
-                    dark: widget.dark,
-                    energy: energy,
-                    beat: beat,
-                    tail: tail,
-                    aura: aura,
-                  ),
-                ),
-              ),
-            ),
-            // ledakan di titik hantam
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _ImpactPainter(
-                    impacts: impacts,
-                    center: target,
-                    radius: cardH * 1.0,
-                    dark: widget.dark,
-                    sakura: sakura,
-                  ),
-                ),
-              ),
-            ),
-            if (flashA > 0.01)
+            if (_flameActive)
               Positioned.fill(
-                child: IgnorePointer(
-                  child: ColoredBox(color: flashCol.withValues(alpha: flashA)),
+                child: OfferingFlameLayer(
+                  key: ObjectKey(_ctl),
+                  clock: _ctl!,
+                  perCardMs: _per,
+                  backPath: itemBackPath(),
+                  cards: [
+                    for (var i = 0; i < _cards.length; i++)
+                      OfferingFlameCard(
+                        name: '${widget.defs[_cards[i]]?['name'] ?? _cards[i]}',
+                        imagePath: cardArtPath(widget.defs[_cards[i]]),
+                        bad: _isBad(i),
+                        advanced: widget.defs[_cards[i]]?['kind'] == 'lanjutan',
+                        blocked: _isBlocked(i),
+                      ),
+                  ],
+                  onReady: _onFlameReady,
+                  onFailure: _onFlameFailure,
                 ),
               ),
-            if (holdGlow != null) holdGlow,
-            if (advFx != null) advFx,
-            if (thFx > 0.15)
+            if (!_flameActive) ...[
+              // aura, kabut, butiran cahaya berpusar menuju Hayu
               Positioned.fill(
                 child: IgnorePointer(
                   child: CustomPaint(
-                    painter:
-                    _SpeedPainter(center: target, th: thFx, bad: thBad),
+                    painter: _Atmos(
+                      ms: ms,
+                      target: target,
+                      dark: widget.dark,
+                      energy: energy,
+                      beat: beat,
+                      tail: tail,
+                      aura: aura,
+                    ),
                   ),
                 ),
               ),
-            ...ghosts,
-            if (flying != null) flying,
-            if (plate != null) plate,
+              // ledakan di titik hantam
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _ImpactPainter(
+                      impacts: impacts,
+                      center: target,
+                      radius: cardH * 1.0,
+                      dark: widget.dark,
+                      sakura: sakura,
+                    ),
+                  ),
+                ),
+              ),
+              if (flashA > 0.01)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: flashCol.withValues(alpha: flashA),
+                    ),
+                  ),
+                ),
+              if (holdGlow != null) holdGlow,
+              if (advFx != null) advFx,
+              if (thFx > 0.15)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _SpeedPainter(
+                        center: target,
+                        th: thFx,
+                        bad: thBad,
+                      ),
+                    ),
+                  ),
+                ),
+              ...ghosts,
+              if (flying != null) flying,
+              if (plate != null) plate,
+            ],
+            if (_flameActive && plate != null) plate,
             ..._fxOverlay(context, ms, W, H, target),
             // judul
             Positioned(
@@ -615,12 +760,13 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                         Text(
                           'Persembahan untuk Hayu  $shown/$n',
                           style: const TextStyle(
-                              fontSize: 14,
-                              letterSpacing: 1,
-                              color: Colors.white70,
-                              shadows: [
-                                Shadow(color: Colors.black, blurRadius: 8)
-                              ]),
+                            fontSize: 14,
+                            letterSpacing: 1,
+                            color: Colors.white70,
+                            shadows: [
+                              Shadow(color: Colors.black, blurRadius: 8),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -667,13 +813,14 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          for (var i = 0; i < n; i++)
-                            _pip(i, cur, ms / 1000),
+                          for (var i = 0; i < n; i++) _pip(i, cur, ms / 1000),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text('Ketuk untuk melewati',
-                          style: TextStyle(fontSize: 11, color: Colors.white38)),
+                      const Text(
+                        'Ketuk untuk melewati',
+                        style: TextStyle(fontSize: 11, color: Colors.white38),
+                      ),
                     ],
                   ),
                 ),
@@ -683,8 +830,10 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
               Positioned.fill(
                 child: IgnorePointer(
                   child: ColoredBox(
-                      color: Colors.black
-                          .withValues(alpha: blackA.clamp(0.0, 1.0).toDouble())),
+                    color: Colors.black.withValues(
+                      alpha: blackA.clamp(0.0, 1.0).toDouble(),
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -697,14 +846,18 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
   /// Perubahan daun pada satu efek: hanya yang tertulis "+N daun" / "-N daun".
   int _leafDelta(Map<String, dynamic> r) {
-    final m = RegExp(r'([+\-−–])\s*(\d+)\s*daun').firstMatch('${r['label'] ?? ''}');
+    final m = RegExp(
+      r'([+\-−–])\s*(\d+)\s*daun',
+    ).firstMatch('${r['label'] ?? ''}');
     if (m == null) return 0;
     final v = int.parse(m.group(2)!);
     return m.group(1) == '+' ? v : -v;
   }
 
-  List<Map<String, dynamic>> _rowsOf(int i) =>
-      [for (final r in _fx) if (r['card_seq'] == i + 1) r];
+  List<Map<String, dynamic>> _rowsOf(int i) => [
+    for (final r in _fx)
+      if (r['card_seq'] == i + 1) r,
+  ];
 
   /// Peristiwa efek tiap kartu yang baru mendarat (waktu [u] dalam satuan kartu).
   /// Dipakai untuk kubah perlindungan, orb daun, dan angka raksasa.
@@ -718,8 +871,10 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
   bool _isShield(int k) {
     for (final r in _rowsOf(k)) {
-      if (RegExp(r'\+\s*\d+\s*perlindungan', caseSensitive: false)
-          .hasMatch('${r['label'] ?? ''}')) {
+      if (RegExp(
+        r'\+\s*\d+\s*perlindungan',
+        caseSensitive: false,
+      ).hasMatch('${r['label'] ?? ''}')) {
         return true;
       }
     }
@@ -737,7 +892,12 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   /// Hitungan daun (bilah 30 segmen), angka raksasa saat mendarat, orb daun
   /// yang terbang ke hitungan, kubah perlindungan, dan label hasil.
   List<Widget> _fxOverlay(
-      BuildContext context, double ms, double W, double H, Offset target) {
+    BuildContext context,
+    double ms,
+    double W,
+    double H,
+    Offset target,
+  ) {
     if (!_hasBound) return const [];
     final n = _cards.length;
     final top = MediaQuery.paddingOf(context).top;
@@ -785,7 +945,11 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       final outA = 1 - _smooth(_seg(lu, 1.12, 1.30));
       final op = inA * outA;
       if (op > 0.01) {
-        final sc = _lerp(0.4, 1.0, Curves.easeOutBack.transform(_seg(lu, 0.86, 1.02)));
+        final sc = _lerp(
+          0.4,
+          1.0,
+          Curves.easeOutBack.transform(_seg(lu, 0.86, 1.02)),
+        );
         final rise = 70 * Curves.easeOut.transform(_seg(lu, 0.86, 1.25));
         final bad = ds < 0;
         final txt = ds != 0 ? '${ds > 0 ? '+' : '−'}${ds.abs()}' : 'DITAHAN';
@@ -820,10 +984,16 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                       color: col,
                       shadows: [
                         Shadow(color: glow, blurRadius: 28),
-                        Shadow(color: glow.withValues(alpha: 0.8), blurRadius: 60),
                         Shadow(
-                            color: Colors.black.withValues(alpha: bad ? 0.9 : 0.6),
-                            blurRadius: 6),
+                          color: glow.withValues(alpha: 0.8),
+                          blurRadius: 60,
+                        ),
+                        Shadow(
+                          color: Colors.black.withValues(
+                            alpha: bad ? 0.9 : 0.6,
+                          ),
+                          blurRadius: 6,
+                        ),
                       ],
                     ),
                   ),
@@ -869,12 +1039,14 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                          color: Color.lerp(EmbunColors.goldDim, flash, pulse)!,
-                          width: 1.5),
+                        color: Color.lerp(EmbunColors.goldDim, flash, pulse)!,
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                            color: flash.withValues(alpha: 0.5 * pulse),
-                            blurRadius: 24),
+                          color: flash.withValues(alpha: 0.5 * pulse),
+                          blurRadius: 24,
+                        ),
                       ],
                     ),
                     child: Column(
@@ -885,17 +1057,27 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Text('$lv',
-                                style: TextStyle(
-                                    fontSize: 26,
-                                    height: 1,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color.lerp(
-                                        EmbunColors.gold, flash, pulse))),
+                            Text(
+                              '$lv',
+                              style: TextStyle(
+                                fontSize: 26,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                                color: Color.lerp(
+                                  EmbunColors.gold,
+                                  flash,
+                                  pulse,
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 4),
-                            const Text('/ 30 daun',
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.white54)),
+                            const Text(
+                              '/ 30 daun',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white54,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 5),
@@ -904,7 +1086,11 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                           width: double.infinity,
                           child: CustomPaint(
                             painter: _LeafBarPainter(
-                                lit: lvF, win: widget.winLeaves, flash: flash, pulse: pulse),
+                              lit: lvF,
+                              win: widget.winLeaves,
+                              flash: flash,
+                              pulse: pulse,
+                            ),
                           ),
                         ),
                       ],
@@ -934,23 +1120,29 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
                       Container(
                         margin: const EdgeInsets.only(top: 5),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                              color: r['kind'] == 'bad'
-                                  ? EmbunColors.blood
-                                  : EmbunColors.leaf),
+                            color: r['kind'] == 'bad'
+                                ? EmbunColors.blood
+                                : EmbunColors.leaf,
+                          ),
                         ),
-                        child: Text('${r['label'] ?? ''}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: r['kind'] == 'bad'
-                                    ? EmbunColors.blood
-                                    : EmbunColors.leaf)),
+                        child: Text(
+                          '${r['label'] ?? ''}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: r['kind'] == 'bad'
+                                ? EmbunColors.blood
+                                : EmbunColors.leaf,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -964,8 +1156,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   Widget _pip(int i, int cur, double sec) {
     final landed = _local(i) / _per >= 0.86;
     final bad = _isBad(i);
-    final col =
-        _advPal(i)?.core ?? (bad ? EmbunColors.mist : EmbunColors.gold);
+    final col = _advPal(i)?.core ?? (bad ? EmbunColors.mist : EmbunColors.gold);
     final isCur = i == cur && !landed;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -1009,14 +1200,17 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.6,
-                  color: accent)),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.6,
+              color: accent,
+            ),
+          ),
           Text(
             kind.isEmpty
                 ? (bad ? 'Kartu jahat' : 'Kartu baik')
@@ -1043,10 +1237,10 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     final face = flip < math.pi / 2
         ? back
         : Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()..rotateY(math.pi),
-      child: front,
-    );
+            alignment: Alignment.center,
+            transform: Matrix4.identity()..rotateY(math.pi),
+            child: front,
+          );
     return Positioned(
       left: pos.dx - w / 2,
       top: pos.dy - h / 2,
@@ -1080,8 +1274,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(12),
       boxShadow: [
-        BoxShadow(
-            color: Colors.black.withValues(alpha: 0.55), blurRadius: 10),
+        BoxShadow(color: Colors.black.withValues(alpha: 0.55), blurRadius: 10),
       ],
     ),
     child: ClipRRect(
@@ -1093,8 +1286,14 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   /// Bingkai terbang ([h]) seragam supaya bentuk kartu tidak membocorkan
   /// sisinya sebelum berbalik. Muka kartu baru memakai tingginya sendiri
   /// (2:3 untuk antagonis) dan meluber simetris dari bingkai.
-  Widget _front(String id, double w, double h, Color glow,
-      {_AdvPal? pal, double pulse = 0}) {
+  Widget _front(
+    String id,
+    double w,
+    double h,
+    Color glow, {
+    _AdvPal? pal,
+    double pulse = 0,
+  }) {
     final fh = w * cardAspectForDef(widget.defs[id]);
     return OverflowBox(
       minWidth: w,
@@ -1111,16 +1310,13 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
             // Kartu lanjutan: lapis kedua yang berdenyut.
             if (pal != null)
               BoxShadow(
-                  color: pal.accent.withValues(alpha: 0.30 + 0.30 * pulse),
-                  blurRadius: 44 + 16 * pulse,
-                  spreadRadius: 2 + 3 * pulse),
+                color: pal.accent.withValues(alpha: 0.30 + 0.30 * pulse),
+                blurRadius: 44 + 16 * pulse,
+                spreadRadius: 2 + 3 * pulse,
+              ),
           ],
         ),
-        child: CardTile(
-          def: widget.defs[id],
-          fallbackName: id,
-          width: w,
-        ),
+        child: CardTile(def: widget.defs[id], fallbackName: id, width: w),
       ),
     );
   }
@@ -1131,7 +1327,8 @@ class _Impact {
   final double p; // 0..1
   final bool bad;
   final _AdvPal? pal; // kartu lanjutan: warna ledakan ikut palet
-  final bool blocked; // serangan ditahan perlindungan: hantaman cyan, tanpa retak
+  final bool
+  blocked; // serangan ditahan perlindungan: hantaman cyan, tanpa retak
   const _Impact(this.k, this.p, this.bad, [this.pal, this.blocked = false]);
 }
 
@@ -1200,8 +1397,8 @@ class _AdvFxPainter extends CustomPainter {
         final y = (f * 2 - 1) * halfH;
         final ph = f * math.pi * 2.6 - sec * 3.2 + st * math.pi;
         pts[st].add((
-        center + Offset(math.sin(ph) * amp, y),
-        math.cos(ph) * 0.5 + 0.5, // 1 = di depan, 0 = di belakang
+          center + Offset(math.sin(ph) * amp, y),
+          math.cos(ph) * 0.5 + 0.5, // 1 = di depan, 0 = di belakang
         ));
       }
     }
@@ -1220,13 +1417,20 @@ class _AdvFxPainter extends CustomPainter {
         final sz = (2.0 + 1.8 * depth) * scale.clamp(0.4, 1.4);
         final al = (0.30 + 0.70 * depth) * v * edge;
         canvas.drawCircle(
-            pos, sz * 2.6, Paint()..color = pal.core.withValues(alpha: 0.20 * al));
+          pos,
+          sz * 2.6,
+          Paint()..color = pal.core.withValues(alpha: 0.20 * al),
+        );
         canvas.drawCircle(
-            pos,
-            sz,
-            Paint()
-              ..color = Color.lerp(pal.accent, Colors.white, 0.45)!
-                  .withValues(alpha: 0.95 * al));
+          pos,
+          sz,
+          Paint()
+            ..color = Color.lerp(
+              pal.accent,
+              Colors.white,
+              0.45,
+            )!.withValues(alpha: 0.95 * al),
+        );
       }
     }
   }
@@ -1288,7 +1492,10 @@ class _Atmos extends CustomPainter {
       final dir = i.isEven ? 1.0 : -1.0;
       final x = (i * 0.31 + sec * 0.012 * dir) % 1.3 - 0.15;
       canvas.drawCircle(
-          Offset(w * x, h * (0.62 + 0.08 * i)), math.max(w, h) * 0.18, fp);
+        Offset(w * x, h * (0.62 + 0.08 * i)),
+        math.max(w, h) * 0.18,
+        fp,
+      );
     }
 
     // butiran berpusar menuju Hayu
@@ -1311,13 +1518,20 @@ class _Atmos extends CustomPainter {
       final al = (math.sin(f * math.pi) * 0.85).clamp(0.0, 1.0).toDouble();
       final col = Color.lerp(cols[i % 2], aura, 0.35)!;
       canvas.drawCircle(
-          pos, sz * 2.6, Paint()..color = col.withValues(alpha: 0.16 * al));
+        pos,
+        sz * 2.6,
+        Paint()..color = col.withValues(alpha: 0.16 * al),
+      );
       canvas.drawCircle(
-          pos,
-          sz,
-          Paint()
-            ..color = Color.lerp(col, Colors.white, 0.5)!
-                .withValues(alpha: 0.9 * al));
+        pos,
+        sz,
+        Paint()
+          ..color = Color.lerp(
+            col,
+            Colors.white,
+            0.5,
+          )!.withValues(alpha: 0.9 * al),
+      );
     }
   }
 
@@ -1350,15 +1564,15 @@ class _ImpactPainter extends CustomPainter {
       final a = im.blocked
           ? const Color(0xFF6FE3FF)
           : pal?.core ??
-          (bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866));
+                (bad ? const Color(0xFFB07CE8) : const Color(0xFFFFD866));
       final b = im.blocked
           ? const Color(0xFFBDF2FF)
           : pal?.accent ??
-          (bad ? const Color(0xFF6A3FA0) : const Color(0xFF9DF0B8));
+                (bad ? const Color(0xFF6A3FA0) : const Color(0xFF9DF0B8));
       final spark = im.blocked
           ? Colors.white
           : pal?.spark ??
-          (bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A));
+                (bad ? const Color(0xFFD9B8FF) : const Color(0xFFFFE08A));
       final p = im.p;
       final fade = (1 - p).clamp(0.0, 1.0).toDouble();
       final ease = Curves.easeOutCubic.transform(p);
@@ -1370,11 +1584,13 @@ class _ImpactPainter extends CustomPainter {
         center,
         fr,
         Paint()
-          ..shader = RadialGradient(colors: [
-            Colors.white.withValues(alpha: 0.9 * fade * fade),
-            a.withValues(alpha: 0.55 * fade),
-            a.withValues(alpha: 0),
-          ]).createShader(Rect.fromCircle(center: center, radius: fr)),
+          ..shader = RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.9 * fade * fade),
+              a.withValues(alpha: 0.55 * fade),
+              a.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(center: center, radius: fr)),
       );
 
       // Tiga cincin kejut.
@@ -1387,8 +1603,9 @@ class _ImpactPainter extends CustomPainter {
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 5 * (1 - pr) + 1
-            ..color = (r == 0 ? a : (r == 1 ? b : spark))
-                .withValues(alpha: 0.8 * (1 - pr)),
+            ..color = (r == 0 ? a : (r == 1 ? b : spark)).withValues(
+              alpha: 0.8 * (1 - pr),
+            ),
         );
       }
 
@@ -1420,10 +1637,14 @@ class _ImpactPainter extends CustomPainter {
           const half = 0.07;
           final path = Path()
             ..moveTo(center.dx, center.dy)
-            ..lineTo(center.dx + math.cos(ang - half) * rayLen,
-                center.dy + math.sin(ang - half) * rayLen)
-            ..lineTo(center.dx + math.cos(ang + half) * rayLen,
-                center.dy + math.sin(ang + half) * rayLen)
+            ..lineTo(
+              center.dx + math.cos(ang - half) * rayLen,
+              center.dy + math.sin(ang - half) * rayLen,
+            )
+            ..lineTo(
+              center.dx + math.cos(ang + half) * rayLen,
+              center.dy + math.sin(ang + half) * rayLen,
+            )
             ..close();
           canvas.drawPath(
             path,
@@ -1446,10 +1667,13 @@ class _ImpactPainter extends CustomPainter {
           final d0 = radius * (0.4 + 0.9 * rnd.nextDouble()) * ease;
           final sz = 5 + rnd.nextDouble() * 6;
           final rot = rnd.nextDouble() * 6 + p * 5;
-          final pos = center +
+          final pos =
+              center +
               Offset(math.cos(ang), math.sin(ang)) * d0 +
               Offset(0, 110 * p * p - 30 * ease);
-          final col = sakura ? pink[j % pink.length] : greens[j % greens.length];
+          final col = sakura
+              ? pink[j % pink.length]
+              : greens[j % greens.length];
           canvas.save();
           canvas.translate(pos.dx, pos.dy);
           canvas.rotate(rot);
@@ -1470,8 +1694,9 @@ class _ImpactPainter extends CustomPainter {
               radius: 0.9,
               colors: [
                 Colors.transparent,
-                (pal?.dim ?? const Color(0xFF1A1030))
-                    .withValues(alpha: 0.6 * fade),
+                (pal?.dim ?? const Color(0xFF1A1030)).withValues(
+                  alpha: 0.6 * fade,
+                ),
               ],
               stops: const [0.35, 1.0],
             ).createShader(rect),
@@ -1482,8 +1707,9 @@ class _ImpactPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeWidth = 2.5
-          ..color = (pal?.spark ?? const Color(0xFFE6D6FF))
-              .withValues(alpha: fade);
+          ..color = (pal?.spark ?? const Color(0xFFE6D6FF)).withValues(
+            alpha: fade,
+          );
         for (var k = 0; k < 8; k++) {
           final ang = rnd.nextDouble() * 2 * math.pi;
           final len = (radius * 0.7 + rnd.nextDouble() * radius * 1.1) * ease;
@@ -1492,7 +1718,8 @@ class _ImpactPainter extends CustomPainter {
           for (var i = 1; i <= steps; i++) {
             final f = i / steps;
             final jitter = (rnd.nextDouble() - 0.5) * 24;
-            final q = center +
+            final q =
+                center +
                 Offset(math.cos(ang), math.sin(ang)) * (len * f) +
                 Offset(-math.sin(ang), math.cos(ang)) * jitter;
             path.lineTo(q.dx, q.dy);
@@ -1505,7 +1732,8 @@ class _ImpactPainter extends CustomPainter {
           final ang = rnd.nextDouble() * 2 * math.pi;
           final d0 = radius * (0.3 + 0.8 * rnd.nextDouble()) * ease;
           final sz = 4 + rnd.nextDouble() * 6;
-          final pos = center +
+          final pos =
+              center +
               Offset(math.cos(ang), math.sin(ang)) * d0 +
               Offset(0, 70 * p * p);
           canvas.save();
@@ -1517,14 +1745,17 @@ class _ImpactPainter extends CustomPainter {
             ..lineTo(0, sz * 1.3)
             ..lineTo(-sz * 0.55, 0)
             ..close();
-          canvas.drawPath(shard,
-              Paint()..color = const Color(0xFF2A1745).withValues(alpha: fade));
           canvas.drawPath(
-              shard,
-              Paint()
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 1.2
-                ..color = spark.withValues(alpha: fade * 0.8));
+            shard,
+            Paint()..color = const Color(0xFF2A1745).withValues(alpha: fade),
+          );
+          canvas.drawPath(
+            shard,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.2
+              ..color = spark.withValues(alpha: fade * 0.8),
+          );
           canvas.restore();
         }
       }
@@ -1549,8 +1780,11 @@ class _SpeedPainter extends CustomPainter {
   final Offset center;
   final double th; // 0..1 kemajuan lemparan
   final bool bad;
-  const _SpeedPainter(
-      {required this.center, required this.th, required this.bad});
+  const _SpeedPainter({
+    required this.center,
+    required this.th,
+    required this.bad,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1586,11 +1820,12 @@ class _LeafBarPainter extends CustomPainter {
   final int win;
   final Color flash;
   final double pulse;
-  const _LeafBarPainter(
-      {required this.lit,
-        required this.win,
-        required this.flash,
-        required this.pulse});
+  const _LeafBarPainter({
+    required this.lit,
+    required this.win,
+    required this.flash,
+    required this.pulse,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1601,16 +1836,24 @@ class _LeafBarPainter extends CustomPainter {
       final x = i * (w + gap);
       final f = (lit - i).clamp(0.0, 1.0).toDouble();
       final rr = RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, 0, w, size.height), const Radius.circular(2));
-      canvas.drawRRect(rr, Paint()..color = Colors.white.withValues(alpha: 0.12));
+        Rect.fromLTWH(x, 0, w, size.height),
+        const Radius.circular(2),
+      );
+      canvas.drawRRect(
+        rr,
+        Paint()..color = Colors.white.withValues(alpha: 0.12),
+      );
       if (f > 0) {
         final base = (i + 1) >= win ? EmbunColors.leaf : EmbunColors.gold;
         final near = ((lit - i).abs() < 1.6) ? pulse : 0.0;
         canvas.drawRRect(
           rr,
           Paint()
-            ..color = Color.lerp(base, flash, near * 0.8)!
-                .withValues(alpha: 0.35 + 0.65 * f),
+            ..color = Color.lerp(
+              base,
+              flash,
+              near * 0.8,
+            )!.withValues(alpha: 0.35 + 0.65 * f),
         );
         if (near > 0.2) {
           canvas.drawRRect(
@@ -1623,8 +1866,10 @@ class _LeafBarPainter extends CustomPainter {
       }
     }
     final wx = (win.clamp(1, n) * (w + gap)) - gap / 2 - 0.5;
-    canvas.drawRect(Rect.fromLTWH(wx - 0.5, -3, 1.5, size.height + 6),
-        Paint()..color = Colors.white70);
+    canvas.drawRect(
+      Rect.fromLTWH(wx - 0.5, -3, 1.5, size.height + 6),
+      Paint()..color = Colors.white70,
+    );
   }
 
   @override
@@ -1660,12 +1905,14 @@ class _PointFxPainter extends CustomPainter {
           target,
           r,
           Paint()
-            ..shader = RadialGradient(colors: [
-              cy.withValues(alpha: 0),
-              cy.withValues(alpha: 0.05 * flare * strong),
-              cy.withValues(alpha: 0.34 * flare * strong),
-            ], stops: const [0.0, 0.62, 1.0])
-                .createShader(rect),
+            ..shader = RadialGradient(
+              colors: [
+                cy.withValues(alpha: 0),
+                cy.withValues(alpha: 0.05 * flare * strong),
+                cy.withValues(alpha: 0.34 * flare * strong),
+              ],
+              stops: const [0.0, 0.62, 1.0],
+            ).createShader(rect),
         );
         // kisi heksagon di dalam kubah
         canvas.save();
@@ -1677,7 +1924,8 @@ class _PointFxPainter extends CustomPainter {
           ..color = cy.withValues(alpha: 0.30 * flare * strong);
         for (var row = -8; row <= 8; row++) {
           for (var col = -8; col <= 8; col++) {
-            final cx = target.dx + col * hs * 1.732 + (row.isOdd ? hs * 0.866 : 0);
+            final cx =
+                target.dx + col * hs * 1.732 + (row.isOdd ? hs * 0.866 : 0);
             final cyy = target.dy + row * hs * 1.5;
             if ((Offset(cx, cyy) - target).distance > r + hs) continue;
             final path = Path();
@@ -1757,7 +2005,12 @@ class _PointFxPainter extends CustomPainter {
             for (var s = 5; s >= 1; s--) {
               final qs = (qr - s * 0.045).clamp(0.0, 1.0).toDouble();
               if (qs <= 0) continue;
-              final pp = _bez(target, ctrl, hud, Curves.easeInOut.transform(qs));
+              final pp = _bez(
+                target,
+                ctrl,
+                hud,
+                Curves.easeInOut.transform(qs),
+              );
               canvas.drawCircle(
                 pp,
                 (5.5 - s * 0.6) * (1 - 0.3 * qs),
@@ -1820,8 +2073,10 @@ class _PointFxPainter extends CustomPainter {
 
   static Offset _bez(Offset a, Offset c, Offset b, double t) {
     final u = 1 - t;
-    return Offset(u * u * a.dx + 2 * u * t * c.dx + t * t * b.dx,
-        u * u * a.dy + 2 * u * t * c.dy + t * t * b.dy);
+    return Offset(
+      u * u * a.dx + 2 * u * t * c.dx + t * t * b.dx,
+      u * u * a.dy + 2 * u * t * c.dy + t * t * b.dy,
+    );
   }
 
   @override
