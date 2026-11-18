@@ -46,18 +46,18 @@ class MeetingPlayerGrid extends StatelessWidget {
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final reduced = MediaQuery.disableAnimationsOf(context);
       final cols = box.maxWidth >= 370 ? 2 : 1;
-      final height = 104.0 + math.max(0, scale - 1) * 40;
+      final height = 78.0 + math.max(0, scale - 1) * 32;
       return GridView.builder(
         key: const ValueKey('meeting-player-grid'),
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         shrinkWrap: shrinkWrap,
         physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         itemCount: players.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: cols,
           mainAxisExtent: height,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
         ),
         itemBuilder: (context, i) {
           final p = players[i];
@@ -251,7 +251,10 @@ class _PlayerTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(13),
                     onTap: onTap,
                     child: Padding(
-                      padding: const EdgeInsets.all(9),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 7,
+                      ),
                       child: Row(
                         children: [
                           _Portrait(
@@ -262,7 +265,7 @@ class _PlayerTile extends StatelessWidget {
                             accent: accent,
                             cross: cross,
                           ),
-                          const SizedBox(width: 11),
+                          const SizedBox(width: 9),
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -275,8 +278,8 @@ class _PlayerTile extends StatelessWidget {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        height: 1.15,
+                                        fontSize: 13,
+                                        height: 1.12,
                                         fontWeight: FontWeight.w800,
                                         color: out
                                             ? Colors.white54
@@ -291,22 +294,28 @@ class _PlayerTile extends StatelessWidget {
                                       ),
                                   ],
                                 ),
-                                const SizedBox(height: 5),
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: StatusTag(
-                                      text: statusText,
-                                      color: statusColor,
-                                      icon: statusIcon,
+                                const SizedBox(height: 3),
+                                // Status dan nyawa sebaris; status mengecil
+                                // bila ruangnya sempit.
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: StatusTag(
+                                          text: statusText,
+                                          color: statusColor,
+                                          icon: statusIcon,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    if (!out) ...[
+                                      const SizedBox(width: 6),
+                                      LivesRow(lives: livesLeft(p), size: 12),
+                                    ],
+                                  ],
                                 ),
-                                if (!out) ...[
-                                  const SizedBox(height: 4),
-                                  LivesRow(lives: livesLeft(p), size: 13),
-                                ],
                               ],
                             ),
                           ),
@@ -322,7 +331,7 @@ class _PlayerTile extends StatelessWidget {
                                 child: const Icon(
                                   Icons.check_circle,
                                   color: Color(0xFF8FCBFF),
-                                  size: 22,
+                                  size: 20,
                                 ),
                               ),
                             )
@@ -399,8 +408,8 @@ class _Portrait extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8.5),
           child: SizedBox(
-            width: 48,
-            height: 72,
+            width: 38,
+            height: 57,
             child: ColorFiltered(
               colorFilter: out
                   ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
@@ -428,7 +437,7 @@ class _Portrait extends StatelessWidget {
           right: -4,
           bottom: -4,
           child: Container(
-            padding: const EdgeInsets.all(3),
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF1A1405),
@@ -437,7 +446,7 @@ class _Portrait extends StatelessWidget {
             child: const Icon(
               Icons.lock_rounded,
               color: Color(0xFFE5B96C),
-              size: 13,
+              size: 11,
             ),
           ),
         ),
