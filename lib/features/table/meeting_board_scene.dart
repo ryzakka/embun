@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../common/ornate.dart';
 import 'meeting_board_events.dart';
+import 'player_status.dart';
 import 'meeting_player_grid.dart';
 
 /// Adegan papan pemain: satu pemain disorot, lalu efek sesuai jenis momen.
@@ -36,7 +37,17 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
     vsync: this,
     duration: Duration(milliseconds: widget.moment.eliminated ? 3800 : 2900),
   );
-  bool _done = false, _hit = false;
+  bool _done = false, _hit = false, _stamped = false;
+  // Waktu "berhenti sesaat" (hit-stop) di titik kontak untuk luka dan
+  // tersingkir, supaya hantaman terasa berat. Aksi dan kurungan linear.
+  late final CurvedAnimation _tl = CurvedAnimation(
+    parent: _c,
+    curve:
+    widget.moment.kind == MeetingMomentKind.wound ||
+        widget.moment.eliminated
+        ? const _HitStop()
+        : Curves.linear,
+  );
   final _scroll = ScrollController();
   final _focus = GlobalKey();
   final _root = GlobalKey();
@@ -67,23 +78,24 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
     });
   }
 
-  /// Sel pemain = potret (52x74 + bingkai) + nama. Efek diarahkan ke potretnya
-  /// saja; potret berada kira-kira 4px dari atas sel. Sesuaikan bila ukuran
-  /// potret di meeting_player_grid.dart diubah.
-  Rect _portraitRect(Rect cell) => Rect.fromCenter(
-    center: Offset(cell.center.dx, cell.top + 42.6),
-    width: 56,
-    height: 78,
-  );
+  /// Potret berada di kiri papan; posisinya dihitung oleh grid supaya
+  /// selalu sinkron dengan tata letaknya.
+  Rect _portraitRect(Rect cell) =>
+      MeetingPlayerGrid.portraitRectIn(cell).inflate(4);
 
   bool _reduced = false;
   @override
   void initState() {
     super.initState();
     _c.addListener(() {
-      if (!_hit && _c.value >= .4) {
+      if (!_hit && _tl.value >= .4) {
         _hit = true;
         if (!_reduced) HapticFeedback.heavyImpact();
+      }
+      // Cap "TERSINGKIR" mendarat: getaran kedua yang lebih ringan.
+      if (!_stamped && widget.moment.eliminated && _tl.value >= .73) {
+        _stamped = true;
+        if (!_reduced) HapticFeedback.mediumImpact();
       }
     });
     _c.addStatusListener((s) {
@@ -110,6 +122,7 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
   @override
   void dispose() {
     _scroll.dispose();
+    _tl.dispose();
     _c.dispose();
     super.dispose();
   }
@@ -121,7 +134,7 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {
-          final m = widget.moment, t = _reduced ? 1.0 : _c.value;
+          final m = widget.moment, t = _reduced ? 1.0 : _tl.value;
           _captureTarget();
           final accent = switch (m.kind) {
             MeetingMomentKind.action => const Color(0xFF8FCBFF),
@@ -149,11 +162,27 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
               else
                 p,
           ];
-          // Puncak hantaman di t = .42, jendela +-.1.
-          final pulse = math.max(0.0, 1 - (_c.value - .42).abs() / .1);
-          final shakeX = _reduced ? 0.0 : math.sin(t * 130) * 6 * pulse;
-          final shakeY = _reduced ? 0.0 : math.cos(t * 170) * 3.5 * pulse;
-          final punch = _reduced ? 1.0 : 1 + .018 * pulse;
+          // Hantaman di t = .40: naik seketika lalu meluruh cepat. Cap
+          // tersingkir (t = .73) memberi guncangan kedua.
+          final heavy =
+              m.kind == MeetingMomentKind.wound || m.eliminated;
+          final power = m.eliminated ? 1.8 : heavy ? 1.1 : .55;
+          final pulse = _reduced || t < .40
+              ? 0.0
+              : math.pow(1 - _seg(t, .40, .64), 2).toDouble();
+          final slam = _reduced || !m.eliminated || t < .73
+              ? 0.0
+              : math.pow(1 - _seg(t, .73, .86), 2).toDouble();
+          final linger = _reduced || !m.eliminated
+              ? 0.0
+              : .16 * _seg(t, .46, .70);
+          final shake = pulse * power + slam * .9;
+          final shakeX = _reduced ? 0.0 : math.sin(t * 130) * 7 * shake;
+          final shakeY = _reduced ? 0.0 : math.cos(t * 170) * 4 * shake;
+          final approach = _reduced || !heavy ? 0.0 : _ease(_seg(t, 0, .40));
+          final punch = _reduced
+              ? 1.0
+              : 1 + .014 * approach + .024 * pulse * power + .012 * slam;
           final flash = _reduced
               ? 0.0
               : switch (m.kind) {
@@ -162,6 +191,19 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
             MeetingMomentKind.recovered => pulse * .6,
             _ => pulse * pulse,
           };
+          // Hati yang hilang (luka) atau pulih berada di indeks ini.
+          Rect? heartRect;
+          if (_targetRect != null &&
+              !m.eliminated &&
+              strikesOf(m.after) != strikesOf(m.before)) {
+            final idx = m.kind == MeetingMomentKind.recovered
+                ? livesLeft(m.before)
+                : livesLeft(m.after);
+            heartRect = MeetingPlayerGrid.heartRectIn(
+              _targetRect!,
+              idx.clamp(0, kMaxStrikes - 1).toInt(),
+            );
+          }
           final hard =
               m.kind == MeetingMomentKind.wound ||
                   m.kind == MeetingMomentKind.eliminated;
@@ -351,14 +393,29 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
                       painter: _OperationPaint(
                         t,
                         _portraitRect(_targetRect!),
+                        _targetRect!,
                         accent,
                         m.kind,
+                        heart: heartRect,
                       ),
                     ),
                   ),
                 ),
-              // Denyut merah di tepi layar saat luka atau tersingkir.
-              if (!_reduced && pulse > 0 && hard)
+              // Kilat putih sesaat tepat pada hantaman (impact frame).
+              if (!_reduced && hard && t >= .40 && t < .52)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: Colors.white.withValues(
+                        alpha:
+                        (m.eliminated ? .45 : .28) *
+                            math.pow(1 - _seg(t, .40, .52), 3).toDouble(),
+                      ),
+                    ),
+                  ),
+                ),
+              // Denyut merah di tepi layar; pada tersingkir tetap menggelap.
+              if (!_reduced && (pulse > 0 || linger > 0) && hard)
                 Positioned.fill(
                   child: IgnorePointer(
                     child: DecoratedBox(
@@ -366,7 +423,11 @@ class _MeetingBoardSceneState extends State<MeetingBoardScene>
                         gradient: RadialGradient(
                           colors: [
                             Colors.transparent,
-                            Colors.redAccent.withValues(alpha: pulse * .34),
+                            Colors.redAccent.withValues(
+                              alpha: (pulse * .42 * (m.eliminated ? 1.3 : 1) + linger)
+                                  .clamp(0.0, .8)
+                                  .toDouble(),
+                            ),
                           ],
                           stops: const [.2, 1],
                         ),
@@ -414,9 +475,12 @@ class _SpotPaint extends CustomPainter {
 
 /// Semua efek yang bergantung pada jenis momen, digambar di atas papan.
 class _OperationPaint extends CustomPainter {
-  _OperationPaint(this.t, this.rect, this.color, this.kind);
+  _OperationPaint(this.t, this.rect, this.cell, this.color, this.kind,
+      {this.heart});
   final double t;
-  final Rect rect;
+  final Rect rect; // potret (sasaran efek)
+  final Rect cell; // seluruh papan pemain
+  final Rect? heart; // hati yang hilang / pulih (luka dan pulih)
   final Color color;
   final MeetingMomentKind kind;
 
@@ -457,7 +521,7 @@ class _OperationPaint extends CustomPainter {
     final fade = 1 - _seg(t, .36, .44);
     final alpha = a * fade;
     if (alpha <= 0) return;
-    final r = rect.inflate((1 - _ease(a)) * 46 + 6);
+    final r = cell.inflate((1 - _ease(a)) * 46 + 6);
     const len = 18.0;
     final path = Path();
     void corner(Offset p, double dx, double dy) {
@@ -497,8 +561,8 @@ class _OperationPaint extends CustomPainter {
         required Offset ctrl,
         required bool heavy,
       }) {
-    if (t < .16 || t >= .43) return;
-    final p = _seg(t, .16, .43);
+    if (t < .16 || t >= .40) return;
+    final p = _seg(t, .16, .40);
     final head = Curves.easeInCubic.transform(p);
     final path = Path()
       ..moveTo(from.dx, from.dy)
@@ -593,11 +657,8 @@ class _OperationPaint extends CustomPainter {
     // ubin ikut berdenyut keluar
     final q = _seg(p, 0, .7);
     if (q > 0 && q < 1) {
-      c.drawRRect(
-        RRect.fromRectAndRadius(
-          rect.inflate(30 * _ease(q)),
-          const Radius.circular(18),
-        ),
+      c.drawPath(
+        _plate(cell.inflate(30 * _ease(q))),
         Paint()
           ..color = col.withValues(alpha: (1 - q) * .5)
           ..style = PaintingStyle.stroke
@@ -698,7 +759,7 @@ class _OperationPaint extends CustomPainter {
   void _debris(Canvas c, double p) {
     if (p >= 1) return;
     final r = math.Random(17);
-    for (var i = 0; i < 12; i++) {
+    for (var i = 0; i < 22; i++) {
       final a = -math.pi / 2 + (r.nextDouble() - .5) * 2.2;
       final v = 90 + r.nextDouble() * 160;
       final sz = 3 + r.nextDouble() * 4;
@@ -724,11 +785,8 @@ class _OperationPaint extends CustomPainter {
   void _settle(Canvas c) {
     final q = _seg(t, .74, .92);
     if (q <= 0 || q >= 1) return;
-    c.drawRRect(
-      RRect.fromRectAndRadius(
-        rect.inflate(26 * (1 - _ease(q))),
-        const Radius.circular(18),
-      ),
+    c.drawPath(
+      _plate(cell.inflate(26 * (1 - _ease(q)))),
       Paint()
         ..color = color.withValues(alpha: (1 - q) * .8)
         ..style = PaintingStyle.stroke
@@ -736,18 +794,22 @@ class _OperationPaint extends CustomPainter {
     );
   }
 
-  // ---- hantaman keras: luka dan tersingkir ----
+  // ---- hantaman keras: luka (sabetan + hati pecah), tersingkir (cap) ----
   void _impactHard(Canvas c, bool eliminated) {
     if (t < .40) return;
     final p = _seg(t, .40, .84);
-    _flash(c, p);
+    _flash(c, p, radius: eliminated ? 190 : 120);
     _rings(c, p);
-    _rays(c, p);
-    _sparks(c, o, p, 26, 5, 230, color);
+    if (eliminated) _rays(c, p);
+    _sparks(c, o, p, eliminated ? 36 : 20, 5, eliminated ? 260 : 200, color);
     _cracks(c, p);
     if (eliminated) {
       _debris(c, p);
       _settle(c);
+      _stamp(c);
+    } else {
+      _slash(c);
+      _heartBreak(c);
     }
   }
 
@@ -790,6 +852,7 @@ class _OperationPaint extends CustomPainter {
     );
     _flash(c, p, radius: 100);
     _rings(c, p);
+    _heartHeal(c);
     final r = math.Random(21);
     for (var i = 0; i < 18; i++) {
       final x = rect.left + r.nextDouble() * rect.width;
@@ -866,10 +929,251 @@ class _OperationPaint extends CustomPainter {
     }
   }
 
+  // ---- bentuk papan: kiri-atas & kanan-bawah dipotong (sama dengan grid) ----
+  Path _plate(Rect r) {
+    const big = 16.0, small = 4.0;
+    return Path()
+      ..moveTo(r.left + big, r.top)
+      ..lineTo(r.right - small, r.top)
+      ..lineTo(r.right, r.top + small)
+      ..lineTo(r.right, r.bottom - big)
+      ..lineTo(r.right - big, r.bottom)
+      ..lineTo(r.left + small, r.bottom)
+      ..lineTo(r.left, r.bottom - small)
+      ..lineTo(r.left, r.top + big)
+      ..close();
+  }
+
+  void _glyph(
+      Canvas c,
+      IconData icon,
+      Offset center,
+      double size,
+      Color col, {
+        double alpha = 1,
+        double angle = 0,
+        Offset shift = Offset.zero,
+        int half = 0,
+        List<Shadow>? shadows,
+      }) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          fontSize: size,
+          color: col.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+          shadows: shadows,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    c.save();
+    c.translate(center.dx + shift.dx, center.dy + shift.dy);
+    c.rotate(angle);
+    if (half < 0) c.clipRect(Rect.fromLTRB(-size, -size, 0, size));
+    if (half > 0) c.clipRect(Rect.fromLTRB(0, -size, size, size));
+    tp.paint(c, Offset(-tp.width / 2, -tp.height / 2));
+    c.restore();
+    tp.dispose();
+  }
+
+  // ---- luka: tiga goresan cakar menyilang potret ----
+  void _blade(Canvas c, Offset a, Offset b, double k, double w, double fade) {
+    if (k <= 0) return;
+    final end = Offset.lerp(a, b, k)!;
+    c.drawLine(
+      a,
+      end,
+      Paint()
+        ..color = color.withValues(alpha: .55 * fade)
+        ..strokeWidth = w * 2.6
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    c.drawLine(
+      a,
+      end,
+      Paint()
+        ..color = color.withValues(alpha: fade)
+        ..strokeWidth = w
+        ..strokeCap = StrokeCap.round,
+    );
+    c.drawLine(
+      a,
+      end,
+      Paint()
+        ..color = Colors.white.withValues(alpha: fade)
+        ..strokeWidth = w * .4
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  void _slash(Canvas c) {
+    if (t < .40) return;
+    final p = _seg(t, .40, .82);
+    final k = Curves.easeOutCubic.transform(_seg(p, 0, .2));
+    final fade = 1 - _seg(p, .4, 1);
+    if (k <= 0 || fade <= 0) return;
+    c.save();
+    c.clipRect(rect.inflate(10));
+    const widths = [3.0, 4.6, 3.0];
+    for (var i = 0; i < 3; i++) {
+      final dx = (i - 1) * rect.width * .26;
+      _blade(
+        c,
+        Offset(rect.left + rect.width * .15 + dx, rect.top - 6),
+        Offset(rect.right - rect.width * .15 + dx, rect.bottom + 6),
+        _seg(k, i * .12, 1),
+        widths[i],
+        fade,
+      );
+    }
+    c.restore();
+  }
+
+  // ---- luka: hati yang hilang membengkak lalu pecah dua ----
+  void _heartBreak(Canvas c) {
+    final h = heart;
+    if (h == null || t < .40) return;
+    final p = _seg(t, .40, .88);
+    final ctr = h.center;
+    const red = Color(0xFFE85F64);
+    final swell = _seg(p, 0, .25);
+    final split = _seg(p, .25, 1);
+    final big = 14 * 1.9;
+    if (split <= 0) {
+      final s = 14 + (big - 14) * Curves.easeOut.transform(swell);
+      c.drawCircle(
+        ctr,
+        10 + 16 * swell,
+        Paint()
+          ..color = red.withValues(alpha: .35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+      _glyph(
+        c,
+        Icons.favorite_rounded,
+        ctr,
+        s,
+        red,
+        shadows: [Shadow(color: Colors.white.withValues(alpha: .8), blurRadius: 8)],
+      );
+      return;
+    }
+    final e = _ease(split);
+    final a = 1 - _seg(split, .45, 1);
+    for (final side in const [-1, 1]) {
+      _glyph(
+        c,
+        Icons.favorite_rounded,
+        ctr,
+        big,
+        red,
+        alpha: a,
+        half: side,
+        angle: side * .9 * e,
+        shift: Offset(side * 20 * e, -8 * e + 46 * e * e),
+      );
+    }
+    _sparks(c, ctr, split, 12, 31, 60, red);
+  }
+
+  // ---- pulih: hati yang kembali berdenyut membesar lalu menetap ----
+  void _heartHeal(Canvas c) {
+    final h = heart;
+    if (h == null || t < .40) return;
+    final p = _seg(t, .40, .90);
+    final ctr = h.center;
+    const red = Color(0xFFE85F64);
+    final pop = math.sin(math.min(1.0, p * 1.6) * math.pi);
+    c.drawCircle(
+      ctr,
+      8 + 30 * _ease(p),
+      Paint()
+        ..color = color.withValues(alpha: .45 * (1 - p))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    _glyph(
+      c,
+      Icons.favorite_rounded,
+      ctr,
+      14 * (1 + 1.1 * pop),
+      red,
+      alpha: 1 - _seg(p, .7, 1),
+      shadows: [Shadow(color: color, blurRadius: 12)],
+    );
+    _sparks(c, ctr, p, 10, 41, 46, color);
+  }
+
+  // ---- tersingkir: cap merah menghantam papan dari jarak dekat ----
+  void _stamp(Canvas c) {
+    if (t < .62) return;
+    final q = Curves.easeInCubic.transform(_seg(t, .62, .73));
+    final a = (q * 2).clamp(0.0, 1.0).toDouble();
+    const red = Color(0xFFE85F64);
+    final tp = TextPainter(
+      text: TextSpan(
+        text: 'TERSINGKIR',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.6,
+          color: red.withValues(alpha: a),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final box = Rect.fromCenter(
+      center: Offset.zero,
+      width: tp.width + 26,
+      height: tp.height + 14,
+    );
+    c.save();
+    c.translate(cell.center.dx, cell.center.dy);
+    c.rotate(-.14);
+    c.scale(2.6 - 1.6 * q);
+    c.drawRRect(
+      RRect.fromRectAndRadius(box, const Radius.circular(6)),
+      Paint()..color = const Color(0xFF240A0C).withValues(alpha: .86 * a),
+    );
+    c.drawRRect(
+      RRect.fromRectAndRadius(box, const Radius.circular(6)),
+      Paint()
+        ..color = red.withValues(alpha: a)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    c.drawRRect(
+      RRect.fromRectAndRadius(box.deflate(4.5), const Radius.circular(3)),
+      Paint()
+        ..color = red.withValues(alpha: .7 * a)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+    tp.paint(c, Offset(-tp.width / 2, -tp.height / 2));
+    c.restore();
+    tp.dispose();
+  }
+
   @override
   bool shouldRepaint(_OperationPaint old) =>
       old.t != t ||
           old.rect != rect ||
+          old.cell != cell ||
+          old.heart != heart ||
           old.color != color ||
           old.kind != kind;
+}
+/// Memetakan waktu agar berhenti sesaat di titik kontak (hit-stop):
+/// 0..34% -> 0..40% (sedikit dipercepat), 34..40% -> ditahan, sisanya normal.
+class _HitStop extends Curve {
+  const _HitStop();
+  @override
+  double transformInternal(double x) {
+    if (x < .34) return x / .34 * .40;
+    if (x < .40) return .40 + (x - .34) / .06 * .005;
+    return .405 + (x - .40) / .60 * .595;
+  }
 }

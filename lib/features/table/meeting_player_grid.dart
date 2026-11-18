@@ -49,13 +49,28 @@ class MeetingPlayerGrid extends StatelessWidget {
   /// Tinggi dasar satu papan (bertambah mengikuti skala teks).
   static const double cellHeight = 68;
 
+  /// Tebal garis tepi papan; ikut menggeser isi ke dalam.
+  static const double _border = 1.6;
+
   /// Posisi potret di dalam [cell] (rect papan dari [focusAnchor]).
   /// Dipakai adegan papan untuk mengarahkan sorotan dan efek.
   static Rect portraitRectIn(Rect cell) => Rect.fromLTWH(
-    cell.left + portraitInset,
+    cell.left + _border + portraitInset,
     cell.center.dy - portraitH / 2,
     portraitW,
     portraitH,
+  );
+
+  /// Posisi hati ke-[index] (0 = paling kiri) pada deretan nyawa di papan.
+  /// Perkiraan dari tata letak papan (nama 13,5 px + jarak 5 + hati 14);
+  /// sesuaikan bila ukuran teks nama atau hati diubah.
+  static Rect heartRectIn(Rect cell, int index) => Rect.fromCenter(
+    center: Offset(
+      cell.left + _border + portraitInset + portraitW + 9 + 7 + index * 15.0,
+      cell.center.dy + 10,
+    ),
+    width: 14,
+    height: 14,
   );
 
   @override
