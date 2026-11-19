@@ -1156,19 +1156,23 @@ class _BuilderFrame extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final i in List.generate(sides.length, (i) => i))
-                  Expanded(
-                    child: _BPanelTile(
-                      side: sides[i],
-                      selected: i == side,
-                      compact: true,
-                      onTap: () => onSide(i),
+            // IntrinsicHeight: di dalam kolom bergulir tingginya tak terbatas,
+            // jadi "stretch" tanpa ini melempar galat tata letak.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < sides.length; i++)
+                    Expanded(
+                      child: _BPanelTile(
+                        side: sides[i],
+                        selected: i == side,
+                        compact: true,
+                        onTap: () => onSide(i),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             _BSearch(controller: search, hint: searchHint),
