@@ -99,6 +99,7 @@ const buatRuangDir = 'assets/buatruang';
 
 class CreateRoomView extends StatefulWidget {
   final TextEditingController nameCtrl;
+  final String? profileName;
   final bool isPublic;
   final int cycles;
   final int antagonistCount;
@@ -114,6 +115,7 @@ class CreateRoomView extends StatefulWidget {
   const CreateRoomView({
     super.key,
     required this.nameCtrl,
+    this.profileName,
     required this.isPublic,
     required this.cycles,
     required this.antagonistCount,
@@ -135,7 +137,8 @@ class CreateRoomView extends StatefulWidget {
 /// ([goBackSlide]) sebelum keluar dari halaman.
 class CreateRoomViewState extends State<CreateRoomView> {
   static const _targets = {2: 12, 4: 20, 6: 24, 8: 26};
-  static const _pageCount = 6;
+  int get _pageCount => widget.profileName == null ? 6 : 5;
+  int get _logicalPage => _page + (widget.profileName == null ? 0 : 1);
   static const _iNama = 0,
       _iTema = 1,
       _iAkses = 2,
@@ -195,10 +198,10 @@ class CreateRoomViewState extends State<CreateRoomView> {
 
   String? _img(String stem, [String? fallback]) =>
       AssetCatalog.I.file(buatRuangDir, 'buatruang-$stem') ??
-          (fallback == null
-              ? null
-              : AssetCatalog.I.file(buatRuangDir, 'buatruang-$fallback')) ??
-          sceneryPath('rumahdesa-hijau');
+      (fallback == null
+          ? null
+          : AssetCatalog.I.file(buatRuangDir, 'buatruang-$fallback')) ??
+      sceneryPath('rumahdesa-hijau');
 
   String? _fig(String stem) =>
       AssetCatalog.I.file(buatRuangDir, 'buatruang-$stem');
@@ -206,7 +209,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
   String _dayStem(int i) => 'sethari0${i + 1}';
 
   String? get _bg {
-    switch (_page) {
+    switch (_logicalPage) {
       case _iNama:
         return _img('setnama');
       case _iTema:
@@ -214,7 +217,9 @@ class CreateRoomViewState extends State<CreateRoomView> {
           widget.characterTheme == 'manhwa' ? 'temamanhwa' : 'temadefault',
         );
       case _iAkses:
-        return _img(widget.isPublic ? 'ruangpublik-latar' : 'ruangprivat-latar');
+        return _img(
+          widget.isPublic ? 'ruangpublik-latar' : 'ruangprivat-latar',
+        );
       case _iLama:
       case _iRingkas:
         return _img(_dayStem(_frame));
@@ -226,7 +231,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
   }
 
   String? get _figurePath {
-    switch (_page) {
+    switch (_logicalPage) {
       case _iAkses:
         return _fig(widget.isPublic ? 'ruangpublik-char' : 'ruangprivat-char');
       case _iTerbisik:
@@ -351,7 +356,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
           if (i >= _iAkses) _precacheDays();
         },
         children: [
-          _slideNama(wide),
+          if (widget.profileName == null) _slideNama(wide),
           _slideTema(wide),
           _slideAkses(wide),
           _slideLama(wide),
@@ -371,18 +376,20 @@ class CreateRoomViewState extends State<CreateRoomView> {
                 end: wide ? Alignment.centerRight : Alignment.bottomCenter,
                 colors: wide
                     ? const [
-                  Color(0xE607130F),
-                  Color(0xB007130F),
-                  Color(0x2207130F),
-                  Color(0x0007130F),
-                ]
+                        Color(0xE607130F),
+                        Color(0xB007130F),
+                        Color(0x2207130F),
+                        Color(0x0007130F),
+                      ]
                     : const [
-                  Color(0x55000000),
-                  Color(0x1A000000),
-                  Color(0xCC07130F),
-                  Color(0xF207130F),
-                ],
-                stops: wide ? const [0, 0.42, 0.72, 1] : const [0, 0.2, 0.46, 1],
+                        Color(0x55000000),
+                        Color(0x1A000000),
+                        Color(0xCC07130F),
+                        Color(0xF207130F),
+                      ],
+                stops: wide
+                    ? const [0, 0.42, 0.72, 1]
+                    : const [0, 0.2, 0.46, 1],
               ),
             ),
           ),
@@ -391,7 +398,11 @@ class CreateRoomViewState extends State<CreateRoomView> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0x00000000), Color(0x00000000), Color(0xC007130F)],
+                colors: [
+                  Color(0x00000000),
+                  Color(0x00000000),
+                  Color(0xC007130F),
+                ],
                 stops: [0, 0.74, 1],
               ),
             ),
@@ -442,14 +453,14 @@ class CreateRoomViewState extends State<CreateRoomView> {
                       Expanded(
                         child: wide
                             ? Row(
-                          children: [
-                            SizedBox(
-                              width: (frameW - padH * 2) * 0.46,
-                              child: pages,
-                            ),
-                            const Expanded(child: SizedBox()),
-                          ],
-                        )
+                                children: [
+                                  SizedBox(
+                                    width: (frameW - padH * 2) * 0.46,
+                                    child: pages,
+                                  ),
+                                  const Expanded(child: SizedBox()),
+                                ],
+                              )
                             : pages,
                       ),
                       DecoratedBox(
@@ -468,8 +479,8 @@ class CreateRoomViewState extends State<CreateRoomView> {
                                 child: EmbunButton(
                                   label: last
                                       ? (widget.busy
-                                      ? 'Membuat ruangan…'
-                                      : 'Buat Ruangan')
+                                            ? 'Membuat ruangan…'
+                                            : 'Buat Ruangan')
                                       : 'Lanjut',
                                   icon: last
                                       ? (widget.busy ? 'wait' : 'roomcreate')
@@ -506,15 +517,15 @@ class CreateRoomViewState extends State<CreateRoomView> {
       child: p == null
           ? const SizedBox.shrink(key: ValueKey('tanpa-sosok'))
           : _Appear(
-        key: ValueKey(p),
-        from: from,
-        child: GameImage(
-          path: p,
-          fit: BoxFit.contain,
-          alignment: align,
-          cacheWidth: 1100,
-        ),
-      ),
+              key: ValueKey(p),
+              from: from,
+              child: GameImage(
+                path: p,
+                fit: BoxFit.contain,
+                alignment: align,
+                cacheWidth: 1100,
+              ),
+            ),
     );
   }
 
@@ -538,9 +549,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
                   borderRadius: BorderRadius.circular(4),
                   color: i == _page
                       ? EmbunColors.gold
-                      : (i < _page
-                      ? EmbunColors.goldDim
-                      : Colors.white24),
+                      : (i < _page ? EmbunColors.goldDim : Colors.white24),
                 ),
               ),
             ),
@@ -552,11 +561,11 @@ class CreateRoomViewState extends State<CreateRoomView> {
   // --------------------------------------------------------------- slide
 
   Widget _slide(
-      bool wide, {
-        required String title,
-        String? caption,
-        required List<Widget> children,
-      }) => SingleChildScrollView(
+    bool wide, {
+    required String title,
+    String? caption,
+    required List<Widget> children,
+  }) => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: EdgeInsets.fromLTRB(2, wide ? 26 : 14, 2, 18),
     child: Column(
@@ -698,7 +707,9 @@ class CreateRoomViewState extends State<CreateRoomView> {
   Widget _slideTema(bool wide) => _slide(
     wide,
     title: 'Tema kartu karakter',
-    caption: 'Menentukan cara semua pemain memilih kartu karakter.',
+    caption: widget.profileName == null
+        ? 'Menentukan cara semua pemain memilih kartu karakter.'
+        : 'Bermain sebagai ${widget.profileName}. Pilih tema kartu untuk ruanganmu.',
     children: [
       _option(
         icon: 'character',
@@ -712,7 +723,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
         icon: 'customization',
         label: 'Manhwa Style',
         sub:
-        'Tokoh dipilih bergiliran, lalu semua pemain memilih pakaian '
+            'Tokoh dipilih bergiliran, lalu semua pemain memilih pakaian '
             'masing-masing.',
         selected: widget.characterTheme == 'manhwa',
         accent: EmbunColors.leaf,
@@ -774,7 +785,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
           icon: 'danger',
           label: antagonistModeLabel(n),
           sub:
-          '${minPlayersFor(n)}–$kMaxPlayers pemain'
+              '${minPlayersFor(n)}–$kMaxPlayers pemain'
               '${n == 2 ? ' · mulai setelah minimal $kMinDuaTerbisikPlayers pemain siap' : ''}',
           selected: widget.antagonistCount == n,
           accent: EmbunColors.mist,
@@ -877,7 +888,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
         ),
         TextSpan(
           text:
-          ' di akhir hari ke-$_days, atau dengan $kLeavesMax daun lebih cepat.',
+              ' di akhir hari ke-$_days, atau dengan $kLeavesMax daun lebih cepat.',
         ),
       ],
     ),

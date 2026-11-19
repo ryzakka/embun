@@ -1,0 +1,332 @@
+--- a/lib/features/lobby/lobby_page.dart
++++ b/lib/features/lobby/lobby_page.dart
+@@ -12,6 +12,8 @@
+ import '../../data/game_repository.dart';
+ import '../../data/lobby_repository.dart';
+ import '../common/art.dart';
++import '../account/account_scope.dart';
++import '../account/account_pages.dart';
+ import '../common/character_lock.dart';
+ import '../common/ornate.dart';
+ import '../common/sfx.dart';
+@@ -68,10 +70,10 @@
+   String _characterTheme = 'default';
+ 
+   ({
+-  String id,
+-  Stream<Map<String, dynamic>?> game,
+-  Stream<List<Map<String, dynamic>>> players,
+-  Stream<List<Map<String, dynamic>>> chat,
++    String id,
++    Stream<Map<String, dynamic>?> game,
++    Stream<List<Map<String, dynamic>>> players,
++    Stream<List<Map<String, dynamic>>> chat,
+   })?
+   _roomStreams;
+ 
+@@ -129,6 +131,8 @@
+   Future<void> _boot() async {
+     try {
+       await repo.ensureSignedIn();
++      if (!mounted) return;
++      _fillProfileName();
+       unawaited(_refreshNews());
+       unawaited(
+         TutorialPage.isNew().then((v) {
+@@ -162,13 +166,13 @@
+             MaterialPageRoute(
+               builder: (_) => inPrologue
+                   ? PrologueFlow(
+-                gameId: id,
+-                repo: repo,
+-                resume: true,
+-                characterTheme:
+-                (g['character_theme'] as String?) ?? 'default',
+-                antagonistCount: (g['antagonist_count'] as int?) ?? 1,
+-              )
++                      gameId: id,
++                      repo: repo,
++                      resume: true,
++                      characterTheme:
++                          (g['character_theme'] as String?) ?? 'default',
++                      antagonistCount: (g['antagonist_count'] as int?) ?? 1,
++                    )
+                   : TablePage(gameId: id, role: role),
+             ),
+           );
+@@ -180,6 +184,24 @@
+     } finally {
+       if (mounted) setState(() => _booted = true);
+     }
++  }
++
++  String? get _profileName => EmbunData.maybeOf(context) == null
++      ? AccountScope.maybeOf(context)?.profile?.nickname
++      : null;
++
++  void _fillProfileName() {
++    final name = _profileName;
++    if (name != null) nameCtrl.text = name;
++  }
++
++  Future<void> _openProfile() async {
++    final account = AccountScope.maybeOf(context);
++    if (account == null || gameId != null) return;
++    await Navigator.of(context).push(
++      MaterialPageRoute<void>(builder: (_) => ProfilePage(account: account)),
++    );
++    if (mounted) setState(_fillProfileName);
+   }
+ 
+   /// Kunci untuk meminta halaman Buat Ruangan mundur satu slide.
+@@ -217,6 +239,7 @@
+   /// Layar isian untuk membuat ruangan. Bergabung punya layar sendiri
+   /// ([_openJoin]) dengan tab kode dan daftar publik.
+   void _openCreate() {
++    _fillProfileName();
+     HapticFeedback.selectionClick();
+     setState(() => _stage = _Stage.entry);
+   }
+@@ -341,12 +364,14 @@
+   /// Publik". Nama diisi dan gabung dilakukan di dalam layar itu; bila
+   /// berhasil, layar menutup dan ruangan tampil di sini.
+   void _openJoin() {
++    _fillProfileName();
+     HapticFeedback.selectionClick();
+     Sfx.I.playAny(Snd.winds);
+     Navigator.of(context).push(
+       ClothTransition.route<void>(
+         PublicRoomsPage(
+           repo: repo,
++          profileName: _profileName,
+           nameCtrl: nameCtrl,
+           codeCtrl: codeCtrl,
+           onJoin: _joinRoom,
+@@ -396,6 +421,7 @@
+         case _Stage.entry:
+           screen = CreateRoomView(
+             key: _entryKey,
++            profileName: _profileName,
+             nameCtrl: nameCtrl,
+             isPublic: _createPublic,
+             cycles: _createCycles,
+@@ -425,7 +451,7 @@
+           return;
+         }
+         setState(
+-              () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
++          () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
+         );
+       },
+       child: Scaffold(
+@@ -465,14 +491,14 @@
+     ),
+     child: title
+         ? TitleIntroBackdrop(
+-      key: const ValueKey('title-bg'),
+-      progress: _intro,
+-      clock: _t,
+-    )
++            key: const ValueKey('title-bg'),
++            progress: _intro,
++            clock: _t,
++          )
+         : KeyedSubtree(
+-      key: const ValueKey('plain-bg'),
+-      child: _plainBackground(stem),
+-    ),
++            key: const ValueKey('plain-bg'),
++            child: _plainBackground(stem),
++          ),
+   );
+ 
+   /// Latar bentang yang bergerak pelan (zoom dan geser) dengan kunang-kunang.
+@@ -585,7 +611,7 @@
+                                                   colors: [
+                                                     EmbunColors.gold.withValues(
+                                                       alpha:
+-                                                      0.18 + 0.12 * pulse,
++                                                          0.18 + 0.12 * pulse,
+                                                     ),
+                                                     EmbunColors.gold.withValues(
+                                                       alpha: 0,
+@@ -755,10 +781,10 @@
+       onTap: _openNews,
+       onLongPress: _booted && EmbunData.maybeOf(context) == null
+           ? () => Navigator.of(context).push(
+-        MaterialPageRoute<void>(
+-          builder: (_) => const PreviewExperience(),
+-        ),
+-      )
++              MaterialPageRoute<void>(
++                builder: (_) => const PreviewExperience(),
++              ),
++            )
+           : null,
+       borderRadius: BorderRadius.circular(8),
+       child: Padding(
+@@ -782,6 +808,34 @@
+         final wide = c.maxWidth >= 720;
+         final items = <Widget>[
+           if (_showUpdate) _updateEntry(!wide),
++          if (_profileName != null)
++            Padding(
++              padding: const EdgeInsets.only(bottom: 12),
++              child: Row(
++                mainAxisSize: MainAxisSize.min,
++                children: [
++                  ProfileAvatar(
++                    avatarId: AccountScope.maybeOf(context)!.profile!.avatarId,
++                    radius: 19,
++                  ),
++                  const SizedBox(width: 10),
++                  Flexible(
++                    child: Text(
++                      _profileName!,
++                      overflow: TextOverflow.ellipsis,
++                      style: const TextStyle(
++                        color: EmbunColors.gold,
++                        fontWeight: FontWeight.w700,
++                      ),
++                    ),
++                  ),
++                  TextButton(
++                    onPressed: _openProfile,
++                    child: const Text('Profilku'),
++                  ),
++                ],
++              ),
++            ),
+           // Dua aksi utama dibuat lebih besar.
+           _MenuTile(
+             index: 0,
+@@ -870,22 +924,22 @@
+                 decoration: BoxDecoration(
+                   gradient: wide
+                       ? LinearGradient(
+-                    begin: Alignment.centerLeft,
+-                    end: Alignment.centerRight,
+-                    colors: [
+-                      Colors.black.withValues(alpha: 0.82),
+-                      Colors.transparent,
+-                    ],
+-                    stops: const [0.0, 0.8],
+-                  )
++                          begin: Alignment.centerLeft,
++                          end: Alignment.centerRight,
++                          colors: [
++                            Colors.black.withValues(alpha: 0.82),
++                            Colors.transparent,
++                          ],
++                          stops: const [0.0, 0.8],
++                        )
+                       : LinearGradient(
+-                    begin: Alignment.topCenter,
+-                    end: Alignment.bottomCenter,
+-                    colors: [
+-                      Colors.black.withValues(alpha: 0.35),
+-                      Colors.black.withValues(alpha: 0.85),
+-                    ],
+-                  ),
++                          begin: Alignment.topCenter,
++                          end: Alignment.bottomCenter,
++                          colors: [
++                            Colors.black.withValues(alpha: 0.35),
++                            Colors.black.withValues(alpha: 0.85),
++                          ],
++                        ),
+                 ),
+               ),
+             ),
+@@ -896,7 +950,7 @@
+                     top: 6,
+                     left: 6,
+                     child: _backButton(
+-                          () => setState(() => _stage = _Stage.title),
++                      () => setState(() => _stage = _Stage.title),
+                     ),
+                   ),
+                   Positioned(top: 4, right: 8, child: _newsBell()),
+@@ -1035,10 +1089,10 @@
+   Widget _room(String id) {
+     if (_roomStreams?.id != id) {
+       _roomStreams = (
+-      id: id,
+-      game: repo.game(id),
+-      players: repo.players(id),
+-      chat: _gr.chat(id),
++        id: id,
++        game: repo.game(id),
++        players: repo.players(id),
++        chat: _gr.chat(id),
+       );
+     }
+     final streams = _roomStreams!;
+@@ -1065,16 +1119,16 @@
+               Navigator.of(context).pushReplacement(
+                 ClothTransition.route(
+                   game['character_theme'] == 'manhwa' &&
+-                      game['status'] == 'prologue'
++                          game['status'] == 'prologue'
+                       ? ManhwaDraftPage(repo: repo, gameId: id)
+                       : PrologueFlow(
+-                    gameId: id,
+-                    repo: repo,
+-                    characterTheme:
+-                    (game['character_theme'] as String?) ?? 'default',
+-                    antagonistCount:
+-                    (game['antagonist_count'] as int?) ?? 1,
+-                  ),
++                          gameId: id,
++                          repo: repo,
++                          characterTheme:
++                              (game['character_theme'] as String?) ?? 'default',
++                          antagonistCount:
++                              (game['antagonist_count'] as int?) ?? 1,
++                        ),
+                 ),
+               );
+             });
+@@ -1286,24 +1340,24 @@
+                     color: _on ? EmbunColors.gold : Colors.transparent,
+                     boxShadow: _on
+                         ? [
+-                      BoxShadow(
+-                        color: EmbunColors.gold.withValues(alpha: 0.8),
+-                        blurRadius: 8,
+-                      ),
+-                    ]
++                            BoxShadow(
++                              color: EmbunColors.gold.withValues(alpha: 0.8),
++                              blurRadius: 8,
++                            ),
++                          ]
+                         : null,
+                   ),
+                 ),
+                 widget.materialIcon != null
+                     ? SizedBox(
+-                  width: 34 * widget.scale,
+-                  height: 34 * widget.scale,
+-                  child: Icon(
+-                    widget.materialIcon,
+-                    size: 28 * widget.scale,
+-                    color: EmbunColors.gold,
+-                  ),
+-                )
++                        width: 34 * widget.scale,
++                        height: 34 * widget.scale,
++                        child: Icon(
++                          widget.materialIcon,
++                          size: 28 * widget.scale,
++                          color: EmbunColors.gold,
++                        ),
++                      )
+                     : GameIcon(widget.icon, size: 34 * widget.scale),
+                 const SizedBox(width: 12),
+                 AnimatedDefaultTextStyle(
+@@ -1432,4 +1486,4 @@
+ 
+   @override
+   bool shouldRepaint(covariant _Fx old) => true;
+-}+}

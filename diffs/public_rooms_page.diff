@@ -1,0 +1,130 @@
+--- a/lib/features/lobby/public_rooms_page.dart
++++ b/lib/features/lobby/public_rooms_page.dart
+@@ -20,7 +20,11 @@
+   final int players, ageS, antagonistCount;
+ 
+   const _Room(
+-    this.code, this.host, this.players, this.ageS, this.antagonistCount,
++    this.code,
++    this.host,
++    this.players,
++    this.ageS,
++    this.antagonistCount,
+   );
+ 
+   factory _Room.from(Map<String, dynamic> row) => _Room(
+@@ -36,6 +40,7 @@
+ class PublicRoomsPage extends StatefulWidget {
+   final LobbyRepository repo;
+   final TextEditingController nameCtrl;
++  final String? profileName;
+   final TextEditingController codeCtrl;
+   final JoinRoom onJoin;
+   final VoidCallback onCreate;
+@@ -45,6 +50,7 @@
+     super.key,
+     required this.repo,
+     required this.nameCtrl,
++    this.profileName,
+     required this.codeCtrl,
+     required this.onJoin,
+     required this.onCreate,
+@@ -221,8 +227,13 @@
+                                     tooltip: 'Muat ulang',
+                                     color: EmbunColors.gold,
+                                     icon: Opacity(
+-                                      opacity: _refreshing || _joining ? 0.45 : 1,
+-                                      child: const GameIcon('refresh', size: 25),
++                                      opacity: _refreshing || _joining
++                                          ? 0.45
++                                          : 1,
++                                      child: const GameIcon(
++                                        'refresh',
++                                        size: 25,
++                                      ),
+                                     ),
+                                     onPressed: _refreshing || _joining
+                                         ? null
+@@ -297,26 +308,47 @@
+     );
+   }
+ 
+-  Widget _nameField() => TextField(
+-    controller: widget.nameCtrl,
+-    focusNode: _nameFocus,
+-    enabled: !_joining,
+-    maxLength: 20,
+-    textCapitalization: TextCapitalization.words,
+-    textInputAction: _isPublic ? TextInputAction.done : TextInputAction.next,
+-    onChanged: (_) {
+-      if (_nameMissing) setState(() => _nameMissing = false);
+-    },
+-    decoration: InputDecoration(
+-      labelText: 'Namamu',
+-      counterText: '',
+-      errorText: _nameMissing ? 'Isi namamu dulu' : null,
+-      prefixIcon: const Padding(
+-        padding: EdgeInsets.all(8),
+-        child: GameIcon('identity', size: 24),
+-      ),
+-    ),
+-  );
++  Widget _nameField() => widget.profileName != null
++      ? Padding(
++          padding: const EdgeInsets.symmetric(vertical: 10),
++          child: Row(
++            children: [
++              const Icon(Icons.person_outline, color: EmbunColors.gold),
++              const SizedBox(width: 10),
++              Expanded(
++                child: Text(
++                  'Bermain sebagai ${widget.profileName}',
++                  style: const TextStyle(
++                    color: EmbunColors.cream,
++                    fontWeight: FontWeight.w700,
++                  ),
++                ),
++              ),
++            ],
++          ),
++        )
++      : TextField(
++          controller: widget.nameCtrl,
++          focusNode: _nameFocus,
++          enabled: !_joining,
++          maxLength: 20,
++          textCapitalization: TextCapitalization.words,
++          textInputAction: _isPublic
++              ? TextInputAction.done
++              : TextInputAction.next,
++          onChanged: (_) {
++            if (_nameMissing) setState(() => _nameMissing = false);
++          },
++          decoration: InputDecoration(
++            labelText: 'Namamu',
++            counterText: '',
++            errorText: _nameMissing ? 'Isi namamu dulu' : null,
++            prefixIcon: const Padding(
++              padding: EdgeInsets.all(8),
++              child: GameIcon('identity', size: 24),
++            ),
++          ),
++        );
+ 
+   Widget _codeTab() => SingleChildScrollView(
+     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+@@ -391,9 +423,11 @@
+                 children: [
+                   _nameField(),
+                   const SizedBox(height: 8),
+-                  const Text(
+-                    'Nama ini akan terlihat oleh pemain lain.',
+-                    style: TextStyle(
++                  Text(
++                    widget.profileName == null
++                        ? 'Nama ini akan terlihat oleh pemain lain.'
++                        : 'Nama mengikuti profil akunmu.',
++                    style: const TextStyle(
+                       fontSize: 13,
+                       height: 1.35,
+                       color: Colors.white70,
