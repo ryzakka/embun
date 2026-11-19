@@ -68,10 +68,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   String _characterTheme = 'default';
 
   ({
-    String id,
-    Stream<Map<String, dynamic>?> game,
-    Stream<List<Map<String, dynamic>>> players,
-    Stream<List<Map<String, dynamic>>> chat,
+  String id,
+  Stream<Map<String, dynamic>?> game,
+  Stream<List<Map<String, dynamic>>> players,
+  Stream<List<Map<String, dynamic>>> chat,
   })?
   _roomStreams;
 
@@ -162,13 +162,13 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
             MaterialPageRoute(
               builder: (_) => inPrologue
                   ? PrologueFlow(
-                      gameId: id,
-                      repo: repo,
-                      resume: true,
-                      characterTheme:
-                          (g['character_theme'] as String?) ?? 'default',
-                      antagonistCount: (g['antagonist_count'] as int?) ?? 1,
-                    )
+                gameId: id,
+                repo: repo,
+                resume: true,
+                characterTheme:
+                (g['character_theme'] as String?) ?? 'default',
+                antagonistCount: (g['antagonist_count'] as int?) ?? 1,
+              )
                   : TablePage(gameId: id, role: role),
             ),
           );
@@ -181,6 +181,9 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       if (mounted) setState(() => _booted = true);
     }
   }
+
+  /// Kunci untuk meminta halaman Buat Ruangan mundur satu slide.
+  final _entryKey = GlobalKey<CreateRoomViewState>();
 
   Future<void> _createRoom(String name) async {
     if (busy) return;
@@ -392,7 +395,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           screen = KeyedSubtree(key: const ValueKey('menu'), child: _menu());
         case _Stage.entry:
           screen = CreateRoomView(
-            key: const ValueKey('entry'),
+            key: _entryKey,
             nameCtrl: nameCtrl,
             isPublic: _createPublic,
             cycles: _createCycles,
@@ -416,8 +419,13 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       canPop: canPop,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop || busy) return;
+        // Di Buat Ruangan, tombol kembali mundur satu slide dulu.
+        if (_stage == _Stage.entry &&
+            (_entryKey.currentState?.goBackSlide() ?? false)) {
+          return;
+        }
         setState(
-          () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
+              () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
         );
       },
       child: Scaffold(
@@ -457,14 +465,14 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     ),
     child: title
         ? TitleIntroBackdrop(
-            key: const ValueKey('title-bg'),
-            progress: _intro,
-            clock: _t,
-          )
+      key: const ValueKey('title-bg'),
+      progress: _intro,
+      clock: _t,
+    )
         : KeyedSubtree(
-            key: const ValueKey('plain-bg'),
-            child: _plainBackground(stem),
-          ),
+      key: const ValueKey('plain-bg'),
+      child: _plainBackground(stem),
+    ),
   );
 
   /// Latar bentang yang bergerak pelan (zoom dan geser) dengan kunang-kunang.
@@ -577,7 +585,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                                                   colors: [
                                                     EmbunColors.gold.withValues(
                                                       alpha:
-                                                          0.18 + 0.12 * pulse,
+                                                      0.18 + 0.12 * pulse,
                                                     ),
                                                     EmbunColors.gold.withValues(
                                                       alpha: 0,
@@ -747,10 +755,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       onTap: _openNews,
       onLongPress: _booted && EmbunData.maybeOf(context) == null
           ? () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const PreviewExperience(),
-              ),
-            )
+        MaterialPageRoute<void>(
+          builder: (_) => const PreviewExperience(),
+        ),
+      )
           : null,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
@@ -862,22 +870,22 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   gradient: wide
                       ? LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.82),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.8],
-                        )
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.82),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.8],
+                  )
                       : LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.35),
-                            Colors.black.withValues(alpha: 0.85),
-                          ],
-                        ),
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.35),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -888,7 +896,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                     top: 6,
                     left: 6,
                     child: _backButton(
-                      () => setState(() => _stage = _Stage.title),
+                          () => setState(() => _stage = _Stage.title),
                     ),
                   ),
                   Positioned(top: 4, right: 8, child: _newsBell()),
@@ -1027,10 +1035,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   Widget _room(String id) {
     if (_roomStreams?.id != id) {
       _roomStreams = (
-        id: id,
-        game: repo.game(id),
-        players: repo.players(id),
-        chat: _gr.chat(id),
+      id: id,
+      game: repo.game(id),
+      players: repo.players(id),
+      chat: _gr.chat(id),
       );
     }
     final streams = _roomStreams!;
@@ -1057,16 +1065,16 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               Navigator.of(context).pushReplacement(
                 ClothTransition.route(
                   game['character_theme'] == 'manhwa' &&
-                          game['status'] == 'prologue'
+                      game['status'] == 'prologue'
                       ? ManhwaDraftPage(repo: repo, gameId: id)
                       : PrologueFlow(
-                          gameId: id,
-                          repo: repo,
-                          characterTheme:
-                              (game['character_theme'] as String?) ?? 'default',
-                          antagonistCount:
-                              (game['antagonist_count'] as int?) ?? 1,
-                        ),
+                    gameId: id,
+                    repo: repo,
+                    characterTheme:
+                    (game['character_theme'] as String?) ?? 'default',
+                    antagonistCount:
+                    (game['antagonist_count'] as int?) ?? 1,
+                  ),
                 ),
               );
             });
@@ -1278,24 +1286,24 @@ class _MenuTileState extends State<_MenuTile> {
                     color: _on ? EmbunColors.gold : Colors.transparent,
                     boxShadow: _on
                         ? [
-                            BoxShadow(
-                              color: EmbunColors.gold.withValues(alpha: 0.8),
-                              blurRadius: 8,
-                            ),
-                          ]
+                      BoxShadow(
+                        color: EmbunColors.gold.withValues(alpha: 0.8),
+                        blurRadius: 8,
+                      ),
+                    ]
                         : null,
                   ),
                 ),
                 widget.materialIcon != null
                     ? SizedBox(
-                        width: 34 * widget.scale,
-                        height: 34 * widget.scale,
-                        child: Icon(
-                          widget.materialIcon,
-                          size: 28 * widget.scale,
-                          color: EmbunColors.gold,
-                        ),
-                      )
+                  width: 34 * widget.scale,
+                  height: 34 * widget.scale,
+                  child: Icon(
+                    widget.materialIcon,
+                    size: 28 * widget.scale,
+                    color: EmbunColors.gold,
+                  ),
+                )
                     : GameIcon(widget.icon, size: 34 * widget.scale),
                 const SizedBox(width: 12),
                 AnimatedDefaultTextStyle(
