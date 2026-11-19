@@ -298,11 +298,11 @@ class _Section extends StatelessWidget {
 
 /// Teks dengan **tebal** sederhana.
 Widget _rich(
-  String s, {
-  double size = 13.5,
-  Color? color,
-  Color bold = EmbunColors.gold,
-}) {
+    String s, {
+      double size = 13.5,
+      Color? color,
+      Color bold = EmbunColors.gold,
+    }) {
   final parts = s.split('**');
   return Text.rich(
     TextSpan(
@@ -480,21 +480,21 @@ class _Grid extends StatelessWidget {
                     // Kartu muncul membal, bergelombang per baris dan kolom.
                     child: start + j < count
                         ? _GridOrder(
-                            order: j,
-                            child: _Reveal(
-                              dy: 24,
-                              scaleFrom: 0.82,
-                              curve: Curves.easeOutBack,
-                              duration: const Duration(milliseconds: 700),
-                              delay: Duration(
-                                milliseconds: min(
-                                  60 * (start ~/ cols) + 55 * j,
-                                  700,
-                                ),
-                              ),
-                              child: item(start + j, w),
-                            ),
-                          )
+                      order: j,
+                      child: _Reveal(
+                        dy: 24,
+                        scaleFrom: 0.82,
+                        curve: Curves.easeOutBack,
+                        duration: const Duration(milliseconds: 700),
+                        delay: Duration(
+                          milliseconds: min(
+                            60 * (start ~/ cols) + 55 * j,
+                            700,
+                          ),
+                        ),
+                        child: item(start + j, w),
+                      ),
+                    )
                         : null,
                   ),
                 ],
@@ -588,9 +588,9 @@ class _GuideFlipState extends State<_GuideFlip> {
     final o = box.localToGlobal(Offset.zero);
     final seen =
         o.dy < size.height - 40 &&
-        o.dy + box.size.height > 0 &&
-        o.dx < size.width &&
-        o.dx + box.size.width > 0;
+            o.dy + box.size.height > 0 &&
+            o.dx < size.width &&
+            o.dx + box.size.width > 0;
     if (!seen) return;
     _poll?.cancel();
     setState(() => _revealed = true);
@@ -616,239 +616,6 @@ class _GuideFlipState extends State<_GuideFlip> {
   );
 }
 
-// ====================================================================
-// Tab penanda buku
-// ====================================================================
-
-class _FactionTab {
-  final String label;
-  final String? count;
-  final Color accent;
-  const _FactionTab(this.label, this.accent, {this.count});
-}
-
-class _FactionSection extends StatelessWidget {
-  final List<_FactionTab> tabs;
-  final int selected;
-  final ValueChanged<int> onSelect;
-  final Widget child;
-  const _FactionSection({
-    required this.tabs,
-    required this.selected,
-    required this.onSelect,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      if (tabs.length == 1)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 5),
-          child: Text(
-            '${tabs.first.label} · ${tabs.first.count}',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: tabs.first.accent,
-            ),
-          ),
-        )
-      else
-        DecoratedBox(
-          decoration: BoxDecoration(border: Border(bottom: learningRule())),
-          child: Row(
-            children: [
-              for (var i = 0; i < tabs.length; i++)
-                Expanded(
-                  child: _FilterLabel(
-                    label: tabs[i].label,
-                    count: tabs[i].count,
-                    accent: tabs[i].accent,
-                    selected: i == selected,
-                    onSelect: () => onSelect(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      const SizedBox(height: 10),
-      AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        layoutBuilder: (current, previous) => Stack(
-          alignment: Alignment.topLeft,
-          children: [...previous, ?current],
-        ),
-        child: KeyedSubtree(key: ValueKey(selected), child: child),
-      ),
-    ],
-  );
-}
-
-class _FilterLabel extends StatelessWidget {
-  final String label;
-  final String? count;
-  final Color accent;
-  final bool selected;
-  final VoidCallback onSelect;
-
-  const _FilterLabel({
-    required this.label,
-    this.count,
-    required this.accent,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    selected: selected,
-    button: true,
-    child: Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: selected
-            ? BoxDecoration(
-                border: Border(bottom: BorderSide(color: accent, width: 2)),
-              )
-            : null,
-        child: InkWell(
-          onTap: () {
-            if (selected) return;
-            HapticFeedback.selectionClick();
-            onSelect();
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 38),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-              child: Center(
-                widthFactor: 1,
-                child: Text.rich(
-                  TextSpan(
-                    text: label,
-                    children: [
-                      if (count != null)
-                        TextSpan(
-                          text: '  $count',
-                          style: TextStyle(color: accent),
-                        ),
-                    ],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    color: selected ? accent : EmbunColors.cream,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _Segmented extends StatelessWidget {
-  final List<String> labels;
-  final List<int> counts;
-  final int selected;
-  final Color accent;
-  final ValueChanged<int> onSelect;
-  const _Segmented({
-    required this.labels,
-    required this.counts,
-    required this.selected,
-    required this.accent,
-    required this.onSelect,
-  });
-
-  Widget _cell(int i) => _FilterLabel(
-    label: labels[i],
-    count: '${counts[i]}',
-    accent: accent,
-    selected: i == selected,
-    onSelect: () => onSelect(i),
-  );
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(border: Border(bottom: learningRule(accent))),
-    child: LayoutBuilder(
-      builder: (context, box) {
-        const minCell = 92.0;
-        if (box.maxWidth >= minCell * labels.length) {
-          return Row(
-            children: [
-              for (var i = 0; i < labels.length; i++) Expanded(child: _cell(i)),
-            ],
-          );
-        }
-        return Wrap(
-          spacing: 6,
-          children: [for (var i = 0; i < labels.length; i++) _cell(i)],
-        );
-      },
-    ),
-  );
-}
-
-/// Judul kelompok kartu: ikon, nama, jumlah, dan petunjuk.
-Widget _groupHeader(
-  String icon,
-  String title,
-  int count,
-  Color accent, {
-  String? help,
-}) => Padding(
-  padding: const EdgeInsets.only(bottom: 12),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          GameIcon(icon, size: 28),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: accent,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$count kartu',
-            style: const TextStyle(fontSize: 12, color: Colors.white70),
-          ),
-        ],
-      ),
-      if (help != null) ...[
-        const SizedBox(height: 6),
-        Text(
-          help,
-          style: const TextStyle(
-            fontSize: 12,
-            height: 1.4,
-            color: Colors.white60,
-          ),
-        ),
-      ],
-    ],
-  ),
-);
-
 Widget _catalogState(String loading, {String? error, VoidCallback? retry}) =>
     Center(
       child: SingleChildScrollView(
@@ -856,20 +623,604 @@ Widget _catalogState(String loading, {String? error, VoidCallback? retry}) =>
         child: error == null
             ? EmbunLoading(text: loading)
             : Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const GameIcon('alert', size: 30),
+            const SizedBox(height: 5),
+            Text(error, textAlign: TextAlign.center),
+            TextButton.icon(
+              onPressed: retry,
+              icon: const GameIcon('refresh', size: 20),
+              label: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+// ====================================================================
+// Pembangun kartu: kerangka tiga panel (daftar | pencarian + grid | penyaring)
+// ====================================================================
+
+const _builderWide = 880.0;
+
+/// Satu baris di panel kiri (ala daftar dek).
+class _BSide {
+  final String label;
+  final String? sub;
+  final String icon;
+  final Color accent;
+  final int count;
+  const _BSide(this.label, this.icon, this.accent, this.count, {this.sub});
+}
+
+/// Satu penyaring di panel kanan: judul, pilihan, dan pilihan aktif.
+class _BFilter {
+  final String title;
+  final List<String> options;
+  final int selected;
+  final ValueChanged<int> onSelect;
+  const _BFilter(this.title, this.options, this.selected, this.onSelect);
+}
+
+/// Rentang angka (harga) untuk deretan tombol angka di atas grid.
+class _CostBucket {
+  final String label;
+  final int min;
+  final int max;
+  const _CostBucket(this.label, this.min, this.max);
+  bool has(int c) => c >= min && c <= max;
+}
+
+/// Satu tombol per harga; bila lebih dari 8 harga berbeda, harga terbesar
+/// digabung menjadi "N+".
+List<_CostBucket> _costBuckets(Iterable<int> costs) {
+  final list = costs.toSet().toList()..sort();
+  if (list.length <= 8) {
+    return [for (final c in list) _CostBucket('$c', c, c)];
+  }
+  return [
+    for (final c in list.take(7)) _CostBucket('$c', c, c),
+    _CostBucket('${list[7]}+', list[7], 1 << 30),
+  ];
+}
+
+class _BPanelTile extends StatelessWidget {
+  final _BSide side;
+  final bool selected;
+  final bool compact;
+  final VoidCallback onTap;
+  const _BPanelTile({
+    required this.side,
+    required this.selected,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final a = side.accent;
+    final label = Text(
+      side.label,
+      maxLines: compact ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: compact ? TextAlign.center : TextAlign.start,
+      style: TextStyle(
+        fontSize: compact ? 12.5 : 14.5,
+        fontWeight: FontWeight.w800,
+        color: selected ? a : EmbunColors.cream,
+      ),
+    );
+    final count = Text(
+      '${side.count}',
+      style: TextStyle(
+        fontSize: compact ? 12 : 14,
+        fontWeight: FontWeight.w800,
+        color: a,
+      ),
+    );
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                a.withValues(alpha: selected ? 0.30 : 0.12),
+                const Color(0xFF0C1714),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: a.withValues(alpha: selected ? 0.95 : 0.35),
+              width: selected ? 2 : 1,
+            ),
+            boxShadow: selected
+                ? [BoxShadow(color: a.withValues(alpha: 0.35), blurRadius: 14)]
+                : null,
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () {
+              if (selected) return;
+              HapticFeedback.selectionClick();
+              onTap();
+            },
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 6 : 10,
+                vertical: compact ? 8 : 10,
+              ),
+              child: compact
+                  ? Column(
                 mainAxisSize: MainAxisSize.min,
+                children: [label, const SizedBox(height: 2), count],
+              )
+                  : Row(
                 children: [
-                  const GameIcon('alert', size: 30),
-                  const SizedBox(height: 5),
-                  Text(error, textAlign: TextAlign.center),
-                  TextButton.icon(
-                    onPressed: retry,
-                    icon: const GameIcon('refresh', size: 20),
-                    label: const Text('Coba lagi'),
+                  GameIcon(side.icon, size: 30),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        label,
+                        if (side.sub != null)
+                          Text(
+                            side.sub!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              height: 1.25,
+                              color: Colors.white60,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  count,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BFilterRow extends StatelessWidget {
+  final _BFilter filter;
+  final Color accent;
+  const _BFilterRow({required this.filter, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final f = filter;
+    final active = f.selected != 0;
+    final sel = f.selected.clamp(0, f.options.length - 1).toInt();
+    return PopupMenuButton<int>(
+      tooltip: f.title,
+      initialValue: sel,
+      color: EmbunColors.panel,
+      onSelected: (i) {
+        HapticFeedback.selectionClick();
+        f.onSelect(i);
+      },
+      itemBuilder: (_) => [
+        for (var i = 0; i < f.options.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: Text(
+              f.options[i],
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: i == sel ? FontWeight.w800 : FontWeight.w500,
+                color: i == sel ? EmbunColors.gold : EmbunColors.cream,
+              ),
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1714),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: (active ? accent : EmbunColors.goldDim).withValues(
+              alpha: active ? 0.95 : 0.5,
+            ),
+            width: active ? 1.6 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    f.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: EmbunColors.gold,
+                    ),
+                  ),
+                  Text(
+                    f.options[sel],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: active ? accent : Colors.white60,
+                    ),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.diamond_outlined,
+              size: 20,
+              color: EmbunColors.goldDim,
+            ),
+          ],
+        ),
       ),
     );
+  }
+}
+
+class _BSearch extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  const _BSearch({required this.controller, required this.hint});
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    textInputAction: TextInputAction.search,
+    style: const TextStyle(fontSize: 14, color: EmbunColors.cream),
+    decoration: InputDecoration(
+      isDense: true,
+      filled: true,
+      fillColor: const Color(0xFF0C1714),
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.white38),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      suffixIcon: controller.text.isEmpty
+          ? const Icon(Icons.search, color: EmbunColors.gold)
+          : IconButton(
+        tooltip: 'Hapus',
+        icon: const Icon(Icons.close, color: EmbunColors.gold),
+        onPressed: controller.clear,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(
+          color: EmbunColors.goldDim.withValues(alpha: 0.6),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(
+          color: EmbunColors.goldDim.withValues(alpha: 0.6),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: EmbunColors.gold, width: 1.5),
+      ),
+    ),
+  );
+}
+
+/// Deretan tombol angka (harga) di atas grid; yang pertama = semua.
+class _BNumberBar extends StatelessWidget {
+  final String? icon;
+  final List<String> labels;
+  final int selected;
+  final Color accent;
+  final ValueChanged<int> onSelect;
+  const _BNumberBar({
+    this.icon,
+    required this.labels,
+    required this.selected,
+    required this.accent,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        if (icon != null) ...[
+          GameIcon(icon!, size: 30),
+          const SizedBox(width: 8),
+        ],
+        for (var i = 0; i < labels.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Semantics(
+              button: true,
+              selected: i == selected,
+              child: Material(
+                color: Colors.transparent,
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: i == selected
+                        ? accent.withValues(alpha: 0.24)
+                        : const Color(0xFF0C1714),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: i == selected
+                          ? accent
+                          : EmbunColors.goldDim.withValues(alpha: 0.6),
+                      width: i == selected ? 1.8 : 1,
+                    ),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () {
+                      if (i == selected) return;
+                      HapticFeedback.selectionClick();
+                      onSelect(i);
+                    },
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 42,
+                        minHeight: 40,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Center(
+                          widthFactor: 1,
+                          child: Text(
+                            labels[i],
+                            style: TextStyle(
+                              fontSize: i == 0 ? 13 : 17,
+                              fontWeight: FontWeight.w800,
+                              color: i == selected
+                                  ? EmbunColors.cream
+                                  : EmbunColors.gold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+Widget _builderEmpty(String text) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 28),
+  child: Center(
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: Colors.white54),
+    ),
+  ),
+);
+
+/// Kerangka halaman: layar lebar = tiga panel (daftar, pencarian + grid,
+/// penyaring); layar sempit = satu kolom bergulir dengan urutan yang sama.
+class _BuilderFrame extends StatelessWidget {
+  final List<_BSide> sides;
+  final int side;
+  final ValueChanged<int> onSide;
+  final TextEditingController search;
+  final String searchHint;
+  final Widget? numbers;
+  final List<_BFilter> filters;
+  final String resultText;
+  final Widget? note;
+  final Widget body;
+  const _BuilderFrame({
+    required this.sides,
+    required this.side,
+    required this.onSide,
+    required this.search,
+    required this.searchHint,
+    required this.filters,
+    required this.resultText,
+    required this.body,
+    this.numbers,
+    this.note,
+  });
+
+  Color get _accent => sides[side.clamp(0, sides.length - 1).toInt()].accent;
+
+  Widget _header() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        resultText,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: _accent,
+        ),
+      ),
+      if (note != null) ...[const SizedBox(height: 6), note!],
+      const SizedBox(height: 12),
+    ],
+  );
+
+  Widget _filterRow(_BFilter f) => _BFilterRow(filter: f, accent: _accent);
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final wide = box.maxWidth >= _builderWide;
+
+      if (wide) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(2, 12, 2, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 230,
+                child: _Reveal(
+                  dx: -24,
+                  dy: 0,
+                  child: OrnatePanel(
+                    accent: _accent,
+                    padding: const EdgeInsets.all(10),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < sides.length; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _BPanelTile(
+                                side: sides[i],
+                                selected: i == side,
+                                onTap: () => onSide(i),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Reveal(
+                      dy: -16,
+                      child: OrnatePanel(
+                        accent: _accent,
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _BSearch(controller: search, hint: searchHint),
+                            if (numbers != null) ...[
+                              const SizedBox(height: 10),
+                              numbers!,
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: OrnatePanel(
+                        accent: _accent,
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [_header(), body, const SizedBox(height: 16)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (filters.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 240,
+                  child: _Reveal(
+                    dx: 24,
+                    dy: 0,
+                    child: OrnatePanel(
+                      accent: _accent,
+                      padding: const EdgeInsets.all(10),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final f in filters)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _filterRow(f),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+
+      final pad = box.maxWidth < 420 ? 10.0 : 14.0;
+      final half = (box.maxWidth - pad * 2 - 8) / 2;
+      return SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(pad, 12, pad, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < sides.length; i++)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: i == 0 ? 0 : 6),
+                      child: _BPanelTile(
+                        side: sides[i],
+                        selected: i == side,
+                        compact: true,
+                        onTap: () => onSide(i),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _BSearch(controller: search, hint: searchHint),
+            if (numbers != null) ...[const SizedBox(height: 10), numbers!],
+            if (filters.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final f in filters)
+                    SizedBox(
+                      width: filters.length == 1 ? box.maxWidth - pad * 2 : half,
+                      child: _filterRow(f),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 14),
+            _header(),
+            body,
+          ],
+        ),
+      );
+    },
+  );
+}
 
 // ====================================================================
 // Tab 1: Cara Bermain
@@ -932,11 +1283,11 @@ class _HowToTab extends StatelessWidget {
   }
 
   Widget _winCard(
-    String title,
-    String icon,
-    Color accent,
-    List<String> lines,
-  ) => Container(
+      String title,
+      String icon,
+      Color accent,
+      List<String> lines,
+      ) => Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(10, 4, 3, 2),
     decoration: BoxDecoration(border: Border(left: learningRule(accent))),
@@ -973,12 +1324,12 @@ class _HowToTab extends StatelessWidget {
       'Semua Terbisik **tersingkir**.',
     ]);
     final bad =
-        _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
-          'Daun Hayu **habis**.',
-          'Hari terakhir berakhir dengan daun **di bawah batas**.',
-          'Di mode klasik, desa **tinggal dua orang**.',
-          'Di mode Dua Terbisik, **semua Warga tersingkir**.',
-        ]);
+    _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
+      'Daun Hayu **habis**.',
+      'Hari terakhir berakhir dengan daun **di bawah batas**.',
+      'Di mode klasik, desa **tinggal dua orang**.',
+      'Di mode Dua Terbisik, **semua Warga tersingkir**.',
+    ]);
     return LayoutBuilder(
       builder: (context, c) {
         if (c.maxWidth >= 520) {
@@ -1038,8 +1389,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               '**Hayu**, pohon tua desa, sedang meredup. Jumlah daunnya '
-              'adalah nyawa desa: warga berusaha menyelamatkannya, '
-              '**Si Terbisik** diam-diam menghancurkannya.',
+                  'adalah nyawa desa: warga berusaha menyelamatkannya, '
+                  '**Si Terbisik** diam-diam menghancurkannya.',
             ),
             const SizedBox(height: 4),
             _wins(),
@@ -1051,19 +1402,19 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Satu pemain acak menjadi Si Terbisik, sisanya warga. '
-              'Hanya kamu yang tahu perannya.',
+                  'Hanya kamu yang tahu perannya.',
             ),
             _bullet(
               'Namamu diacak menjadi **nama kartu karakter** '
-              '(mis. "Guru", "Nelayan 2").',
+                  '(mis. "Guru", "Nelayan 2").',
             ),
             _bullet(
               'Warga berbelanja dengan **tetes embun**, Si Terbisik '
-              'dengan **bulir hitam**.',
+                  'dengan **bulir hitam**.',
             ),
             _bullet(
               'Daun awal Hayu: 10 dikurangi jumlah pemain '
-              '(minimal 4).',
+                  '(minimal 4).',
             ),
           ],
         ),
@@ -1097,8 +1448,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Host memilih lama sesi: 6, 12 (bawaan), 18, atau 24 hari. '
-              'Batas daun untuk menang: **12 / 20 / 24 / 26**. Tiap siklus: **2 hari biasa** lalu '
-              '**1 malam persembahan**.',
+                  'Batas daun untuk menang: **12 / 20 / 24 / 26**. Tiap siklus: **2 hari biasa** lalu '
+                  '**1 malam persembahan**.',
             ),
             const SizedBox(height: 4),
             _step(
@@ -1145,7 +1496,7 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Embun bertambah tiap pagi sesuai **laju** (awal 3). '
-              'Pagi pertama tiap siklus ada bonus +5.',
+                  'Pagi pertama tiap siklus ada bonus +5.',
             ),
             _bullet('**Perlindungan** menahan serangan pada malam itu saja.'),
             const SizedBox(height: 4),
@@ -1164,10 +1515,10 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Stetoskop** memeriksa peran. Peluang berhasil awal **30%**. '
-              'Tingkatkan satu kartu di **Bengkel Desa**: **30 → 50 → 70 → 85 → 100%**, '
-              'dengan biaya bertahap **3 / 5 / 7 / 10 embun**. Gagal berarti peran '
-              'belum dapat dipastikan. Mulai **85%** kebal pengelabuan; **100%** pasti benar. '
-              'Kartu dan peningkatannya habis saat dipakai. Buka ulang hasil lewat **Infoku**.',
+                  'Tingkatkan satu kartu di **Bengkel Desa**: **30 → 50 → 70 → 85 → 100%**, '
+                  'dengan biaya bertahap **3 / 5 / 7 / 10 embun**. Gagal berarti peran '
+                  'belum dapat dipastikan. Mulai **85%** kebal pengelabuan; **100%** pasti benar. '
+                  'Kartu dan peningkatannya habis saat dipakai. Buka ulang hasil lewat **Infoku**.',
             ),
             _infoRow(
               'plus',
@@ -1188,9 +1539,9 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Perisai Malam** bisa dipasang untuk diri sendiri atau satu '
-              'pemain lain sampai akhir sesi. Nama penjaga dirahasiakan dari '
-              'penerima. Jika perisai menahan serangan, penjaga mendapat '
-              'laporan pribadi.',
+                  'pemain lain sampai akhir sesi. Nama penjaga dirahasiakan dari '
+                  'penerima. Jika perisai menahan serangan, penjaga mendapat '
+                  'laporan pribadi.',
             ),
             _infoRow(
               'danger',
@@ -1201,11 +1552,11 @@ class _HowToTab extends StatelessWidget {
             const SizedBox(height: 2),
             _bullet(
               'Yang bisa dipersembahkan: Persembahan, Sekali pakai, '
-              'Penguat, dan kartu lanjutan yang AKTIF (maks 2 per malam).',
+                  'Penguat, dan kartu lanjutan yang AKTIF (maks 2 per malam).',
             ),
             _bullet(
               'Tekan lama kartu untuk membaca efeknya. Daftar lengkap '
-              'ada di tab **Kartu Item**.',
+                  'ada di tab **Kartu Item**.',
             ),
           ],
         ),
@@ -1215,7 +1566,7 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Kartu lanjutan harus **digabung** dengan satu **kartu '
-              'poin** sebelum bisa dipersembahkan.',
+                  'poin** sebelum bisa dipersembahkan.',
             ),
             _bullet('**Warga**: Kartu Regenerasi + Poin Regenerasi.'),
             _bullet('**Si Terbisik**: Kartu Rekayasa + Poin DNA.'),
@@ -1248,12 +1599,12 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Kapsul DNA** (Si Terbisik) setara 2 Poin DNA: cukup '
-              'untuk dua kartu Rekayasa.',
+                  'untuk dua kartu Rekayasa.',
             ),
             _bullet(
               'Kartu yang ditukar atau dicuri **kehilangan status '
-              'AKTIF**. Kartu poin yang mahal juga mudah jadi sasaran '
-              'Kerikil Panas dan Curian Malam, jadi gabungkan secepatnya.',
+                  'AKTIF**. Kartu poin yang mahal juga mudah jadi sasaran '
+                  'Kerikil Panas dan Curian Malam, jadi gabungkan secepatnya.',
             ),
           ],
         ),
@@ -1264,8 +1615,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Tiap pemain punya **2 nyawa** (dua hati di avatar). '
-              'Dituduh mayoritas = kehilangan satu nyawa, dan Hayu '
-              'kehilangan 1 daun.',
+                  'Dituduh mayoritas = kehilangan satu nyawa, dan Hayu '
+                  'kehilangan 1 daun.',
             ),
             _step(
               1,
@@ -1283,14 +1634,14 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               'Pada mode klasik, **Si Terbisik menang** jika pemain '
-              'tersisa kurang dari $kMinPlayers.',
+                  'tersisa kurang dari $kMinPlayers.',
               dot: EmbunColors.blood,
               bold: EmbunColors.blood,
             ),
             _bullet(
               '**Dua Terbisik** bisa dimulai dengan minimal '
-              '$kMinDuaTerbisikPlayers pemain. Mereka saling kenal, '
-              'punya obrolan rahasia, dan berbagi satu serangan per malam biasa.',
+                  '$kMinDuaTerbisikPlayers pemain. Mereka saling kenal, '
+                  'punya obrolan rahasia, dan berbagi satu serangan per malam biasa.',
               dot: EmbunColors.mist,
               bold: EmbunColors.mist,
             ),
@@ -1302,19 +1653,19 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Satu petunjuk belum tentu benar: Topeng, Cermin Khayal, '
-              'dan Boneka Sawah bisa mengelabui pemeriksaan.',
+                  'dan Boneka Sawah bisa mengelabui pemeriksaan.',
             ),
             _bullet(
               'Perhatikan **siapa yang jarang membeli** atau selalu '
-              'menyerahkan jumlah kartu yang sama.',
+                  'menyerahkan jumlah kartu yang sama.',
             ),
             _bullet(
               'Isyarat (emoji) bisa ke semua orang atau satu pemain, '
-              'maks 8 per hari.',
+                  'maks 8 per hari.',
             ),
             _bullet(
               'Si Terbisik: tidak perlu menyerang tiap malam. '
-              'Persembahan yang tampak biasa adalah samaran terbaik.',
+                  'Persembahan yang tampak biasa adalah samaran terbaik.',
             ),
           ],
         ),
@@ -1346,7 +1697,7 @@ List<_Char> _protagonists() {
   final seen = <String, int>{};
   return [
     for (final s in stems)
-      () {
+          () {
         final t = characterTitle(s);
         final i = seen[t] = (seen[t] ?? 0) + 1;
         return _Char(
@@ -1413,9 +1764,9 @@ void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
                 Text(
                   dark
                       ? 'Wajah gelap Si Terbisik. Hanya pemiliknya yang '
-                            'melihatnya sampai permainan berakhir.'
+                      'melihatnya sampai permainan berakhir.'
                       : 'Kartu karakter warga. Dibagikan acak di awal, dan '
-                            'namamu selama permainan mengikuti kartu ini.',
+                      'namamu selama permainan mengikuti kartu ini.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 12.5,
@@ -1449,20 +1800,24 @@ class _CharactersTab extends StatefulWidget {
 class _CharactersTabState extends State<_CharactersTab>
     with AutomaticKeepAliveClientMixin {
   int faction = 0; // 0 = warga (baik), 1 = Si Terbisik (jahat)
+  int status = 0; // 0 = semua, 1 = terbuka, 2 = terkunci
+  final _search = TextEditingController();
 
-  void _catalogChanged() {
+  void _changed() {
     if (mounted) setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
-    CharacterCatalog.revision.addListener(_catalogChanged);
+    CharacterCatalog.revision.addListener(_changed);
+    _search.addListener(_changed);
   }
 
   @override
   void dispose() {
-    CharacterCatalog.revision.removeListener(_catalogChanged);
+    CharacterCatalog.revision.removeListener(_changed);
+    _search.dispose();
     super.dispose();
   }
 
@@ -1475,90 +1830,93 @@ class _CharactersTabState extends State<_CharactersTab>
     final good = _protagonists();
     final bad = _antagonists();
     final dark = faction == 1;
-    final list = dark ? bad : good;
     final accent = dark ? EmbunColors.mist : EmbunColors.leaf;
+    final q = _search.text.trim().toLowerCase();
+    final list = [
+      for (final c in dark ? bad : good)
+        if ((status == 0 || c.locked == (status == 2)) &&
+            (q.isEmpty || c.label.toLowerCase().contains(q)))
+          c,
+    ];
 
-    return _Page(
-      children: [
-        _FactionSection(
-          tabs: [
-            _FactionTab('Warga', EmbunColors.leaf, count: '${good.length}'),
-            _FactionTab(
-              'Si Terbisik',
-              EmbunColors.mist,
-              count: '${bad.length}',
-            ),
-          ],
-          selected: faction,
-          onSelect: (i) => setState(() => faction = i),
+    return _BuilderFrame(
+      sides: [
+        _BSide('Warga', 'persona', EmbunColors.leaf, good.length,
+            sub: 'Kartu karakter'),
+        _BSide('Si Terbisik', 'danger', EmbunColors.mist, bad.length,
+            sub: 'Wajah gelap'),
+      ],
+      side: faction,
+      onSide: (i) => setState(() {
+        faction = i;
+        status = 0;
+      }),
+      search: _search,
+      searchHint: 'Cari karakter',
+      filters: [
+        _BFilter(
+          'Status',
+          const ['Semua', 'Terbuka', 'Terkunci'],
+          status,
+              (i) => setState(() => status = i),
+        ),
+      ],
+      resultText: '${list.length} kartu',
+      note: _rich(
+        dark
+            ? 'Dipakai Si Terbisik di layarnya sendiri; pemain lain tetap '
+            'melihat kartu karakter biasa. Terungkap saat permainan '
+            'berakhir. Ketuk kartu untuk memperbesar.'
+            : 'Dibagikan acak di awal; namamu mengikuti kartu ini (diberi '
+            'nomor bila kembar). Hanya penampilan, tidak mengubah '
+            'kekuatan. Kartu terkunci tidak bisa dipakai. Ketuk kartu '
+            'aktif untuk memperbesar.',
+        size: 12,
+        color: Colors.white60,
+        bold: accent,
+      ),
+      body: list.isEmpty
+          ? _builderEmpty(
+        (dark ? bad : good).isEmpty
+            ? 'Belum ada gambar karakter.'
+            : 'Tidak ada kartu yang cocok.',
+      )
+          : _Grid(
+        key: ValueKey('char-$faction-$status'),
+        count: list.length,
+        minCell: 108,
+        item: (i, w) => GestureDetector(
+          onTap: list[i].locked
+              ? null
+              : () => _previewCharacter(context, list[i], dark: dark),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _groupHeader(
-                dark ? 'danger' : 'persona',
-                dark ? 'Wajah gelap' : 'Kartu karakter',
-                list.length,
-                accent,
-                help: dark
-                    ? 'Dipakai Si Terbisik di layarnya sendiri; pemain lain '
-                          'tetap melihat kartu karakter biasa. Terungkap saat '
-                          'permainan berakhir. Ketuk kartu untuk memperbesar.'
-                    : 'Dibagikan acak di awal; namamu mengikuti kartu ini '
-                          '(diberi nomor bila kembar). Hanya penampilan, tidak '
-                          'mengubah kekuatan. Kartu terkunci tidak bisa dipakai. '
-                          'Ketuk kartu aktif untuk memperbesar.',
-              ),
-              if (list.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: Text(
-                      'Belum ada gambar karakter.',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
+              _GuideFlip(
+                width: w,
+                height: w * cardAspectFor(list[i].path),
+                backPath: cardBackPath(dark: dark),
+                dark: dark,
+                glow: dark ? EmbunColors.mist : EmbunColors.leaf,
+                front: list[i].stem == null
+                    ? CardArt(
+                  path: list[i].path,
+                  width: w,
+                  glow: dark ? EmbunColors.mist : null,
                 )
-              else
-                _Grid(
-                  key: ValueKey('char-$faction'),
-                  count: list.length,
-                  minCell: 108,
-                  item: (i, w) => GestureDetector(
-                    onTap: list[i].locked
-                        ? null
-                        : () => _previewCharacter(context, list[i], dark: dark),
-                    child: Column(
-                      children: [
-                        _GuideFlip(
-                          width: w,
-                          height: w * cardAspectFor(list[i].path),
-                          backPath: cardBackPath(dark: dark),
-                          dark: dark,
-                          glow: dark ? EmbunColors.mist : EmbunColors.leaf,
-                          front: list[i].stem == null
-                              ? CardArt(
-                                  path: list[i].path,
-                                  width: w,
-                                  glow: dark ? EmbunColors.mist : null,
-                                )
-                              : CharacterLock(
-                                  id: list[i].stem!,
-                                  child: CardArt(path: list[i].path, width: w),
-                                ),
-                        ),
-                        const SizedBox(height: 8),
-                        _caption(
-                          list[i].label,
-                          dark ? EmbunColors.mist : EmbunColors.cream,
-                        ),
-                      ],
-                    ),
-                  ),
+                    : CharacterLock(
+                  id: list[i].stem!,
+                  child: CardArt(path: list[i].path, width: w),
                 ),
+              ),
+              const SizedBox(height: 8),
+              _caption(
+                list[i].label,
+                dark ? EmbunColors.mist : EmbunColors.cream,
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1604,18 +1962,18 @@ const _itemGroupIcon = {
 
 const _itemGroupHelp = {
   'perawatan':
-      'Beli di Pasar Riset. Surat Dokter memulihkan 1 nyawa di Pondok Perawatan; merawat pemain lain perlu 12 uang tambahan. Surat Keterangan Sakit memasang jebakan yang bertahan sampai seorang pengunjung lain terkena. Surat habis setelah digunakan.',
+  'Beli di Pasar Riset. Surat Dokter memulihkan 1 nyawa di Pondok Perawatan; merawat pemain lain perlu 12 uang tambahan. Surat Keterangan Sakit memasang jebakan yang bertahan sampai seorang pengunjung lain terkena. Surat habis setelah digunakan.',
   'persembahan': 'Efek langsung saat dipersembahkan ke Hayu.',
   'sekali_pakai': 'Alat periksa. Hasilnya hanya dilihat pemakainya.',
   'penguat': 'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.',
   'siang':
-      'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
+  'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
       'dipersembahkan.',
   'kombinasi':
-      'Kartu lanjutan harus digabung dengan kartu poin di '
+  'Kartu lanjutan harus digabung dengan kartu poin di '
       'Bengkel Desa sebelum bisa dipersembahkan.',
   'malam':
-      'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
+  'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
       'tahu ada serangan.',
 };
 
@@ -1638,6 +1996,13 @@ class _ItemsTabState extends State<_ItemsTab>
   int faction = 0; // 0 = warga (baik), 1 = Si Terbisik (jahat)
   String? kindFilter;
   HayuPart? hayuFilter;
+  int costIdx = 0; // 0 = semua harga
+  int stockIdx = 0; // 0 = semua, 1 = dijual, 2 = dasar
+  final _search = TextEditingController();
+
+  void _onSearch() {
+    if (mounted) setState(() {});
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -1645,8 +2010,15 @@ class _ItemsTabState extends State<_ItemsTab>
   @override
   void initState() {
     super.initState();
+    _search.addListener(_onSearch);
     if (_data == null) defs = _defsCache;
     if (defs == null) _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
@@ -1722,54 +2094,6 @@ class _ItemsTabState extends State<_ItemsTab>
     );
   }
 
-  Widget _hayuFilters(Color accent) {
-    Widget chip(HayuPart? part) => ChoiceChip(
-      key: ValueKey('hayu-filter-${part?.name ?? 'all'}'),
-      label: Text(part?.label ?? 'Semua bagian'),
-      avatar: part == null
-          ? null
-          : SizedBox.square(
-              dimension: 22,
-              child: GameImage(
-                path: sceneryPath('pohonindikator-${part.name}'),
-                fit: BoxFit.contain,
-                cacheWidth: 66,
-              ),
-            ),
-      selected: hayuFilter == part,
-      showCheckmark: false,
-      selectedColor: accent.withValues(alpha: 0.20),
-      side: BorderSide(
-        color: accent.withValues(alpha: hayuFilter == part ? 0.90 : 0.32),
-      ),
-      labelStyle: TextStyle(
-        color: hayuFilter == part ? EmbunColors.cream : Colors.white70,
-        fontSize: 12,
-        fontWeight: hayuFilter == part ? FontWeight.w800 : FontWeight.w600,
-      ),
-      onSelected: (_) => setState(() => hayuFilter = part),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          header: true,
-          child: const Text(
-            'Bagian Hayu',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-          ),
-        ),
-        Wrap(
-          spacing: 6,
-          children: [
-            chip(null),
-            for (final part in HayuPart.values) chip(part),
-          ],
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -1787,19 +2111,7 @@ class _ItemsTabState extends State<_ItemsTab>
     final dark = faction == 1;
     final all = dark ? bad : good;
     final accent = dark ? EmbunColors.mist : EmbunColors.leaf;
-    final filter = hayuFilter;
-    final filtered = filter == null
-        ? all
-        : [
-            for (final d in all)
-              if (cardHayuParts(d).contains(filter)) d,
-          ];
-    final groups = <String, List<Map<String, dynamic>>>{};
-    for (final d in filtered) {
-      final group = _itemGroupOf(d['kind'] as String?);
-      (groups[group] ??= []).add(d);
-    }
-    int n(String g) => groups[g]?.length ?? 0;
+
     final available = all
         .map((d) => _itemGroupOf(d['kind'] as String?))
         .toSet();
@@ -1807,109 +2119,121 @@ class _ItemsTabState extends State<_ItemsTab>
       for (final g in _itemGroups)
         if (available.contains(g)) g,
     ];
-    final idx = kindFilter == null ? 0 : present.indexOf(kindFilter!) + 1;
-    final shown = [
-      for (final g in idx == 0 ? present : [present[idx - 1]])
-        if (n(g) > 0) g,
-    ];
+    final kindSel = kindFilter == null ? 0 : present.indexOf(kindFilter!) + 1;
+    final buckets = _costBuckets([
+      for (final d in all) (d['cost'] as int?) ?? 0,
+    ]);
+    final costSel = costIdx.clamp(0, buckets.length).toInt();
+    final q = _search.text.trim().toLowerCase();
 
-    List<Map<String, dynamic>> inGroup(String g) {
-      final l = groups[g]!;
-      // Kombinasi: kartu lanjutan dulu, lalu kartu poin; sisanya menurut harga.
-      l.sort((a, b) {
-        final ak = a['kind'] == 'poin' ? 1 : 0;
-        final bk = b['kind'] == 'poin' ? 1 : 0;
-        if (ak != bk) return ak - bk;
-        final c = ((a['cost'] as int?) ?? 0) - ((b['cost'] as int?) ?? 0);
-        if (c != 0) return c;
-        return '${a['name']}'.compareTo('${b['name']}');
-      });
-      return l;
+    int rank(Map<String, dynamic> d) {
+      final i = _itemGroups.indexOf(_itemGroupOf(d['kind'] as String?));
+      return i < 0 ? 99 : i;
     }
 
-    return _Page(
-      children: [
-        _FactionSection(
-          tabs: [
-            _FactionTab('Warga', EmbunColors.leaf, count: '${good.length}'),
-            _FactionTab(
-              'Si Terbisik',
-              EmbunColors.mist,
-              count: '${bad.length}',
-            ),
-          ],
-          selected: faction,
-          onSelect: (i) => setState(() {
-            faction = i;
-            kindFilter = null;
-          }),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _rich(
-                dark
-                    ? 'Dibeli dengan **bulir hitam**. Ketuk kartu untuk '
-                          'detail. Label "Dasar" = tidak dijual, dibagikan tiap '
-                          'malam persembahan.'
-                    : 'Dibeli dengan **tetes embun**. Ketuk kartu untuk '
-                          'detail. Label "Dasar" = tidak dijual, dibagikan tiap '
-                          'malam persembahan.',
-                size: 12.5,
-                color: Colors.white70,
-                bold: accent,
-              ),
-              const SizedBox(height: 12),
-              _Segmented(
-                labels: [
-                  'Semua',
-                  for (final g in present) _itemGroupLabel[g] ?? g,
-                ],
-                counts: [filtered.length, for (final g in present) n(g)],
-                selected: idx,
-                accent: accent,
-                onSelect: (i) => setState(() {
-                  kindFilter = i == 0 ? null : present[i - 1];
-                }),
-              ),
-              const SizedBox(height: 12),
-              _hayuFilters(accent),
-              const SizedBox(height: 14),
-              for (final g in shown) ...[
-                _groupHeader(
-                  _itemGroupIcon[g] ?? 'item',
-                  _itemGroupLabel[g] ?? g,
-                  n(g),
-                  accent,
-                  help: _itemGroupHelp[g],
-                ),
-                () {
-                  final list = inGroup(g);
-                  return _Grid(
-                    key: ValueKey('$faction-$g-${hayuFilter?.name ?? 'all'}'),
-                    count: list.length,
-                    minCell: 120,
-                    item: (i, w) => _tile(list[i], w, dark),
-                  );
-                }(),
-                const SizedBox(height: 24),
-              ],
-              if (shown.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: Text(
-                      hayuFilter == null
-                          ? 'Tidak ada kartu.'
-                          : 'Tidak ada kartu yang cocok dengan filter ini.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                ),
-            ],
+    final list = [
+      for (final d in all)
+        if ((hayuFilter == null || cardHayuParts(d).contains(hayuFilter)) &&
+            (kindSel == 0 ||
+                _itemGroupOf(d['kind'] as String?) == present[kindSel - 1]) &&
+            (stockIdx == 0 || (d['purchasable'] == false) == (stockIdx == 2)) &&
+            (costSel == 0 ||
+                buckets[costSel - 1].has((d['cost'] as int?) ?? 0)) &&
+            (q.isEmpty ||
+                '${d['name']}'.toLowerCase().contains(q) ||
+                '${d['description'] ?? ''}'.toLowerCase().contains(q)))
+          d,
+    ];
+    // Kelompok menurut urutan tetap; kombinasi: kartu lanjutan dulu, lalu
+    // kartu poin; sisanya menurut harga, lalu nama.
+    list.sort((a, b) {
+      final g = rank(a) - rank(b);
+      if (g != 0) return g;
+      final ak = a['kind'] == 'poin' ? 1 : 0;
+      final bk = b['kind'] == 'poin' ? 1 : 0;
+      if (ak != bk) return ak - bk;
+      final c = ((a['cost'] as int?) ?? 0) - ((b['cost'] as int?) ?? 0);
+      if (c != 0) return c;
+      return '${a['name']}'.compareTo('${b['name']}');
+    });
+
+    final kindHelp = kindSel == 0 ? null : _itemGroupHelp[present[kindSel - 1]];
+
+    return _BuilderFrame(
+      sides: [
+        _BSide('Warga', 'persona', EmbunColors.leaf, good.length,
+            sub: 'Dibeli dengan tetes embun'),
+        _BSide('Si Terbisik', 'danger', EmbunColors.mist, bad.length,
+            sub: 'Dibeli dengan bulir hitam'),
+      ],
+      side: faction,
+      onSide: (i) => setState(() {
+        faction = i;
+        kindFilter = null;
+        costIdx = 0;
+        stockIdx = 0;
+      }),
+      search: _search,
+      searchHint: 'Cari kartu',
+      numbers: _BNumberBar(
+        icon: dark ? 'danger' : 'bulirembun',
+        labels: ['Semua', for (final b in buckets) b.label],
+        selected: costSel,
+        accent: accent,
+        onSelect: (i) => setState(() => costIdx = i),
+      ),
+      filters: [
+        _BFilter(
+          'Jenis Kartu',
+          ['Semua', for (final g in present) _itemGroupLabel[g] ?? g],
+          kindSel,
+              (i) => setState(() => kindFilter = i == 0 ? null : present[i - 1]),
+        ),
+        _BFilter(
+          'Bagian Hayu',
+          ['Semua bagian', for (final p in HayuPart.values) p.label],
+          hayuFilter == null ? 0 : HayuPart.values.indexOf(hayuFilter!) + 1,
+              (i) => setState(
+                () => hayuFilter = i == 0 ? null : HayuPart.values[i - 1],
           ),
         ),
+        _BFilter(
+          'Ketersediaan',
+          const ['Semua', 'Dijual', 'Dasar (dibagikan)'],
+          stockIdx,
+              (i) => setState(() => stockIdx = i),
+        ),
       ],
+      resultText: '${list.length} kartu',
+      note: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _rich(
+            'Ketuk kartu untuk detail. Label **Dasar** = tidak dijual, '
+                'dibagikan tiap malam persembahan.',
+            size: 12,
+            color: Colors.white60,
+            bold: accent,
+          ),
+          if (kindHelp != null) ...[
+            const SizedBox(height: 6),
+            _rich(kindHelp, size: 12, color: Colors.white70, bold: accent),
+          ],
+        ],
+      ),
+      body: list.isEmpty
+          ? _builderEmpty(
+        all.isEmpty ? 'Tidak ada kartu.' : 'Tidak ada kartu yang cocok.',
+      )
+          : _Grid(
+        key: ValueKey(
+          '$faction-${kindFilter ?? 'all'}-${hayuFilter?.name ?? 'all'}'
+              '-$stockIdx-$costSel',
+        ),
+        count: list.length,
+        minCell: 120,
+        item: (i, w) => _tile(list[i], w, dark),
+      ),
     );
   }
 }
@@ -1933,13 +2257,19 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   String? error;
   bool loading = false;
   int kindIdx = 0; // 0 = semua, 1 = sekali pakai, 2 = pasif
+  int modeIdx = 0; // 0 = semua, 1 = ditekan manual, 2 = bekerja sendiri
+  final _search = TextEditingController();
+
+  void _onSearch() {
+    if (mounted) setState(() {});
+  }
 
   static const _groups = ['sekali_pakai', 'pasif'];
   static const _groupLabel = {'sekali_pakai': 'Sekali pakai', 'pasif': 'Pasif'};
   static const _groupIcon = {'sekali_pakai': 'item', 'pasif': 'plus'};
   static const _groupHelp = {
     'sekali_pakai':
-        'Tekan tombol kemampuan di bilah atas meja (Patuhilah '
+    'Tekan tombol kemampuan di bilah atas meja (Patuhilah '
         'Padaku: di layar voting). Hanya sekali.',
     'pasif': 'Bekerja otomatis saat syaratnya terpenuhi.',
   };
@@ -1950,8 +2280,15 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   @override
   void initState() {
     super.initState();
+    _search.addListener(_onSearch);
     if (_data == null) defs = _abilityCache;
     if (defs == null) _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetch() async {
@@ -2108,93 +2445,129 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
     int n(String k) => _list(k).length;
     final total = n('sekali_pakai') + n('pasif');
     final idx = kindIdx.clamp(0, _groups.length).toInt();
-    final shown = idx == 0 ? _groups : [_groups[idx - 1]];
     const accent = EmbunColors.leaf;
+    final q = _search.text.trim().toLowerCase();
 
-    return _Page(
-      children: [
-        _FactionSection(
-          tabs: [_FactionTab('Kemampuan Warga', accent, count: '$total')],
-          selected: 0,
-          onSelect: (_) {},
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _bullet(
-                'Lima kemampuan rapat baru tidak bisa ditangkis atau dipadamkan kartu kuning/ungu. Penanggung Luka hanya memindahkan satu luka. Warisan Suara memberi satu suara terakhir sesuai jadwal, tanpa mengembalikan aksi pemain.',
-                dot: accent,
-                bold: accent,
-              ),
+    final list = [
+      for (final k in idx == 0 ? _groups : [_groups[idx - 1]])
+        for (final d in _list(k))
+          if ((modeIdx == 0 ||
+              abilityIsManual('${d['id']}') == (modeIdx == 1)) &&
+              (q.isEmpty ||
+                  '${d['name']}'.toLowerCase().contains(q) ||
+                  '${d['description'] ?? ''}'.toLowerCase().contains(q)))
+            d,
+    ];
 
-              _bullet(
-                'Setelah kartu karakter hijau terbuka, tiap warga memilih '
-                '**satu dari tiga kartu biru tertutup**. Pilihan diacak server '
-                'dan hasilnya hanya terlihat oleh pemilik.',
-                dot: accent,
-                bold: accent,
-              ),
-              _bullet(
-                'Kartu biru tidak bisa dibeli. Kemampuan khusus tidak kembar; '
-                '**Hanya Orang Biasa** tetap bisa diperoleh lebih dari satu warga. '
-                'Terbisik membuka kartu merah pada tahap yang sama.',
-                dot: accent,
-                bold: accent,
-              ),
-              _bullet(
-                'Si Terbisik tidak punya kemampuan, tetapi Stetoskop '
-                'Pencuri Hati miliknya bisa menyedot kemampuan yang '
-                'belum terpakai.',
-                dot: accent,
-                bold: accent,
-              ),
-              _bullet(
-                'Ketuk kartu untuk membaca efeknya.',
-                dot: accent,
-                bold: accent,
-              ),
-              const SizedBox(height: 8),
-              _Segmented(
-                labels: ['Semua', for (final k in _groups) _groupLabel[k]!],
-                counts: [total, for (final k in _groups) n(k)],
-                selected: idx,
-                accent: accent,
-                onSelect: (i) => setState(() => kindIdx = i),
-              ),
-              const SizedBox(height: 18),
-              for (final k in shown)
-                if (n(k) > 0) ...[
-                  _groupHeader(
-                    _groupIcon[k]!,
-                    _groupLabel[k]!,
-                    n(k),
-                    accent,
-                    help: _groupHelp[k],
-                  ),
-                  () {
-                    final list = _list(k);
-                    return _Grid(
-                      key: ValueKey('ab-$k-$idx'),
-                      count: list.length,
-                      minCell: 120,
-                      item: (i, w) => _tile(list[i], w),
-                    );
-                  }(),
-                  const SizedBox(height: 24),
-                ],
-              if (total == 0)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: Text(
-                      'Belum ada kemampuan.',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                ),
-            ],
+    final help = idx == 0 ? null : _groupHelp[_groups[idx - 1]];
+
+    return _BuilderFrame(
+      sides: [
+        _BSide('Semua', 'item', accent, total, sub: 'Kemampuan warga'),
+        for (final k in _groups)
+          _BSide(
+            _groupLabel[k]!,
+            _groupIcon[k]!,
+            accent,
+            n(k),
+            sub: _groupHelp[k],
           ),
+      ],
+      side: idx,
+      onSide: (i) => setState(() => kindIdx = i),
+      search: _search,
+      searchHint: 'Cari kemampuan',
+      filters: [
+        _BFilter(
+          'Cara Pakai',
+          const ['Semua', 'Ditekan manual', 'Bekerja sendiri'],
+          modeIdx,
+              (i) => setState(() => modeIdx = i),
         ),
       ],
+      resultText: '${list.length} kartu',
+      note: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (help != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _rich(
+                help,
+                size: 12,
+                color: Colors.white70,
+                bold: accent,
+              ),
+            ),
+          _rich(
+            'Ketuk kartu untuk membaca efeknya.',
+            size: 12,
+            color: Colors.white60,
+            bold: accent,
+          ),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              dense: true,
+              iconColor: EmbunColors.gold,
+              collapsedIconColor: EmbunColors.gold,
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              title: const Text(
+                'Cara kerja kemampuan',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: EmbunColors.gold,
+                ),
+              ),
+              children: [
+                _bullet(
+                  'Lima kemampuan rapat baru tidak bisa ditangkis atau '
+                      'dipadamkan kartu kuning/ungu. Penanggung Luka hanya '
+                      'memindahkan satu luka. Warisan Suara memberi satu suara '
+                      'terakhir sesuai jadwal, tanpa mengembalikan aksi pemain.',
+                  dot: accent,
+                  bold: accent,
+                ),
+                _bullet(
+                  'Setelah kartu karakter hijau terbuka, tiap warga memilih '
+                      '**satu dari tiga kartu biru tertutup**. Pilihan diacak '
+                      'server dan hasilnya hanya terlihat oleh pemilik.',
+                  dot: accent,
+                  bold: accent,
+                ),
+                _bullet(
+                  'Kartu biru tidak bisa dibeli. Kemampuan khusus tidak '
+                      'kembar; **Hanya Orang Biasa** tetap bisa diperoleh lebih '
+                      'dari satu warga. Terbisik membuka kartu merah pada tahap '
+                      'yang sama.',
+                  dot: accent,
+                  bold: accent,
+                ),
+                _bullet(
+                  'Si Terbisik tidak punya kemampuan, tetapi Stetoskop '
+                      'Pencuri Hati miliknya bisa menyedot kemampuan yang belum '
+                      'terpakai.',
+                  dot: accent,
+                  bold: accent,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: list.isEmpty
+          ? _builderEmpty(
+        total == 0 ? 'Belum ada kemampuan.' : 'Tidak ada kartu yang cocok.',
+      )
+          : _Grid(
+        key: ValueKey('ab-$idx-$modeIdx'),
+        count: list.length,
+        minCell: 120,
+        item: (i, w) => _tile(list[i], w),
+      ),
     );
   }
 }
