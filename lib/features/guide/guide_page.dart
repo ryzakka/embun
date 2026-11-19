@@ -639,12 +639,13 @@ Widget _catalogState(String loading, {String? error, VoidCallback? retry}) =>
     );
 
 // ====================================================================
-// Pembangun kartu: kerangka tiga panel (daftar | pencarian + grid | penyaring)
+// Pembangun kartu: tiga kolom terbuka (daftar | pencarian + grid |
+// penyaring), dipisah garis tipis seperti bagian lain halaman ini.
 // ====================================================================
 
 const _builderWide = 880.0;
 
-/// Satu baris di panel kiri (ala daftar dek).
+/// Satu pilihan di kolom kiri.
 class _BSide {
   final String label;
   final String? sub;
@@ -654,7 +655,7 @@ class _BSide {
   const _BSide(this.label, this.icon, this.accent, this.count, {this.sub});
 }
 
-/// Satu penyaring di panel kanan: judul, pilihan, dan pilihan aktif.
+/// Satu penyaring di kolom kanan: judul, pilihan, dan pilihan aktif.
 class _BFilter {
   final String title;
   final List<String> options;
@@ -663,7 +664,7 @@ class _BFilter {
   const _BFilter(this.title, this.options, this.selected, this.onSelect);
 }
 
-/// Rentang angka (harga) untuk deretan tombol angka di atas grid.
+/// Rentang angka (harga) untuk deretan angka di atas grid.
 class _CostBucket {
   final String label;
   final int min;
@@ -672,7 +673,7 @@ class _CostBucket {
   bool has(int c) => c >= min && c <= max;
 }
 
-/// Satu tombol per harga; bila lebih dari 8 harga berbeda, harga terbesar
+/// Satu angka per harga; bila lebih dari 8 harga berbeda, harga terbesar
 /// digabung menjadi "N+".
 List<_CostBucket> _costBuckets(Iterable<int> costs) {
   final list = costs.toSet().toList()..sort();
@@ -685,6 +686,7 @@ List<_CostBucket> _costBuckets(Iterable<int> costs) {
   ];
 }
 
+/// Pilihan di kolom kiri: teks terbuka, garis bawah emas/aksen bila terpilih.
 class _BPanelTile extends StatelessWidget {
   final _BSide side;
   final bool selected;
@@ -700,23 +702,23 @@ class _BPanelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = side.accent;
-    final label = Text(
-      side.label,
-      maxLines: compact ? 2 : 1,
+    final label = Text.rich(
+      TextSpan(
+        text: side.label,
+        children: [
+          TextSpan(
+            text: '  ${side.count}',
+            style: TextStyle(color: a, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
       textAlign: compact ? TextAlign.center : TextAlign.start,
       style: TextStyle(
-        fontSize: compact ? 12.5 : 14.5,
-        fontWeight: FontWeight.w800,
+        fontSize: compact ? 12.5 : 15,
+        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
         color: selected ? a : EmbunColors.cream,
-      ),
-    );
-    final count = Text(
-      '${side.count}',
-      style: TextStyle(
-        fontSize: compact ? 12 : 14,
-        fontWeight: FontWeight.w800,
-        color: a,
       ),
     );
     return Semantics(
@@ -726,23 +728,13 @@ class _BPanelTile extends StatelessWidget {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                a.withValues(alpha: selected ? 0.30 : 0.12),
-                const Color(0xFF0C1714),
-              ],
+            border: Border(
+              bottom: selected
+                  ? BorderSide(color: a, width: 2)
+                  : learningRule(a),
             ),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: a.withValues(alpha: selected ? 0.95 : 0.35),
-              width: selected ? 2 : 1,
-            ),
-            boxShadow: selected
-                ? [BoxShadow(color: a.withValues(alpha: 0.35), blurRadius: 14)]
-                : null,
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
             onTap: () {
               if (selected) return;
               HapticFeedback.selectionClick();
@@ -750,39 +742,37 @@ class _BPanelTile extends StatelessWidget {
             },
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: compact ? 6 : 10,
-                vertical: compact ? 8 : 10,
+                horizontal: compact ? 4 : 2,
+                vertical: compact ? 9 : 11,
               ),
               child: compact
-                  ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [label, const SizedBox(height: 2), count],
-              )
+                  ? Center(widthFactor: 1, child: label)
                   : Row(
                 children: [
-                  GameIcon(side.icon, size: 30),
-                  const SizedBox(width: 10),
+                  GameIcon(side.icon, size: 26),
+                  const SizedBox(width: 9),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         label,
                         if (side.sub != null)
-                          Text(
-                            side.sub!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              height: 1.25,
-                              color: Colors.white60,
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              side.sub!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                height: 1.25,
+                                color: Colors.white60,
+                              ),
                             ),
                           ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  count,
                 ],
               ),
             ),
@@ -793,6 +783,7 @@ class _BPanelTile extends StatelessWidget {
   }
 }
 
+/// Penyaring: judul emas, pilihan aktif di bawahnya, garis tipis di dasar.
 class _BFilterRow extends StatelessWidget {
   final _BFilter filter;
   final Color accent;
@@ -801,8 +792,8 @@ class _BFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final f = filter;
-    final active = f.selected != 0;
     final sel = f.selected.clamp(0, f.options.length - 1).toInt();
+    final active = sel != 0;
     return PopupMenuButton<int>(
       tooltip: f.title,
       initialValue: sel,
@@ -825,59 +816,58 @@ class _BFilterRow extends StatelessWidget {
             ),
           ),
       ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFF0C1714),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: (active ? accent : EmbunColors.goldDim).withValues(
-              alpha: active ? 0.95 : 0.5,
-            ),
-            width: active ? 1.6 : 1,
+          border: Border(
+            bottom: active
+                ? BorderSide(color: accent, width: 2)
+                : learningRule(),
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    f.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: EmbunColors.gold,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      f.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: EmbunColors.gold,
+                      ),
                     ),
-                  ),
-                  Text(
-                    f.options[sel],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: active ? accent : Colors.white60,
+                    Text(
+                      f.options[sel],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: active ? accent : Colors.white60,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.diamond_outlined,
-              size: 20,
-              color: EmbunColors.goldDim,
-            ),
-          ],
+              const Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: EmbunColors.goldDim,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+/// Kolom pencarian: hanya garis bawah, tanpa kotak isian.
 class _BSearch extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -890,39 +880,32 @@ class _BSearch extends StatelessWidget {
     style: const TextStyle(fontSize: 14, color: EmbunColors.cream),
     decoration: InputDecoration(
       isDense: true,
-      filled: true,
-      fillColor: const Color(0xFF0C1714),
+      filled: false,
       hintText: hint,
       hintStyle: const TextStyle(color: Colors.white38),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
       suffixIcon: controller.text.isEmpty
-          ? const Icon(Icons.search, color: EmbunColors.gold)
+          ? const Icon(Icons.search, size: 20, color: EmbunColors.gold)
           : IconButton(
         tooltip: 'Hapus',
-        icon: const Icon(Icons.close, color: EmbunColors.gold),
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(Icons.close, size: 20, color: EmbunColors.gold),
         onPressed: controller.clear,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: EmbunColors.goldDim.withValues(alpha: 0.6),
-        ),
+      border: UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.32)),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: EmbunColors.goldDim.withValues(alpha: 0.6),
-        ),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.32)),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: EmbunColors.gold, width: 1.5),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold, width: 2),
       ),
     ),
   );
 }
 
-/// Deretan tombol angka (harga) di atas grid; yang pertama = semua.
+/// Deretan angka (harga) di atas grid: teks saja, garis bawah bila terpilih.
 class _BNumberBar extends StatelessWidget {
   final String? icon;
   final List<String> labels;
@@ -943,55 +926,46 @@ class _BNumberBar extends StatelessWidget {
     child: Row(
       children: [
         if (icon != null) ...[
-          GameIcon(icon!, size: 30),
-          const SizedBox(width: 8),
+          GameIcon(icon!, size: 26),
+          const SizedBox(width: 6),
         ],
         for (var i = 0; i < labels.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Semantics(
-              button: true,
-              selected: i == selected,
-              child: Material(
-                color: Colors.transparent,
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: i == selected
-                        ? accent.withValues(alpha: 0.24)
-                        : const Color(0xFF0C1714),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: i == selected
-                          ? accent
-                          : EmbunColors.goldDim.withValues(alpha: 0.6),
-                      width: i == selected ? 1.8 : 1,
-                    ),
+          Semantics(
+            button: true,
+            selected: i == selected,
+            child: Material(
+              color: Colors.transparent,
+              child: Ink(
+                decoration: i == selected
+                    ? BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: accent, width: 2),
                   ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: () {
-                      if (i == selected) return;
-                      HapticFeedback.selectionClick();
-                      onSelect(i);
-                    },
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 42,
-                        minHeight: 40,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Center(
-                          widthFactor: 1,
-                          child: Text(
-                            labels[i],
-                            style: TextStyle(
-                              fontSize: i == 0 ? 13 : 17,
-                              fontWeight: FontWeight.w800,
-                              color: i == selected
-                                  ? EmbunColors.cream
-                                  : EmbunColors.gold,
-                            ),
+                )
+                    : null,
+                child: InkWell(
+                  onTap: () {
+                    if (i == selected) return;
+                    HapticFeedback.selectionClick();
+                    onSelect(i);
+                  },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 38,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: i == 0 ? 13 : 16,
+                            fontWeight: i == selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            color: i == selected ? accent : EmbunColors.cream,
                           ),
                         ),
                       ),
@@ -1017,8 +991,9 @@ Widget _builderEmpty(String text) => Padding(
   ),
 );
 
-/// Kerangka halaman: layar lebar = tiga panel (daftar, pencarian + grid,
-/// penyaring); layar sempit = satu kolom bergulir dengan urutan yang sama.
+/// Kerangka halaman: layar lebar = tiga kolom terbuka (daftar, pencarian +
+/// grid, penyaring) dipisah garis tegak tipis; layar sempit = satu kolom
+/// bergulir dengan urutan yang sama. Tanpa kotak atau bingkai.
 class _BuilderFrame extends StatelessWidget {
   final List<_BSide> sides;
   final int side;
@@ -1051,13 +1026,13 @@ class _BuilderFrame extends StatelessWidget {
       Text(
         resultText,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w800,
           color: _accent,
         ),
       ),
       if (note != null) ...[const SizedBox(height: 6), note!],
-      const SizedBox(height: 12),
+      const SizedBox(height: 14),
     ],
   );
 
@@ -1070,30 +1045,29 @@ class _BuilderFrame extends StatelessWidget {
 
       if (wide) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(2, 12, 2, 14),
+          padding: const EdgeInsets.fromLTRB(2, 10, 2, 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                width: 230,
+                width: 220,
                 child: _Reveal(
                   dx: -24,
                   dy: 0,
-                  child: OrnatePanel(
-                    accent: _accent,
-                    padding: const EdgeInsets.all(10),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(right: learningRule(_accent)),
+                    ),
                     child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(right: 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           for (var i = 0; i < sides.length; i++)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _BPanelTile(
-                                side: sides[i],
-                                selected: i == side,
-                                onTap: () => onSide(i),
-                              ),
+                            _BPanelTile(
+                              side: sides[i],
+                              selected: i == side,
+                              onTap: () => onSide(i),
                             ),
                         ],
                       ),
@@ -1101,62 +1075,67 @@ class _BuilderFrame extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Reveal(
-                      dy: -16,
-                      child: OrnatePanel(
-                        accent: _accent,
-                        padding: const EdgeInsets.all(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Reveal(
+                        dy: -16,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _BSearch(controller: search, hint: searchHint),
                             if (numbers != null) ...[
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               numbers!,
                             ],
+                            const SizedBox(height: 6),
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border(bottom: learningRule(_accent)),
+                              ),
+                              child: const SizedBox(height: 1),
+                            ),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: OrnatePanel(
-                        accent: _accent,
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                      Expanded(
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [_header(), body, const SizedBox(height: 16)],
+                            children: [
+                              _header(),
+                              body,
+                              const SizedBox(height: 16),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              if (filters.isNotEmpty) ...[
-                const SizedBox(width: 12),
+              if (filters.isNotEmpty)
                 SizedBox(
-                  width: 240,
+                  width: 230,
                   child: _Reveal(
                     dx: 24,
                     dy: 0,
-                    child: OrnatePanel(
-                      accent: _accent,
-                      padding: const EdgeInsets.all(10),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border(left: learningRule(_accent)),
+                      ),
                       child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(left: 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             for (final f in filters)
                               Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(bottom: 6),
                                 child: _filterRow(f),
                               ),
                           ],
@@ -1165,44 +1144,40 @@ class _BuilderFrame extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
             ],
           ),
         );
       }
 
       final pad = box.maxWidth < 420 ? 10.0 : 14.0;
-      final half = (box.maxWidth - pad * 2 - 8) / 2;
+      final half = (box.maxWidth - pad * 2 - 14) / 2;
       return SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(pad, 12, pad, 28),
+        padding: EdgeInsets.fromLTRB(pad, 10, pad, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < sides.length; i++)
+                for (final i in List.generate(sides.length, (i) => i))
                   Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(left: i == 0 ? 0 : 6),
-                      child: _BPanelTile(
-                        side: sides[i],
-                        selected: i == side,
-                        compact: true,
-                        onTap: () => onSide(i),
-                      ),
+                    child: _BPanelTile(
+                      side: sides[i],
+                      selected: i == side,
+                      compact: true,
+                      onTap: () => onSide(i),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _BSearch(controller: search, hint: searchHint),
-            if (numbers != null) ...[const SizedBox(height: 10), numbers!],
+            if (numbers != null) ...[const SizedBox(height: 6), numbers!],
             if (filters.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 14,
+                runSpacing: 4,
                 children: [
                   for (final f in filters)
                     SizedBox(
@@ -1212,7 +1187,7 @@ class _BuilderFrame extends StatelessWidget {
                 ],
               ),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             _header(),
             body,
           ],
