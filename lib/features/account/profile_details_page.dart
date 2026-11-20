@@ -440,17 +440,29 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         const SizedBox(height: 18),
         _winBar(d, wins),
         const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _tile('Pertandingan', d.completed, EmbunColors.gold)),
-            const SizedBox(width: 8),
-            Expanded(child: _tile('Menang Warga', d.wargaWins, EmbunColors.leaf)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _tile('Menang Terbisik', d.terbisikWins, EmbunColors.mist),
-            ),
-          ],
+        // IntrinsicHeight: di dalam area gulir tinggi tak terbatas, jadi
+        // stretch tanpa ini melempar galat layout dan memutus isi di bawahnya.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _tile('Pertandingan', d.completed, EmbunColors.gold),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _tile('Menang Warga', d.wargaWins, EmbunColors.leaf),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _tile(
+                  'Menang Terbisik',
+                  d.terbisikWins,
+                  EmbunColors.mist,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         const Text(
