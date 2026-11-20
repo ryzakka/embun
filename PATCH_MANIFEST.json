@@ -1,64 +1,41 @@
 {
-  "patch": "Embun Google Login and Profile",
-  "database_schema_changed": false,
-  "auth_configuration_required": true,
+  "name": "Embun public information pages",
+  "backend_changed": false,
+  "root_index_replaced": false,
+  "public_contact": "dhi.mas26wnz@gmail.com",
   "files": [
     {
-      "path": "lib/account_preview_main.dart",
-      "sha256_lf": "4a7f9745a22ef0ddeae951c613060026781c44fc89eb787dc1834e84031bf2fb"
-    },
-    {
-      "path": "lib/data/account_controller.dart",
-      "sha256_lf": "3d0b0fc4a1db019122353cbb902148e169afeb0df7b234ed46cf895074fcb860"
-    },
-    {
-      "path": "lib/data/lobby_repository.dart",
-      "sha256_lf": "a701cc74ca5dc799df3ddf6e2192276b96fb7449fb954a66ebe5a790b3e95ef3",
-      "original_sha256_lf": "341f8ca82552258ef0311f3d4e9074f973c096dda9cf9dc60e3ad5014c3bd7e9"
-    },
-    {
-      "path": "lib/data/player_profile.dart",
-      "sha256_lf": "efd03a7e832baa6026edc531829c029cd4ba0ddcae11e761b8de18c700be52ca"
-    },
-    {
-      "path": "lib/data/supabase_account_repository.dart",
-      "sha256_lf": "1641eb530eef83b1e2f176979ce0e64db2591b6cb0350e96491eee7e93a538d4"
-    },
-    {
-      "path": "lib/features/account/account_app.dart",
-      "sha256_lf": "9600b94d6e52c12b4507a6436b95d91491dd4293687d36e41f73c8f9081d9b53"
-    },
-    {
       "path": "lib/features/account/account_pages.dart",
-      "sha256_lf": "c2c839684f9c6b85b761dbb6e4c4eb80aea46869c7cc96f7fedfbf24035c4ec4"
+      "sha256": "78ac79e5aeeff3084f8ca47d57883a09ccbddd4b8a8ff20f771b5569a9fbc77c",
+      "original_sha256": "c2c839684f9c6b85b761dbb6e4c4eb80aea46869c7cc96f7fedfbf24035c4ec4"
     },
     {
-      "path": "lib/features/account/account_scope.dart",
-      "sha256_lf": "59459d195dfe18db7043e69e54e538b258753ee52305e7822aec540574d58918"
+      "path": "lib/features/account/public_information_links.dart",
+      "sha256": "da03efc1ddf9fcafc79a0f191a6f0f5a3a22057102d4422d2829273c78f98b01"
     },
     {
-      "path": "lib/features/lobby/lobby_page.dart",
-      "sha256_lf": "7333c11907ed38da388884f6cba6add279b5754ab782c59f3dc2d0207b24fb23",
-      "original_sha256_lf": "75847ba245fe75c4e0525fcc936a2ba3239bf6c00331d07399eec32656bc5072"
+      "path": "web/informasi/desa.webp",
+      "sha256": "9afb6b88e71fcf85f682f87205f8f942a7d37f0aeac53d2b893c8bf8d2dfc6a7"
     },
     {
-      "path": "lib/features/lobby/public_rooms_page.dart",
-      "sha256_lf": "4814e100c59b27141e3d2595d0e4e0f0564538be21225288595ea759743cf5f5",
-      "original_sha256_lf": "9ebef874fbe9c2117388765ebf2bb230026554ef72f3eb87f93a0af0f50cf569"
+      "path": "web/informasi/embun.css",
+      "sha256": "ef33b01991511c42f99f601edcc89241ee79665bc81fec0c85d6bf58f5022841"
     },
     {
-      "path": "lib/features/lobby/room_entry_view.dart",
-      "sha256_lf": "5879365b14cdc2ca0150e859646beff7998bcda072a333c16e7933c9014a5274",
-      "original_sha256_lf": "d7bedb82384becfbcbdd435f823149a66d48f7d8677e105aab98e14812c4944f"
+      "path": "web/informasi/logo.webp",
+      "sha256": "f80660bd24e881d4b1aa03c549252b50c66a4a0030b4fa02abea5fcc87162daa"
     },
     {
-      "path": "lib/main.dart",
-      "sha256_lf": "818291f5aca415d5a8babdd24185f961e61cb598297769bbae3ecf08e3f2fb39",
-      "original_sha256_lf": "81cd15b8f91faa5ea7113947e5f7efdbbce05feb00d51cdc4c437a82ddadbd01"
+      "path": "web/ketentuan/index.html",
+      "sha256": "bec916844bed75f4211db01ea88720ba9534582ddbe0f0319753f37bc8d29a38"
     },
     {
-      "path": "test/account_test.dart",
-      "sha256_lf": "7eb7d561beee691999f6c0e3574bc8ea9a5ad9e5e06d23931aba3c36686e97ff"
+      "path": "web/privasi/index.html",
+      "sha256": "2ba346be223f4d23660142deaa631901ff2f0f7455254106367a996095fd0950"
+    },
+    {
+      "path": "web/tentang/index.html",
+      "sha256": "bc9ddcdc6fa7e2a8c70f05d290da9cf35700589ce0275d4346a1543c6cb3b148"
     }
   ]
 }

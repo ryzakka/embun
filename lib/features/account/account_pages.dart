@@ -4,6 +4,7 @@ import '../../data/asset_catalog.dart';
 import '../../data/player_profile.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import 'public_information_links.dart';
 
 const _avatars = <String, (IconData, String)>{
   'leaf': (Icons.eco_outlined, 'Daun'),
@@ -181,6 +182,8 @@ class GoogleLoginPage extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: Colors.white54),
           ),
+          const SizedBox(height: 12),
+          const PublicInformationLinks(),
         ],
       ),
     ),
@@ -335,6 +338,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: account.busy ? null : account.logout,
                   child: const Text('Keluar akun'),
                 ),
+                const PublicInformationLinks(),
               ],
             ),
           ),

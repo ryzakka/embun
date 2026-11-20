@@ -1,62 +1,41 @@
-# Hasil pengujian login dan profil Embun
+# Validasi halaman publik Embun
 
-## Hasil yang sudah berhasil
+## Hasil
 
-- **21 tes lulus** pada `test/account_test.dart` menggunakan Flutter 3.38.10 / Dart 3.10.9 dan dependency Supabase dari lockfile proyek.
-- **Dart analyze: No issues found** untuk berkas akun/profil baru, entry point pratinjau, dan pengujiannya.
-- **Build web pratinjau akun berhasil** melalui `lib/account_preview_main.dart` dalam 34,4 detik.
-- **8 skenario installer lulus**: dry-run; pemasangan/cadangan lima berkas asal; pemasangan ulang; konflik berkas asal; konflik berkas baru; CRLF; payload berbeda dari manifest; dependency Supabase yang belum ada.
+| Pemeriksaan | Hasil |
+| --- | --- |
+| Dart analyze untuk tautan informasi, halaman akun yang diubah, dan tes baru | No issues found |
+| Tes tujuan URL dan tautan pada login/profil pertama | 2 tes lulus |
+| Regresi layout login/profil pada layar 320×600 dengan teks 1,5× | 1 tes lulus |
+| Build web pratinjau akun dengan tautan dan halaman statis baru | Berhasil, build final 26,4 detik |
+| Salinan hasil build dibandingkan dengan sumber HTML/CSS/gambar | Identik |
+| Permintaan HTTP lokal untuk 3 halaman, 3 aset, dan root aplikasi | 7 rute memberi HTTP 200 |
+| Tautan internal dan anchor daftar isi | Seluruh tujuan tersedia |
+| Dokumen publik tanpa JavaScript/form/login SDK | Ketiga halaman lulus |
+| Konsistensi kontak, bahasa, canonical, H1, dan navigasi aktif | Lulus |
 
-## Yang diuji
+Lingkungan Flutter 3.38.10 / Dart 3.10.9. Pengujian memakai `CI=true` dan `FLUTTER_SUPPRESS_ANALYTICS=true`. Pemeriksaan HTTP menggunakan server lokal yang menyajikan hasil build; tidak memakai akun pengguna atau koneksi Supabase.
 
-1. Nama Google hanya dipakai sebagai isian awal; nama panggilan tersimpan dipertahankan pada login berikutnya.
-2. Validasi nama kosong, batas panjang visual, kontrol karakter, dan normalisasi spasi.
-3. URL kembali mempertahankan path aplikasi dan membuang query/fragment lama.
-4. Identitas Google diperiksa dari provider autentikasi, bukan metadata pengguna yang dapat diedit.
-5. Pemulihan profil lengkap tidak meminta login/profil lagi.
-6. Sesi Google baru masih membutuhkan pengisian profil satu kali.
-7. Pembukaan browser tidak dianggap login berhasil; pembatalan/coba lagi tetap tersedia.
-8. Batas waktu menunggu OAuth tidak meloloskan pengguna tanpa sesi.
-9. Gagal membuka browser dan ketukan ganda ditangani.
-10. Sesi baru mengalahkan hasil pemulihan akun lama yang terlambat.
-11. Gagal menyimpan mempertahankan profil sebelumnya dan dapat dicoba ulang.
-12. Respons simpan lama tidak menimpa akun baru.
-13. Galat stream autentikasi ditangani tanpa exception yang tidak tertangani.
-14. Kegagalan dan keberhasilan keluar akun ditangani.
-15. Adapter Supabase diuji dengan HTTP mock: hanya `PUT /auth/v1/user` untuk tiga metadata profil; metadata lain dipertahankan, dan user ID yang berbeda ditolak.
-16. UI pengaturan pertama dan kunjungan berikutnya memakai profil tersimpan.
-17. Pergantian user membersihkan seluruh navigasi; pembaruan profil/token pada user yang sama mempertahankannya.
-18. Login/form profil tidak mengalami overflow pada layar 320×600 dengan skala teks 1,5.
-19. Buat Ruangan melewati nama, melewati lima langkah tersisa, lalu mengirim nama tersimpan.
-20. Gabung dengan kode menampilkan nama profil tanpa field nama yang dapat diedit.
-21. Pratinjau lokal dapat melakukan simulasi masuk, simpan, edit profil, dan keluar tanpa Google/Supabase.
+## Ruang lingkup
 
-## Hambatan yang terpisah dari perubahan akun
+- Paket menambahkan enam berkas statis di bawah `web/tentang`, `web/privasi`, `web/ketentuan`, dan `web/informasi`.
+- `web/index.html` tidak ada dalam paket dan tidak diganti. Aplikasi tetap di root, dan halaman informasi berdiri sendiri tanpa bootstrap Flutter.
+- Dua berkas Dart mengatur tautan informasi pada login dan profil. URL hanya berisi origin serta path halaman yang diizinkan, tanpa query atau fragment OAuth.
+- Isi akun, sesi, permainan/chat, dan metadata yang dijelaskan dalam kebijakan diperiksa dari sumber Flutter yang tersedia. Tidak ada penambahan provider login, scope, database, atau penyedia analytics.
+- Email publik disetujui pengguna dalam percakapan untuk digunakan sementara. Kode tidak mengirim email secara otomatis; tautan `mailto:` membuka aplikasi email pengguna.
 
-Build `lib/main.dart` pada kumpulan sumber yang tersedia **belum berhasil**. Compiler menemukan ketidakcocokan lama pada:
+## Batas pemeriksaan
 
-- `lib/features/table/village_visit_view.dart` mengimpor `village_ambience.dart` yang tidak tersedia; komponen seperti `PlaceVoice` dan `PopupCharacter` ikut tidak ditemukan.
-- `lib/features/table/night_scene.dart` memerlukan `NightImpactStage`, `kNightImpactMs`, `NightImpact.hit`, dan `NightImpact.shakePower` yang tidak ada pada versi `night_impact.dart` yang tersedia. Ada juga perbedaan argumen `NightImpactReport`.
+Halaman belum di-deploy ke `embun.pages.dev` oleh pekerjaan ini. Belum dilakukan pemeriksaan visual browser langsung, pengujian email masuk, audit seluruh konfigurasi produksi, atau verifikasi Google/Search Console. CSS menyediakan tata letak responsif; uji perangkat nyata tetap dapat dilakukan setelah deployment.
 
-Arsip tersimpan diperiksa, tetapi pasangan implementasi lengkap yang cocok tidak ditemukan. Paket ini tidak mengganti komponen malam/kunjungan dengan stub atau menurunkan versinya. Karena itu keberhasilan build pratinjau **tidak diklaim sebagai keberhasilan build seluruh gim**. Untuk build aplikasi penuh, pasangan berkas malam/kunjungan yang sesuai dari proyek pengguna tetap diperlukan.
+Build yang berhasil adalah entry point pratinjau akun, sekaligus membuktikan berkas publik disertakan di output Flutter. Build seluruh gim/multiplayer tidak diulang pada perubahan halaman informasi ini. Pengujian lama yang sudah berhasil tidak dijalankan ulang seluruhnya.
 
-Analisis integrasi awal juga memperlihatkan diagnostik gaya/deprecation yang sudah ada pada berkas sumber lama. Berkas akun baru dan pengujiannya sudah bersih; paket tidak melakukan pembersihan menyeluruh kode lama.
+Dokumen kebijakan tidak menetapkan retensi tetap atau penghapusan otomatis yang belum diimplementasikan. Pengelola perlu memastikan isi halaman sesuai praktik produksi dan menindaklanjuti permintaan yang dikirim melalui kontak publik. Penilaian publikasi/brand tetap dilakukan Google.
 
-## Belum diuji secara nyata
+## Referensi teknis
 
-OAuth Google hidup, konfigurasi dashboard, pemulihan setelah reload browser nyata, pengujian beberapa perangkat, login APK/deep link Android, multiplayer produksi, dan deployment. Semua tes HTTP menggunakan mock; tidak ada permintaan ke Supabase produksi dan tidak ada perubahan konfigurasi dashboard/SQL yang dijalankan.
+- Google: https://developers.google.com/identity/verification/authentication-verification
+- Kebijakan data Google: https://developers.google.com/terms/api-services-user-data-policy
+- Penyajian HTML statis dan fallback SPA Cloudflare: https://developers.cloudflare.com/pages/configuration/serving-pages/
 
-Pengujian menggunakan `CI=true` dan `FLUTTER_SUPPRESS_ANALYTICS=true`. Dependensi sudah disiapkan sebelum `--no-pub`.
-
-```sh
-flutter test --no-pub test/account_test.dart --reporter expanded
-flutter build web --no-pub --no-web-resources-cdn -t lib/account_preview_main.dart
-```
-
-Referensi konfigurasi resmi:
-
-- https://supabase.com/docs/guides/auth/social-sign-in/auth-google
-- https://supabase.com/docs/reference/dart/auth-signinwithoauth
-- https://supabase.com/docs/reference/dart/auth-updateuser
-- https://supabase.com/docs/guides/auth/redirect-urls
-- https://supabase.com/docs/guides/auth/native-mobile-deep-linking
+Cloudflare Pages mendahulukan berkas HTML yang cocok dengan rute sebelum fallback SPA bawaan. Aturan redirect/rewrite khusus pada proyek pengguna belum tersedia untuk diperiksa; lihat panduan pemasangan jika halaman informasi malah diarahkan ke login.
