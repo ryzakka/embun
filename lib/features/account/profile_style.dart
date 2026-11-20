@@ -103,43 +103,51 @@ class ProfileSheetFrame extends StatelessWidget {
 
   /// Perkiraan lebar : tinggi gambar latar. Sesuaikan bila bingkai terlihat
   /// melar.
-  static const aspect = 0.75;
+  static const aspect = 768 / 1365; // ukuran asli gambar latar (9:16)
 
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
     return LayoutBuilder(
       builder: (context, c) {
-        final w = c.maxWidth.isFinite ? c.maxWidth : screen.width;
-        final h = math.min(screen.height * 0.92, w / aspect);
-        final inset = (w * 0.075).clamp(24.0, 44.0).toDouble();
+        final maxW = c.maxWidth.isFinite ? c.maxWidth : screen.width;
+        // Tinggi dibatasi layar; lebar mengikuti rasio gambar (tidak melar).
+        final h = math.min(screen.height * 0.92, maxW / aspect);
+        final w = h * aspect;
+        final insetX = w * 0.07;
+        final insetY = h * 0.07;
         const plain = ColoredBox(color: EmbunColors.bg);
-        return SizedBox(
-          width: w,
-          height: h,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (asset == null)
-                plain
-              else
-                Image.asset(
-                  asset!,
-                  fit: BoxFit.fill,
-                  cacheWidth: 1080,
-                  errorBuilder: (_, _, _) => plain,
-                ),
-              Padding(
-                padding: EdgeInsets.all(inset),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF07130F).withValues(alpha: 0.80),
-                    borderRadius: BorderRadius.circular(6),
+        return Center(
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (asset == null)
+                  plain
+                else
+                  Image.asset(
+                    asset!,
+                    fit: BoxFit.fill,
+                    cacheWidth: 1080,
+                    errorBuilder: (_, _, _) => plain,
                   ),
-                  child: child,
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: insetX,
+                    vertical: insetY,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF07130F).withValues(alpha: 0.80),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: child,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

@@ -380,15 +380,29 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
               title: 'Belum ada pertandingan selesai yang tercatat.',
               titleColor: Colors.white60,
             ),
-          for (var i = 0; i < _history.length; i++)
-            ProfileReveal(index: i < 6 ? i : 0, child: _match(_history[i])),
-          if (_more && !_loading && _error == null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                style: TextButton.styleFrom(foregroundColor: EmbunColors.gold),
-                onPressed: () => _load(append: true),
-                child: const Text('Muat riwayat berikutnya'),
+          // Daftar dibatasi tingginya dan bergulir sendiri, supaya riwayat
+          // yang panjang tidak memanjangkan halaman/sheet.
+          if (_history.isNotEmpty)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 340),
+              child: ListView(
+                key: const ValueKey('profile-history-list'),
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final match in _history) _match(match),
+                  if (_more && !_loading && _error == null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: EmbunColors.gold,
+                        ),
+                        onPressed: () => _load(append: true),
+                        child: const Text('Muat riwayat berikutnya'),
+                      ),
+                    ),
+                ],
               ),
             ),
         ],
