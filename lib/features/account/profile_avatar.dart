@@ -33,15 +33,26 @@ class ProfileAvatar extends StatelessWidget {
                 backgroundColor: const Color(0xFF234237),
                 child: fallback,
               )
-            : Image.asset(
-                'assets/avatars/${avatar.$1}',
-                fit: BoxFit.contain,
-                cacheWidth: (radius * 6).round(),
-                errorBuilder: (_, _, _) => CircleAvatar(
-                  radius: radius,
-                  backgroundColor: const Color(0xFF234237),
-                  child: fallback,
+            : FutureBuilder<String?>(
+                future: profileAvatarAsset(
+                  DefaultAssetBundle.of(context),
+                  avatarId,
                 ),
+                builder: (context, snapshot) {
+                  final placeholder = CircleAvatar(
+                    radius: radius,
+                    backgroundColor: const Color(0xFF234237),
+                    child: fallback,
+                  );
+                  final path = snapshot.data;
+                  if (path == null) return placeholder;
+                  return Image.asset(
+                    path,
+                    fit: BoxFit.contain,
+                    cacheWidth: (radius * 6).round(),
+                    errorBuilder: (_, _, _) => placeholder,
+                  );
+                },
               ),
       ),
     );
