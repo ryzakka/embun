@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/asset_catalog.dart';
 import '../../data/profile_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
@@ -41,65 +42,56 @@ Future<void> showPlayerProfile(
   backgroundColor: Colors.transparent,
   shape: const RoundedRectangleBorder(),
   constraints: const BoxConstraints(maxWidth: 580),
-  builder: (context) => ConstrainedBox(
-    constraints: BoxConstraints(
-      maxHeight: MediaQuery.sizeOf(context).height * 0.92,
-    ),
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: EmbunColors.bg.withValues(alpha: 0.97),
-        border: Border(top: BorderSide(color: EmbunColors.gold.withValues(alpha: .7))),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(border: Border(bottom: profileRule())),
-              child: Row(
-                children: [
-                  const GameIcon('character', size: 27),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Semantics(
-                      header: true,
-                      child: const Text(
-                        'Profil Pemain',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                          color: EmbunColors.cream,
-                        ),
+  builder: (context) => ProfileSheetFrame(
+    asset: sceneryPath('sheetprofile-latar'),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(border: Border(bottom: profileRule())),
+            child: Row(
+              children: [
+                const GameIcon('character', size: 27),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: const Text(
+                      'Profil Pemain',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: EmbunColors.cream,
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Tutup profil',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => Navigator.pop(context),
-                    icon: const GameIcon('silang', size: 22),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 8, bottom: 24),
-                child: ProfileDetailsPanel(
-                  userId: userId,
-                  gameId: gameId,
-                  repository:
-                  repository ??
-                      SupabaseProfileRepository(Supabase.instance.client),
                 ),
+                IconButton(
+                  tooltip: 'Tutup profil',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => Navigator.pop(context),
+                  icon: const GameIcon('silang', size: 22),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 8, bottom: 24),
+              child: ProfileDetailsPanel(
+                userId: userId,
+                gameId: gameId,
+                repository:
+                repository ??
+                    SupabaseProfileRepository(Supabase.instance.client),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   ),

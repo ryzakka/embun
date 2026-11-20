@@ -1091,181 +1091,176 @@ Future<void> showMedalDetails(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: EmbunColors.bg.withValues(alpha: .98),
+    backgroundColor: Colors.transparent,
     elevation: 0,
-    shape: Border(
-      top: BorderSide(
-        color: (unlocked ? medal.tint : EmbunColors.goldDim).withValues(
-          alpha: .7,
-        ),
-      ),
-    ),
-    clipBehavior: Clip.antiAlias,
     constraints: const BoxConstraints(maxWidth: 540),
-    builder: (context) => _watchClaims(claims, () {
-      final received = claims == null || claims.isClaimed(medal);
-      final status = !unlocked
-          ? 'Belum diraih'
-          : received
-          ? 'Sudah diraih'
-          : claims.initialized
-          ? 'Siap diklaim'
-          : 'Memuat status klaim…';
-      final statusColor = !unlocked
-          ? Colors.white70
-          : received
-          ? EmbunColors.leaf
-          : EmbunColors.gold;
-      final progress = medal.progress(profile);
-      final tint = unlocked ? medal.tint : EmbunColors.goldDim;
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                GameIcon(_seriesIcon(medal.series), size: 27),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      medal.series.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: EmbunColors.cream,
+    builder: (context) => ProfileSheetFrame(
+      asset: sceneryPath('sheetmedal-latar'),
+      child: _watchClaims(claims, () {
+        final received = claims == null || claims.isClaimed(medal);
+        final status = !unlocked
+            ? 'Belum diraih'
+            : received
+            ? 'Sudah diraih'
+            : claims.initialized
+            ? 'Siap diklaim'
+            : 'Memuat status klaim…';
+        final statusColor = !unlocked
+            ? Colors.white70
+            : received
+            ? EmbunColors.leaf
+            : EmbunColors.gold;
+        final progress = medal.progress(profile);
+        final tint = unlocked ? medal.tint : EmbunColors.goldDim;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  GameIcon(_seriesIcon(medal.series), size: 27),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        medal.series.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.cream,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Tutup rincian badge',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => Navigator.pop(context),
-                  icon: const GameIcon('silang', size: 22),
-                ),
-              ],
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(border: Border(bottom: profileRule())),
-              child: const SizedBox(height: 4),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: _Stage(medal: medal, unlocked: unlocked, size: 112),
-            ),
-            Center(child: _TierLabel(medal)),
-            const SizedBox(height: 6),
-            Text(
-              medal.name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .4,
-                color: unlocked ? medal.tint : EmbunColors.gold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
+                  IconButton(
+                    tooltip: 'Tutup rincian badge',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.pop(context),
+                    icon: const GameIcon('silang', size: 22),
                   ),
+                ],
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(border: Border(bottom: profileRule())),
+                child: const SizedBox(height: 4),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: _Stage(medal: medal, unlocked: unlocked, size: 112),
+              ),
+              Center(child: _TierLabel(medal)),
+              const SizedBox(height: 6),
+              Text(
+                medal.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .4,
+                  color: unlocked ? medal.tint : EmbunColors.gold,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.w800,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Semantics(
-              label: 'Progres ${medal.name}',
-              value: '${(progress * 100).round()}%',
-              child: ProfileMeter(value: progress, color: tint, height: 8),
-            ),
-            if (!unlocked)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '${medalNumber(medal.valueOf(profile))} / ${medalNumber(medal.target)}',
-                  textAlign: TextAlign.center,
-                  key: const ValueKey('medal-detail-progress'),
-                  style: const TextStyle(color: Colors.white70),
-                ),
+                  const SizedBox(width: 8),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
-            const SizedBox(height: 14),
-            ProfileRow(
-              accent: tint,
-              visualSize: 30,
-              visual: Icon(Icons.flag_outlined, color: tint, size: 24),
-              label: 'SYARAT',
-              title: medal.series.requirement(medal.target),
-            ),
-            ProfileRow(
-              accent: tint,
-              visualSize: 30,
-              visual: Icon(Icons.timeline, color: tint, size: 24),
-              label: 'TOTAL TERCATAT',
-              title:
-              '${medalNumber(medal.valueOf(profile))} ${medal.series.unit}',
-            ),
-            if (unlocked && next != null)
-              ProfileRow(
-                accent: next.tint,
-                visualSize: 30,
-                visual: Icon(Icons.trending_up, color: next.tint, size: 24),
-                label: 'BERIKUTNYA',
-                title: next.name,
-                text:
-                '${medalNumber(next.valueOf(profile))}/${medalNumber(next.target)} ${next.series.unit}',
+              const SizedBox(height: 16),
+              Semantics(
+                label: 'Progres ${medal.name}',
+                value: '${(progress * 100).round()}%',
+                child: ProfileMeter(value: progress, color: tint, height: 8),
               ),
-            const SizedBox(height: 12),
-            if (claims != null && unlocked && !claims.isClaimed(medal)) ...[
-              if (claims.error != null)
+              if (!unlocked)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    claims.error!,
+                    '${medalNumber(medal.valueOf(profile))} / ${medalNumber(medal.target)}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFFFB5A8)),
+                    key: const ValueKey('medal-detail-progress'),
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
-              FilledButton.icon(
-                key: ValueKey('claim-detail-${medal.id}'),
-                style: _goldButton.copyWith(
-                  minimumSize: const WidgetStatePropertyAll(Size(0, 54)),
-                ),
-                onPressed: !claims.initialized || claims.claimingId != null
-                    ? null
-                    : () => claimMedalWithCelebration(context, claims, medal),
-                icon: const Icon(Icons.emoji_events),
-                label: Text(
-                  claims.claimingId == medal.id
-                      ? 'Menyimpan…'
-                      : 'Klaim medali',
-                ),
+              const SizedBox(height: 14),
+              ProfileRow(
+                accent: tint,
+                visualSize: 30,
+                visual: Icon(Icons.flag_outlined, color: tint, size: 24),
+                label: 'SYARAT',
+                title: medal.series.requirement(medal.target),
               ),
+              ProfileRow(
+                accent: tint,
+                visualSize: 30,
+                visual: Icon(Icons.timeline, color: tint, size: 24),
+                label: 'TOTAL TERCATAT',
+                title:
+                '${medalNumber(medal.valueOf(profile))} ${medal.series.unit}',
+              ),
+              if (unlocked && next != null)
+                ProfileRow(
+                  accent: next.tint,
+                  visualSize: 30,
+                  visual: Icon(Icons.trending_up, color: next.tint, size: 24),
+                  label: 'BERIKUTNYA',
+                  title: next.name,
+                  text:
+                  '${medalNumber(next.valueOf(profile))}/${medalNumber(next.target)} ${next.series.unit}',
+                ),
+              const SizedBox(height: 12),
+              if (claims != null && unlocked && !claims.isClaimed(medal)) ...[
+                if (claims.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      claims.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFFFFB5A8)),
+                    ),
+                  ),
+                FilledButton.icon(
+                  key: ValueKey('claim-detail-${medal.id}'),
+                  style: _goldButton.copyWith(
+                    minimumSize: const WidgetStatePropertyAll(Size(0, 54)),
+                  ),
+                  onPressed: !claims.initialized || claims.claimingId != null
+                      ? null
+                      : () => claimMedalWithCelebration(context, claims, medal),
+                  icon: const Icon(Icons.emoji_events),
+                  label: Text(
+                    claims.claimingId == medal.id
+                        ? 'Menyimpan…'
+                        : 'Klaim medali',
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
-      );
-    }),
+          ),
+        );
+      }),
+    ),
   );
 }
 
