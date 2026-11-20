@@ -4,7 +4,8 @@ import '../../data/icon_catalog.dart';
 
 /// Pemetaan berdasarkan arti. Panah kecil, pencarian, palu, kamera, dan
 /// lambang teknis tanpa padanan gambar tetap memakai simbol yang tepat.
-const embunMaterialIcons = <IconData,String>{
+// IconData overrides equality, so its keys require a runtime map.
+final Map<IconData, String> embunMaterialIcons = Map<IconData, String>.unmodifiable({
   Icons.arrow_back:'back2',
   Icons.volume_up_rounded:'suaranyala', Icons.volume_off_rounded:'suaramati',
   Icons.science_rounded:'botollab',
@@ -36,7 +37,7 @@ const embunMaterialIcons = <IconData,String>{
   Icons.auto_stories_outlined:'mydeck', Icons.style_outlined:'mydeck',
   Icons.water_drop:'bulirembun', Icons.water_drop_outlined:'bulirembun',
   Icons.eco:'helaidaun', Icons.eco_outlined:'helaidaun', Icons.eco_rounded:'helaidaun',
-};
+});
 
 IconData iconFallback(String name) => switch(canonicalIconName(name)) {
   'back' || 'back2' => Icons.arrow_back,
@@ -115,8 +116,10 @@ class EmbunIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name=asset ?? embunMaterialIcons[icon];
-    if(name==null) return Icon(icon,size:size,color:color,
-      semanticLabel:semanticLabel,textDirection:textDirection,shadows:shadows);
+    if (name == null) {
+      return Icon(icon, size: size, color: color,
+        semanticLabel: semanticLabel, textDirection: textDirection, shadows: shadows);
+    }
     return EmbunAssetIcon(name, size:size, color:color, semanticLabel:semanticLabel,
       fallback:icon);
   }
