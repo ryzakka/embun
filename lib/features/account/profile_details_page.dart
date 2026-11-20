@@ -48,30 +48,69 @@ Future<void> showPlayerProfile(
     padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
     child: ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        maxHeight: MediaQuery.sizeOf(context).height * 0.92,
       ),
       child: OrnatePanel(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        opacity: 0.97,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SectionHeader(
-              icon: 'character',
-              title: 'Profil Pemain',
-              trailing: Tooltip(
-                message: 'Tutup profil',
-                child: MedallionButton(
-                  icon: 'silang',
-                  size: 34,
-                  onTap: () => Navigator.pop(context),
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const GameIcon('character', size: 24),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Profil Pemain',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: EmbunColors.gold,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Tutup profil',
+                  child: MedallionButton(
+                    icon: 'silang',
+                    size: 34,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    EmbunColors.gold.withValues(alpha: 0.7),
+                    EmbunColors.gold.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: 24),
                 child: ProfileDetailsPanel(
                   userId: userId,
                   gameId: gameId,
@@ -398,9 +437,58 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
 
   // ===== Tampilan kartu pemain (pemain lain, hanya baca) =====
 
+  /// Judul bagian: belah ketupat emas, teks, garis yang memudar, jumlah.
+  Widget _sectionLabel(String text, {String? trailing}) => Padding(
+    padding: const EdgeInsets.only(top: 26, bottom: 12),
+    child: Row(
+      children: [
+        Transform.rotate(
+          angle: 0.7853981633974483,
+          child: Container(width: 7, height: 7, color: EmbunColors.gold),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: EmbunColors.gold,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  EmbunColors.gold.withValues(alpha: 0.5),
+                  EmbunColors.gold.withValues(alpha: 0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 10),
+          Text(
+            trailing,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.white60,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
   Widget _guestView(ProfileDetails d) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      const SizedBox(height: 10),
       Center(
         child: PlayerAccountAvatar(
           name: d.nickname,
@@ -408,23 +496,61 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
           radius: 44,
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 14),
       Text(
         d.nickname,
         textAlign: TextAlign.center,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 24,
+          fontSize: 26,
           fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
           color: EmbunColors.cream,
+          shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
         ),
       ),
-      const SizedBox(height: 10),
-      const Text(
-        'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white60),
+      const SizedBox(height: 8),
+      Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white30),
+          ),
+          child: const Text(
+            'Pemain Tamu',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.28),
+          border: const Border(
+            left: BorderSide(color: Colors.white30, width: 2),
+          ),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, size: 20, color: Colors.white54),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
+                style: TextStyle(color: Colors.white70, height: 1.35),
+              ),
+            ),
+          ],
+        ),
       ),
     ],
   );
@@ -441,32 +567,51 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             child: ProfileAvatar(avatarId: d.avatarId, radius: 40),
           ),
         ),
-        const SizedBox(height: 14),
+        _sectionLabel('Statistik'),
         ProfileStatsBoard(details: d, history: _history),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         const Text(
           'Hanya pertandingan yang selesai dan tercatat yang dihitung.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 11.5, color: Colors.white54),
+          style: TextStyle(fontSize: 11, color: Colors.white38),
         ),
-        ProfileMedalsSummary(profile: d),
-        const SizedBox(height: 20),
-        const SectionHeader(icon: 'mydeck', title: 'Riwayat Permainan'),
-        const SizedBox(height: 10),
-        if (_history.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6),
-            child: Text(
-              'Belum ada pertandingan selesai yang tercatat.',
-              style: TextStyle(color: Colors.white60),
+        _sectionLabel('Medali'),
+        ProfileMedalsSummary(profile: d, framed: false),
+        _sectionLabel(
+          'Riwayat Permainan',
+          trailing: _history.isEmpty
+              ? null
+              : '${_history.length}${_more ? '+' : ''} terakhir',
+        ),
+        if (_history.isEmpty && !_loading)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.history, size: 20, color: Colors.white38),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Belum ada pertandingan selesai yang tercatat.',
+                    style: TextStyle(color: Colors.white60),
+                  ),
+                ),
+              ],
             ),
           ),
         for (final match in _history) _visitorMatch(match),
         if (_more && !_loading && _error == null)
-          Center(
-            child: TextButton(
-              onPressed: () => _load(append: true),
-              child: const Text('Muat riwayat berikutnya'),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Center(
+              child: OutlinedButton(
+                onPressed: () => _load(append: true),
+                child: const Text('Muat riwayat berikutnya'),
+              ),
             ),
           ),
         if (_loading)
@@ -494,42 +639,68 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     );
   }
 
+  /// Satu baris riwayat: garis hasil di kiri, ikon hasil, teks, ikon peran.
   Widget _visitorMatch(ProfileMatch m) {
     final d = m.finishedAt;
     String two(int n) => n.toString().padLeft(2, '0');
     final terbisik = m.side == 'antagonis';
     final accent = terbisik ? EmbunColors.mist : EmbunColors.leaf;
     final role = terbisik ? 'Si Terbisik' : 'Warga Desa';
-    return DecoratedBox(
-      decoration: BoxDecoration(border: Border(bottom: _profileRule())),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            GameIcon(m.won ? 'centang' : 'silang', size: 30),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${m.won ? 'Menang' : 'Kalah'} · $role',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: m.won ? accent : EmbunColors.cream,
-                    ),
-                  ),
-                  Text(
-                    '${two(d.day)}/${two(d.month)}/${d.year} '
-                        '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
-                    style: const TextStyle(fontSize: 12, color: Colors.white60),
-                  ),
-                ],
+    final edge = m.won ? EmbunColors.gold : EmbunColors.blood;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.28),
+            border: Border(
+              left: BorderSide(
+                color: edge.withValues(alpha: m.won ? 0.95 : 0.55),
+                width: 3,
               ),
             ),
-          ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Row(
+              children: [
+                GameIcon(m.won ? 'centang' : 'silang', size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${m.won ? 'Menang' : 'Kalah'} · $role',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: m.won ? EmbunColors.gold : EmbunColors.cream,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${two(d.day)}/${two(d.month)}/${d.year} '
+                            '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  terbisik ? Icons.nights_stay_outlined : Icons.shield_outlined,
+                  size: 22,
+                  color: accent.withValues(alpha: 0.85),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

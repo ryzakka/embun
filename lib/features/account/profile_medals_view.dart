@@ -608,8 +608,16 @@ class _MedalFrame extends StatelessWidget {
 // ───────────────────────── Ringkasan di profil ─────────────────────────
 
 class ProfileMedalsSummary extends StatelessWidget {
-  const ProfileMedalsSummary({super.key, required this.profile});
+  const ProfileMedalsSummary({
+    super.key,
+    required this.profile,
+    this.framed = true,
+  });
   final ProfileDetails profile;
+
+  /// false = tanpa panel dan tanpa judul sendiri (untuk disematkan di sheet
+  /// yang sudah punya judul bagian).
+  final bool framed;
   @override
   Widget build(BuildContext context) {
     if (!profile.googleLinked) return const SizedBox.shrink();
@@ -626,16 +634,21 @@ class ProfileMedalsSummary extends StatelessWidget {
         case final ProfileMedal m)
           m,
     ];
+    final countText = claims == null
+        ? '${earned.length}/${profileMedals.length} badge diraih'
+        : '${received.length}/${profileMedals.length} badge diklaim';
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: EdgeInsets.only(top: framed ? 24 : 0),
       child: DecoratedBox(
-        decoration: _panelDecoration(EmbunColors.gold),
+        decoration: framed
+            ? _panelDecoration(EmbunColors.gold)
+            : const BoxDecoration(),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(framed ? 16 : 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              if (framed) Row(
                 children: [
                   _Ring(
                     value: received.length / profileMedals.length,
@@ -676,8 +689,15 @@ class ProfileMedalsSummary extends StatelessWidget {
                     ),
                   ),
                 ],
+              ) else Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  countText,
+                  key: const ValueKey('medals-earned-count'),
+                  style: const TextStyle(fontSize: 12, color: Colors.white60),
+                ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: framed ? 16 : 10),
               if (claims != null) ...[
                 if (claims.loading && !claims.initialized)
                   const Padding(
