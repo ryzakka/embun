@@ -48,15 +48,18 @@ class ProfileDetails {
     required this.history,
     required this.hasMore,
     this.deletionRequest,
+    this.googleLinked = true,
   });
   final String userId, nickname, avatarId, title;
   final int completed, wargaWins, terbisikWins;
   final List<ProfileMatch> history;
   final bool hasMore;
+  final bool googleLinked;
   final Map<String, dynamic>? deletionRequest;
 
   factory ProfileDetails.fromJson(Map<String, dynamic> json) => ProfileDetails(
     userId: json['user_id'] as String,
+    googleLinked: json['google_linked'] == true,
     nickname: json['nickname'] as String? ?? 'Pemain Embun',
     avatarId: json['avatar_id'] as String? ?? 'penjaga_hayu',
     title: json['title'] as String? ?? '',
@@ -86,6 +89,16 @@ abstract interface class ProfileRepository {
 class SupabaseProfileRepository implements ProfileRepository {
   SupabaseProfileRepository(this.client);
   final SupabaseClient client;
+
+  Future<Map<String, bool>> linkedPlayers(String gameId) async {
+    final data = await client
+        .rpc('embun_profile_links', params: {'p_game': gameId})
+        .timeout(const Duration(seconds: 15));
+    return {
+      for (final row in data as List)
+        row['user_id'] as String: row['google_linked'] == true,
+    };
+  }
 
   @override
   Future<ProfileDetails> load({

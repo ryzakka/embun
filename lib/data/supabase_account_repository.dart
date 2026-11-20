@@ -3,7 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'account_controller.dart';
 import 'player_profile.dart';
 
-class SupabaseAccountRepository implements AccountRepository {
+class SupabaseAccountRepository
+    implements AccountRepository, GuestAccountRepository {
   SupabaseAccountRepository(this.client);
   final SupabaseClient client;
   static const mobileRedirect = String.fromEnvironment(
@@ -22,6 +23,7 @@ class SupabaseAccountRepository implements AccountRepository {
     return PlayerProfile(
       userId: user.id,
       googleAccount: google,
+      anonymous: user.isAnonymous,
       email: user.email,
       metadata: Map<String, dynamic>.unmodifiable(user.userMetadata ?? {}),
     );
@@ -52,6 +54,36 @@ class SupabaseAccountRepository implements AccountRepository {
     authScreenLaunchMode: LaunchMode.externalApplication,
     queryParams: const {'prompt': 'select_account'},
   );
+
+  @override
+  Future<PlayerProfile> signInAsGuest() async {
+    final existing = await restore();
+    if (existing != null) {
+      if (existing.anonymous || existing.googleAccount) return existing;
+      throw const AuthException('Sesi akun tidak mendukung mode tamu.');
+    }
+    final response = await client.auth.signInAnonymously().timeout(
+      const Duration(seconds: 15),
+    );
+    final value = profileOf(response.user);
+    if (value == null || !value.anonymous) {
+      throw const AuthException('Sesi tamu tidak tersedia.');
+    }
+    return value;
+  }
+
+  @override
+  Future<bool> linkWithGoogle() {
+    if (current?.anonymous != true) return signInWithGoogle();
+    return client.auth.linkIdentity(
+      OAuthProvider.google,
+      redirectTo: kIsWeb
+          ? webAccountRedirect(Uri.base).toString()
+          : mobileRedirect,
+      authScreenLaunchMode: LaunchMode.externalApplication,
+      queryParams: const {'prompt': 'select_account'},
+    );
+  }
 
   @override
   Future<PlayerProfile> saveProfile({

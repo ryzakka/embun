@@ -1,41 +1,58 @@
-# Validasi halaman publik Embun
+# Validasi lokal — tamu dan akun Google
 
-## Hasil
+20 November 2026. Flutter 3.38.10 / Dart 3.10.9.
 
 | Pemeriksaan | Hasil |
 | --- | --- |
-| Dart analyze untuk tautan informasi, halaman akun yang diubah, dan tes baru | No issues found |
-| Tes tujuan URL dan tautan pada login/profil pertama | 2 tes lulus |
-| Regresi layout login/profil pada layar 320×600 dengan teks 1,5× | 1 tes lulus |
-| Build web pratinjau akun dengan tautan dan halaman statis baru | Berhasil, build final 26,4 detik |
-| Salinan hasil build dibandingkan dengan sumber HTML/CSS/gambar | Identik |
-| Permintaan HTTP lokal untuk 3 halaman, 3 aset, dan root aplikasi | 7 rute memberi HTTP 200 |
-| Tautan internal dan anchor daftar isi | Seluruh tujuan tersedia |
-| Dokumen publik tanpa JavaScript/form/login SDK | Ketiga halaman lulus |
-| Konsistensi kontak, bahasa, canonical, H1, dan navigasi aktif | Lulus |
+| Alur tamu, restore, gagal masuk, respons terlambat, link dan login akun lama | 12 tes lulus, termasuk widget dan adapter HTTP anonim |
+| Create/join ruangan tamu dan nama otomatis akun Google | 3 tes lulus memakai RPC HTTP tiruan |
+| Regresi Google, penyimpanan profil, pergantian akun, layout dan preview | 21 tes lulus |
+| Profil publik/pribadi, avatar, riwayat, gelar, penghapusan, lobi dan ending | 15 tes lulus |
+| Database lokal PostgreSQL melalui PGlite | 64 pengecekan lulus, termasuk 41 regresi profil |
+| Build web lib/account_preview_main.dart | Berhasil, 30,3 detik |
+| Analisis tipe berkas terkait | Tidak ada error; warning/info tersisa pada helper UI lama/berkas redesign |
 
-Lingkungan Flutter 3.38.10 / Dart 3.10.9. Pengujian memakai `CI=true` dan `FLUTTER_SUPPRESS_ANALYTICS=true`. Pemeriksaan HTTP menggunakan server lokal yang menyajikan hasil build; tidak memakai akun pengguna atau koneksi Supabase.
+Dua ekspektasi teks pada test/account_test.dart diperbarui menjadi key tombol
+google-login, karena desain terbaru memakai label Login dengan Google. Perilaku
+yang diuji tetap sama. Fixture pengujian Supabase menggunakan penyimpanan dan
+HTTP tiruan; tidak menghubungi backend produksi.
 
-## Ruang lingkup
+## Cakupan penting
 
-- Paket menambahkan enam berkas statis di bawah `web/tentang`, `web/privasi`, `web/ketentuan`, dan `web/informasi`.
-- `web/index.html` tidak ada dalam paket dan tidak diganti. Aplikasi tetap di root, dan halaman informasi berdiri sendiri tanpa bootstrap Flutter.
-- Dua berkas Dart mengatur tautan informasi pada login dan profil. URL hanya berisi origin serta path halaman yang diizinkan, tanpa query atau fragment OAuth.
-- Isi akun, sesi, permainan/chat, dan metadata yang dijelaskan dalam kebijakan diperiksa dari sumber Flutter yang tersedia. Tidak ada penambahan provider login, scope, database, atau penyedia analytics.
-- Email publik disetujui pengguna dalam percakapan untuk digunakan sementara. Kode tidak mengirim email secara otomatis; tautan `mailto:` membuka aplikasi email pengguna.
+- Tamu bisa masuk tanpa editor profil. Model yang anonim tetap dianggap belum
+  terhubung walaupun metadata tampilannya berisi tulisan provider Google.
+- Sesi tamu dipakai ulang; tidak membuat pengguna anonim baru pada setiap aksi.
+- Respons masuk tamu yang terlambat tidak menimpa akun lain yang sudah diterima.
+- Membuka browser OAuth belum dianggap sukses. Status Google baru diterima dari
+  sesi terverifikasi; penautan dengan UID yang sama tetap membersihkan route tamu.
+- Tamu mengirim nama ruangan yang diisi. Google mengirim nama akun tersimpan.
+- Profil tamu tidak merender statistik/riwayat/kontrol pribadi walaupun respons
+  tiruan sengaja membawa nilai statistik. Ikon G hanya untuk akun terhubung.
+- Badge roster mengambil satu daftar terbatasi per ruangan dan memuat ulang
+  ketika peserta berganti. Kegagalan memuat tidak dilabeli sebagai status tamu.
+- Profil/daftar badge ditolak server bagi orang luar dan selama pertandingan.
+- SQL memeriksa auth.identities serta is_anonymous, bukan metadata nama/avatar.
+- Pertandingan tamu tidak menjadi hasil akun setelah tautan selesai, termasuk
+  saat menautkan di tengah pertandingan dan saat migrasi dijalankan ulang.
+- Hasil Google lama tetap ada; email dan status penghapusan tetap privat.
 
-## Batas pemeriksaan
+## Batas
 
-Halaman belum di-deploy ke `embun.pages.dev` oleh pekerjaan ini. Belum dilakukan pemeriksaan visual browser langsung, pengujian email masuk, audit seluruh konfigurasi produksi, atau verifikasi Google/Search Console. CSS menyediakan tata letak responsif; uji perangkat nyata tetap dapat dilakukan setelah deployment.
+Pengujian OAuth Google nyata, toggle konfigurasi dashboard, multiplayer pada
+Supabase produksi dan deployment belum dilakukan. SQL disiapkan untuk dipasang
+pengelola. Test PostgreSQL memakai schema fixture, bukan salinan data produksi.
 
-Build yang berhasil adalah entry point pratinjau akun, sekaligus membuktikan berkas publik disertakan di output Flutter. Build seluruh gim/multiplayer tidak diulang pada perubahan halaman informasi ini. Pengujian lama yang sudah berhasil tidak dijalankan ulang seluruhnya.
+Build yang berhasil adalah pratinjau akun/tamu. Build seluruh gim tidak diulang:
+arsip lengkap yang tersedia mempunyai ketidakcocokan berkas suasana desa/animasi
+malam yang sudah diketahui sebelumnya. Ini tidak menyatakan proyek lokal Anda
+yang berjalan memiliki masalah yang sama.
 
-Dokumen kebijakan tidak menetapkan retensi tetap atau penghapusan otomatis yang belum diimplementasikan. Pengelola perlu memastikan isi halaman sesuai praktik produksi dan menindaklanjuti permintaan yang dikirim melalui kontak publik. Penilaian publikasi/brand tetap dilakukan Google.
+Tes Flutter dalam paket dapat digabungkan ke test/ proyek dan dijalankan dengan
+flutter test. Tes SQL membutuhkan Node dan @electric-sql/pglite@0.5.17, lalu:
 
-## Referensi teknis
+```sh
+node guest_sql_test.mjs /jalur/20261120120000_profil_pemain.sql /jalur/20261120160000_tamu_google.sql
+```
 
-- Google: https://developers.google.com/identity/verification/authentication-verification
-- Kebijakan data Google: https://developers.google.com/terms/api-services-user-data-policy
-- Penyajian HTML statis dan fallback SPA Cloudflare: https://developers.cloudflare.com/pages/configuration/serving-pages/
-
-Cloudflare Pages mendahulukan berkas HTML yang cocok dengan rute sebelum fallback SPA bawaan. Aturan redirect/rewrite khusus pada proyek pengguna belum tersedia untuk diperiksa; lihat panduan pemasangan jika halaman informasi malah diarahkan ke login.
+Letakkan salinan verification/guest_sql_test.mjs di folder Node yang memiliki
+dependensi tersebut. Seluruh database tes berada dalam memori.

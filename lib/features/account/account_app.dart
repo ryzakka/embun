@@ -22,7 +22,9 @@ class AccountApplication extends StatelessWidget {
     child: AnimatedBuilder(
       animation: account,
       builder: (context, _) => MaterialApp(
-        key: ValueKey('embun-account-${account.identity ?? 'signed-out'}'),
+        key: ValueKey(
+          'embun-account-${account.identity ?? 'signed-out'}-${account.googleAccount ? 'google' : 'guest'}',
+        ),
         title: 'Embun',
         debugShowCheckedModeBanner: false,
         theme: embunTheme(),

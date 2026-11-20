@@ -15,6 +15,12 @@ abstract class AccountRepository {
   Future<void> signOut();
 }
 
+/// Optional capability: old account adapters remain usable for Google login.
+abstract interface class GuestAccountRepository {
+  Future<PlayerProfile> signInAsGuest();
+  Future<bool> linkWithGoogle();
+}
+
 /// OAuth browser launch is not a successful login. Only auth snapshots open
 /// the gate. Auth errors retain the current session; signedOut clears it.
 class AccountController extends ChangeNotifier {
@@ -33,8 +39,44 @@ class AccountController extends ChangeNotifier {
   int _revision = 0;
 
   bool get googleAccount => profile?.googleAccount ?? false;
-  bool get ready => profile?.complete ?? false;
-  String? get identity => googleAccount ? profile!.userId : null;
+  bool get guest => profile?.anonymous == true && !googleAccount;
+  bool get ready => guest || (profile?.complete ?? false);
+  String? get identity => googleAccount || guest ? profile!.userId : null;
+
+  Future<void> continueAsGuest() async {
+    if (busy || waitingForGoogle || _disposed) return;
+    final adapter = repository;
+    if (adapter is! GuestAccountRepository) {
+      error = 'Mode tamu belum tersedia.';
+      notifyListeners();
+      return;
+    }
+    final revision = _revision;
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      final value = await (adapter as GuestAccountRepository).signInAsGuest();
+      if (_disposed ||
+          (_revision != revision && profile?.userId != value.userId)) {
+        return;
+      }
+      if (!value.anonymous && !value.googleAccount) {
+        throw StateError('Invalid guest session');
+      }
+      _accept(value);
+    } catch (_) {
+      if (!_disposed) {
+        error =
+            'Belum dapat masuk sebagai tamu. Periksa koneksi lalu coba lagi.';
+      }
+    } finally {
+      if (!_disposed) {
+        busy = false;
+        notifyListeners();
+      }
+    }
+  }
 
   Future<void> start() async {
     if (_subscription != null || _disposed) return;
@@ -73,13 +115,17 @@ class AccountController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login() async {
+  Future<void> login({bool useExistingAccount = false}) async {
     if (busy || waitingForGoogle || _disposed) return;
     busy = true;
     error = null;
     notifyListeners();
     try {
-      final launched = await repository.signInWithGoogle();
+      final adapter = repository;
+      final launched =
+          guest && !useExistingAccount && adapter is GuestAccountRepository
+          ? await (adapter as GuestAccountRepository).linkWithGoogle()
+          : await repository.signInWithGoogle();
       if (_disposed) return;
       if (!launched) {
         error = 'Halaman Google tidak dapat dibuka. Coba lagi.';
@@ -95,7 +141,9 @@ class AccountController extends ChangeNotifier {
       }
     } catch (_) {
       if (!_disposed) {
-        error = 'Login Google belum tersedia. Coba lagi beberapa saat.';
+        error = guest
+            ? 'Belum dapat menautkan Google. Coba lagi, atau pilih masuk ke akun Google yang sudah ada.'
+            : 'Login Google belum tersedia. Coba lagi beberapa saat.';
       }
     } finally {
       if (!_disposed) {

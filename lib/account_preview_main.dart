@@ -7,6 +7,7 @@ import 'features/account/account_app.dart';
 import 'features/account/account_pages.dart';
 import 'features/account/profile_preview_repository.dart';
 import 'features/account/profile_details_page.dart';
+import 'features/account/account_status_badge.dart';
 
 /// A separate offline entry point. Never used by lib/main.dart.
 Future<void> main() async {
@@ -15,7 +16,8 @@ Future<void> main() async {
   runApp(const AccountPreviewApp());
 }
 
-class PreviewAccountRepository implements AccountRepository {
+class PreviewAccountRepository
+    implements AccountRepository, GuestAccountRepository {
   final _stream = StreamController<PlayerProfile?>.broadcast(sync: true);
   PlayerProfile? _current;
   @override
@@ -27,6 +29,33 @@ class PreviewAccountRepository implements AccountRepository {
   void _emit(PlayerProfile? profile) {
     _current = profile;
     _stream.add(profile);
+  }
+
+  @override
+  Future<PlayerProfile> signInAsGuest() async {
+    final value =
+        current ??
+        const PlayerProfile(
+          userId: 'local-guest',
+          googleAccount: false,
+          anonymous: true,
+          metadata: {},
+        );
+    _emit(value);
+    return value;
+  }
+
+  @override
+  Future<bool> linkWithGoogle() async {
+    _emit(
+      PlayerProfile(
+        userId: current?.userId ?? 'local-preview',
+        googleAccount: true,
+        email: 'contoh@example.test',
+        metadata: const {'full_name': 'Pemain Embun'},
+      ),
+    );
+    return true;
   }
 
   @override
@@ -108,9 +137,16 @@ class _AccountPreviewAppState extends State<AccountPreviewApp> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ProfileAvatar(avatarId: _account.profile!.avatarId),
+                  AccountAvatarBadge(
+                    linked: _account.googleAccount,
+                    child: _account.guest
+                        ? const CircleAvatar(child: Icon(Icons.person_outline))
+                        : ProfileAvatar(avatarId: _account.profile!.avatarId),
+                  ),
                   const SizedBox(height: 16),
-                  Text('Halo, ${_account.profile!.nickname}'),
+                  Text(
+                    'Halo, ${_account.guest ? 'Tamu' : _account.profile!.nickname}',
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Profil pratinjau disimpan di memori. Google dan Supabase tidak dihubungi.',
@@ -126,7 +162,7 @@ class _AccountPreviewAppState extends State<AccountPreviewApp> {
                         ),
                       ),
                     ),
-                    child: const Text('Profilku'),
+                    child: Text(_account.guest ? 'Informasi tamu' : 'Profilku'),
                   ),
                   TextButton(
                     onPressed: () => showPlayerProfile(

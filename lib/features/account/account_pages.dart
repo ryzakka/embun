@@ -11,6 +11,7 @@ import '../../data/player_profile.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'google_sign_in_button.dart';
+import 'account_status_badge.dart';
 import 'public_information_links.dart';
 
 BorderSide _rule([Color color = EmbunColors.gold]) =>
@@ -31,8 +32,10 @@ class AccountGate extends StatelessWidget {
           child: EmbunLoading(text: 'Memulihkan sesi…'),
         );
       }
-      if (!account.googleAccount) return GoogleLoginPage(account: account);
-      if (!account.ready) {
+      if (!account.googleAccount && !account.guest) {
+        return GoogleLoginPage(account: account);
+      }
+      if (account.googleAccount && !account.ready) {
         return ProfilePage(
           key: ValueKey(account.identity),
           account: account,
@@ -124,7 +127,7 @@ class GoogleLoginPage extends StatelessWidget {
                 height: logoH,
                 child: GameImage(
                   path:
-                  logoPath('ikon-transparent') ??
+                      logoPath('ikon-transparent') ??
                       logoPath('ikonapp-transparent'),
                   fit: BoxFit.contain,
                   cacheWidth: 900,
@@ -144,7 +147,7 @@ class GoogleLoginPage extends StatelessWidget {
               const SizedBox(height: 10),
               const Text(
                 'Masuk untuk menyimpan profil dan memakai nama panggilanmu '
-                    'di setiap permainan.',
+                'di setiap permainan.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   height: 1.55,
@@ -159,12 +162,26 @@ class GoogleLoginPage extends StatelessWidget {
                     ? null
                     : account.login,
               ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                key: const ValueKey('continue-guest'),
+                onPressed: account.busy || account.waitingForGoogle
+                    ? null
+                    : account.continueAsGuest,
+                icon: const Icon(Icons.person_outline),
+                label: const Text('Main sebagai tamu'),
+              ),
+              const Text(
+                'Permainan sebagai tamu belum disimpan di akun Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.white60),
+              ),
               if (account.busy) ...[
                 const SizedBox(height: 10),
                 Semantics(
                   liveRegion: true,
                   child: const Text(
-                    'Membuka halaman Google…',
+                    'Menyiapkan sesi…',
                     style: TextStyle(fontSize: 12.5, color: Colors.white70),
                   ),
                 ),
@@ -238,7 +255,7 @@ class _ProfilePageState extends State<ProfilePage> {
   late final ProfileRepository? _detailsRepository = widget.firstSetup
       ? null
       : widget.detailsRepository ??
-      SupabaseProfileRepository(Supabase.instance.client);
+            SupabaseProfileRepository(Supabase.instance.client);
   @override
   void dispose() {
     _name.dispose();
@@ -264,7 +281,9 @@ class _ProfilePageState extends State<ProfilePage> {
             IconButton(
               tooltip: 'Kembali',
               icon: const GameIcon('back', size: 23),
-              onPressed: account.busy ? null : () => Navigator.of(context).pop(),
+              onPressed: account.busy
+                  ? null
+                  : () => Navigator.of(context).pop(),
             ),
           if (widget.firstSetup) ...[
             const GameIcon('character', size: 28),
@@ -312,7 +331,10 @@ class _ProfilePageState extends State<ProfilePage> {
   /// Avatar terpilih besar dan namanya.
   Widget _preview(bool wide) => Column(
     children: [
-      ProfileAvatar(avatarId: _avatar, radius: wide ? 70 : 52),
+      AccountAvatarBadge(
+        linked: true,
+        child: ProfileAvatar(avatarId: _avatar, radius: wide ? 70 : 52),
+      ),
       const SizedBox(height: 8),
       Text(
         profileAvatars[_avatar]?.$2 ?? 'Avatar',
@@ -400,13 +422,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               boxShadow: _avatar == entry.key
                                   ? [
-                                BoxShadow(
-                                  color: EmbunColors.gold.withValues(
-                                    alpha: 0.35,
-                                  ),
-                                  blurRadius: 14,
-                                ),
-                              ]
+                                      BoxShadow(
+                                        color: EmbunColors.gold.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 14,
+                                      ),
+                                    ]
                                   : null,
                             ),
                             child: Opacity(
@@ -490,7 +512,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _logout(AccountController account) => Align(
     alignment: Alignment.centerLeft,
     child: TextButton.icon(
-      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+      ),
       onPressed: account.busy ? null : account.logout,
       icon: const GameIcon('keluar', size: 22),
       label: const Text('Keluar akun'),
@@ -500,20 +524,21 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _details(AccountController account) => widget.firstSetup
       ? const SizedBox.shrink()
       : Padding(
-    padding: const EdgeInsets.only(top: 6),
-    child: ProfileDetailsPanel(
-      key: ValueKey(account.identity),
-      repository: _detailsRepository!,
-      userId: account.identity!,
-      owner: true,
-    ),
-  );
+          padding: const EdgeInsets.only(top: 6),
+          child: ProfileDetailsPanel(
+            key: ValueKey(account.identity),
+            repository: _detailsRepository!,
+            userId: account.identity!,
+            owner: true,
+          ),
+        );
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.account,
     builder: (context, _) {
       final account = widget.account;
+      if (account.guest) return GuestAccountPage(account: account);
       return PopScope(
         canPop: !account.busy && !widget.firstSetup,
         child: Scaffold(
@@ -532,74 +557,74 @@ class _ProfilePageState extends State<ProfilePage> {
                         final padH = box.maxWidth < 450 ? 14.0 : 24.0;
                         final body = wide
                             ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 332,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 32),
-                                child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.stretch,
-                                  children: [
-                                    _preview(true),
-                                    const SizedBox(height: 20),
-                                    _nameField(account),
-                                    _emailNote(account),
-                                    const SizedBox(height: 18),
-                                    _saveBlock(account),
-                                    if (!widget.firstSetup) ...[
-                                      const SizedBox(height: 8),
-                                      _logout(account),
-                                    ],
-                                    const SizedBox(height: 12),
-                                    const Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: PublicInformationLinks(),
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 332,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 32),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _preview(true),
+                                          const SizedBox(height: 20),
+                                          _nameField(account),
+                                          _emailNote(account),
+                                          const SizedBox(height: 18),
+                                          _saveBlock(account),
+                                          if (!widget.firstSetup) ...[
+                                            const SizedBox(height: 8),
+                                            _logout(account),
+                                          ],
+                                          const SizedBox(height: 12),
+                                          const Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: PublicInformationLinks(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  border: Border(left: _rule()),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 32,
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
-                                    children: [
-                                      _picker(account, true),
-                                      _details(account),
-                                    ],
+                                  Expanded(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        border: Border(left: _rule()),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 32,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            _picker(account, true),
+                                            _details(account),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
+                                ],
+                              )
                             : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _preview(false),
-                            const SizedBox(height: 16),
-                            _nameField(account),
-                            const SizedBox(height: 18),
-                            _picker(account, false),
-                            _emailNote(account),
-                            const SizedBox(height: 16),
-                            _saveBlock(account),
-                            _details(account),
-                            const SizedBox(height: 12),
-                            if (!widget.firstSetup) _logout(account),
-                            const PublicInformationLinks(),
-                          ],
-                        );
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _preview(false),
+                                  const SizedBox(height: 16),
+                                  _nameField(account),
+                                  const SizedBox(height: 18),
+                                  _picker(account, false),
+                                  _emailNote(account),
+                                  const SizedBox(height: 16),
+                                  _saveBlock(account),
+                                  _details(account),
+                                  const SizedBox(height: 12),
+                                  if (!widget.firstSetup) _logout(account),
+                                  const PublicInformationLinks(),
+                                ],
+                              );
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -610,7 +635,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             Expanded(
                               child: SingleChildScrollView(
                                 keyboardDismissBehavior:
-                                ScrollViewKeyboardDismissBehavior.onDrag,
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
                                 padding: EdgeInsets.fromLTRB(
                                   padH,
                                   wide ? 26 : 18,
@@ -632,5 +657,98 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       );
     },
+  );
+}
+
+/// Guests have session information, not an editable persistent profile.
+class GuestAccountPage extends StatelessWidget {
+  const GuestAccountPage({super.key, required this.account});
+  final AccountController account;
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: account,
+    builder: (context, _) => _AccountFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              tooltip: 'Kembali',
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back),
+            ),
+          ),
+          const Center(
+            child: AccountAvatarBadge(
+              linked: false,
+              child: CircleAvatar(
+                radius: 44,
+                child: Icon(Icons.person_outline, size: 44),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Bermain sebagai tamu',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: EmbunColors.gold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Pengguna belum menautkan akun Google.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Permainan belum disimpan di akun Anda. Tautkan ke Google untuk menyimpan profil, statistik, dan riwayat pertandingan berikutnya.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Sesi tamu dapat dilanjutkan di perangkat ini selama sesi masih tersimpan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 20),
+          GoogleSignInButton(
+            key: const ValueKey('link-google'),
+            label: 'Tautkan ke Google',
+            onPressed: account.busy || account.waitingForGoogle
+                ? null
+                : account.login,
+          ),
+          TextButton(
+            onPressed: account.busy || account.waitingForGoogle
+                ? null
+                : () => account.login(useExistingAccount: true),
+            child: const Text('Masuk ke akun Google yang sudah ada'),
+          ),
+          if (account.waitingForGoogle) ...[
+            const Text(
+              'Selesaikan proses di halaman Google.',
+              textAlign: TextAlign.center,
+            ),
+            TextButton(
+              onPressed: account.cancelLoginWait,
+              child: const Text('Batalkan / coba lagi'),
+            ),
+          ],
+          if (account.error case final message?)
+            Text(message, style: const TextStyle(color: Color(0xFFFFB5A8))),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: account.busy ? null : account.logout,
+            child: const Text('Keluar dari sesi tamu'),
+          ),
+          const PublicInformationLinks(),
+        ],
+      ),
+    ),
   );
 }

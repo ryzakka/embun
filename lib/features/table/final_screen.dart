@@ -9,6 +9,7 @@ import '../common/sfx.dart';
 import 'card_tile.dart';
 import 'endgame_aura.dart';
 import 'player_status.dart';
+import '../account/account_status_badge.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -202,11 +203,13 @@ class FinalResultScreen extends StatefulWidget {
   detailsBuilder;
   final VoidCallback onExit;
   final ValueChanged<String>? onViewProfile;
+  final Map<String, bool> googleLinks;
 
   const FinalResultScreen({
     super.key,
     this.myId,
     this.onViewProfile,
+    this.googleLinks = const {},
     required this.wargaMenang,
     required this.leaves,
     required this.day,
@@ -2766,7 +2769,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             IconButton(
               tooltip: 'Lihat profil pemain',
               onPressed: () => widget.onViewProfile!(uid),
-              icon: const Icon(Icons.account_circle_outlined),
+              icon: widget.googleLinks[uid] == null
+                  ? const Icon(Icons.account_circle_outlined)
+                  : AccountAvatarBadge(
+                      linked: widget.googleLinks[uid]!,
+                      child: const Icon(Icons.account_circle_outlined),
+                    ),
             ),
           const SizedBox(width: 8),
           if (isOut(p))

@@ -2,26 +2,36 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'character_access.dart';
 import 'character_catalog.dart';
 import 'supabase_account_repository.dart';
+import 'player_profile.dart';
 
 final _db = Supabase.instance.client;
 
 class LobbyRepository {
   Future<void> ensureSignedIn() async {
-    _profileName();
+    final profile = SupabaseAccountRepository.profileOf(_db.auth.currentUser);
+    if (profile == null || (!profile.googleAccount && !profile.anonymous)) {
+      throw const AuthException(
+        'Masuk sebagai tamu atau dengan Google sebelum bermain.',
+      );
+    }
+    if (profile.googleAccount && !profile.complete) {
+      throw const AuthException('Lengkapi profil sebelum masuk ruangan.');
+    }
     await CharacterAccess.I.refresh();
   }
 
-  /// Saved profile supplies the name for the next room only. Existing game
-  /// rows are never renamed by a profile edit, and no anonymous user is made.
-  String _profileName() {
+  /// Google uses the saved nickname; guests supply a room name each time.
+  String _profileName(String roomName) {
     final profile = SupabaseAccountRepository.profileOf(_db.auth.currentUser);
-    if (profile?.googleAccount != true) {
-      throw const AuthException('Masuk dengan Google sebelum bermain.');
+    if (profile?.googleAccount == true && profile!.complete) {
+      return profile.nickname;
     }
-    if (!profile!.complete) {
-      throw const AuthException('Lengkapi profil sebelum masuk ruangan.');
+    if (profile?.anonymous != true) {
+      throw const AuthException('Sesi pemain tidak valid.');
     }
-    return profile.nickname;
+    final error = nicknameError(roomName);
+    if (error != null) throw ArgumentError(error);
+    return normalizeNickname(roomName);
   }
 
   Future<String> createGame(
@@ -35,7 +45,7 @@ class LobbyRepository {
     await ensureSignedIn();
     _requireCharacter(card);
     final params = {
-      'p_name': _profileName(),
+      'p_name': _profileName(name),
       'p_card': card,
       'p_public': isPublic,
       'p_cycles': cycles,
@@ -110,7 +120,11 @@ class LobbyRepository {
     _requireCharacter(card);
     return await _db.rpc(
           'join_game',
-          params: {'p_code': code, 'p_name': _profileName(), 'p_card': card},
+          params: {
+            'p_code': code,
+            'p_name': _profileName(name),
+            'p_card': card,
+          },
         )
         as String;
   }

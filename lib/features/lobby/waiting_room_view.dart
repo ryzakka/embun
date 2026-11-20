@@ -10,9 +10,11 @@ import '../../data/game_rules.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'room_entry_view.dart';
+import '../account/account_status_badge.dart';
 
 class WaitingRoomView extends StatefulWidget {
   final ValueChanged<String>? onViewProfile;
+  final Map<String, bool> googleLinks;
   final String code;
   final String characterTheme;
   final bool isPublic;
@@ -31,6 +33,7 @@ class WaitingRoomView extends StatefulWidget {
   const WaitingRoomView({
     super.key,
     this.onViewProfile,
+    this.googleLinks = const {},
     required this.code,
     this.characterTheme = 'default',
     required this.isPublic,
@@ -487,7 +490,15 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
               IconButton(
                 tooltip: 'Lihat profil pemain',
                 onPressed: () => widget.onViewProfile!(id),
-                icon: const Icon(Icons.account_circle_outlined, size: 22),
+                icon: widget.googleLinks[id] == null
+                    ? const Icon(Icons.account_circle_outlined, size: 22)
+                    : AccountAvatarBadge(
+                        linked: widget.googleLinks[id]!,
+                        child: const Icon(
+                          Icons.account_circle_outlined,
+                          size: 22,
+                        ),
+                      ),
               ),
             const SizedBox(width: 5),
             Text(

@@ -11,11 +11,13 @@ class PlayerProfile {
     required this.userId,
     required this.googleAccount,
     required this.metadata,
+    this.anonymous = false,
     this.email,
   });
 
   final String userId;
   final bool googleAccount;
+  final bool anonymous;
   final Map<String, dynamic> metadata;
   final String? email;
 

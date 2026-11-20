@@ -17,6 +17,7 @@ import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
 import '../account/profile_details_page.dart';
+import '../account/room_account_status.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
 import 'day_chrome.dart';
@@ -2802,29 +2803,35 @@ class _TablePageState extends State<TablePage> {
       );
     }
     if (!bubar) {
-      return FinalResultScreen(
-        onViewProfile: EmbunData.maybeOf(context) != null
-            ? null
-            : (uid) => showPlayerProfile(
-                context,
-                gameId: widget.gameId,
-                userId: uid,
-              ),
-        key: const ValueKey('final'),
-        wargaMenang: wargaMenang,
-        leaves: leaves,
-        day: day,
-        verdict: verdict,
-        endReason: g['end_reason'] as String?,
-        players: players,
-        defs: defs,
-        abilityDefs: abilityDefs,
-        usernames: usernames,
-        myId: repo.myId,
-        secrets: secretsFuture!,
-        recap: recapFuture!,
-        detailsBuilder: _recapSection,
-        onExit: () => _backToLobby(),
+      return RoomAccountStatus(
+        gameId: widget.gameId,
+        playerIds: [for (final p in players) p['user_id'] as String],
+        enabled: EmbunData.maybeOf(context) == null,
+        builder: (links) => FinalResultScreen(
+          googleLinks: links,
+          onViewProfile: EmbunData.maybeOf(context) != null
+              ? null
+              : (uid) => showPlayerProfile(
+                  context,
+                  gameId: widget.gameId,
+                  userId: uid,
+                ),
+          key: const ValueKey('final'),
+          wargaMenang: wargaMenang,
+          leaves: leaves,
+          day: day,
+          verdict: verdict,
+          endReason: g['end_reason'] as String?,
+          players: players,
+          defs: defs,
+          abilityDefs: abilityDefs,
+          usernames: usernames,
+          myId: repo.myId,
+          secrets: secretsFuture!,
+          recap: recapFuture!,
+          detailsBuilder: _recapSection,
+          onExit: () => _backToLobby(),
+        ),
       );
     }
     return GameCancelledScreen(

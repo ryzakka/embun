@@ -15,6 +15,8 @@ import '../common/art.dart';
 import '../account/account_scope.dart';
 import '../account/account_pages.dart';
 import '../account/profile_details_page.dart';
+import '../account/account_status_badge.dart';
+import '../account/room_account_status.dart';
 import '../common/character_lock.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -187,9 +189,11 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     }
   }
 
-  String? get _profileName => EmbunData.maybeOf(context) == null
-      ? AccountScope.maybeOf(context)?.profile?.nickname
-      : null;
+  String? get _profileName {
+    if (EmbunData.maybeOf(context) != null) return null;
+    final account = AccountScope.maybeOf(context);
+    return account?.googleAccount == true ? account!.profile?.nickname : null;
+  }
 
   void _fillProfileName() {
     final name = _profileName;
@@ -809,20 +813,31 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
         final wide = c.maxWidth >= 720;
         final items = <Widget>[
           if (_showUpdate) _updateEntry(!wide),
-          if (_profileName != null)
+          if (EmbunData.maybeOf(context) == null &&
+              AccountScope.maybeOf(context)?.ready == true)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ProfileAvatar(
-                    avatarId: AccountScope.maybeOf(context)!.profile!.avatarId,
-                    radius: 19,
+                  AccountAvatarBadge(
+                    linked: AccountScope.maybeOf(context)!.googleAccount,
+                    child: AccountScope.maybeOf(context)!.guest
+                        ? const CircleAvatar(
+                            radius: 19,
+                            child: Icon(Icons.person_outline),
+                          )
+                        : ProfileAvatar(
+                            avatarId: AccountScope.maybeOf(
+                              context,
+                            )!.profile!.avatarId,
+                            radius: 19,
+                          ),
                   ),
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      _profileName!,
+                      _profileName ?? 'Bermain sebagai tamu',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: EmbunColors.gold,
@@ -832,7 +847,11 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                   ),
                   TextButton(
                     onPressed: _openProfile,
-                    child: const Text('Profilku'),
+                    child: Text(
+                      AccountScope.maybeOf(context)!.guest
+                          ? 'Tautkan Google'
+                          : 'Profilku',
+                    ),
                   ),
                 ],
               ),
@@ -1149,30 +1168,37 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           stream: streams.players,
           builder: (context, snapshot) {
             final players = snapshot.data ?? [];
-            return WaitingRoomView(
-              onViewProfile: EmbunData.maybeOf(context) != null
-                  ? null
-                  : (uid) =>
-                        showPlayerProfile(context, gameId: id, userId: uid),
-              characterTheme: (game['character_theme'] as String?) ?? 'default',
-              code: game['code'] as String,
-              isPublic: game['is_public'] == true,
-              antagonistCount: (game['antagonist_count'] as int?) ?? 1,
-              hostId: game['host_id'] as String,
-              viewerId: repo.myId,
-              players: players,
-              chatMessages: streams.chat,
-              chat: ChatPanel(
-                repo: _gr,
-                gameId: id,
+            return RoomAccountStatus(
+              gameId: id,
+              playerIds: [for (final p in players) p['user_id'] as String],
+              enabled: EmbunData.maybeOf(context) == null,
+              builder: (links) => WaitingRoomView(
+                googleLinks: links,
+                onViewProfile: EmbunData.maybeOf(context) != null
+                    ? null
+                    : (uid) =>
+                          showPlayerProfile(context, gameId: id, userId: uid),
+                characterTheme:
+                    (game['character_theme'] as String?) ?? 'default',
+                code: game['code'] as String,
+                isPublic: game['is_public'] == true,
+                antagonistCount: (game['antagonist_count'] as int?) ?? 1,
+                hostId: game['host_id'] as String,
+                viewerId: repo.myId,
                 players: players,
-                lobby: true,
+                chatMessages: streams.chat,
+                chat: ChatPanel(
+                  repo: _gr,
+                  gameId: id,
+                  players: players,
+                  lobby: true,
+                ),
+                onVisibilityChanged: (value) => repo.setRoomPublic(id, value),
+                onReady: (value) => repo.setReady(id, value),
+                onStart: () => _startRoom(id),
+                onLeave: () => _leaveRoom(id),
+                onEditCharacter: (player) => _pickCard(id, player),
               ),
-              onVisibilityChanged: (value) => repo.setRoomPublic(id, value),
-              onReady: (value) => repo.setReady(id, value),
-              onStart: () => _startRoom(id),
-              onLeave: () => _leaveRoom(id),
-              onEditCharacter: (player) => _pickCard(id, player),
             );
           },
         );

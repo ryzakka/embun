@@ -4,6 +4,7 @@ import '../../data/profile_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'profile_avatar.dart';
+import 'account_status_badge.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
 BorderSide _profileRule([Color color = EmbunColors.gold]) =>
@@ -24,11 +25,11 @@ InputDecoration _flatField() => InputDecoration(
 );
 
 Future<void> showPlayerProfile(
-    BuildContext context, {
-      required String gameId,
-      required String userId,
-      ProfileRepository? repository,
-    }) => showModalBottomSheet<void>(
+  BuildContext context, {
+  required String gameId,
+  required String userId,
+  ProfileRepository? repository,
+}) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -55,7 +56,7 @@ Future<void> showPlayerProfile(
                   userId: userId,
                   gameId: gameId,
                   repository:
-                  repository ??
+                      repository ??
                       SupabaseProfileRepository(Supabase.instance.client),
                 ),
               ),
@@ -122,7 +123,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(
-            () => _error = widget.owner
+        () => _error = widget.owner
             ? 'Data profil belum dapat dimuat. Periksa koneksi lalu coba lagi.'
             : 'Profil belum dapat dimuat. Coba lagi di lobi atau hasil akhir ruangan yang sama.',
       );
@@ -146,8 +147,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (mounted) {
         setState(
-              () => _actionError =
-          'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+          () => _actionError =
+              'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
         );
       }
     } finally {
@@ -207,13 +208,49 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
   @override
   Widget build(BuildContext context) {
     final details = _details;
+    if (details != null && !details.googleLinked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Center(
+            child: AccountAvatarBadge(
+              linked: false,
+              child: CircleAvatar(
+                radius: 48,
+                child: Icon(Icons.person_outline, size: 48),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            details.nickname,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Pengguna belum menautkan akun Google.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Pemain ini bermain sebagai tamu. Profil, statistik, dan riwayat akun belum tersedia.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white60),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (details != null) ...[
           if (!widget.owner) ...[
             Center(
-              child: ProfileAvatar(avatarId: details.avatarId, radius: 48),
+              child: AccountAvatarBadge(
+                linked: true,
+                child: ProfileAvatar(avatarId: details.avatarId, radius: 48),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -238,7 +275,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _stat('Selesai', details.completed, first: true)),
+                Expanded(
+                  child: _stat('Selesai', details.completed, first: true),
+                ),
                 _vRule(),
                 Expanded(
                   child: _stat('Menang · Warga Desa', details.wargaWins),
@@ -299,9 +338,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 onPressed: _acting || _loading || _title == details.title
                     ? null
                     : () => _act(
-                      () => widget.repository.equipTitle(_title),
-                  'Gelar berhasil dipasang.',
-                ),
+                        () => widget.repository.equipTitle(_title),
+                        'Gelar berhasil dipasang.',
+                      ),
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
@@ -376,10 +415,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     );
   }
 
-  Widget _vRule() => Container(
-    width: 1,
-    color: EmbunColors.gold.withValues(alpha: 0.30),
-  );
+  Widget _vRule() =>
+      Container(width: 1, color: EmbunColors.gold.withValues(alpha: 0.30));
 
   Widget _stat(String label, int count, {bool first = false}) => Padding(
     padding: EdgeInsets.fromLTRB(first ? 0 : 14, 4, 10, 4),
@@ -431,7 +468,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                   ),
                   Text(
                     '${two(date.day)}/${two(date.month)}/${date.year} '
-                        '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
+                    '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
                     style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],
