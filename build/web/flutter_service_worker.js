@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "a2324c566db809f0682ec6318224a82e",
-"assets/AssetManifest.bin.json": "1ef2e2001d51076e834e29135b8910b1",
+const RESOURCES = {"assets/AssetManifest.bin": "0c83b92c1815328aa7e4e081dc229942",
+"assets/AssetManifest.bin.json": "954285bfd7d51bf7bb1f20c09ba94038",
 "assets/assets/avatars/01_penjaga_hayu.webp": "d94b528ebf9b99cf049e846d4ac9a846",
 "assets/assets/avatars/02_peramu_bunga.webp": "5ce2f362460ba7459cbf2263d57f7a79",
 "assets/assets/avatars/03_petani_muda.webp": "3c7379459d6f89192570e4f425617c94",
@@ -89,7 +89,8 @@ const RESOURCES = {"assets/AssetManifest.bin": "a2324c566db809f0682ec6318224a82e
 "assets/assets/bentang/pohonindikator-zoomtanah.webp": "1c65c8f25db6ebdfb59c9089904ff772",
 "assets/assets/bentang/rumah-malamdepanpintu.webp": "4d7c1c57f7fe2eea130f0bcfb5c678e8",
 "assets/assets/bentang/rumahdesa-gersang.webp": "8007db6b889be43e59fc710e0896d7c2",
-"assets/assets/bentang/rumahdesa-hijau.webp": "a003b0422fcc0b54c5be25017ee62c95",
+"assets/assets/bentang/rumahdesa-hijau.webp": "5e075eebf9d55834d92082d60e2198fa",
+"assets/assets/bentang/rumahdesa-hijaudraf.webp": "a003b0422fcc0b54c5be25017ee62c95",
 "assets/assets/bentang/rumahdesa2-gersang.webp": "2b3ea72d5f231df82c48e7a1a57fc36b",
 "assets/assets/bentang/sheetmedal-latar.webp": "cc2b247deb74bf434aa92efce0222ebf",
 "assets/assets/bentang/sheetprofile-latar.webp": "ade90af8d879c38b7d096fd3b04e47a8",
@@ -749,7 +750,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "a2324c566db809f0682ec6318224a82e
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "48912f5d7b824e1faf98d01843e1100d",
+"flutter_bootstrap.js": "542a98d5246fb406cf1b2cdce0422b62",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -764,11 +765,11 @@ const RESOURCES = {"assets/AssetManifest.bin": "a2324c566db809f0682ec6318224a82e
 "informasi/embun.css": "82c6376f719defc4df4163fb7eb07a24",
 "informasi/logo.webp": "21d7710de6b473107c3376fe3a48a797",
 "ketentuan/index.html": "6ae5d8daf3bbfdfd9a23742ed911572b",
-"main.dart.js": "9a1c530e14ab1fb979bf9b04f8d6bfb6",
+"main.dart.js": "1e45d625430c528b06f7d329a89b13e9",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "privasi/index.html": "330db661e3f4ef5ba3f676161ff7ec1d",
 "tentang/index.html": "09e656470904e6a6010b1dcd120a1468",
-"version.json": "0c2c27559c0bfd79046d10a3ff8b2335",
+"version.json": "107d197f3619fc2808f429864e511e2d",
 "_headers": "37cb9ac50993ed26a84190a1031c15c3"};
 // The application shell files that are downloaded before a service worker can
 // start.
