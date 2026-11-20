@@ -1,16 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/profile_repository.dart';
+import '../common/art.dart';
 import '../common/ornate.dart';
 import 'profile_avatar.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
+BorderSide _profileRule([Color color = EmbunColors.gold]) =>
+    BorderSide(color: color.withValues(alpha: 0.30));
+
+InputDecoration _flatField() => InputDecoration(
+  filled: false,
+  contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+  border: UnderlineInputBorder(
+    borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.4)),
+  ),
+  enabledBorder: UnderlineInputBorder(
+    borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.4)),
+  ),
+  focusedBorder: const UnderlineInputBorder(
+    borderSide: BorderSide(color: EmbunColors.gold, width: 2),
+  ),
+);
+
 Future<void> showPlayerProfile(
-  BuildContext context, {
-  required String gameId,
-  required String userId,
-  ProfileRepository? repository,
-}) => showModalBottomSheet<void>(
+    BuildContext context, {
+      required String gameId,
+      required String userId,
+      ProfileRepository? repository,
+    }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -37,7 +55,7 @@ Future<void> showPlayerProfile(
                   userId: userId,
                   gameId: gameId,
                   repository:
-                      repository ??
+                  repository ??
                       SupabaseProfileRepository(Supabase.instance.client),
                 ),
               ),
@@ -104,7 +122,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(
-        () => _error = widget.owner
+            () => _error = widget.owner
             ? 'Data profil belum dapat dimuat. Periksa koneksi lalu coba lagi.'
             : 'Profil belum dapat dimuat. Coba lagi di lobi atau hasil akhir ruangan yang sama.',
       );
@@ -128,8 +146,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _actionError =
-              'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+              () => _actionError =
+          'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
         );
       }
     } finally {
@@ -166,13 +184,22 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
   }
 
   Widget _heading(String text) => Padding(
-    padding: const EdgeInsets.only(top: 24, bottom: 10),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 19,
-        fontWeight: FontWeight.w700,
-        color: EmbunColors.gold,
+    padding: const EdgeInsets.only(top: 26, bottom: 10),
+    child: DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: _profileRule())),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: EmbunColors.gold,
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -207,14 +234,21 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             ),
           ],
           _heading('Statistik pertandingan'),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _stat('Selesai', details.completed),
-              _stat('Menang · Warga Desa', details.wargaWins),
-              _stat('Menang · Si Terbisik', details.terbisikWins),
-            ],
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _stat('Selesai', details.completed)),
+                _vRule(),
+                Expanded(
+                  child: _stat('Menang · Warga Desa', details.wargaWins),
+                ),
+                _vRule(),
+                Expanded(
+                  child: _stat('Menang · Si Terbisik', details.terbisikWins),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -227,6 +261,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
               key: ValueKey('title-${details.title}'),
               initialValue: profileTitles.contains(_title) ? _title : '',
               isExpanded: true,
+              decoration: _flatField(),
               items: [
                 const DropdownMenuItem(
                   value: '',
@@ -261,9 +296,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 onPressed: _acting || _loading || _title == details.title
                     ? null
                     : () => _act(
-                        () => widget.repository.equipTitle(_title),
-                        'Gelar berhasil dipasang.',
-                      ),
+                      () => widget.repository.equipTitle(_title),
+                  'Gelar berhasil dipasang.',
+                ),
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
@@ -291,10 +326,16 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 style: const TextStyle(fontSize: 12, color: Colors.white60),
               ),
             ] else
-              OutlinedButton.icon(
-                onPressed: _acting || _loading ? null : _requestDeletion,
-                icon: const Icon(Icons.person_remove_outlined),
-                label: const Text('Minta penghapusan akun / data'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: EmbunColors.blood,
+                  ),
+                  onPressed: _acting || _loading ? null : _requestDeletion,
+                  icon: const Icon(Icons.person_remove_outlined),
+                  label: const Text('Minta penghapusan akun / data'),
+                ),
               ),
           ],
         ],
@@ -331,23 +372,31 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     );
   }
 
-  Widget _stat(String label, int count) => Container(
-    constraints: const BoxConstraints(minWidth: 105),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .06),
-      borderRadius: BorderRadius.circular(12),
-    ),
+  Widget _vRule() => Container(
+    width: 1,
+    color: EmbunColors.gold.withValues(alpha: 0.30),
+  );
+
+  Widget _stat(String label, int count) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           '$count',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: EmbunColors.cream,
+          ),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.white70),
+          style: const TextStyle(
+            fontSize: 12,
+            height: 1.25,
+            color: Colors.white70,
+          ),
         ),
       ],
     ),
@@ -357,33 +406,35 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     final date = match.finishedAt;
     String two(int n) => n.toString().padLeft(2, '0');
     final role = match.side == 'antagonis' ? 'Si Terbisik' : 'Warga Desa';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            match.won ? Icons.emoji_events_outlined : Icons.history,
-            color: match.won ? EmbunColors.gold : Colors.white54,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${match.won ? 'Menang' : 'Kalah'} · $role',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${two(date.day)}/${two(date.month)}/${date.year} '
-                  '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
-                  style: const TextStyle(fontSize: 12, color: Colors.white60),
-                ),
-              ],
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: _profileRule())),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            GameIcon(match.won ? 'centang' : 'silang', size: 30),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${match.won ? 'Menang' : 'Kalah'} · $role',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: match.won ? EmbunColors.gold : EmbunColors.cream,
+                    ),
+                  ),
+                  Text(
+                    '${two(date.day)}/${two(date.month)}/${date.year} '
+                        '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white60),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

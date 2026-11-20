@@ -10,7 +10,11 @@ import '../../data/asset_catalog.dart';
 import '../../data/player_profile.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import 'google_sign_in_button.dart';
 import 'public_information_links.dart';
+
+BorderSide _rule([Color color = EmbunColors.gold]) =>
+    BorderSide(color: color.withValues(alpha: 0.30));
 
 /// This gate belongs inside the account-keyed MaterialApp's home. Changing
 /// the authenticated account rebuilds that Navigator, clearing old game routes.
@@ -24,14 +28,7 @@ class AccountGate extends StatelessWidget {
     builder: (context, _) {
       if (account.restoring) {
         return const _AccountFrame(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text('Memulihkan sesi…'),
-            ],
-          ),
+          child: EmbunLoading(text: 'Memulihkan sesi…'),
         );
       }
       if (!account.googleAccount) return GoogleLoginPage(account: account);
@@ -47,35 +44,48 @@ class AccountGate extends StatelessWidget {
   );
 }
 
+/// Latar bentang, redaman, dan gradasi: dipakai login dan profil.
+class _AccountBackdrop extends StatelessWidget {
+  const _AccountBackdrop();
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Backdrop(path: sceneryPath('rumahdesa-hijau'), dim: .5),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x80101C15), Color(0x2207130F), Color(0xDD07130F)],
+            stops: [0, 0.45, 1],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Bingkai terpusat tanpa kotak: isi langsung di atas latar.
 class _AccountFrame extends StatelessWidget {
-  const _AccountFrame({required this.child});
+  const _AccountFrame({required this.child, this.maxWidth = 480});
   final Widget child;
+  final double maxWidth;
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: EmbunColors.bg,
     body: Stack(
       fit: StackFit.expand,
       children: [
-        Backdrop(path: sceneryPath('rumahdesa-hijau'), dim: .72),
+        const _AccountBackdrop(),
         SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0xE612241E),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: EmbunColors.gold.withValues(alpha: .35),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: child,
-                  ),
-                ),
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: child,
               ),
             ),
           ),
@@ -89,86 +99,120 @@ class GoogleLoginPage extends StatelessWidget {
   const GoogleLoginPage({super.key, required this.account});
   final AccountController account;
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: account,
-    builder: (context, _) => _AccountFrame(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Icon(Icons.eco_outlined, color: EmbunColors.gold, size: 52),
-          const SizedBox(height: 14),
-          const Text(
-            'EMBUN',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 6,
+  Widget build(BuildContext context) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final logoH = (screenH * 0.32).clamp(130.0, 300.0).toDouble();
+    return AnimatedBuilder(
+      animation: account,
+      builder: (context, _) => _AccountFrame(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, child) => Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, 22 * (1 - t)),
+              child: child,
             ),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Selamat datang di desa',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, color: EmbunColors.gold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Masuk untuk menyimpan profil dan memakai nama panggilanmu di setiap permainan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(height: 1.6, color: Colors.white70),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            key: const ValueKey('google-login'),
-            onPressed: account.busy || account.waitingForGoogle
-                ? null
-                : account.login,
-            icon: account.busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.login),
-            label: const Text('Masuk dengan Google'),
-          ),
-          if (account.waitingForGoogle) ...[
-            const SizedBox(height: 14),
-            const Text(
-              'Selesaikan login di halaman Google, lalu kembali ke Embun.',
-              textAlign: TextAlign.center,
-            ),
-            TextButton(
-              onPressed: account.cancelLoginWait,
-              child: const Text('Login dibatalkan? Coba lagi'),
-            ),
-          ],
-          if (account.error case final message?)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFFFB5A8)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: logoH,
+                child: GameImage(
+                  path:
+                  logoPath('ikon-transparent') ??
+                      logoPath('ikonapp-transparent'),
+                  fit: BoxFit.contain,
+                  cacheWidth: 900,
                 ),
               ),
-            ),
-          const SizedBox(height: 16),
-          const Text(
-            'Kamu dapat memilih nama panggilan setelah masuk.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.white54),
+              const SizedBox(height: 6),
+              const Text(
+                'Selamat datang di desa',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: EmbunColors.gold,
+                  shadows: [Shadow(color: Colors.black87, blurRadius: 14)],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Masuk untuk menyimpan profil dan memakai nama panggilanmu '
+                    'di setiap permainan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  height: 1.55,
+                  color: Colors.white70,
+                  shadows: [Shadow(color: Colors.black87, blurRadius: 10)],
+                ),
+              ),
+              const SizedBox(height: 22),
+              GoogleSignInButton(
+                key: const ValueKey('google-login'),
+                onPressed: account.busy || account.waitingForGoogle
+                    ? null
+                    : account.login,
+              ),
+              if (account.busy) ...[
+                const SizedBox(height: 10),
+                Semantics(
+                  liveRegion: true,
+                  child: const Text(
+                    'Membuka halaman Google…',
+                    style: TextStyle(fontSize: 12.5, color: Colors.white70),
+                  ),
+                ),
+              ],
+              if (account.waitingForGoogle) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'Selesaikan login di halaman Google, lalu kembali ke Embun.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70),
+                ),
+                TextButton(
+                  onPressed: account.cancelLoginWait,
+                  child: const Text('Login dibatalkan? Coba lagi'),
+                ),
+              ],
+              if (account.error case final message?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFFFFB5A8)),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 18),
+              const Text(
+                'Kamu dapat memilih nama panggilan setelah masuk.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.white54),
+              ),
+              const SizedBox(height: 8),
+              DecoratedBox(
+                decoration: BoxDecoration(border: Border(top: _rule())),
+                child: const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: PublicInformationLinks(),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          const PublicInformationLinks(),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class ProfilePage extends StatefulWidget {
@@ -194,7 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
   late final ProfileRepository? _detailsRepository = widget.firstSetup
       ? null
       : widget.detailsRepository ??
-            SupabaseProfileRepository(Supabase.instance.client);
+      SupabaseProfileRepository(Supabase.instance.client);
   @override
   void dispose() {
     _name.dispose();
@@ -208,6 +252,243 @@ class _ProfilePageState extends State<ProfilePage> {
     if (mounted && saved && !widget.firstSetup) Navigator.of(context).pop();
   }
 
+  Widget _header(AccountController account) => DecoratedBox(
+    decoration: BoxDecoration(border: Border(bottom: _rule())),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          if (widget.firstSetup)
+            const SizedBox(width: 12)
+          else
+            IconButton(
+              tooltip: 'Kembali',
+              icon: const GameIcon('back', size: 23),
+              onPressed: account.busy ? null : () => Navigator.of(context).pop(),
+            ),
+          const GameIcon('character', size: 28),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                widget.firstSetup ? 'Kenalan dulu, yuk' : 'Profilku',
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: EmbunColors.cream,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _sectionTitle(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: _rule())),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: EmbunColors.gold,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  /// Avatar terpilih besar dan namanya.
+  Widget _preview(bool wide) => Column(
+    children: [
+      ProfileAvatar(avatarId: _avatar, radius: wide ? 70 : 52),
+      const SizedBox(height: 8),
+      Text(
+        profileAvatars[_avatar]?.$2 ?? 'Avatar',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: EmbunColors.gold,
+        ),
+      ),
+    ],
+  );
+
+  Widget _nameField(AccountController account) => TextFormField(
+    key: const ValueKey('profile-nickname'),
+    controller: _name,
+    enabled: !account.busy,
+    maxLength: 20,
+    validator: (value) => nicknameError(value ?? ''),
+    textCapitalization: TextCapitalization.words,
+    textInputAction: TextInputAction.done,
+    onFieldSubmitted: (_) {
+      if (!account.busy) _save();
+    },
+    style: const TextStyle(fontSize: 18, color: EmbunColors.cream),
+    decoration: InputDecoration(
+      filled: false,
+      labelText: 'Nama panggilan',
+      helperText: 'Nama yang dipakai saat masuk ruangan.',
+      prefixIcon: const Padding(
+        padding: EdgeInsets.all(8),
+        child: GameIcon('identity', size: 26),
+      ),
+      border: UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.4)),
+      ),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.4)),
+      ),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: EmbunColors.gold, width: 2),
+      ),
+    ),
+  );
+
+  Widget _picker(AccountController account, bool wide) {
+    final radius = wide ? 34.0 : 29.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionTitle('Pilih avatar'),
+        Wrap(
+          spacing: wide ? 12 : 8,
+          runSpacing: wide ? 12 : 8,
+          children: [
+            for (final entry in profileAvatars.entries)
+              Semantics(
+                selected: _avatar == entry.key,
+                button: true,
+                label: entry.value.$2,
+                child: Tooltip(
+                  message: entry.value.$2,
+                  child: InkResponse(
+                    key: ValueKey('avatar-${entry.key}'),
+                    radius: radius + 6,
+                    onTap: account.busy
+                        ? null
+                        : () => setState(() => _avatar = entry.key),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          width: 3,
+                          color: _avatar == entry.key
+                              ? EmbunColors.gold
+                              : Colors.transparent,
+                        ),
+                        boxShadow: _avatar == entry.key
+                            ? [
+                          BoxShadow(
+                            color: EmbunColors.gold.withValues(
+                              alpha: 0.35,
+                            ),
+                            blurRadius: 14,
+                          ),
+                        ]
+                            : null,
+                      ),
+                      child: Opacity(
+                        opacity: _avatar == entry.key ? 1 : 0.8,
+                        child: ProfileAvatar(
+                          avatarId: entry.key,
+                          radius: radius,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _emailNote(AccountController account) {
+    final email = account.profile?.email;
+    if (email == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Text(
+        'Email Google terhubung\n$email',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 12, color: Colors.white54),
+      ),
+    );
+  }
+
+  Widget _saveBlock(AccountController account) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (!widget.firstSetup)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'Perubahan nama berlaku saat masuk ruangan berikutnya.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ),
+      if (account.error case final message?)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFFFFB5A8)),
+            ),
+          ),
+        ),
+      EmbunButton(
+        key: const ValueKey('save-profile'),
+        label: account.busy
+            ? 'Menyimpan…'
+            : widget.firstSetup
+            ? 'Simpan dan lanjutkan'
+            : 'Simpan profil',
+        icon: account.busy ? 'wait' : 'simpan',
+        expand: true,
+        height: 46,
+        onPressed: account.busy ? null : _save,
+      ),
+    ],
+  );
+
+  Widget _logout(AccountController account) => Center(
+    child: TextButton.icon(
+      onPressed: account.busy ? null : account.logout,
+      icon: const GameIcon('keluar', size: 22),
+      label: const Text('Keluar akun'),
+    ),
+  );
+
+  Widget _details(AccountController account) => widget.firstSetup
+      ? const SizedBox.shrink()
+      : Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: ProfileDetailsPanel(
+      key: ValueKey(account.identity),
+      repository: _detailsRepository!,
+      userId: account.identity!,
+      owner: true,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.account,
@@ -215,150 +496,112 @@ class _ProfilePageState extends State<ProfilePage> {
       final account = widget.account;
       return PopScope(
         canPop: !account.busy && !widget.firstSetup,
-        child: _AccountFrame(
-          child: Form(
-            key: _form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!widget.firstSetup)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      tooltip: 'Kembali',
-                      onPressed: account.busy
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                  ),
-                Text(
-                  widget.firstSetup ? 'Kenalan dulu, yuk' : 'Profilku',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: EmbunColors.gold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Center(child: ProfileAvatar(avatarId: _avatar, radius: 38)),
-                const SizedBox(height: 20),
-                TextFormField(
-                  key: const ValueKey('profile-nickname'),
-                  controller: _name,
-                  enabled: !account.busy,
-                  maxLength: 20,
-                  validator: (value) => nicknameError(value ?? ''),
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) {
-                    if (!account.busy) _save();
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Nama panggilan',
-                    helperText: 'Nama yang dipakai saat masuk ruangan.',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Pilih avatar',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final entry in profileAvatars.entries)
-                      Semantics(
-                        selected: _avatar == entry.key,
-                        button: true,
-                        label: entry.value.$2,
-                        child: Tooltip(
-                          message: entry.value.$2,
-                          child: InkWell(
-                            key: ValueKey('avatar-${entry.key}'),
-                            borderRadius: BorderRadius.circular(40),
-                            onTap: account.busy
-                                ? null
-                                : () => setState(() => _avatar = entry.key),
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  width: 3,
-                                  color: _avatar == entry.key
-                                      ? EmbunColors.gold
-                                      : Colors.transparent,
-                                ),
-                              ),
-                              child: ProfileAvatar(
-                                avatarId: entry.key,
-                                radius: 25,
+        child: Scaffold(
+          backgroundColor: EmbunColors.bg,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              const _AccountBackdrop(),
+              SafeArea(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1000),
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        final wide = box.maxWidth >= 820;
+                        final padH = box.maxWidth < 450 ? 14.0 : 24.0;
+                        final body = wide
+                            ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 300,
+                              child: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
+                                children: [
+                                  _preview(true),
+                                  const SizedBox(height: 20),
+                                  _nameField(account),
+                                  _emailNote(account),
+                                  const SizedBox(height: 18),
+                                  _saveBlock(account),
+                                  if (!widget.firstSetup) ...[
+                                    const SizedBox(height: 8),
+                                    _logout(account),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  const PublicInformationLinks(),
+                                ],
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (account.profile?.email case final email?)
-                  Text(
-                    'Email Google terhubung\n$email',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Colors.white54),
-                  ),
-                const SizedBox(height: 12),
-                if (!widget.firstSetup)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Perubahan nama berlaku saat masuk ruangan berikutnya.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                            Expanded(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border(left: _rule()),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 32,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                    children: [
+                                      _picker(account, true),
+                                      _details(account),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                            : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _preview(false),
+                            const SizedBox(height: 16),
+                            _nameField(account),
+                            const SizedBox(height: 18),
+                            _picker(account, false),
+                            _emailNote(account),
+                            const SizedBox(height: 16),
+                            _saveBlock(account),
+                            _details(account),
+                            const SizedBox(height: 12),
+                            if (!widget.firstSetup) _logout(account),
+                            const PublicInformationLinks(),
+                          ],
+                        );
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: padH),
+                              child: _header(account),
+                            ),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: EdgeInsets.fromLTRB(
+                                  padH,
+                                  wide ? 26 : 18,
+                                  padH,
+                                  32,
+                                ),
+                                child: Form(key: _form, child: body),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                if (account.error case final message?)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        message,
-                        style: const TextStyle(color: Color(0xFFFFB5A8)),
-                      ),
-                    ),
-                  ),
-                FilledButton(
-                  key: const ValueKey('save-profile'),
-                  onPressed: account.busy ? null : _save,
-                  child: Text(
-                    account.busy
-                        ? 'Menyimpan…'
-                        : widget.firstSetup
-                        ? 'Simpan dan lanjutkan'
-                        : 'Simpan profil',
-                  ),
                 ),
-                if (!widget.firstSetup)
-                  ProfileDetailsPanel(
-                    key: ValueKey(account.identity),
-                    repository: _detailsRepository!,
-                    userId: account.identity!,
-                    owner: true,
-                  ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: account.busy ? null : account.logout,
-                  child: const Text('Keluar akun'),
-                ),
-                const PublicInformationLinks(),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
