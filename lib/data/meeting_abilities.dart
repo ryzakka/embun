@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
-import '../common/ornate.dart';
-import 'player_status.dart';
-import 'voting_view.dart';
-import 'meeting_player_grid.dart';
+import '../features/common/ornate.dart';
+import '../features/table/player_status.dart';
+import '../features/table/voting_view.dart';
+import '../features/table/meeting_player_grid.dart';
 
 /// Actions stay inside the existing private ability dialog.
 class MeetingAbilityActions extends StatefulWidget {
