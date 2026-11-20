@@ -56,11 +56,11 @@ class MedalArt extends StatelessWidget {
         builder: (context, snapshot) => snapshot.data == null
             ? fallback
             : Image.asset(
-                snapshot.data!,
-                fit: BoxFit.contain,
-                cacheWidth: (size * 3).round(),
-                errorBuilder: (_, _, _) => fallback,
-              ),
+          snapshot.data!,
+          fit: BoxFit.contain,
+          cacheWidth: (size * 3).round(),
+          errorBuilder: (_, _, _) => fallback,
+        ),
       ),
     );
     return Semantics(
@@ -128,7 +128,7 @@ class ProfileMedalsSummary extends StatelessWidget {
     final highest = [
       for (final series in medalSeries)
         if (received.where((m) => m.series.id == series.id).lastOrNull
-            case final ProfileMedal m)
+        case final ProfileMedal m)
           m,
     ];
     return Padding(
@@ -190,10 +190,10 @@ class ProfileMedalsSummary extends StatelessWidget {
                       onPressed: claims.claimingId != null
                           ? null
                           : () => claimMedalWithCelebration(
-                              context,
-                              claims,
-                              medal,
-                            ),
+                        context,
+                        claims,
+                        medal,
+                      ),
                       icon: const Icon(Icons.emoji_events_outlined, size: 20),
                       label: Text(
                         claims.claimingId == medal.id
@@ -278,160 +278,435 @@ class ProfileMedalsSummary extends StatelessWidget {
 }
 
 Future<void> showMedalCollection(
-  BuildContext context,
-  ProfileDetails profile, {
-  MedalClaimsController? claims,
-}) async {
+    BuildContext context,
+    ProfileDetails profile, {
+      MedalClaimsController? claims,
+    }) async {
   if (!profile.googleLinked) return;
   await showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF11271E),
-    constraints: const BoxConstraints(maxWidth: 680),
+    backgroundColor: const Color(0xFF0B1A14),
+    constraints: const BoxConstraints(maxWidth: 720),
     builder: (context) => _watchClaims(
       claims,
-      () => FractionallySizedBox(
-        heightFactor: .9,
-        child: Column(
-          children: [
-            ListTile(
-              title: const Text('Koleksi Badge'),
-              subtitle: Text(
-                claims == null
-                    ? '${earnedMedals(profile).length}/${profileMedals.length} badge diraih'
-                    : '${earnedMedals(profile).where(claims.isClaimed).length}/${profileMedals.length} badge diklaim',
-              ),
-              trailing: IconButton(
-                tooltip: 'Tutup koleksi badge',
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
-                  return CustomScrollView(
-                    key: const ValueKey('medal-collection-scroll'),
-                    slivers: [
-                      for (final series in medalSeries) ...[
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  series.name,
-                                  style: const TextStyle(
-                                    fontSize: 19,
-                                    color: EmbunColors.gold,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${medalNumber(series.valueOf(profile))} ${series.unit} tercatat',
-                                  style: const TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          sliver: SliverGrid.builder(
-                            gridDelegate:
-                                SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 180,
-                                  mainAxisExtent: 96 + 64 * scale,
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
-                                ),
-                            itemCount: series.targets.length,
-                            itemBuilder: (context, i) {
-                              final medal = ProfileMedal(series, i);
-                              final unlocked = medal.unlocked(profile);
-                              return InkWell(
-                                key: ValueKey('medal-${medal.id}'),
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => showMedalDetails(
-                                  context,
-                                  profile,
-                                  medal,
-                                  claims: claims,
-                                ),
-                                child: Column(
-                                  children: [
-                                    MedalArt(medal: medal, unlocked: unlocked),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      medal.name,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      medalNumber(medal.target),
-                                      maxLines: 1,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                    Text(
-                                      unlocked
-                                          ? claims == null ||
-                                                    claims.isClaimed(medal)
-                                                ? 'Diraih'
-                                                : claims.initialized
-                                                ? 'Klaim'
-                                                : 'Memuat…'
-                                          : '${medalNumber(medal.valueOf(profile))}/${medalNumber(medal.target)}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: unlocked
-                                            ? EmbunColors.leaf
-                                            : Colors.white54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          () => FractionallySizedBox(
+        heightFactor: .92,
+        child: _MedalCollectionView(profile: profile, claims: claims),
       ),
     ),
   );
 }
 
+enum _MedalState { locked, ready, received }
+
+_MedalState _stateOf(
+    ProfileDetails profile,
+    ProfileMedal medal,
+    MedalClaimsController? claims,
+    ) {
+  if (!medal.unlocked(profile)) return _MedalState.locked;
+  if (claims == null || claims.isClaimed(medal)) return _MedalState.received;
+  return _MedalState.ready;
+}
+
+/// Level 1: kartu seri (3 kartu). Level 2: kartu medali dalam satu seri.
+class _MedalCollectionView extends StatefulWidget {
+  const _MedalCollectionView({required this.profile, this.claims});
+  final ProfileDetails profile;
+  final MedalClaimsController? claims;
+  @override
+  State<_MedalCollectionView> createState() => _MedalCollectionViewState();
+}
+
+class _MedalCollectionViewState extends State<_MedalCollectionView> {
+  MedalSeries? _series;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
+    final claims = widget.claims;
+    final series = _series;
+    final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final pool = series == null
+        ? profileMedals
+        : [for (final m in profileMedals) if (m.series.id == series.id) m];
+    final received = pool
+        .where((m) => _stateOf(profile, m, claims) == _MedalState.received)
+        .length;
+    final verb = claims == null ? 'diraih' : 'diklaim';
+    return PopScope(
+      canPop: series == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _series = null);
+      },
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                if (series == null)
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.emoji_events,
+                      color: EmbunColors.gold,
+                      size: 30,
+                    ),
+                  )
+                else
+                  IconButton(
+                    key: const ValueKey('medal-series-back'),
+                    tooltip: 'Kembali ke daftar seri',
+                    onPressed: () => setState(() => _series = null),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        series?.name ?? 'Koleksi Badge',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
+                      Text(
+                        series == null
+                            ? '$received/${pool.length} badge $verb'
+                            : '$received/${pool.length} badge $verb · ${medalNumber(series.valueOf(profile))} ${series.unit} tercatat',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Tutup koleksi badge',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: series == null
+                ? GridView.builder(
+              key: const ValueKey('medal-collection-scroll'),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisExtent: 190 + 60 * scale,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: medalSeries.length,
+              itemBuilder: (context, i) {
+                final s = medalSeries[i];
+                final medals = [
+                  for (var n = 0; n < s.targets.length; n++)
+                    ProfileMedal(s, n),
+                ];
+                final states = [
+                  for (final m in medals) _stateOf(profile, m, claims),
+                ];
+                final done = states
+                    .where((e) => e == _MedalState.received)
+                    .length;
+                final cover =
+                    medals
+                        .where((m) => m.unlocked(profile))
+                        .lastOrNull ??
+                        medals.first;
+                final ratio = done / medals.length;
+                return _MedalFrame(
+                  key: ValueKey('medal-series-${s.id}'),
+                  alert: states.contains(_MedalState.ready),
+                  onTap: () => setState(() => _series = s),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      MedalArt(
+                        medal: cover,
+                        unlocked: cover.unlocked(profile),
+                        size: 72,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: EmbunColors.gold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${(ratio * 100).round()}%',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _FrameBar(value: ratio),
+                    ],
+                  ),
+                );
+              },
+            )
+                : GridView.builder(
+              key: ValueKey('medal-series-scroll-${series.id}'),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 150,
+                mainAxisExtent: 134 + 56 * scale,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: series.targets.length,
+              itemBuilder: (context, i) {
+                final medal = ProfileMedal(series, i);
+                final state = _stateOf(profile, medal, claims);
+                final locked = state == _MedalState.locked;
+                return _MedalFrame(
+                  key: ValueKey('medal-${medal.id}'),
+                  alert: state == _MedalState.ready,
+                  dim: locked,
+                  onTap: () => showMedalDetails(
+                    context,
+                    profile,
+                    medal,
+                    claims: claims,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      MedalArt(
+                        medal: medal,
+                        unlocked: !locked,
+                        size: 72,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        medal.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: locked
+                              ? Colors.white70
+                              : EmbunColors.gold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        switch (state) {
+                          _MedalState.locked =>
+                          '${medalNumber(medal.valueOf(profile))}/${medalNumber(medal.target)}',
+                          _MedalState.ready =>
+                          claims?.initialized == false
+                              ? 'Memuat…'
+                              : 'Klaim!',
+                          _MedalState.received => 'Diraih',
+                        },
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: state == _MedalState.ready
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                          color: switch (state) {
+                            _MedalState.locked => Colors.white54,
+                            _MedalState.ready => EmbunColors.gold,
+                            _MedalState.received => EmbunColors.leaf,
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _FrameBar(value: medal.progress(profile)),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FrameBar extends StatelessWidget {
+  const _FrameBar({required this.value});
+  final double value;
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(4),
+    child: LinearProgressIndicator(
+      value: value,
+      minHeight: 4,
+      backgroundColor: Colors.white12,
+      color: EmbunColors.gold,
+    ),
+  );
+}
+
+/// Kartu berbingkai lengkung-cekung bergaya "achievement".
+class _MedalFrame extends StatelessWidget {
+  const _MedalFrame({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.alert = false,
+    this.dim = false,
+  });
+  final Widget child;
+  final VoidCallback onTap;
+  final bool alert, dim;
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Positioned.fill(
+        child: CustomPaint(
+          painter: _FramePainter(glow: alert, dim: dim),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+      if (alert)
+        Positioned(
+          top: -3,
+          right: -3,
+          child: IgnorePointer(
+            child: Container(
+              key: const ValueKey('medal-card-alert'),
+              width: 18,
+              height: 18,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF0B1A14), width: 2),
+              ),
+              child: const Text(
+                '!',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+Path _framePath(Rect r, double c) => Path()
+  ..moveTo(r.left + c, r.top)
+  ..lineTo(r.right - c, r.top)
+  ..arcToPoint(
+    Offset(r.right, r.top + c),
+    radius: Radius.circular(c),
+    clockwise: false,
+  )
+  ..lineTo(r.right, r.bottom - c)
+  ..arcToPoint(
+    Offset(r.right - c, r.bottom),
+    radius: Radius.circular(c),
+    clockwise: false,
+  )
+  ..lineTo(r.left + c, r.bottom)
+  ..arcToPoint(
+    Offset(r.left, r.bottom - c),
+    radius: Radius.circular(c),
+    clockwise: false,
+  )
+  ..lineTo(r.left, r.top + c)
+  ..arcToPoint(
+    Offset(r.left + c, r.top),
+    radius: Radius.circular(c),
+    clockwise: false,
+  )
+  ..close();
+
+class _FramePainter extends CustomPainter {
+  const _FramePainter({required this.glow, required this.dim});
+  final bool glow, dim;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final outer = _framePath(rect.deflate(1.5), 16);
+    if (glow) {
+      canvas.drawPath(
+        outer,
+        Paint()
+          ..color = EmbunColors.gold.withValues(alpha: .45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 9),
+      );
+    }
+    canvas.drawPath(
+      outer,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1D3B2D), Color(0xFF0F231A)],
+        ).createShader(rect),
+    );
+    canvas.drawPath(
+      outer,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = EmbunColors.gold.withValues(alpha: dim ? .4 : .9),
+    );
+    canvas.drawPath(
+      _framePath(rect.deflate(6), 11),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = EmbunColors.gold.withValues(alpha: dim ? .15 : .3),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FramePainter old) =>
+      old.glow != glow || old.dim != dim;
+}
+
 Future<void> showMedalDetails(
-  BuildContext context,
-  ProfileDetails profile,
-  ProfileMedal medal, {
-  MedalClaimsController? claims,
-}) async {
+    BuildContext context,
+    ProfileDetails profile,
+    ProfileMedal medal, {
+      MedalClaimsController? claims,
+    }) async {
   if (!profile.googleLinked) return;
   final unlocked = medal.unlocked(profile);
   final next = nextMedal(profile, medal.series);
@@ -443,7 +718,7 @@ Future<void> showMedalDetails(
     constraints: const BoxConstraints(maxWidth: 540),
     builder: (context) => _watchClaims(
       claims,
-      () => SingleChildScrollView(
+          () => SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -544,14 +819,14 @@ Future<void> showMedalDetails(
 
 Widget _watchClaims(MedalClaimsController? claims, Widget Function() builder) =>
     claims == null
-    ? builder()
-    : ListenableBuilder(listenable: claims, builder: (_, _) => builder());
+        ? builder()
+        : ListenableBuilder(listenable: claims, builder: (_, _) => builder());
 
 Future<void> claimMedalWithCelebration(
-  BuildContext context,
-  MedalClaimsController claims,
-  ProfileMedal medal,
-) async {
+    BuildContext context,
+    MedalClaimsController claims,
+    ProfileMedal medal,
+    ) async {
   final saved = await claims.claim(medal);
   if (!saved || !context.mounted || !claims.active) return;
   await showDialog<void>(
