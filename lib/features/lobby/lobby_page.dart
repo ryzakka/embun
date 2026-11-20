@@ -15,7 +15,7 @@ import '../common/art.dart';
 import '../account/account_scope.dart';
 import '../account/account_pages.dart';
 import '../account/profile_details_page.dart';
-import '../account/account_status_badge.dart';
+import '../account/player_account_avatar.dart';
 import '../account/room_account_status.dart';
 import '../common/character_lock.dart';
 import '../common/ornate.dart';
@@ -204,7 +204,14 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     final account = AccountScope.maybeOf(context);
     if (account == null || gameId != null) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ProfilePage(account: account)),
+      MaterialPageRoute<void>(
+        builder: (_) => ProfilePage(
+          account: account,
+          guestName: nameCtrl.text.trim().isEmpty
+              ? 'Tamu'
+              : nameCtrl.text.trim(),
+        ),
+      ),
     );
     if (mounted) setState(_fillProfileName);
   }
@@ -820,19 +827,16 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AccountAvatarBadge(
-                    linked: AccountScope.maybeOf(context)!.googleAccount,
-                    child: AccountScope.maybeOf(context)!.guest
-                        ? const CircleAvatar(
-                            radius: 19,
-                            child: Icon(Icons.person_outline),
-                          )
-                        : ProfileAvatar(
-                            avatarId: AccountScope.maybeOf(
-                              context,
-                            )!.profile!.avatarId,
-                            radius: 19,
-                          ),
+                  PlayerAccountAvatar(
+                    name:
+                        _profileName ??
+                        (nameCtrl.text.trim().isEmpty
+                            ? 'Tamu'
+                            : nameCtrl.text.trim()),
+                    googleLinked: AccountScope.maybeOf(context)!.googleAccount,
+                    avatarId: AccountScope.maybeOf(context)!.profile?.avatarId,
+                    radius: 19,
+                    onTap: _openProfile,
                   ),
                   const SizedBox(width: 10),
                   Flexible(
@@ -1173,7 +1177,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               playerIds: [for (final p in players) p['user_id'] as String],
               enabled: EmbunData.maybeOf(context) == null,
               builder: (links) => WaitingRoomView(
-                googleLinks: links,
+                accountProfiles: links,
                 onViewProfile: EmbunData.maybeOf(context) != null
                     ? null
                     : (uid) =>
@@ -1192,6 +1196,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                   gameId: id,
                   players: players,
                   lobby: true,
+                  accountProfiles: links,
                 ),
                 onVisibilityChanged: (value) => repo.setRoomPublic(id, value),
                 onReady: (value) => repo.setReady(id, value),

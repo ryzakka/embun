@@ -9,6 +9,8 @@ import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
+import '../account/player_account_avatar.dart';
+import '../../data/profile_repository.dart';
 
 const _generalQuick = [
   'Aku beli kartu baik 🌿',
@@ -52,7 +54,7 @@ Color chatAccent(String? id, bool mine) {
 
 DateTime _ts(Map<String, dynamic> m) =>
     DateTime.tryParse((m['created_at'] as String?) ?? '') ??
-        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 /// Urutkan pesan dari yang terlama ke terbaru. Urutan dari stream tidak
 /// bisa diandalkan, jadi selalu diurutkan sendiri di sisi klien.
@@ -74,68 +76,67 @@ String _hhmm(DateTime t) {
 
 /// Obrolan yang bisa dibuka di semua fase (kecuali layar efek).
 Future<void> showChatSheet(
-    BuildContext context, {
-      required GameRepository repo,
-      required String gameId,
-      required List<Map<String, dynamic>> players,
-      ValueListenable<bool>? terbisikAccess,
-      String? partnerName,
-    }) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: terbisikAccess == null
-          ? const Color(0xFF14221F)
-          : const Color(0xFF20172A),
-      builder: (ctx) {
-        final mq = MediaQuery.of(ctx);
-        final inset = mq.viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.only(bottom: inset),
-          child: SizedBox(
-            height: (mq.size.height - inset) * 0.88,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (terbisikAccess == null)
-                    const SectionHeader(icon: 'discuss', title: 'Obrolan Desa')
-                  else ...[
-                    const SectionHeader(icon: 'lock', title: 'Obrolan Terbisik'),
-                    const SizedBox(height: 4),
-                    Text(
-                      partnerName == null
-                          ? 'Kanal rahasia untuk Terbisik yang masih aktif.'
-                          : 'Kanal rahasia · Rekanmu $partnerName',
-                      style: const TextStyle(color: EmbunColors.mist),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: terbisikAccess == null
-                        ? ChatPanel(repo: repo, gameId: gameId, players: players)
-                        : ValueListenableBuilder<bool>(
-                            valueListenable: terbisikAccess,
-                            builder: (_, allowed, _) => allowed
-                                ? ChatPanel(
-                                    repo: repo,
-                                    gameId: gameId,
-                                    players: players,
-                                    terbisik: true,
-                                  )
-                                : const Center(
-                                    child: Text('Obrolan Terbisik ditutup.'),
-                                  ),
-                          ),
-                  ),
-                ],
+  BuildContext context, {
+  required GameRepository repo,
+  required String gameId,
+  required List<Map<String, dynamic>> players,
+  ValueListenable<bool>? terbisikAccess,
+  String? partnerName,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  backgroundColor: terbisikAccess == null
+      ? const Color(0xFF14221F)
+      : const Color(0xFF20172A),
+  builder: (ctx) {
+    final mq = MediaQuery.of(ctx);
+    final inset = mq.viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: inset),
+      child: SizedBox(
+        height: (mq.size.height - inset) * 0.88,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (terbisikAccess == null)
+                const SectionHeader(icon: 'discuss', title: 'Obrolan Desa')
+              else ...[
+                const SectionHeader(icon: 'lock', title: 'Obrolan Terbisik'),
+                const SizedBox(height: 4),
+                Text(
+                  partnerName == null
+                      ? 'Kanal rahasia untuk Terbisik yang masih aktif.'
+                      : 'Kanal rahasia · Rekanmu $partnerName',
+                  style: const TextStyle(color: EmbunColors.mist),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: terbisikAccess == null
+                    ? ChatPanel(repo: repo, gameId: gameId, players: players)
+                    : ValueListenableBuilder<bool>(
+                        valueListenable: terbisikAccess,
+                        builder: (_, allowed, _) => allowed
+                            ? ChatPanel(
+                                repo: repo,
+                                gameId: gameId,
+                                players: players,
+                                terbisik: true,
+                              )
+                            : const Center(
+                                child: Text('Obrolan Terbisik ditutup.'),
+                              ),
+                      ),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
+  },
+);
 
 /// Isi obrolan. Setiap pesan baru memicu adegan sinematik: potret karakter
 /// pengirim menghantam masuk di atas daftar pesan, lengkap dengan sinar,
@@ -146,6 +147,7 @@ class ChatPanel extends StatefulWidget {
   final String gameId;
   final List<Map<String, dynamic>> players;
   final bool lobby;
+  final Map<String, RoomAccountProfile> accountProfiles;
   final bool terbisik;
   const ChatPanel({
     super.key,
@@ -153,6 +155,7 @@ class ChatPanel extends StatefulWidget {
     required this.gameId,
     required this.players,
     this.lobby = false,
+    this.accountProfiles = const {},
     this.terbisik = false,
   });
 
@@ -187,9 +190,12 @@ class _ChatPanelState extends State<ChatPanel> {
     fx = !widget.terbisik;
     _sub = widget.repo
         .chat(widget.gameId, terbisik: widget.terbisik)
-        .listen(_onData, onError: (Object e) {
-      if (widget.terbisik && mounted) setState(() => err = errMsg(e));
-    });
+        .listen(
+          _onData,
+          onError: (Object e) {
+            if (widget.terbisik && mounted) setState(() => err = errMsg(e));
+          },
+        );
     scroll.addListener(() {
       if (!scroll.hasClients) return;
       // Daftar dibalik: offset 0 = pesan terbaru di bawah.
@@ -274,8 +280,11 @@ class _ChatPanelState extends State<ChatPanel> {
 
   void _toLatest() {
     if (!scroll.hasClients) return;
-    scroll.animateTo(0,
-        duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+    scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   Future<void> _send(String text) async {
@@ -284,7 +293,9 @@ class _ChatPanelState extends State<ChatPanel> {
     setState(() => err = null);
     try {
       await widget.repo.sendMessage(
-        widget.gameId, t, terbisik: widget.terbisik,
+        widget.gameId,
+        t,
+        terbisik: widget.terbisik,
       );
       _toLatest();
     } catch (e) {
@@ -313,8 +324,12 @@ class _ChatPanelState extends State<ChatPanel> {
     return null;
   }
 
-  Widget _message(Map<String, dynamic> m, List<Map<String, dynamic>> rev,
-      int i, double maxW) {
+  Widget _message(
+    Map<String, dynamic> m,
+    List<Map<String, dynamic>> rev,
+    int i,
+    double maxW,
+  ) {
     final uid = m['user_id'] as String?;
     final mine = uid == widget.repo.myId;
     final accent = chatAccent(uid, mine);
@@ -325,8 +340,9 @@ class _ChatPanelState extends State<ChatPanel> {
     final groupEnd = newer == null || newer['user_id'] != uid;
     final day = m['day'] as int?;
     final when = _ts(m);
-    final stamp =
-    widget.lobby || day == 0 ? _hhmm(when) : 'H$day · ${_hhmm(when)}';
+    final stamp = widget.lobby || day == 0
+        ? _hhmm(when)
+        : 'H$day · ${_hhmm(when)}';
 
     final bubble = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -345,24 +361,30 @@ class _ChatPanelState extends State<ChatPanel> {
     );
 
     final col = Column(
-      crossAxisAlignment:
-      mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: mine
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         if (!mine && groupStart)
           Padding(
             padding: const EdgeInsets.only(bottom: 2, left: 2),
-            child: Text(m['name'] as String,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: accent)),
+            child: Text(
+              m['name'] as String,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: accent,
+              ),
+            ),
           ),
         bubble,
         if (groupEnd)
           Padding(
             padding: const EdgeInsets.only(top: 2, left: 2, right: 2),
-            child: Text(stamp,
-                style: const TextStyle(fontSize: 10, color: Colors.white38)),
+            child: Text(
+              stamp,
+              style: const TextStyle(fontSize: 10, color: Colors.white38),
+            ),
           ),
       ],
     );
@@ -370,19 +392,35 @@ class _ChatPanelState extends State<ChatPanel> {
     return Padding(
       padding: EdgeInsets.only(top: groupStart ? 8 : 2),
       child: Row(
-        mainAxisAlignment:
-        mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: mine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!mine)
             SizedBox(
               width: 36,
               child: groupStart
-                  ? PlayerAvatar(
-                path: protagonistPath(_cardOf(uid) ?? 'default'),
-                size: 30,
-                ring: accent,
-              )
+                  ? widget.lobby
+                        ? PlayerAccountAvatar(
+                            name:
+                                widget
+                                        .accountProfiles[uid]
+                                        ?.nickname
+                                        .isNotEmpty ==
+                                    true
+                                ? widget.accountProfiles[uid]!.nickname
+                                : m['name'] as String,
+                            avatarId: widget.accountProfiles[uid]?.avatarId,
+                            googleLinked:
+                                widget.accountProfiles[uid]?.googleLinked,
+                            radius: 15,
+                          )
+                        : PlayerAvatar(
+                            path: protagonistPath(_cardOf(uid) ?? 'default'),
+                            size: 30,
+                            ring: accent,
+                          )
                   : null,
             ),
           Flexible(child: col),
@@ -393,8 +431,9 @@ class _ChatPanelState extends State<ChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final others =
-    widget.players.where((p) => p['user_id'] != widget.repo.myId).toList();
+    final others = widget.players
+        .where((p) => p['user_id'] != widget.repo.myId)
+        .toList();
     final aboutName = _nameOf(about);
     final phrases = widget.lobby
         ? _lobbyQuick
@@ -408,69 +447,74 @@ class _ChatPanelState extends State<ChatPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: LayoutBuilder(builder: (context, lc) {
-            final maxW = (lc.maxWidth - 36) * 0.82;
-            // Adegan menutup area pesan; disembunyikan bila terlalu sempit.
-            final showScene = fx && spot != null && lc.maxHeight >= 150;
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: rev.isEmpty
-                        ? const Center(
-                      child: Text('Belum ada yang bicara...',
-                          style: TextStyle(color: Colors.white38)),
-                    )
-                        : ListView.builder(
-                      controller: scroll,
-                      reverse: true,
-                      padding: const EdgeInsets.only(bottom: 4),
-                      itemCount: rev.length,
-                      itemBuilder: (_, i) =>
-                          _message(rev[i], rev, i, maxW),
+          child: LayoutBuilder(
+            builder: (context, lc) {
+              final maxW = (lc.maxWidth - 36) * 0.82;
+              // Adegan menutup area pesan; disembunyikan bila terlalu sempit.
+              final showScene = fx && spot != null && lc.maxHeight >= 150;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: rev.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Belum ada yang bicara...',
+                                style: TextStyle(color: Colors.white38),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: scroll,
+                              reverse: true,
+                              padding: const EdgeInsets.only(bottom: 4),
+                              itemCount: rev.length,
+                              itemBuilder: (_, i) =>
+                                  _message(rev[i], rev, i, maxW),
+                            ),
                     ),
-                  ),
-                  if (showJump)
-                    Positioned(
-                      right: 4,
-                      bottom: 4,
-                      child: FloatingActionButton.small(
-                        heroTag: null,
-                        onPressed: _toLatest,
-                        child: const Icon(Icons.keyboard_arrow_down),
+                    if (showJump)
+                      Positioned(
+                        right: 4,
+                        bottom: 4,
+                        child: FloatingActionButton.small(
+                          heroTag: null,
+                          onPressed: _toLatest,
+                          child: const Icon(Icons.keyboard_arrow_down),
+                        ),
+                      ),
+                    Positioned.fill(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 350),
+                        layoutBuilder: (cur, prev) => Stack(
+                          fit: StackFit.expand,
+                          children: [...prev, ?cur],
+                        ),
+                        child: showScene
+                            ? CutScene(
+                                key: const ValueKey('cut'),
+                                msg: spot,
+                                card: _cardOf(spotUid),
+                                mine: spotMine,
+                                accent: chatAccent(spotUid, spotMine),
+                                onSkip: _skip,
+                              )
+                            : const SizedBox.shrink(key: ValueKey('none')),
                       ),
                     ),
-                  Positioned.fill(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
-                      layoutBuilder: (cur, prev) => Stack(
-                        fit: StackFit.expand,
-                        children: [...prev, ?cur],
-                      ),
-                      child: showScene
-                          ? CutScene(
-                        key: const ValueKey('cut'),
-                        msg: spot,
-                        card: _cardOf(spotUid),
-                        mine: spotMine,
-                        accent: chatAccent(spotUid, spotMine),
-                        onSkip: _skip,
-                      )
-                          : const SizedBox.shrink(key: ValueKey('none')),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
         if (err != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(err!,
-                style:
-                const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            child: Text(
+              err!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
           ),
         const SizedBox(height: 6),
         if (!widget.lobby && !widget.terbisik) ...[
@@ -482,9 +526,10 @@ class _ChatPanelState extends State<ChatPanel> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.only(right: 6),
-                    child: Text('Tentang:',
-                        style:
-                        TextStyle(fontSize: 11, color: Colors.white54)),
+                    child: Text(
+                      'Tentang:',
+                      style: TextStyle(fontSize: 11, color: Colors.white54),
+                    ),
                   ),
                 ),
                 for (final p in others)
@@ -495,7 +540,8 @@ class _ChatPanelState extends State<ChatPanel> {
                       selected: about == p['user_id'],
                       visualDensity: VisualDensity.compact,
                       onSelected: (v) => setState(
-                              () => about = v ? p['user_id'] as String : null),
+                        () => about = v ? p['user_id'] as String : null,
+                      ),
                     ),
                   ),
               ],
@@ -526,7 +572,9 @@ class _ChatPanelState extends State<ChatPanel> {
           children: [
             if (!widget.terbisik)
               IconButton(
-                tooltip: fx ? 'Matikan efek dramatis' : 'Nyalakan efek dramatis',
+                tooltip: fx
+                    ? 'Matikan efek dramatis'
+                    : 'Nyalakan efek dramatis',
                 onPressed: _toggleFx,
                 icon: Opacity(
                   opacity: fx ? 1 : 0.4,
@@ -551,7 +599,9 @@ class _ChatPanelState extends State<ChatPanel> {
                   filled: true,
                   fillColor: Colors.white.withValues(alpha: 0.08),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -618,10 +668,13 @@ class CutScene extends StatefulWidget {
 
 class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
   late final AnimationController _enter = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100));
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
   late final AnimationController _loop = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 2600))
-    ..repeat();
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat();
   late final AnimationController _type = AnimationController(vsync: this);
   Timer? _typeDelay;
 
@@ -655,7 +708,8 @@ class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
     _type.stop();
     _type.value = 0;
     _type.duration = Duration(
-        milliseconds: (body.runes.length * 34).clamp(300, 2200).toInt());
+      milliseconds: (body.runes.length * 34).clamp(300, 2200).toInt(),
+    );
     _typeDelay?.cancel();
     _typeDelay = Timer(const Duration(milliseconds: 450), () {
       if (mounted) _type.forward(from: 0);
@@ -663,8 +717,10 @@ class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
 
     if (!widget.mine) {
       if (mood == _Mood.shout || mood == _Mood.suspect) {
-        Future.delayed(const Duration(milliseconds: 450),
-            HapticFeedback.heavyImpact);
+        Future.delayed(
+          const Duration(milliseconds: 450),
+          HapticFeedback.heavyImpact,
+        );
       } else {
         HapticFeedback.selectionClick();
       }
@@ -697,312 +753,337 @@ class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onSkip,
-      child: LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth, h = c.maxHeight;
-        var portraitH = (h * 0.84).clamp(100.0, 420.0).toDouble();
-        final aspect = cardAspectFor(protagonistPath(widget.card ?? 'default'));
-        var cardW = portraitH / aspect;
-        if (cardW > w * 0.58) cardW = w * 0.58;
-        final cardH = cardW * aspect;
-        final sideGap = w * 0.05;
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final w = c.maxWidth, h = c.maxHeight;
+          var portraitH = (h * 0.84).clamp(100.0, 420.0).toDouble();
+          final aspect = cardAspectFor(
+            protagonistPath(widget.card ?? 'default'),
+          );
+          var cardW = portraitH / aspect;
+          if (cardW > w * 0.58) cardW = w * 0.58;
+          final cardH = cardW * aspect;
+          final sideGap = w * 0.05;
 
-        return AnimatedBuilder(
-          animation: Listenable.merge([_enter, _loop, _type]),
-          builder: (context, _) {
-            final t = _enter.value;
-            final l = _loop.value;
-            final breathe = sin(l * 2 * pi);
+          return AnimatedBuilder(
+            animation: Listenable.merge([_enter, _loop, _type]),
+            builder: (context, _) {
+              final t = _enter.value;
+              final l = _loop.value;
+              final breathe = sin(l * 2 * pi);
 
-            // --- gerak potret ---
-            final slideT = (t / 0.5).clamp(0.0, 1.0).toDouble();
-            final slide = Curves.easeOutBack.transform(slideT);
-            final dx = (1 - slide) * (mine ? 1 : -1) * cardW * 1.6;
-            final impactScale =
-                1 + 0.32 * (1 - Curves.easeOutCubic.transform(slideT));
-            final fade = (t / 0.2).clamp(0.0, 1.0).toDouble();
-            final shakeT = ((t - 0.45) / 0.45).clamp(0.0, 1.0).toDouble();
-            final amp = switch (mood) {
-              _Mood.shout => 12.0,
-              _Mood.suspect => 7.0,
-              _ => 0.0,
-            };
-            final shake = t > 0.45 ? sin(shakeT * 70) * amp * (1 - shakeT) : 0.0;
-            final tilt = (mine ? 1 : -1) * 0.035 * Curves.easeOut.transform(slideT);
+              // --- gerak potret ---
+              final slideT = (t / 0.5).clamp(0.0, 1.0).toDouble();
+              final slide = Curves.easeOutBack.transform(slideT);
+              final dx = (1 - slide) * (mine ? 1 : -1) * cardW * 1.6;
+              final impactScale =
+                  1 + 0.32 * (1 - Curves.easeOutCubic.transform(slideT));
+              final fade = (t / 0.2).clamp(0.0, 1.0).toDouble();
+              final shakeT = ((t - 0.45) / 0.45).clamp(0.0, 1.0).toDouble();
+              final amp = switch (mood) {
+                _Mood.shout => 12.0,
+                _Mood.suspect => 7.0,
+                _ => 0.0,
+              };
+              final shake = t > 0.45
+                  ? sin(shakeT * 70) * amp * (1 - shakeT)
+                  : 0.0;
+              final tilt =
+                  (mine ? 1 : -1) * 0.035 * Curves.easeOut.transform(slideT);
 
-            // --- latar ---
-            final dim = Curves.easeOut
-                .transform((t / 0.25).clamp(0.0, 1.0).toDouble());
-            final rayCount = mood == _Mood.shout ? 20 : 12;
-            final rayStrength = switch (mood) {
-              _Mood.shout => 1.5,
-              _Mood.suspect => 1.1,
-              _ => 0.85,
-            };
-            final rayCenter =
-            Offset(w * (mine ? 0.72 : 0.28), h * 0.42);
+              // --- latar ---
+              final dim = Curves.easeOut.transform(
+                (t / 0.25).clamp(0.0, 1.0).toDouble(),
+              );
+              final rayCount = mood == _Mood.shout ? 20 : 12;
+              final rayStrength = switch (mood) {
+                _Mood.shout => 1.5,
+                _Mood.suspect => 1.1,
+                _ => 0.85,
+              };
+              final rayCenter = Offset(w * (mine ? 0.72 : 0.28), h * 0.42);
 
-            // --- kilatan ---
-            final flashPeak = switch (mood) {
-              _Mood.shout => 0.6,
-              _Mood.suspect => 0.4,
-              _ => 0.18,
-            };
-            final flash =
-                max(0.0, 1 - ((t - 0.46).abs() / 0.07)) * flashPeak;
+              // --- kilatan ---
+              final flashPeak = switch (mood) {
+                _Mood.shout => 0.6,
+                _Mood.suspect => 0.4,
+                _ => 0.18,
+              };
+              final flash = max(0.0, 1 - ((t - 0.46).abs() / 0.07)) * flashPeak;
 
-            // --- plakat & dialog ---
-            final bt = Curves.easeOutCubic
-                .transform(((t - 0.3) / 0.4).clamp(0.0, 1.0).toDouble());
-            final dt = ((t - 0.35) / 0.3).clamp(0.0, 1.0).toDouble();
-            final typed = (runes.length * _type.value).ceil();
-            final typingDone = _type.value >= 1;
+              // --- plakat & dialog ---
+              final bt = Curves.easeOutCubic.transform(
+                ((t - 0.3) / 0.4).clamp(0.0, 1.0).toDouble(),
+              );
+              final dt = ((t - 0.35) / 0.3).clamp(0.0, 1.0).toDouble();
+              final typed = (runes.length * _type.value).ceil();
+              final typingDone = _type.value >= 1;
 
-            // --- simbol ---
-            final gt = Curves.elasticOut
-                .transform(((t - 0.5) / 0.3).clamp(0.0, 1.0).toDouble());
+              // --- simbol ---
+              final gt = Curves.elasticOut.transform(
+                ((t - 0.5) / 0.3).clamp(0.0, 1.0).toDouble(),
+              );
 
-            final portrait = Transform.translate(
-              offset: Offset(dx + shake, breathe * 4),
-              child: Transform.rotate(
-                angle: tilt,
-                child: Transform.scale(
-                  scale: impactScale * (1 + 0.012 * breathe),
-                  child: Opacity(
-                    opacity: fade,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: -cardW * 0.3,
-                          right: -cardW * 0.3,
-                          top: -cardH * 0.12,
-                          bottom: -cardH * 0.12,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(colors: [
-                                fx.withValues(
-                                    alpha: 0.38 + 0.14 * breathe),
-                                fx.withValues(alpha: 0),
-                              ]),
+              final portrait = Transform.translate(
+                offset: Offset(dx + shake, breathe * 4),
+                child: Transform.rotate(
+                  angle: tilt,
+                  child: Transform.scale(
+                    scale: impactScale * (1 + 0.012 * breathe),
+                    child: Opacity(
+                      opacity: fade,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: -cardW * 0.3,
+                            right: -cardW * 0.3,
+                            top: -cardH * 0.12,
+                            bottom: -cardH * 0.12,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: RadialGradient(
+                                  colors: [
+                                    fx.withValues(alpha: 0.38 + 0.14 * breathe),
+                                    fx.withValues(alpha: 0),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        CardArt(
-                          path: protagonistPath(widget.card ?? 'default'),
-                          width: cardW,
-                          glow: fx,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-
-            final banner = Transform.translate(
-              offset: Offset((1 - bt) * (mine ? 1 : -1) * 140, 0),
-              child: Opacity(
-                opacity: bt,
-                child: Transform(
-                  transform: Matrix4.skewX(-0.22),
-                  child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        fx,
-                        Color.lerp(fx, Colors.black, 0.45)!,
-                      ]),
-                      boxShadow: [
-                        BoxShadow(
-                            color: fx.withValues(alpha: 0.6), blurRadius: 12),
-                      ],
-                    ),
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-
-            final dialog = Opacity(
-              opacity: dt,
-              child: Transform.translate(
-                offset: Offset(0, (1 - dt) * 16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: h * 0.42),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: mine
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        end: mine
-                            ? Alignment.centerLeft
-                            : Alignment.centerRight,
-                        colors: [
-                          fx.withValues(alpha: 0.28),
-                          Colors.black.withValues(alpha: 0.88),
+                          CardArt(
+                            path: protagonistPath(widget.card ?? 'default'),
+                            width: cardW,
+                            glow: fx,
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: fx.withValues(alpha: 0.85)),
-                      boxShadow: [
-                        BoxShadow(
-                            color: fx.withValues(alpha: 0.35), blurRadius: 16),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 14),
-                          child: Text(
-                            String.fromCharCodes(runes.take(typed)),
-                            maxLines: 5,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: mood == _Mood.shout ? 18 : 15,
-                              fontWeight: mood == _Mood.shout
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                        if (typingDone)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Opacity(
-                              opacity: 0.4 + 0.6 * ((breathe + 1) / 2),
-                              child: Icon(Icons.arrow_drop_down,
-                                  color: fx, size: 22),
-                            ),
-                          ),
-                      ],
                     ),
                   ),
                 ),
-              ),
-            );
+              );
 
-            return ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // latar gelap
-                  Opacity(
-                    opacity: dim,
-                    child: DecoratedBox(
+              final banner = Transform.translate(
+                offset: Offset((1 - bt) * (mine ? 1 : -1) * 140, 0),
+                child: Opacity(
+                  opacity: bt,
+                  child: Transform(
+                    transform: Matrix4.skewX(-0.22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: Alignment(mine ? 0.45 : -0.45, -0.1),
-                          radius: 1.15,
-                          colors: [
-                            Color.lerp(Colors.black, fx, 0.2)!
-                                .withValues(alpha: 0.86),
-                            Colors.black.withValues(alpha: 0.93),
-                          ],
+                        gradient: LinearGradient(
+                          colors: [fx, Color.lerp(fx, Colors.black, 0.45)!],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: fx.withValues(alpha: 0.6),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 2,
                         ),
                       ),
                     ),
                   ),
-                  // sinar
-                  Opacity(
-                    opacity: dim,
-                    child: CustomPaint(
-                      painter: _RaysPainter(
-                        rot: l * 2 * pi * 0.25,
-                        color: fx,
-                        count: rayCount,
-                        strength: rayStrength,
-                        center: rayCenter,
+                ),
+              );
+
+              final dialog = Opacity(
+                opacity: dt,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - dt) * 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: h * 0.42),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: mine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          end: mine
+                              ? Alignment.centerLeft
+                              : Alignment.centerRight,
+                          colors: [
+                            fx.withValues(alpha: 0.28),
+                            Colors.black.withValues(alpha: 0.88),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: fx.withValues(alpha: 0.85)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: fx.withValues(alpha: 0.35),
+                            blurRadius: 16,
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 14),
+                            child: Text(
+                              String.fromCharCodes(runes.take(typed)),
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: mood == _Mood.shout ? 18 : 15,
+                                fontWeight: mood == _Mood.shout
+                                    ? FontWeight.w800
+                                    : FontWeight.w500,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                          if (typingDone)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Opacity(
+                                opacity: 0.4 + 0.6 * ((breathe + 1) / 2),
+                                child: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: fx,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  // embun melayang
-                  CustomPaint(
-                    painter: _ParticlesPainter(t: l, color: fx, seed: seed),
-                  ),
-                  // potret
-                  Positioned(
-                    top: max(4.0, (h - cardH) * 0.12),
-                    left: mine ? null : sideGap,
-                    right: mine ? sideGap : null,
-                    child: portrait,
-                  ),
-                  // simbol suasana
-                  if (_glyph.isNotEmpty)
-                    Positioned(
-                      top: 6,
-                      left: mine ? null : sideGap + cardW - 6,
-                      right: mine ? sideGap + cardW - 6 : null,
-                      child: Transform.rotate(
-                        angle: sin(l * 2 * pi) * 0.12,
-                        child: Transform.scale(
-                          scale: gt,
-                          child: Text(
-                            _glyph,
-                            style: TextStyle(
-                              fontSize: 46,
-                              fontWeight: FontWeight.w900,
-                              color: fx,
-                              shadows: [
-                                Shadow(color: fx, blurRadius: 18),
-                                const Shadow(
-                                    color: Colors.black, blurRadius: 4),
-                              ],
-                            ),
+                ),
+              );
+
+              return ClipRect(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // latar gelap
+                    Opacity(
+                      opacity: dim,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: Alignment(mine ? 0.45 : -0.45, -0.1),
+                            radius: 1.15,
+                            colors: [
+                              Color.lerp(
+                                Colors.black,
+                                fx,
+                                0.2,
+                              )!.withValues(alpha: 0.86),
+                              Colors.black.withValues(alpha: 0.93),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  // plakat nama + dialog
-                  Positioned(
-                    left: 10,
-                    right: 10,
-                    bottom: 10,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: mine
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(
-                              left: mine ? 0 : 8, right: mine ? 8 : 0),
-                          child: banner,
+                    // sinar
+                    Opacity(
+                      opacity: dim,
+                      child: CustomPaint(
+                        painter: _RaysPainter(
+                          rot: l * 2 * pi * 0.25,
+                          color: fx,
+                          count: rayCount,
+                          strength: rayStrength,
+                          center: rayCenter,
                         ),
-                        const SizedBox(height: 4),
-                        dialog,
-                      ],
-                    ),
-                  ),
-                  // kilatan
-                  if (flash > 0.01)
-                    IgnorePointer(
-                      child: ColoredBox(
-                        color: Color.lerp(Colors.white, fx, 0.25)!
-                            .withValues(alpha: flash.clamp(0.0, 1.0).toDouble()),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
-        );
-      }),
+                    // embun melayang
+                    CustomPaint(
+                      painter: _ParticlesPainter(t: l, color: fx, seed: seed),
+                    ),
+                    // potret
+                    Positioned(
+                      top: max(4.0, (h - cardH) * 0.12),
+                      left: mine ? null : sideGap,
+                      right: mine ? sideGap : null,
+                      child: portrait,
+                    ),
+                    // simbol suasana
+                    if (_glyph.isNotEmpty)
+                      Positioned(
+                        top: 6,
+                        left: mine ? null : sideGap + cardW - 6,
+                        right: mine ? sideGap + cardW - 6 : null,
+                        child: Transform.rotate(
+                          angle: sin(l * 2 * pi) * 0.12,
+                          child: Transform.scale(
+                            scale: gt,
+                            child: Text(
+                              _glyph,
+                              style: TextStyle(
+                                fontSize: 46,
+                                fontWeight: FontWeight.w900,
+                                color: fx,
+                                shadows: [
+                                  Shadow(color: fx, blurRadius: 18),
+                                  const Shadow(
+                                    color: Colors.black,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // plakat nama + dialog
+                    Positioned(
+                      left: 10,
+                      right: 10,
+                      bottom: 10,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: mine
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: mine ? 0 : 8,
+                              right: mine ? 8 : 0,
+                            ),
+                            child: banner,
+                          ),
+                          const SizedBox(height: 4),
+                          dialog,
+                        ],
+                      ),
+                    ),
+                    // kilatan
+                    if (flash > 0.01)
+                      IgnorePointer(
+                        child: ColoredBox(
+                          color: Color.lerp(Colors.white, fx, 0.25)!.withValues(
+                            alpha: flash.clamp(0.0, 1.0).toDouble(),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

@@ -32,9 +32,11 @@ class AccountAvatarBadge extends StatelessWidget {
     super.key,
     required this.linked,
     required this.child,
+    this.size = 20,
   });
   final bool linked;
   final Widget child;
+  final double size;
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
@@ -43,7 +45,7 @@ class AccountAvatarBadge extends StatelessWidget {
       Positioned(
         right: -2,
         bottom: -2,
-        child: AccountStatusBadge(linked: linked),
+        child: AccountStatusBadge(linked: linked, size: size),
       ),
     ],
   );

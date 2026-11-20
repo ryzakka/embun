@@ -9,7 +9,8 @@ import '../common/sfx.dart';
 import 'card_tile.dart';
 import 'endgame_aura.dart';
 import 'player_status.dart';
-import '../account/account_status_badge.dart';
+import '../account/player_account_avatar.dart';
+import '../../data/profile_repository.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -204,12 +205,14 @@ class FinalResultScreen extends StatefulWidget {
   final VoidCallback onExit;
   final ValueChanged<String>? onViewProfile;
   final Map<String, bool> googleLinks;
+  final Map<String, RoomAccountProfile> accountProfiles;
 
   const FinalResultScreen({
     super.key,
     this.myId,
     this.onViewProfile,
     this.googleLinks = const {},
+    this.accountProfiles = const {},
     required this.wargaMenang,
     required this.leaves,
     required this.day,
@@ -367,11 +370,27 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   // ------------------------------------------------------------ data
 
   String _nameOf(String uid) {
+    final accountName =
+        widget.usernames[uid] ?? widget.accountProfiles[uid]?.nickname;
+    if (accountName != null && accountName.trim().isNotEmpty) {
+      return accountName;
+    }
     for (final p in widget.players) {
       if (p['user_id'] == uid) return p['name'] as String;
     }
     return '?';
   }
+
+  Widget _accountAvatar(String uid, double size) => PlayerAccountAvatar(
+    name: _nameOf(uid),
+    avatarId: widget.accountProfiles[uid]?.avatarId,
+    googleLinked:
+        widget.accountProfiles[uid]?.googleLinked ?? widget.googleLinks[uid],
+    radius: size / 2,
+    onTap: widget.onViewProfile == null
+        ? null
+        : () => widget.onViewProfile!(uid),
+  );
 
   String? _cardOf(String uid) {
     for (final p in widget.players) {
@@ -2143,11 +2162,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(
           children: [
-            PlayerAvatar(
-              path: protagonistPath(_cardOf(a.uid) ?? 'default'),
-              size: 27,
-              ring: c,
-            ),
+            _accountAvatar(a.uid, 27),
             const SizedBox(width: 8),
             Expanded(
               child: Text(_nameOf(a.uid), style: const TextStyle(fontSize: 13)),
@@ -2468,11 +2483,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             ),
           ),
           const SizedBox(width: 8),
-          PlayerAvatar(
-            path: protagonistPath(_cardOf(entry.key) ?? 'default'),
-            size: 42,
-            ring: color,
-          ),
+          _accountAvatar(entry.key, 42),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -2581,6 +2592,8 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                     ),
                   ),
                   const SizedBox(height: 14),
+                  _accountAvatar(featured.uid, 60),
+                  const SizedBox(height: 10),
                   GameIcon(featured.icon, size: 48),
                   const SizedBox(height: 10),
                   Text(
@@ -2673,11 +2686,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                 ),
               ),
               const SizedBox(width: 10),
-              PlayerAvatar(
-                path: protagonistPath(_cardOf(award.uid) ?? 'default'),
-                size: 38,
-                ring: award.color,
-              ),
+              _accountAvatar(award.uid, 38),
             ],
           ),
         ),
@@ -2717,7 +2726,6 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     final uid = p['user_id'] as String;
     final antag = _secrets[uid]?['role'] == 'antagonis';
     final hasRole = _secrets[uid]?['role'] != null;
-    final uname = widget.usernames[uid];
     final ability = antag
         ? null
         : widget.abilityDefs['${_secrets[uid]?['ability']}']?['name']
@@ -2730,20 +2738,14 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       ),
       child: Row(
         children: [
-          PlayerAvatar(
-            path: protagonistPath(
-              (p['character_card'] as String?) ?? 'default',
-            ),
-            size: 46,
-            ring: antag ? EmbunColors.mist : EmbunColors.goldDim,
-          ),
+          _accountAvatar(uid, 46),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  p['name'] as String,
+                  _nameOf(uid),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -2753,7 +2755,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                 ),
                 Text(
                   [
-                    ?uname,
+                    p['name'] as String,
                     if (hasRole) _factionName(antag),
                     ?ability,
                   ].join(' · '),
@@ -2769,12 +2771,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             IconButton(
               tooltip: 'Lihat profil pemain',
               onPressed: () => widget.onViewProfile!(uid),
-              icon: widget.googleLinks[uid] == null
-                  ? const Icon(Icons.account_circle_outlined)
-                  : AccountAvatarBadge(
-                      linked: widget.googleLinks[uid]!,
-                      child: const Icon(Icons.account_circle_outlined),
-                    ),
+              icon: const Icon(Icons.account_circle_outlined),
             ),
           const SizedBox(width: 8),
           if (isOut(p))

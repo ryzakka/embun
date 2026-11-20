@@ -5,6 +5,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'profile_avatar.dart';
 import 'account_status_badge.dart';
+import 'player_account_avatar.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
 BorderSide _profileRule([Color color = EmbunColors.gold]) =>
@@ -212,13 +213,11 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Center(
-            child: AccountAvatarBadge(
-              linked: false,
-              child: CircleAvatar(
-                radius: 48,
-                child: Icon(Icons.person_outline, size: 48),
-              ),
+          Center(
+            child: PlayerAccountAvatar(
+              name: details.nickname,
+              googleLinked: false,
+              radius: 48,
             ),
           ),
           const SizedBox(height: 16),

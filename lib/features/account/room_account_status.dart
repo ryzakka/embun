@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/profile_repository.dart';
 
-/// One scoped request per roster, containing only user IDs and linked flags.
+/// One scoped request per roster, with public avatar/name data only.
 class RoomAccountStatus extends StatefulWidget {
   const RoomAccountStatus({
     super.key,
@@ -15,14 +15,14 @@ class RoomAccountStatus extends StatefulWidget {
   final String gameId;
   final List<String> playerIds;
   final bool enabled;
-  final Future<Map<String, bool>> Function(String)? loader;
-  final Widget Function(Map<String, bool>) builder;
+  final Future<Map<String, RoomAccountProfile>> Function(String)? loader;
+  final Widget Function(Map<String, RoomAccountProfile>) builder;
   @override
   State<RoomAccountStatus> createState() => _RoomAccountStatusState();
 }
 
 class _RoomAccountStatusState extends State<RoomAccountStatus> {
-  Map<String, bool> _links = {};
+  Map<String, RoomAccountProfile> _links = {};
   int _revision = 0;
   String get _roster => ([...widget.playerIds]..sort()).join(',');
   @override
@@ -51,7 +51,7 @@ class _RoomAccountStatusState extends State<RoomAccountStatus> {
           widget.loader ??
           (String id) => SupabaseProfileRepository(
             Supabase.instance.client,
-          ).linkedPlayers(id);
+          ).roomPlayers(id);
       final value = await loader(widget.gameId);
       if (mounted && revision == _revision) setState(() => _links = value);
     } catch (_) {

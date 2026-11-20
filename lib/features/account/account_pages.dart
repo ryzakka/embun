@@ -12,6 +12,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'google_sign_in_button.dart';
 import 'account_status_badge.dart';
+import 'player_account_avatar.dart';
 import 'public_information_links.dart';
 
 BorderSide _rule([Color color = EmbunColors.gold]) =>
@@ -238,9 +239,11 @@ class ProfilePage extends StatefulWidget {
     required this.account,
     this.firstSetup = false,
     this.detailsRepository,
+    this.guestName = 'Tamu',
   });
   final AccountController account;
   final bool firstSetup;
+  final String guestName;
   final ProfileRepository? detailsRepository;
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -538,7 +541,9 @@ class _ProfilePageState extends State<ProfilePage> {
     animation: widget.account,
     builder: (context, _) {
       final account = widget.account;
-      if (account.guest) return GuestAccountPage(account: account);
+      if (account.guest) {
+        return GuestAccountPage(account: account, name: widget.guestName);
+      }
       return PopScope(
         canPop: !account.busy && !widget.firstSetup,
         child: Scaffold(
@@ -662,8 +667,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
 /// Guests have session information, not an editable persistent profile.
 class GuestAccountPage extends StatelessWidget {
-  const GuestAccountPage({super.key, required this.account});
+  const GuestAccountPage({
+    super.key,
+    required this.account,
+    this.name = 'Tamu',
+  });
   final AccountController account;
+  final String name;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: account,
@@ -679,13 +689,11 @@ class GuestAccountPage extends StatelessWidget {
               icon: const Icon(Icons.arrow_back),
             ),
           ),
-          const Center(
-            child: AccountAvatarBadge(
-              linked: false,
-              child: CircleAvatar(
-                radius: 44,
-                child: Icon(Icons.person_outline, size: 44),
-              ),
+          Center(
+            child: PlayerAccountAvatar(
+              name: name,
+              googleLinked: false,
+              radius: 44,
             ),
           ),
           const SizedBox(height: 20),

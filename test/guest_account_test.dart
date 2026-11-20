@@ -377,9 +377,16 @@ void main() {
     tester,
   ) async {
     var loads = 0;
-    Future<Map<String, bool>> load(String id) async {
+    Future<Map<String, RoomAccountProfile>> load(String id) async {
       loads++;
-      return {'a': true, 'b': false};
+      return const {
+        'a': RoomAccountProfile(userId: 'a', nickname: 'A', googleLinked: true),
+        'b': RoomAccountProfile(
+          userId: 'b',
+          nickname: 'B',
+          googleLinked: false,
+        ),
+      };
     }
 
     Widget frame(List<String> ids) => MaterialApp(

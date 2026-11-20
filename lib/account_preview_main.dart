@@ -7,7 +7,7 @@ import 'features/account/account_app.dart';
 import 'features/account/account_pages.dart';
 import 'features/account/profile_preview_repository.dart';
 import 'features/account/profile_details_page.dart';
-import 'features/account/account_status_badge.dart';
+import 'features/account/player_account_avatar.dart';
 
 /// A separate offline entry point. Never used by lib/main.dart.
 Future<void> main() async {
@@ -137,11 +137,10 @@ class _AccountPreviewAppState extends State<AccountPreviewApp> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AccountAvatarBadge(
-                    linked: _account.googleAccount,
-                    child: _account.guest
-                        ? const CircleAvatar(child: Icon(Icons.person_outline))
-                        : ProfileAvatar(avatarId: _account.profile!.avatarId),
+                  PlayerAccountAvatar(
+                    name: _account.guest ? 'Tamu' : _account.profile!.nickname,
+                    googleLinked: _account.googleAccount,
+                    avatarId: _account.profile?.avatarId,
                   ),
                   const SizedBox(height: 16),
                   Text(

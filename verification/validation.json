@@ -1,18 +1,13 @@
 {
-  "flutter": {
-    "version": "3.38.10",
-    "guest_tests": 12,
-    "lobby_repository_tests": 3,
-    "account_regressions": 21,
-    "profile_regressions": 15,
-    "total_tests": 51,
-    "targeted_badge_and_session_checks": 3,
-    "preview_web_build": "passed"
+  "date": "2026-11-20",
+  "flutter_tests": {
+    "new": 9,
+    "regression": 27,
+    "total": 36
   },
-  "database": {
-    "engine": "PGlite 0.5.17 / PostgreSQL",
-    "checks": 64,
-    "production_access": false
-  },
-  "production_deployed": false
+  "postgres_checks": 74,
+  "preview_web_build": "passed",
+  "production_changed": false,
+  "during_game_account_avatars": false,
+  "guest_initials": "first and last word"
 }

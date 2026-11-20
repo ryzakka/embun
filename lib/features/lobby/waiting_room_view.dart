@@ -10,11 +10,13 @@ import '../../data/game_rules.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'room_entry_view.dart';
-import '../account/account_status_badge.dart';
+import '../account/player_account_avatar.dart';
+import '../../data/profile_repository.dart';
 
 class WaitingRoomView extends StatefulWidget {
   final ValueChanged<String>? onViewProfile;
   final Map<String, bool> googleLinks;
+  final Map<String, RoomAccountProfile> accountProfiles;
   final String code;
   final String characterTheme;
   final bool isPublic;
@@ -34,6 +36,7 @@ class WaitingRoomView extends StatefulWidget {
     super.key,
     this.onViewProfile,
     this.googleLinks = const {},
+    this.accountProfiles = const {},
     required this.code,
     this.characterTheme = 'default',
     required this.isPublic,
@@ -457,14 +460,16 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            PlayerAvatar(
-              path: protagonistPath(card),
-              size: 38,
-              ring: viewer
-                  ? EmbunColors.gold
-                  : ready
-                  ? EmbunColors.leaf
-                  : Colors.white38,
+            PlayerAccountAvatar(
+              name: player['name'] as String,
+              avatarId: widget.accountProfiles[id]?.avatarId,
+              googleLinked:
+                  widget.accountProfiles[id]?.googleLinked ??
+                  widget.googleLinks[id],
+              radius: 19,
+              onTap: widget.onViewProfile == null
+                  ? null
+                  : () => widget.onViewProfile!(id),
             ),
             const SizedBox(width: 9),
             Expanded(
@@ -490,15 +495,7 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
               IconButton(
                 tooltip: 'Lihat profil pemain',
                 onPressed: () => widget.onViewProfile!(id),
-                icon: widget.googleLinks[id] == null
-                    ? const Icon(Icons.account_circle_outlined, size: 22)
-                    : AccountAvatarBadge(
-                        linked: widget.googleLinks[id]!,
-                        child: const Icon(
-                          Icons.account_circle_outlined,
-                          size: 22,
-                        ),
-                      ),
+                icon: const Icon(Icons.account_circle_outlined, size: 22),
               ),
             const SizedBox(width: 5),
             Text(

@@ -18,6 +18,8 @@ import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
 import '../account/profile_details_page.dart';
 import '../account/room_account_status.dart';
+import '../account/player_account_avatar.dart';
+import '../../data/profile_repository.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
 import 'day_chrome.dart';
@@ -2808,7 +2810,7 @@ class _TablePageState extends State<TablePage> {
         playerIds: [for (final p in players) p['user_id'] as String],
         enabled: EmbunData.maybeOf(context) == null,
         builder: (links) => FinalResultScreen(
-          googleLinks: links,
+          accountProfiles: links,
           onViewProfile: EmbunData.maybeOf(context) != null
               ? null
               : (uid) => showPlayerProfile(
@@ -2829,7 +2831,8 @@ class _TablePageState extends State<TablePage> {
           myId: repo.myId,
           secrets: secretsFuture!,
           recap: recapFuture!,
-          detailsBuilder: _recapSection,
+          detailsBuilder: (secrets) =>
+              _recapSection(secrets, accountProfiles: links),
           onExit: () => _backToLobby(),
         ),
       );
@@ -2855,7 +2858,10 @@ class _TablePageState extends State<TablePage> {
 
   String _cardName(String id) => (defs[id]?['name'] as String?) ?? id;
 
-  Widget _recapSection(Map<String, Map<String, dynamic>> secrets) {
+  Widget _recapSection(
+    Map<String, Map<String, dynamic>> secrets, {
+    Map<String, RoomAccountProfile> accountProfiles = const {},
+  }) {
     return FutureBuilder<Map<String, dynamic>?>(
       future: recapFuture,
       builder: (context, s) {
@@ -2882,7 +2888,7 @@ class _TablePageState extends State<TablePage> {
           children: [
             for (final p in players) ...[
               const Divider(height: 1, color: Colors.white12),
-              _recapTile(p, secrets, offs, buys, votes),
+              _recapTile(p, secrets, offs, buys, votes, accountProfiles),
             ],
           ],
         );
@@ -2896,6 +2902,7 @@ class _TablePageState extends State<TablePage> {
     List<Map<String, dynamic>> offs,
     List<Map<String, dynamic>> buys,
     List<Map<String, dynamic>> votes,
+    Map<String, RoomAccountProfile> accountProfiles,
   ) {
     final uid = p['user_id'] as String;
     final role = secrets[uid]?['role'];
@@ -2945,10 +2952,14 @@ class _TablePageState extends State<TablePage> {
 
     return ExpansionTile(
       initiallyExpanded: antag,
-      leading: PlayerAvatar(
-        path: protagonistPath(p['character_card'] as String),
-        size: 34,
-        ring: antag ? const Color(0xFFB07CE8) : Colors.white38,
+      leading: PlayerAccountAvatar(
+        name:
+            usernames[uid] ??
+            accountProfiles[uid]?.nickname ??
+            p['name'] as String,
+        avatarId: accountProfiles[uid]?.avatarId,
+        googleLinked: accountProfiles[uid]?.googleLinked,
+        radius: 17,
       ),
       title: Text(p['name'] as String),
       subtitle: Text(

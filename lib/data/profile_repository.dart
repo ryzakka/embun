@@ -14,6 +14,25 @@ const profileTitles = [
   'Bayang Lolos',
 ];
 
+class RoomAccountProfile {
+  const RoomAccountProfile({
+    required this.userId,
+    required this.nickname,
+    required this.googleLinked,
+    this.avatarId,
+  });
+  final String userId, nickname;
+  final bool googleLinked;
+  final String? avatarId;
+  factory RoomAccountProfile.fromJson(Map<String, dynamic> json) =>
+      RoomAccountProfile(
+        userId: json['user_id'] as String,
+        nickname: json['nickname'] as String? ?? '',
+        googleLinked: json['google_linked'] == true,
+        avatarId: json['avatar_id'] as String?,
+      );
+}
+
 class ProfileMatch {
   const ProfileMatch({
     required this.id,
@@ -89,6 +108,18 @@ abstract interface class ProfileRepository {
 class SupabaseProfileRepository implements ProfileRepository {
   SupabaseProfileRepository(this.client);
   final SupabaseClient client;
+
+  Future<Map<String, RoomAccountProfile>> roomPlayers(String gameId) async {
+    final data = await client
+        .rpc('embun_profile_links', params: {'p_game': gameId})
+        .timeout(const Duration(seconds: 15));
+    return {
+      for (final row in data as List)
+        row['user_id'] as String: RoomAccountProfile.fromJson(
+          Map<String, dynamic>.from(row as Map),
+        ),
+    };
+  }
 
   Future<Map<String, bool>> linkedPlayers(String gameId) async {
     final data = await client
