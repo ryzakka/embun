@@ -94,6 +94,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                 child: ClipRRect(
                   borderRadius: radius,
                   child: Stack(
+                    alignment: Alignment.center,
                     children: [
                       Positioned.fill(
                         child: AnimatedOpacity(

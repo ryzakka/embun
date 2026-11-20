@@ -266,8 +266,10 @@ class _ProfilePageState extends State<ProfilePage> {
               icon: const GameIcon('back', size: 23),
               onPressed: account.busy ? null : () => Navigator.of(context).pop(),
             ),
-          const GameIcon('character', size: 28),
-          const SizedBox(width: 8),
+          if (widget.firstSetup) ...[
+            const GameIcon('character', size: 28),
+            const SizedBox(width: 8),
+          ],
           Expanded(
             child: Semantics(
               header: true,
@@ -340,10 +342,6 @@ class _ProfilePageState extends State<ProfilePage> {
       filled: false,
       labelText: 'Nama panggilan',
       helperText: 'Nama yang dipakai saat masuk ruangan.',
-      prefixIcon: const Padding(
-        padding: EdgeInsets.all(8),
-        child: GameIcon('identity', size: 26),
-      ),
       border: UnderlineInputBorder(
         borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.4)),
       ),
@@ -356,77 +354,98 @@ class _ProfilePageState extends State<ProfilePage> {
     ),
   );
 
-  Widget _picker(AccountController account, bool wide) {
-    final radius = wide ? 34.0 : 29.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _sectionTitle('Pilih avatar'),
-        Wrap(
-          spacing: wide ? 12 : 8,
-          runSpacing: wide ? 12 : 8,
-          children: [
-            for (final entry in profileAvatars.entries)
-              Semantics(
-                selected: _avatar == entry.key,
-                button: true,
-                label: entry.value.$2,
-                child: Tooltip(
-                  message: entry.value.$2,
-                  child: InkResponse(
-                    key: ValueKey('avatar-${entry.key}'),
-                    radius: radius + 6,
-                    onTap: account.busy
-                        ? null
-                        : () => setState(() => _avatar = entry.key),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          width: 3,
-                          color: _avatar == entry.key
-                              ? EmbunColors.gold
-                              : Colors.transparent,
-                        ),
-                        boxShadow: _avatar == entry.key
-                            ? [
-                          BoxShadow(
-                            color: EmbunColors.gold.withValues(
-                              alpha: 0.35,
+  Widget _picker(AccountController account, bool wide) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _sectionTitle('Pilih avatar'),
+      LayoutBuilder(
+        builder: (context, box) {
+          // 10 avatar = 2 baris x 5 kolom; ukuran mengikuti lebar yang ada.
+          const cols = 5;
+          final gap = wide ? 10.0 : 4.0;
+          final cell = ((box.maxWidth - gap * (cols - 1)) / cols)
+              .floorToDouble();
+          final radius = ((cell - 12) / 2).clamp(18.0, 46.0).toDouble();
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final entry in profileAvatars.entries)
+                SizedBox(
+                  width: cell,
+                  height: cell,
+                  child: Center(
+                    child: Semantics(
+                      selected: _avatar == entry.key,
+                      button: true,
+                      label: entry.value.$2,
+                      child: Tooltip(
+                        message: entry.value.$2,
+                        child: InkResponse(
+                          key: ValueKey('avatar-${entry.key}'),
+                          radius: radius + 6,
+                          onTap: account.busy
+                              ? null
+                              : () => setState(() => _avatar = entry.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                width: 3,
+                                color: _avatar == entry.key
+                                    ? EmbunColors.gold
+                                    : Colors.transparent,
+                              ),
+                              boxShadow: _avatar == entry.key
+                                  ? [
+                                BoxShadow(
+                                  color: EmbunColors.gold.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 14,
+                                ),
+                              ]
+                                  : null,
                             ),
-                            blurRadius: 14,
+                            child: Opacity(
+                              opacity: _avatar == entry.key ? 1 : 0.8,
+                              child: ProfileAvatar(
+                                avatarId: entry.key,
+                                radius: radius,
+                              ),
+                            ),
                           ),
-                        ]
-                            : null,
-                      ),
-                      child: Opacity(
-                        opacity: _avatar == entry.key ? 1 : 0.8,
-                        child: ProfileAvatar(
-                          avatarId: entry.key,
-                          radius: radius,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
+            ],
+          );
+        },
+      ),
+    ],
+  );
 
   Widget _emailNote(AccountController account) {
     final email = account.profile?.email;
     if (email == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 14),
-      child: Text(
-        'Email Google terhubung\n$email',
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12, color: Colors.white54),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Email Google terhubung',
+            style: TextStyle(fontSize: 12, color: Colors.white54),
+          ),
+          Text(
+            email,
+            style: const TextStyle(fontSize: 13.5, color: Colors.white70),
+          ),
+        ],
       ),
     );
   }
@@ -439,7 +458,6 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: EdgeInsets.only(bottom: 10),
           child: Text(
             'Perubahan nama berlaku saat masuk ruangan berikutnya.',
-            textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ),
@@ -469,8 +487,10 @@ class _ProfilePageState extends State<ProfilePage> {
     ],
   );
 
-  Widget _logout(AccountController account) => Center(
+  Widget _logout(AccountController account) => Align(
+    alignment: Alignment.centerLeft,
     child: TextButton.icon(
+      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
       onPressed: account.busy ? null : account.logout,
       icon: const GameIcon('keluar', size: 22),
       label: const Text('Keluar akun'),
@@ -515,24 +535,30 @@ class _ProfilePageState extends State<ProfilePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SizedBox(
-                              width: 300,
-                              child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.stretch,
-                                children: [
-                                  _preview(true),
-                                  const SizedBox(height: 20),
-                                  _nameField(account),
-                                  _emailNote(account),
-                                  const SizedBox(height: 18),
-                                  _saveBlock(account),
-                                  if (!widget.firstSetup) ...[
-                                    const SizedBox(height: 8),
-                                    _logout(account),
+                              width: 332,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 32),
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                                  children: [
+                                    _preview(true),
+                                    const SizedBox(height: 20),
+                                    _nameField(account),
+                                    _emailNote(account),
+                                    const SizedBox(height: 18),
+                                    _saveBlock(account),
+                                    if (!widget.firstSetup) ...[
+                                      const SizedBox(height: 8),
+                                      _logout(account),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    const Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: PublicInformationLinks(),
+                                    ),
                                   ],
-                                  const SizedBox(height: 12),
-                                  const PublicInformationLinks(),
-                                ],
+                                ),
                               ),
                             ),
                             Expanded(

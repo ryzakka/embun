@@ -238,7 +238,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _stat('Selesai', details.completed)),
+                Expanded(child: _stat('Selesai', details.completed, first: true)),
                 _vRule(),
                 Expanded(
                   child: _stat('Menang · Warga Desa', details.wargaWins),
@@ -250,7 +250,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const Text(
             'Hanya pertandingan selesai yang tercatat yang dihitung. Permainan yang dibubarkan tidak masuk statistik.',
             style: TextStyle(fontSize: 12, color: Colors.white60),
@@ -293,6 +293,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
                 onPressed: _acting || _loading || _title == details.title
                     ? null
                     : () => _act(
@@ -331,6 +334,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
                     foregroundColor: EmbunColors.blood,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: _acting || _loading ? null : _requestDeletion,
                   icon: const Icon(Icons.person_remove_outlined),
@@ -377,8 +381,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     color: EmbunColors.gold.withValues(alpha: 0.30),
   );
 
-  Widget _stat(String label, int count) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  Widget _stat(String label, int count, {bool first = false}) => Padding(
+    padding: EdgeInsets.fromLTRB(first ? 0 : 14, 4, 10, 4),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
