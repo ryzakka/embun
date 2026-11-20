@@ -283,17 +283,21 @@ Future<void> showMedalCollection(
       MedalClaimsController? claims,
     }) async {
   if (!profile.googleLinked) return;
-  await showModalBottomSheet<void>(
+  await showDialog<void>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    backgroundColor: const Color(0xFF0B1A14),
-    constraints: const BoxConstraints(maxWidth: 720),
-    builder: (context) => _watchClaims(
-      claims,
-          () => FractionallySizedBox(
-        heightFactor: .92,
-        child: _MedalCollectionView(profile: profile, claims: claims),
+    useSafeArea: false,
+    builder: (context) => Dialog.fullscreen(
+      backgroundColor: const Color(0xFF0B1A14),
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: _watchClaims(
+              claims,
+                  () => _MedalCollectionView(profile: profile, claims: claims),
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -554,14 +558,11 @@ class _FrameBar extends StatelessWidget {
   const _FrameBar({required this.value});
   final double value;
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(4),
-    child: LinearProgressIndicator(
-      value: value,
-      minHeight: 4,
-      backgroundColor: Colors.white12,
-      color: EmbunColors.gold,
-    ),
+  Widget build(BuildContext context) => LinearProgressIndicator(
+    value: value,
+    minHeight: 2,
+    backgroundColor: Colors.white12,
+    color: EmbunColors.gold,
   );
 }
 
@@ -610,7 +611,6 @@ class _MedalFrame extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFEF4444),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF0B1A14), width: 2),
               ),
               child: const Text(
                 '!',
@@ -661,38 +661,14 @@ class _FramePainter extends CustomPainter {
   final bool glow, dim;
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final outer = _framePath(rect.deflate(1.5), 16);
-    if (glow) {
-      canvas.drawPath(
-        outer,
-        Paint()
-          ..color = EmbunColors.gold.withValues(alpha: .45)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 9),
-      );
-    }
     canvas.drawPath(
-      outer,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1D3B2D), Color(0xFF0F231A)],
-        ).createShader(rect),
-    );
-    canvas.drawPath(
-      outer,
+      _framePath((Offset.zero & size).deflate(1), 16),
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = EmbunColors.gold.withValues(alpha: dim ? .4 : .9),
-    );
-    canvas.drawPath(
-      _framePath(rect.deflate(6), 11),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = EmbunColors.gold.withValues(alpha: dim ? .15 : .3),
+        ..strokeWidth = glow ? 2 : 1.2
+        ..color = EmbunColors.gold.withValues(
+          alpha: glow ? 1 : (dim ? .3 : .7),
+        ),
     );
   }
 
