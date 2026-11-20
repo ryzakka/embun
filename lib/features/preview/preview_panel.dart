@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
@@ -36,6 +37,7 @@ import '../table/player_sheet.dart';
 import '../table/table_page.dart';
 import '../table/vote_reveal_scene.dart';
 import 'preview_catalog.dart';
+import 'icon_preview_page.dart';
 import 'preview_session.dart';
 
 enum _Screen {
@@ -805,8 +807,13 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     ];
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: widget.onClose),
+        leading: IconButton(tooltip: 'Kembali', onPressed: widget.onClose,
+          icon: const GameIcon('back2', size: 26)),
         title: const Text('Panel Pratinjau Embun'),
+        actions: [IconButton(tooltip: 'Pratinjau semua ikon',
+          icon: const GameIcon('mydeck', size: 26),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => const IconPreviewPage()))),],
       ),
       body: SafeArea(
         child: Center(
@@ -907,7 +914,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                       setState(() => _query = value.trim().toLowerCase()),
                   decoration: const InputDecoration(
                     labelText: 'Cari halaman atau adegan',
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: EmbunIcon(Icons.search),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -931,7 +938,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                     for (final screen in screens)
                       ListTile(
                         title: Text(screen.label),
-                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        trailing: const EmbunIcon(Icons.chevron_right, size: 20),
                         visualDensity: VisualDensity.compact,
                         onTap: () => _open(screen),
                       ),
@@ -970,7 +977,7 @@ class _PreviewFrame extends StatelessWidget {
                 foregroundColor: EmbunColors.gold,
               ),
               onPressed: onClose,
-              icon: const Icon(Icons.grid_view, size: 19),
+              icon: const EmbunIcon(Icons.grid_view, size: 19),
             ),
           ),
         ),

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
@@ -6,10 +7,10 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 
 Future<bool> showInspectionReport(
-    BuildContext context,
-    InspectionReport report, {
-      String? characterStem,
-    }) async =>
+  BuildContext context,
+  InspectionReport report, {
+  String? characterStem,
+}) async =>
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -18,7 +19,7 @@ Future<bool> showInspectionReport(
         child: _ReportDialog(report: report, characterStem: characterStem),
       ),
     ) ??
-        false;
+    false;
 
 class _ReportDialog extends StatelessWidget {
   const _ReportDialog({required this.report, this.characterStem});
@@ -201,12 +202,12 @@ class _ReportDialog extends StatelessWidget {
 }
 
 Future<void> showInspectionHistory(
-    BuildContext context, {
-      required GameRepository repo,
-      required String gameId,
-      required List<Map<String, dynamic>> players,
-      void Function(String id)? onRead,
-    }) => showDialog<void>(
+  BuildContext context, {
+  required GameRepository repo,
+  required String gameId,
+  required List<Map<String, dynamic>> players,
+  void Function(String id)? onRead,
+}) => showDialog<void>(
   context: context,
   builder: (_) => _HistoryDialog(
     repo: repo,
@@ -285,7 +286,7 @@ class _HistoryDialogState extends State<_HistoryDialog> {
                 IconButton(
                   tooltip: 'Tutup',
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const EmbunIcon(Icons.close_rounded),
                 ),
               ],
             ),
@@ -346,7 +347,7 @@ class _HistoryDialogState extends State<_HistoryDialog> {
                         subtitle: Text(
                           'Hari ${report.day} · ${report.source}\n${report.headline}${report.chance == null ? '' : ' · ${report.chance}%'}',
                         ),
-                        trailing: Icon(
+                        trailing: EmbunIcon(
                           report.seen ? Icons.chevron_right : Icons.circle,
                           size: report.seen ? 20 : 8,
                           color: EmbunColors.gold,

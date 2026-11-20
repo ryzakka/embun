@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/asset_catalog.dart';
@@ -54,7 +55,7 @@ Future<void> showPlayerProfile(
             decoration: BoxDecoration(border: Border(bottom: profileRule())),
             child: Row(
               children: [
-                const GameIcon('character', size: 27),
+                const GameIcon('lihatprofil', size: 27),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Semantics(
@@ -75,7 +76,7 @@ Future<void> showPlayerProfile(
                   tooltip: 'Tutup profil',
                   visualDensity: VisualDensity.compact,
                   onPressed: () => Navigator.pop(context),
-                  icon: const GameIcon('silang', size: 22),
+                  icon: const GameIcon('x', size: 22),
                 ),
               ],
             ),
@@ -306,7 +307,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         child: owner
             ? ProfileMedalsSummary(profile: d)
             : ProfileSection(
-                icon: 'helaidaun',
+                icon: 'medali',
                 title: 'Medali',
                 children: [ProfileMedalsSummary(profile: d, framed: false)],
               ),
@@ -360,14 +361,14 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                         () => widget.repository.equipTitle(_title),
                         'Gelar berhasil dipasang.',
                       ),
-                icon: const Icon(Icons.workspace_premium_outlined),
+                icon: const EmbunIcon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
             ),
           ],
         ),
       ProfileSection(
-        icon: 'hari',
+        icon: 'logorhistory',
         title: 'Riwayat permainan',
         trailing: _history.isEmpty
             ? null
@@ -377,7 +378,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             ProfileRow(
               accent: Colors.white,
               visualSize: 30,
-              visual: const Icon(
+              visual: const EmbunIcon(
                 Icons.history,
                 size: 22,
                 color: Colors.white38,
@@ -414,7 +415,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       ),
       if (owner)
         ProfileSection(
-          icon: 'lock',
+          icon: 'hapusdata',
           title: 'Penghapusan akun / data',
           accent: EmbunColors.blood,
           children: [
@@ -437,7 +438,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: _acting || _loading ? null : _requestDeletion,
-                  icon: const Icon(Icons.person_remove_outlined),
+                  icon: const EmbunIcon(Icons.person_remove_outlined),
                   label: const Text('Minta penghapusan akun / data'),
                 ),
               ),
@@ -486,7 +487,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       const ProfileRow(
         accent: Colors.white,
         visualSize: 30,
-        visual: Icon(Icons.info_outline, size: 22, color: Colors.white54),
+        visual: EmbunIcon(Icons.info_outline, size: 22, color: Colors.white54),
         title: 'Statistik belum tersedia',
         text:
             'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
@@ -510,7 +511,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       text:
           '${two(d.day)}/${two(d.month)}/${d.year} '
           '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
-      trailing: Icon(
+      trailing: EmbunIcon(
         terbisik ? Icons.nights_stay_outlined : Icons.shield_outlined,
         size: 22,
         color: accent.withValues(alpha: 0.85),

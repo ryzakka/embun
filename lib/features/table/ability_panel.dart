@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -128,7 +129,7 @@ class AbilityCardView extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        EmbunIcon(
                           abilityIcon(id),
                           size: width * 0.38,
                           color: accent,
@@ -376,7 +377,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
           if (icon != null)
             GameIcon(icon, size: 36)
           else
-            Icon(abilityIcon(_id), size: 36, color: color),
+            EmbunIcon(abilityIcon(_id), size: 36, color: color),
           const SizedBox(height: 6),
           if (_id == 'buktikan_tuduhan')
             Text(
@@ -848,7 +849,7 @@ class _AbilityDialogState extends State<_AbilityDialog> {
                 const SizedBox(height: 14),
                 EmbunButton(
                   label: widget.intro ? 'Mengerti' : 'Tutup',
-                  icon: 'silang',
+                  icon: widget.intro ? 'centang' : 'x',
                   kind: EmbunButtonKind.secondary,
                   height: 46,
                   onPressed: () => Navigator.pop(context),

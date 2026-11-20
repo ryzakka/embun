@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -713,7 +714,7 @@ class _EndingCinematicState extends State<EndingCinematic>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
+          EmbunIcon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded,
               size: small ? 22 : 28, color: c),
           const SizedBox(width: 8),
           Text(won ? 'KAMU MENANG' : 'KAMU KALAH',

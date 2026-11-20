@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
@@ -331,7 +332,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
             child: Row(
               children: [
-                Icon(Icons.lock_outline, color: accent, size: 18),
+                EmbunIcon(Icons.lock_outline, color: accent, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -355,7 +356,7 @@ class _DiscussionViewState extends State<DiscussionView> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right, color: accent, size: 19),
+                EmbunIcon(Icons.chevron_right, color: accent, size: 19),
               ],
             ),
           ),
@@ -651,7 +652,7 @@ class _DiscussionViewState extends State<DiscussionView> {
                 IconButton(
                   tooltip: 'Kemampuan',
                   onPressed: widget.onAbility,
-                  icon: const Icon(
+                  icon: const EmbunIcon(
                     Icons.auto_awesome,
                     color: EmbunColors.gold,
                     size: 22,
@@ -682,7 +683,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: () => _loadPrivateNotes(_logRequest),
-              icon: const Icon(Icons.refresh, size: 16),
+              icon: const EmbunIcon(Icons.refresh, size: 16),
               label: const Text('Muat ulang catatan pribadi'),
             ),
           ),

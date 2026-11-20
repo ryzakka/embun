@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -985,7 +986,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               onPressed: _page == 0 ? null : () => _goto(_page - 1),
               icon: Opacity(
                 opacity: _page == 0 ? 0.45 : 1,
-                child: const GameIcon('back', size: 24),
+                child: const GameIcon('back2', size: 24),
               ),
             ),
             Expanded(
@@ -1612,7 +1613,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             child: Center(
               child: Opacity(
                 opacity: _smooth(_seg(p, 0.6, 1)),
-                child: const Icon(
+                child: const EmbunIcon(
                   Icons.emoji_events_rounded,
                   size: 22,
                   color: EmbunColors.gold,
@@ -2901,7 +2902,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             IconButton(
               tooltip: 'Lihat profil pemain',
               onPressed: () => widget.onViewProfile!(uid),
-              icon: const Icon(Icons.account_circle_outlined),
+              icon: const EmbunIcon(Icons.account_circle_outlined),
             ),
           const SizedBox(width: 8),
           if (isOut(p))
@@ -2942,7 +2943,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               const SizedBox(height: 12),
               EmbunButton(
                 label: 'Tutup',
-                icon: 'silang',
+                icon: 'x',
                 kind: EmbunButtonKind.secondary,
                 height: 46,
                 onPressed: () => Navigator.pop(ctx),

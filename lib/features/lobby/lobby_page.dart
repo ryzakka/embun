@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import '../prologue/manhwa_draft_page.dart';
 import 'dart:async';
 import 'dart:math';
@@ -741,7 +742,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     tooltip: 'Kembali',
     onPressed: onTap,
     color: EmbunColors.gold,
-    icon: const GameIcon('back', size: 23),
+    icon: const GameIcon('back2', size: 23),
   );
 
   /// Panduan kini layar penuh (cara bermain, karakter, dan kartu item).
@@ -1336,11 +1337,12 @@ Future<void> showLobbySettings(BuildContext context) {
               const SizedBox(height: 8),
               ValueListenableBuilder<bool>(
                 valueListenable: Sfx.I.muted,
-                builder: (_, muted, _) => SwitchListTile(
+                builder: (_, muted, _) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  secondary: const GameIcon('announcement', size: 32),
-                  value: !muted,
-                  onChanged: (v) => Sfx.I.muted.value = !v,
+                  leading: GameIcon(muted ? 'suaramati' : 'suaranyala', size: 32),
+                  onTap: () => Sfx.I.muted.value = !muted,
+                  trailing: EmbunToggle(value: !muted, semanticLabel: 'Suara',
+                    onChanged: (v) => Sfx.I.muted.value = !v),
                   title: const Text('Suara'),
                   subtitle: const Text(
                     'Musik dan efek suara',
@@ -1350,11 +1352,12 @@ Future<void> showLobbySettings(BuildContext context) {
               ),
               ValueListenableBuilder<bool>(
                 valueListenable: ShaderFx.enabled,
-                builder: (_, on, _) => SwitchListTile(
+                builder: (_, on, _) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  secondary: const GameIcon('show', size: 32),
-                  value: on,
-                  onChanged: (v) => ShaderFx.enabled.value = v,
+                  leading: const GameIcon('showaddgraphic', size: 32),
+                  onTap: () => ShaderFx.enabled.value = !on,
+                  trailing: EmbunToggle(value: on, semanticLabel: 'Efek visual',
+                    onChanged: (v) => ShaderFx.enabled.value = v),
                   title: const Text('Efek Visual'),
                   subtitle: const Text(
                     'Matikan bila perangkat terasa berat',
@@ -1365,7 +1368,7 @@ Future<void> showLobbySettings(BuildContext context) {
               const SizedBox(height: 12),
               EmbunButton(
                 label: 'Tutup',
-                icon: 'silang',
+                icon: 'x',
                 kind: EmbunButtonKind.secondary,
                 height: 46,
                 onPressed: () => Navigator.pop(ctx),
@@ -1468,7 +1471,7 @@ class _MenuTileState extends State<_MenuTile> {
                     ? SizedBox(
                         width: 34 * widget.scale,
                         height: 34 * widget.scale,
-                        child: Icon(
+                        child: EmbunIcon(
                           widget.materialIcon,
                           size: 28 * widget.scale,
                           color: EmbunColors.gold,

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
@@ -101,7 +102,7 @@ class _NightChoiceState extends State<NightChoice> {
             left: 12,
             child: TextButton.icon(
               onPressed: widget.onTerbisikChat,
-              icon: const Icon(Icons.lock_outline, color: EmbunColors.mist),
+              icon: const EmbunIcon(Icons.lock_outline, color: EmbunColors.mist),
               label: const Text(
                 'Obrolan Terbisik',
                 style: TextStyle(color: EmbunColors.mist),
@@ -117,7 +118,7 @@ class _NightChoiceState extends State<NightChoice> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              EmbunIcon(
                 Icons.nightlight_round,
                 size: 72,
                 color: EmbunColors.mist,

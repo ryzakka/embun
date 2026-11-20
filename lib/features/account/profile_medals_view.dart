@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -189,7 +190,7 @@ class MedalArt extends StatelessWidget {
   final bool glow;
   @override
   Widget build(BuildContext context) {
-    final fallback = Icon(
+    final fallback = EmbunIcon(
       switch (medal.series.metric) {
         MedalMetric.wargaWins => Icons.shield_outlined,
         MedalMetric.terbisikWins => Icons.nights_stay_outlined,
@@ -259,7 +260,7 @@ class MedalArt extends StatelessWidget {
                   color: Color(0xFF0B1A14),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: EmbunIcon(
                   Icons.lock_outline,
                   size: math.max(14, size * .2),
                   color: Colors.white70,
@@ -431,7 +432,7 @@ class ProfileMedalsSummary extends StatelessWidget {
           ProfileRow(
             accent: Colors.white,
             visualSize: 30,
-            visual: const Icon(
+            visual: const EmbunIcon(
               Icons.lock_outline,
               color: Colors.white38,
               size: 22,
@@ -524,7 +525,7 @@ class ProfileMedalsSummary extends StatelessWidget {
             ),
             onPressed: () =>
                 showMedalCollection(context, displayed, claims: claims),
-            icon: const Icon(Icons.emoji_events_outlined, size: 20),
+            icon: const EmbunIcon(Icons.emoji_events_outlined, size: 20),
             label: const Text('Lihat koleksi'),
           ),
         ),
@@ -533,7 +534,7 @@ class ProfileMedalsSummary extends StatelessWidget {
 
     if (!framed) return body;
     return ProfileSection(
-      icon: 'helaidaun',
+      icon: 'medali',
       title: 'Koleksi Badge',
       children: [body],
     );
@@ -616,7 +617,7 @@ class _ClaimBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, color: EmbunColors.gold),
+                const EmbunIcon(Icons.auto_awesome, asset: 'medali', color: EmbunColors.gold),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Semantics(
@@ -645,7 +646,7 @@ class _ClaimBanner extends StatelessWidget {
                         ? null
                         : () =>
                               claimMedalWithCelebration(context, claims, medal),
-                    icon: const Icon(Icons.emoji_events, size: 20),
+                    icon: const EmbunIcon(Icons.emoji_events, size: 20),
                     label: Text(
                       claims.claimingId == medal.id
                           ? 'Menyimpan…'
@@ -731,7 +732,7 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
             : ValueKey('medal-series-${s.id}'),
         label: s?.name ?? 'Semua',
         sub: s == null ? 'Seluruh seri badge' : _seriesSub(s),
-        icon: s == null ? 'helaidaun' : _seriesIcon(s),
+        icon: s == null ? 'medali' : _seriesIcon(s),
         count: s == null
             ? '$received/${profileMedals.length}'
             : '${doneOf(s)}/${s.targets.length}',
@@ -832,7 +833,7 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
 
     return LearningFrame(
       title: 'Koleksi Badge',
-      icon: 'helaidaun',
+      icon: 'medali',
       background:
           sceneryPath('papanmedali-latar') ??
           sceneryPath('perpustakaantua') ??
@@ -1214,7 +1215,7 @@ Future<void> showMedalDetails(
                     tooltip: 'Tutup rincian badge',
                     visualDensity: VisualDensity.compact,
                     onPressed: () => Navigator.pop(context),
-                    icon: const GameIcon('silang', size: 22),
+                    icon: const GameIcon('x', size: 22),
                   ),
                 ],
               ),
@@ -1282,14 +1283,14 @@ Future<void> showMedalDetails(
               ProfileRow(
                 accent: tint,
                 visualSize: 30,
-                visual: Icon(Icons.flag_outlined, color: tint, size: 24),
+                visual: EmbunIcon(Icons.flag_outlined, color: tint, size: 24),
                 label: 'SYARAT',
                 title: medal.series.requirement(medal.target),
               ),
               ProfileRow(
                 accent: tint,
                 visualSize: 30,
-                visual: Icon(Icons.timeline, color: tint, size: 24),
+                visual: EmbunIcon(Icons.timeline, color: tint, size: 24),
                 label: 'TOTAL TERCATAT',
                 title:
                     '${medalNumber(medal.valueOf(profile))} ${medal.series.unit}',
@@ -1298,7 +1299,7 @@ Future<void> showMedalDetails(
                 ProfileRow(
                   accent: next.tint,
                   visualSize: 30,
-                  visual: Icon(Icons.trending_up, color: next.tint, size: 24),
+                  visual: EmbunIcon(Icons.trending_up, color: next.tint, size: 24),
                   label: 'BERIKUTNYA',
                   title: next.name,
                   text:
@@ -1323,7 +1324,7 @@ Future<void> showMedalDetails(
                   onPressed: !claims.initialized || claims.claimingId != null
                       ? null
                       : () => claimMedalWithCelebration(context, claims, medal),
-                  icon: const Icon(Icons.emoji_events),
+                  icon: const EmbunIcon(Icons.emoji_events),
                   label: Text(
                     claims.claimingId == medal.id
                         ? 'Menyimpan…'

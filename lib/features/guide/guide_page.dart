@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -854,7 +855,7 @@ class _BFilterRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              const EmbunIcon(
                 Icons.keyboard_arrow_down,
                 size: 20,
                 color: EmbunColors.goldDim,
@@ -885,11 +886,11 @@ class _BSearch extends StatelessWidget {
       hintStyle: const TextStyle(color: Colors.white38),
       contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
       suffixIcon: controller.text.isEmpty
-          ? const Icon(Icons.search, size: 20, color: EmbunColors.gold)
+          ? const EmbunIcon(Icons.search, size: 20, color: EmbunColors.gold)
           : IconButton(
         tooltip: 'Hapus',
         visualDensity: VisualDensity.compact,
-        icon: const Icon(Icons.close, size: 20, color: EmbunColors.gold),
+        icon: const EmbunIcon(Icons.close, size: 20, color: EmbunColors.gold),
         onPressed: controller.clear,
       ),
       border: UnderlineInputBorder(
@@ -1756,7 +1757,7 @@ void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
                 const SizedBox(height: 14),
                 EmbunButton(
                   label: 'Tutup',
-                  icon: 'silang',
+                  icon: 'x',
                   kind: EmbunButtonKind.secondary,
                   height: 46,
                   onPressed: () => Navigator.pop(ctx),
@@ -2374,7 +2375,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
                   const Divider(height: 24),
                   EmbunButton(
                     label: 'Tutup',
-                    icon: 'silang',
+                    icon: 'x',
                     kind: EmbunButtonKind.secondary,
                     height: 46,
                     onPressed: () => Navigator.pop(ctx),

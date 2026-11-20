@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -643,12 +644,12 @@ class _NightSceneState extends State<NightScene>
         tag = 'BAHAYA';
       case 'bow':
         color = EmbunColors.gold;
-        icon = const Icon(Icons.gps_fixed_rounded,
+        icon = const EmbunIcon(Icons.gps_fixed_rounded,
             size: 28, color: EmbunColors.gold);
         tag = 'BUSUR TERAKHIR';
       case 'skill':
         color = EmbunColors.mist;
-        icon = const Icon(Icons.auto_awesome_rounded,
+        icon = const EmbunIcon(Icons.auto_awesome_rounded,
             size: 28, color: EmbunColors.mist);
         tag = 'HARGA KEMAMPUAN';
       case 'private':
@@ -657,7 +658,7 @@ class _NightSceneState extends State<NightScene>
         tag = 'Hanya kamu yang tahu';
       default:
         color = const Color(0xFF8FD6B0);
-        icon = const Icon(Icons.bedtime_rounded,
+        icon = const EmbunIcon(Icons.bedtime_rounded,
             size: 28, color: Color(0xFF8FD6B0));
     }
     final isAtk = kind == 'attack';

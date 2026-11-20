@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -629,7 +630,7 @@ class _VotingViewState extends State<VotingView> with TickerProviderStateMixin {
                         ),
                         child: Row(
                           children: [
-                            Icon(
+                            EmbunIcon(
                               Icons.gavel_rounded,
                               size: 20,
                               color: _hammer

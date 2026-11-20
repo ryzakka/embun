@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' show sin, pi, min;
 
@@ -489,7 +490,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        EmbunIcon(
                           switch (q['kind']) {
                             'mirror' => Icons.flip_rounded,
                             'accuse' => Icons.gavel_rounded,

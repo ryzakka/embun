@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -32,7 +33,7 @@ class PartBadge extends StatelessWidget {
         border: Border.all(color: tone.withValues(alpha: 0.58)),
       ),
       child: path == null
-          ? Icon(PartsStrip.fallbackIcon(part), size: size * 0.62, color: tone)
+          ? EmbunIcon(PartsStrip.fallbackIcon(part), size: size * 0.62, color: tone)
           : ClipOval(
               child: GameImage(path: path, cacheWidth: (size * 3).round()),
             ),

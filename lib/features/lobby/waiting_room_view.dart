@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -201,7 +202,7 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
         if (_host)
           Semantics(
             label: 'Ruangan publik',
-            child: Switch(
+            child: EmbunToggle(
               value: widget.isPublic,
               onChanged: _busy
                   ? null
@@ -517,7 +518,7 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
               IconButton(
                 tooltip: 'Lihat profil pemain',
                 onPressed: () => widget.onViewProfile!(id),
-                icon: const Icon(Icons.account_circle_outlined, size: 22),
+                icon: const EmbunIcon(Icons.account_circle_outlined, size: 22),
               ),
             const SizedBox(width: 5),
             Text(

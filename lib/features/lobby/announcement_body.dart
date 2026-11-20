@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -317,15 +318,12 @@ class _AnnouncementBodyState extends State<AnnouncementBody> {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(5),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.6,
-          color: color,
-        ),
-      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        GameIcon(tag == 'baru' ? 'baru' : tag == 'ubah' ? 'ubah' : 'perbaikan', size: 15),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800,
+          letterSpacing: .6, color: color)),
+      ]),
     );
   }
 
@@ -473,7 +471,7 @@ class _LinkCard extends StatelessWidget {
                     color: c.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(ic, color: c, size: 22),
+                  child: EmbunIcon(ic, color: c, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

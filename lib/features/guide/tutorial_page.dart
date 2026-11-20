@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -303,7 +304,7 @@ class _TutorialPageState extends State<TutorialPage>
           visualDensity: VisualDensity.compact,
           onPressed: hasVoice ? _toggleVoice : null,
           color: EmbunColors.gold,
-          icon: Icon(
+          icon: EmbunIcon(
             _voice && hasVoice ? Icons.volume_up_rounded : Icons.volume_off_rounded,
           ),
         ),
@@ -358,7 +359,7 @@ class _TutorialPageState extends State<TutorialPage>
               onPressed: _page > 0 ? () => _go(-1) : null,
               icon: Opacity(
                 opacity: _page > 0 ? 1 : 0.45,
-                child: const GameIcon('back', size: 23),
+                child: const GameIcon('back2', size: 23),
               ),
             ),
             const SizedBox(width: 6),
@@ -753,7 +754,7 @@ class _CycleStrip extends StatelessWidget {
                         : null,
                   ),
                   child: _items[i].$2 != null
-                      ? Icon(
+                      ? EmbunIcon(
                           _items[i].$2,
                           size: 22,
                           color: i == 2 ? EmbunColors.mist : EmbunColors.gold,
@@ -779,7 +780,7 @@ class _CycleStrip extends StatelessWidget {
         if (i < _items.length - 1)
           const Padding(
             padding: EdgeInsets.only(top: 10),
-            child: Icon(
+            child: EmbunIcon(
               Icons.chevron_right_rounded,
               size: 14,
               color: Colors.white30,
@@ -1175,7 +1176,7 @@ class _ResearchDemo extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  const EmbunIcon(
                     Icons.science_rounded,
                     size: 20,
                     color: EmbunColors.gold,
@@ -1404,7 +1405,7 @@ class _InspectDemo extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.75),
                     border: Border.all(color: col, width: 1.6),
                   ),
-                  child: Icon(
+                  child: EmbunIcon(
                     masked
                         ? Icons.theater_comedy_rounded
                         : Icons.search_rounded,
@@ -1623,7 +1624,7 @@ class _LivesDemo extends StatelessWidget {
       for (var i = 0; i < kStrikesMax; i++)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Icon(
+          child: EmbunIcon(
             i < left ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             size: 30,
             color: i < left ? EmbunColors.blood : Colors.white30,
@@ -1672,7 +1673,7 @@ class _LivesDemo extends StatelessWidget {
 
   Widget _arrow() => const Padding(
     padding: EdgeInsets.only(top: 9),
-    child: Icon(Icons.chevron_right_rounded, color: Colors.white30),
+    child: EmbunIcon(Icons.chevron_right_rounded, color: Colors.white30),
   );
 
   @override

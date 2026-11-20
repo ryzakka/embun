@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../../data/medal_claims.dart';
 import '../../data/profile_medals.dart';
@@ -145,7 +146,7 @@ class _EndingMedalNoticeState extends State<EndingMedalNotice> {
     if (claims.error != null) {
       return TextButton.icon(
         onPressed: claims.loading ? null : () => claims.refresh(),
-        icon: const Icon(Icons.refresh),
+        icon: const EmbunIcon(Icons.refresh),
         label: const Text('Coba lagi pencapaian akun'),
       );
     }
@@ -161,7 +162,7 @@ class _EndingMedalNoticeState extends State<EndingMedalNotice> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: EmbunColors.gold),
+          const EmbunIcon(Icons.auto_awesome, asset: 'medali', color: EmbunColors.gold),
           const SizedBox(width: 10),
           Expanded(
             child: Semantics(

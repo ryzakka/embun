@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../common/ornate.dart';
 
@@ -94,13 +95,13 @@ class _PhaseHintState extends State<PhaseHint> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
         child: Row(
           children: [
-            Icon(icon, color: accent, size: 16),
+            EmbunIcon(icon, color: accent, size: 16),
             const SizedBox(width: 7),
             Expanded(
               child: Text(title, style: TextStyle(fontSize: 12, color: accent)),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.expand_more, color: accent, size: 18),
+            EmbunIcon(Icons.expand_more, color: accent, size: 18),
           ],
         ),
       ),

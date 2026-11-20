@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
@@ -487,7 +488,7 @@ class _PlayerSheetState extends State<_PlayerSheet> {
                     AnimatedRotation(
                       turns: tradeOpen ? 0.5 : 0,
                       duration: const Duration(milliseconds: 220),
-                      child: const Icon(
+                      child: const EmbunIcon(
                         Icons.expand_more_rounded,
                         color: EmbunColors.gold,
                       ),

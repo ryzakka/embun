@@ -456,7 +456,7 @@ Future<void> showCardPreview(
               ],
               EmbunButton(
                 label: 'Tutup',
-                icon: 'silang',
+                icon: 'x',
                 kind: EmbunButtonKind.secondary,
                 height: 46,
                 onPressed: () => Navigator.pop(ctx),

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
@@ -42,7 +43,7 @@ class LivesRow extends StatelessWidget {
         for (var i = 0; i < kMaxStrikes; i++)
           Padding(
             padding: EdgeInsets.only(left: i == 0 ? 0 : 1),
-            child: Icon(
+            child: EmbunIcon(
               i < lives
                   ? Icons.favorite_rounded
                   : Icons.heart_broken_rounded,
@@ -86,7 +87,7 @@ class StatusTag extends StatelessWidget {
           if (asset case final name?)
             GameIcon(name, size: fontSize + 3)
           else
-            Icon(icon, size: fontSize + 1, color: color),
+            EmbunIcon(icon, size: fontSize + 1, color: color),
           const SizedBox(width: 3),
         ],
         Text(text,

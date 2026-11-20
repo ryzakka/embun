@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -313,7 +314,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
-              const Icon(Icons.person_outline, color: EmbunColors.gold),
+              const EmbunIcon(Icons.person_outline, color: EmbunColors.gold),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -513,7 +514,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
           decoration: InputDecoration(
             labelText: 'Cari kode/host',
             isDense: true,
-            prefixIcon: const Icon(Icons.search_rounded, size: 19),
+            prefixIcon: const EmbunIcon(Icons.search_rounded, size: 19),
             suffixIcon: _query.isEmpty
                 ? null
                 : IconButton(
@@ -527,7 +528,7 @@ class _PublicRoomsPageState extends State<PublicRoomsPage> {
       const SizedBox(width: 5),
       PopupMenuButton<_Sort>(
         tooltip: 'Urutkan',
-        icon: const Icon(Icons.sort_rounded, color: EmbunColors.gold),
+        icon: const EmbunIcon(Icons.sort_rounded, color: EmbunColors.gold),
         enabled: !_joining,
         initialValue: _sort,
         onSelected: (sort) => setState(() => _sort = sort),

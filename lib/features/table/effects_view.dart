@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -308,7 +309,7 @@ class _EffectsViewState extends State<EffectsView>
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.eco_outlined, size: 54, color: EmbunColors.gold),
+              const EmbunIcon(Icons.eco_outlined, size: 54, color: EmbunColors.gold),
               const SizedBox(height: 12),
               const Text('Hasil persembahan',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),

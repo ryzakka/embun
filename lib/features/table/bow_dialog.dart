@@ -100,7 +100,7 @@ class _BowTargetDialogState extends State<_BowTargetDialog> {
                 const SizedBox(height: 8),
                 EmbunButton(
                   label: 'Batal',
-                  icon: 'silang',
+                  icon: 'x',
                   kind: EmbunButtonKind.secondary,
                   expand: true,
                   height: 46,

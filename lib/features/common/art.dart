@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
+import 'embun_icon.dart';
 
 const _placeholder = ColoredBox(color: Color(0x33000000));
 
@@ -351,18 +352,9 @@ class GameIcon extends StatelessWidget {
       {super.key, this.size = 20, this.width, this.height});
 
   @override
-  Widget build(BuildContext context) {
-    final w = width ?? size;
-    final h = height ?? size;
-    final p = ikonPath(name);
-    return SizedBox(
-      width: w,
-      height: h,
-      child: p == null
-          ? null
-          : GameImage(path: p, fit: BoxFit.contain, cacheWidth: (w * 3).round()),
-    );
-  }
+  Widget build(BuildContext context) => EmbunAssetIcon(name,
+      size:size,width:width,height:height);
+
 }
 /// Layar muat: ikon aplikasi berdenyut pelan di atas indikator tipis.
 class EmbunLoading extends StatefulWidget {

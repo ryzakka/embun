@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/profile_medals.dart';
@@ -212,7 +213,7 @@ class ProfileStatsBoard extends StatelessWidget {
       ProfileRow(
         label: 'PERAN UNGGULAN',
         accent: roleColor,
-        visual: Icon(
+        visual: EmbunIcon(
           !hasRole
               ? Icons.help_outline
               : wargaTop
@@ -242,7 +243,7 @@ class ProfileStatsBoard extends StatelessWidget {
                 claims: claims,
               ),
         visual: topMedal == null
-            ? const Icon(Icons.lock_outline, size: 30, color: Colors.white38)
+            ? const EmbunIcon(Icons.lock_outline, size: 30, color: Colors.white38)
             : MedalArt(medal: topMedal, unlocked: true, size: 44),
         title: topMedal?.name ?? 'Belum ada',
         text: topMedal == null
@@ -257,7 +258,7 @@ class ProfileStatsBoard extends StatelessWidget {
             ? EmbunColors.gold
             : EmbunColors.blood,
         visual: last == null
-            ? const Icon(Icons.hourglass_empty, size: 30, color: Colors.white38)
+            ? const EmbunIcon(Icons.hourglass_empty, size: 30, color: Colors.white38)
             : GameIcon(last.won ? 'centang' : 'silang', size: 34),
         title: last == null
             ? 'Belum ada'
@@ -420,15 +421,23 @@ class _Num extends StatelessWidget {
       color: color,
     );
     final v = value;
+    Widget numberLabel(int n) => suffix == '%'
+        ? Semantics(label: '$n persen', child: ExcludeSemantics(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text('$n', style: style),
+              const SizedBox(width: 3),
+              const GameIcon('persen', size: 24),
+            ])))
+        : Text('$n$suffix', style: style);
     final Widget number = v == null
         ? Text('-', style: style)
         : MediaQuery.disableAnimationsOf(context)
-        ? Text('$v$suffix', style: style)
+        ? numberLabel(v)
         : TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: v.toDouble()),
             duration: const Duration(milliseconds: 1200),
             curve: Curves.easeOutCubic,
-            builder: (_, n, _) => Text('${n.round()}$suffix', style: style),
+            builder: (_, n, _) => numberLabel(n.round()),
           );
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -461,7 +470,7 @@ class _Pip extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: won ? EmbunColors.gold : Colors.transparent,
+        color: won ? EmbunColors.gold.withValues(alpha: .12) : Colors.transparent,
         border: Border.all(
           color: result == null
               ? Colors.white12
@@ -470,9 +479,10 @@ class _Pip extends StatelessWidget {
       ),
       child: result == null
           ? null
-          : Icon(
+          : EmbunIcon(
               won ? Icons.check : Icons.close,
-              size: 13,
+        asset: won ? 'centang' : 'silang',
+              size: 16,
               color: won ? const Color(0xFF1A1405) : Colors.white38,
             ),
     );

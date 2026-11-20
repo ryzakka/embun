@@ -1,3 +1,4 @@
+import 'embun_icon.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../data/character_catalog.dart';
@@ -39,7 +40,7 @@ class CharacterLock extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    EmbunIcon(
                       Icons.lock_outline_rounded,
                       color: Color(0xFFE7BC5E),
                       size: 24,

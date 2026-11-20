@@ -1,3 +1,4 @@
+import 'embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:audioplayers/audioplayers.dart';
@@ -710,7 +711,7 @@ class SfxMuteButton extends StatelessWidget {
       tooltip: m ? 'Nyalakan suara' : 'Matikan suara',
       visualDensity: VisualDensity.compact,
       onPressed: () => Sfx.I.muted.value = !m,
-      icon: Icon(
+      icon: EmbunIcon(
         m ? Icons.volume_off_rounded : Icons.volume_up_rounded,
         size: size,
         color: m ? Colors.white38 : const Color(0xFFE8C766),

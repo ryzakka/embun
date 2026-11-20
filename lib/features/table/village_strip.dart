@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -507,7 +508,7 @@ class _VillageStripState extends State<VillageStrip> {
       padding: EdgeInsets.zero,
       onPressed: widget.onEmoteButton,
       icon: recent == null
-          ? const Icon(Icons.emoji_emotions_outlined, size: 19)
+          ? const EmbunIcon(Icons.emoji_emotions_outlined, size: 19)
           : Text(recent.value.emoji, style: const TextStyle(fontSize: 18)),
     );
   }

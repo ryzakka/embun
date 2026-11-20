@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -652,7 +653,7 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
             Positioned(
               left: 0,
               top: 0,
-              child: Icon(Icons.heart_broken_rounded,
+              child: EmbunIcon(Icons.heart_broken_rounded,
                   size: size, color: Colors.white30),
             ),
             Positioned(
@@ -660,7 +661,7 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
               top: 0,
               child: Transform.scale(
                 scale: scale,
-                child: Icon(
+                child: EmbunIcon(
                   broke
                       ? Icons.heart_broken_rounded
                       : Icons.favorite_rounded,
@@ -715,7 +716,7 @@ class _EvictionVerdictSceneState extends State<EvictionVerdictScene>
             angle: rot,
             child: ikonPath('helaidaun') != null
                 ? const GameIcon('helaidaun', size: 44)
-                : const Icon(Icons.eco_rounded,
+                : const EmbunIcon(Icons.eco_rounded,
                 size: 40, color: EmbunColors.leaf),
           ),
         ),

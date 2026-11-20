@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,7 +67,7 @@ Future<void> showMoreGames(BuildContext context) => showDialog<void>(
               const SizedBox(height: 2),
               EmbunButton(
                 label: 'Tutup',
-                icon: 'silang',
+                icon: 'x',
                 kind: EmbunButtonKind.secondary,
                 expand: true,
                 height: 46,
@@ -165,7 +166,7 @@ class _GameCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.open_in_new_rounded,
+              const EmbunIcon(Icons.open_in_new_rounded,
                   size: 20, color: EmbunColors.gold),
             ],
           ),

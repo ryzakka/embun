@@ -79,7 +79,7 @@ class LearningFrame extends StatelessWidget {
                                       visualDensity: VisualDensity.compact,
                                       onPressed: () =>
                                           Navigator.of(context).maybePop(),
-                                      icon: const GameIcon('back', size: 22),
+                                      icon: const GameIcon('back2', size: 22),
                                     ),
                                     if (showIcon) ...[
                                       GameIcon(icon, size: 27),

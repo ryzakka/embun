@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -1292,7 +1293,7 @@ class _VoteRevealSceneState extends State<VoteRevealScene>
                       children: [
                         Transform.rotate(
                           angle: sway,
-                          child: const Icon(Icons.balance_rounded,
+                          child: const EmbunIcon(Icons.balance_rounded,
                               size: 24, color: _teal),
                         ),
                         const SizedBox(width: 8),
@@ -2105,7 +2106,7 @@ class _RingCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
-                    child: Icon(Icons.do_not_disturb_on_outlined,
+                    child: EmbunIcon(Icons.do_not_disturb_on_outlined,
                         size: (width * 0.45).clamp(16.0, 40.0).toDouble(),
                         color: Colors.white60),
                   ),

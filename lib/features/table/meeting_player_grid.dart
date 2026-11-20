@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
@@ -315,7 +316,7 @@ class _PlayerPlate extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (me && !out) ...[
-                                      const Icon(
+                                      const EmbunIcon(
                                         Icons.person_rounded,
                                         size: 14,
                                         color: EmbunColors.mist,
@@ -383,7 +384,7 @@ class _PlayerPlate extends StatelessWidget {
                         curve: Curves.easeOutBack,
                         builder: (context, v, child) =>
                             Transform.scale(scale: v, child: child),
-                        child: const Icon(
+                        child: const EmbunIcon(
                           Icons.check_circle,
                           color: _sky,
                           size: 20,

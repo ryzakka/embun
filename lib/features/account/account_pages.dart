@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/profile_avatar_catalog.dart';
@@ -169,7 +170,7 @@ class GoogleLoginPage extends StatelessWidget {
                 onPressed: account.busy || account.waitingForGoogle
                     ? null
                     : account.continueAsGuest,
-                icon: const Icon(Icons.person_outline),
+                icon: const EmbunIcon(Icons.person_outline),
                 label: const Text('Main sebagai tamu'),
               ),
               const Text(
@@ -283,13 +284,13 @@ class _ProfilePageState extends State<ProfilePage> {
           else
             IconButton(
               tooltip: 'Kembali',
-              icon: const GameIcon('back', size: 23),
+              icon: const GameIcon('back2', size: 23),
               onPressed: account.busy
                   ? null
                   : () => Navigator.of(context).pop(),
             ),
           if (widget.firstSetup) ...[
-            const GameIcon('character', size: 28),
+            const GameIcon('identity', size: 28),
             const SizedBox(width: 8),
           ],
           Expanded(
@@ -462,10 +463,12 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Email Google terhubung',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
-          ),
+          const Row(children: [
+            GameIcon('pesanataumail', size: 18),
+            SizedBox(width: 6),
+            Flexible(child: Text('Email Google terhubung',
+              style: TextStyle(fontSize: 12, color: Colors.white54))),
+          ]),
           Text(
             email,
             style: const TextStyle(fontSize: 13.5, color: Colors.white70),
@@ -686,7 +689,7 @@ class GuestAccountPage extends StatelessWidget {
             child: IconButton(
               tooltip: 'Kembali',
               onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back),
+              icon: const EmbunIcon(Icons.arrow_back),
             ),
           ),
           Center(

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
@@ -237,7 +238,7 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.nightlight_round,
+                            EmbunIcon(Icons.nightlight_round,
                                 size: 26, color: EmbunColors.mist),
                             SizedBox(width: 8),
                             Text('Serangan malam',
@@ -368,7 +369,7 @@ class _NightPlanDialogState extends State<_NightPlanDialog> {
                         const SizedBox(height: 12),
                         EmbunButton(
                           label: 'Tutup',
-                          icon: 'silang',
+                          icon: 'x',
                           kind: EmbunButtonKind.secondary,
                           height: 46,
                           onPressed: () => Navigator.pop(context),

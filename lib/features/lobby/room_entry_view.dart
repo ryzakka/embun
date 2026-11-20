@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -65,7 +66,7 @@ class RoomEntryHeader extends StatelessWidget {
         children: [
           IconButton(
             tooltip: 'Kembali',
-            icon: const GameIcon('back', size: 23),
+            icon: const GameIcon('back2', size: 23),
             onPressed: onBack,
           ),
           if (box.maxWidth >= 320) ...[
@@ -653,7 +654,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
                     ],
                   ),
                 ),
-                if (selected) Icon(Icons.check, size: 20, color: accent),
+                if (selected) EmbunIcon(Icons.check, size: 20, color: accent),
               ],
             ),
           ),

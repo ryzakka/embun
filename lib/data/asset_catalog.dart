@@ -1,4 +1,5 @@
 import 'manhwa_catalog.dart';
+import 'icon_catalog.dart';
 export 'manhwa_catalog.dart';
 import 'dart:math';
 import 'character_catalog.dart';
@@ -58,8 +59,12 @@ class AssetCatalog {
         final file = path.substring(slash + 1);
         final stem = file.substring(0, file.lastIndexOf('.'));
         final folder = byFolder.putIfAbsent(path.substring(0, slash), () => {});
-        if (!folder.containsKey(stem) || lower.endsWith('.webp')) {
-          folder[stem] = path;
+        final isIcon = path.substring(0, slash) == ikonDir;
+        final key = isIcon ? stem.toLowerCase() : stem;
+        // PNG ikon terbaru menang atas WebP lama; folder lain tetap WebP.
+        if (!folder.containsKey(key) ||
+            (isIcon ? lower.endsWith('.png') : lower.endsWith('.webp'))) {
+          folder[key] = path;
         }
       }
     } catch (_) {}
@@ -301,7 +306,13 @@ String? defeatScenery({required int leaves, String? endReason}) {
   return firstScenery(const ['keterasingan']);
 }
 
-String? ikonPath(String name) => AssetCatalog.I.file(ikonDir, name);
+String? ikonPath(String name) {
+  for (final candidate in iconCandidates(name)) {
+    final path=AssetCatalog.I.file(ikonDir,candidate);
+    if (path!=null) return path;
+  }
+  return null;
+}
 
 String? logoPath(String stem) => AssetCatalog.I.file(logoDir, stem);
 

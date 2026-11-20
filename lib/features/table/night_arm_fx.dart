@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
@@ -194,7 +195,7 @@ class _NightArmOverlayState extends State<NightArmOverlay>
                     opacity: _smooth(moonIn),
                     child: Transform.scale(
                       scale: moonScale,
-                      child: Icon(
+                      child: EmbunIcon(
                         Icons.nightlight_round,
                         size: 68,
                         color: EmbunColors.mist,
@@ -362,7 +363,7 @@ class _PulsingMoonState extends State<PulsingMoon>
   Widget build(BuildContext context) {
     final s = widget.size;
     if (!widget.armed) {
-      return Icon(Icons.nightlight_round, size: s, color: widget.idleColor);
+      return EmbunIcon(Icons.nightlight_round, size: s, color: widget.idleColor);
     }
     return AnimatedBuilder(
       animation: _c,
@@ -384,7 +385,7 @@ class _PulsingMoonState extends State<PulsingMoon>
                 ),
               Transform.scale(
                 scale: 1 + 0.16 * beat,
-                child: Icon(
+                child: EmbunIcon(
                   Icons.nightlight_round,
                   size: s,
                   color: EmbunColors.mist,

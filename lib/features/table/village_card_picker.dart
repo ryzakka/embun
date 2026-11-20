@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
@@ -107,7 +108,7 @@ class VillageChoiceCard extends StatelessWidget {
                             child: option.path == null
                                 ? ColoredBox(
                                     color: EmbunColors.panelHi,
-                                    child: Icon(
+                                    child: EmbunIcon(
                                       option.lives == null
                                           ? Icons.style_outlined
                                           : Icons.person_outline,
@@ -124,7 +125,7 @@ class VillageChoiceCard extends StatelessWidget {
                             const Positioned(
                               right: 4,
                               top: 4,
-                              child: Icon(
+                              child: EmbunIcon(
                                 Icons.check_circle,
                                 color: EmbunColors.gold,
                                 size: 22,
@@ -252,7 +253,7 @@ class _CardGalleryState extends State<_CardGallery> {
                 IconButton(
                   tooltip: 'Tutup pilihan',
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const EmbunIcon(Icons.close),
                 ),
               ],
             ),

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
@@ -44,7 +45,7 @@ class _GuardTargetDialogState extends State<_GuardTargetDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
+              const EmbunIcon(
                 Icons.shield_rounded,
                 color: EmbunColors.leaf,
                 size: 36,
@@ -106,7 +107,7 @@ class _GuardTargetDialogState extends State<_GuardTargetDialog> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(
+                          EmbunIcon(
                             _target == player['user_id']
                                 ? Icons.check_circle_rounded
                                 : Icons.circle_outlined,
@@ -132,7 +133,7 @@ class _GuardTargetDialogState extends State<_GuardTargetDialog> {
               const SizedBox(height: 8),
               EmbunButton(
                 label: 'Batal',
-                icon: 'silang',
+                icon: 'x',
                 expand: true,
                 kind: EmbunButtonKind.secondary,
                 onPressed: () => Navigator.pop(context),

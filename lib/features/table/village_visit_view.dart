@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -429,7 +430,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     height: size,
     child: ikonPath(name) != null
         ? GameIcon(name, size: size)
-        : Icon(fallback, size: size * .8, color: _accent),
+        : EmbunIcon(fallback, size: size * .8, color: _accent),
   );
 
   /// Ikon tempat dengan cahaya seperti avatar di player_sheet.
@@ -594,7 +595,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(p.icon, size: 26, color: EmbunColors.gold),
+                EmbunIcon(p.icon, size: 26, color: EmbunColors.gold),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
@@ -810,7 +811,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           highlight: true,
           Row(
             children: [
-              Icon(
+              EmbunIcon(
                 widget.isAntag ? Icons.trending_down : Icons.trending_up,
                 color: _accent,
                 size: 28,
@@ -1251,7 +1252,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                         style: TextStyle(fontSize: 11, color: _accent),
                       ),
                       const SizedBox(width: 8),
-                      Icon(
+                      EmbunIcon(
                         open
                             ? Icons.keyboard_arrow_down
                             : Icons.keyboard_arrow_up,
@@ -2128,7 +2129,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           IconButton(
             tooltip: 'Kembali dari tempat ini',
             onPressed: _busy ? null : _leave,
-            icon: const Icon(Icons.arrow_back, size: 22),
+            icon: const EmbunIcon(Icons.arrow_back, size: 22),
           )
         else
           Padding(
@@ -2234,7 +2235,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                     await widget.repo.respondTrade(t['id'] as String, false);
                     return widget.repo.villageStatus(widget.gameId);
                   }),
-            icon: const Icon(Icons.close, size: 18),
+            icon: const EmbunIcon(Icons.close, size: 18),
           ),
         ],
       ),
@@ -2857,7 +2858,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                               IconButton(
                                 tooltip: 'Kembali dari tempat ini',
                                 onPressed: _busy ? null : _leave,
-                                icon: const Icon(Icons.arrow_back),
+                                icon: const EmbunIcon(Icons.arrow_back),
                               )
                             else
                               const SizedBox(width: 4),

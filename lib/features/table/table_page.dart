@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1273,7 +1274,7 @@ class _TablePageState extends State<TablePage> {
                             Navigator.pop(ctx);
                             _openEmotes(day);
                           },
-                          icon: const Icon(Icons.emoji_emotions_outlined),
+                          icon: const EmbunIcon(Icons.emoji_emotions_outlined),
                         )
                       : null,
                 ),
@@ -1383,7 +1384,7 @@ class _TablePageState extends State<TablePage> {
         ),
         trailing: onTap == null
             ? null
-            : const Icon(Icons.chevron_right, size: 20),
+            : const EmbunIcon(Icons.chevron_right, size: 20),
         onTap: onTap,
       ),
     );
@@ -1485,7 +1486,7 @@ class _TablePageState extends State<TablePage> {
         tooltip: '${def['name']}',
         visualDensity: VisualDensity.compact,
         onPressed: () => _openAbility(),
-        icon: Icon(
+        icon: EmbunIcon(
           abilityIcon(abilityId),
           size: 26,
           color: abilityUsed ? Colors.white38 : abilityAccent(abilityId),
@@ -2529,7 +2530,7 @@ class _TablePageState extends State<TablePage> {
                       ],
                     ),
                     const SizedBox(width: 3),
-                    const Icon(
+                    const EmbunIcon(
                       Icons.expand_more,
                       size: 14,
                       color: EmbunColors.goldDim,
@@ -2666,7 +2667,7 @@ class _TablePageState extends State<TablePage> {
           tooltip: 'Obrolan Terbisik',
           visualDensity: VisualDensity.compact,
           onPressed: _openTerbisikChat,
-          icon: const Icon(Icons.lock_outline, color: EmbunColors.mist),
+          icon: const EmbunIcon(Icons.lock_outline, color: EmbunColors.mist),
         ),
       if (canOpenAbility) _abilityButton(),
     ];
@@ -2704,7 +2705,7 @@ class _TablePageState extends State<TablePage> {
             value: 'back_preview',
             child: Row(
               children: [
-                Icon(Icons.grid_view, size: 20, color: EmbunColors.gold),
+                EmbunIcon(Icons.grid_view, size: 20, color: EmbunColors.gold),
                 SizedBox(width: 12),
                 Text('Panel pratinjau'),
               ],

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -480,7 +481,7 @@ class _ChatPanelState extends State<ChatPanel> {
                         child: FloatingActionButton.small(
                           heroTag: null,
                           onPressed: _toLatest,
-                          child: const Icon(Icons.keyboard_arrow_down),
+                          child: const EmbunIcon(Icons.keyboard_arrow_down),
                         ),
                       ),
                     Positioned.fill(
@@ -955,7 +956,7 @@ class CutSceneState extends State<CutScene> with TickerProviderStateMixin {
                               bottom: 0,
                               child: Opacity(
                                 opacity: 0.4 + 0.6 * ((breathe + 1) / 2),
-                                child: Icon(
+                                child: EmbunIcon(
                                   Icons.arrow_drop_down,
                                   color: fx,
                                   size: 22,

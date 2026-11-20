@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/asset_catalog.dart';
@@ -113,7 +114,7 @@ class _ClinicEntrySceneState extends State<ClinicEntryScene>
                         IconButton(
                           tooltip: 'Batalkan masuk pondok',
                           onPressed: _submitting ? null : widget.onCancel,
-                          icon: const Icon(Icons.arrow_back),
+                          icon: const EmbunIcon(Icons.arrow_back),
                         ),
                         const Expanded(
                           child: Text(
@@ -210,7 +211,7 @@ class _ClinicEntrySceneState extends State<ClinicEntryScene>
                                     child: CardTile(
                                       def: widget.letter,
                                       fallbackName:
-                                      widget.letter['name'] as String? ??
+                                          widget.letter['name'] as String? ??
                                           'Surat',
                                       width: cardW,
                                     ),

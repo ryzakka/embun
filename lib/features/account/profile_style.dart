@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -511,7 +512,7 @@ class ProfileFilter extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              const EmbunIcon(
                 Icons.keyboard_arrow_down,
                 size: 20,
                 color: EmbunColors.goldDim,

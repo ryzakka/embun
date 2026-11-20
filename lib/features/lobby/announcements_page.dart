@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' show max;
 import 'package:flutter/material.dart';
@@ -179,7 +180,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
           tooltip: 'Kembali',
           onPressed: () => Navigator.pop(context),
           color: EmbunColors.gold,
-          icon: const GameIcon('back', size: 23),
+          icon: const GameIcon('back2', size: 23),
         ),
         const GameIcon('logorhistory', size: 38),
         const SizedBox(width: 10),
@@ -423,7 +424,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       child: AnimatedRotation(
                         turns: open ? 0.5 : 0,
                         duration: const Duration(milliseconds: 200),
-                        child: const Icon(Icons.expand_more_rounded,
+                        child: const EmbunIcon(Icons.expand_more_rounded,
                             color: Colors.white54),
                       ),
                     ),

@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
@@ -846,13 +847,13 @@ class _DraftHeader extends StatelessWidget {
           IconButton(
             tooltip: 'Aturan',
             onPressed: onInfo,
-            icon: const Icon(Icons.info_outline, color: Colors.white70),
+            icon: const EmbunIcon(Icons.info_outline, color: Colors.white70),
           ),
           if (isHost)
             IconButton(
               tooltip: 'Bubarkan ruangan',
               onPressed: busy ? null : onCancel,
-              icon: const Icon(Icons.close, color: Colors.white70),
+              icon: const EmbunIcon(Icons.close, color: Colors.white70),
             ),
         ],
       ),
@@ -1075,7 +1076,7 @@ class _PlayerChip extends StatelessWidget {
                           width: 1.5,
                         ),
                       ),
-                      child: const Icon(
+                      child: const EmbunIcon(
                         Icons.check,
                         size: 11,
                         color: Color(0xFF07130F),
@@ -1225,7 +1226,7 @@ class _DraftCardState extends State<_DraftCard> {
                         width: 2,
                       ),
                     ),
-                    child: const Icon(
+                    child: const EmbunIcon(
                       Icons.check,
                       size: 16,
                       color: Color(0xFF07050E),
@@ -1701,7 +1702,7 @@ class _LockedHero extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.lock, size: 13, color: accent),
+                            EmbunIcon(Icons.lock, size: 13, color: accent),
                             const SizedBox(width: 6),
                             Text(
                               'TERKUNCI',

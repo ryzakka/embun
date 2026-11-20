@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import 'google_sign_in_button.dart';
 
@@ -21,7 +22,7 @@ class AccountStatusBadge extends StatelessWidget {
         ),
         child: linked
             ? GoogleLogo(size: size - 6)
-            : Icon(Icons.person_outline, size: size - 2, color: Colors.white60),
+            : EmbunIcon(Icons.person_outline, size: size - 2, color: Colors.white60),
       ),
     ),
   );

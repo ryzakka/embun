@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/asset_catalog.dart';
@@ -87,7 +88,7 @@ class _MyInfoDialog extends StatelessWidget {
                     IconButton(
                       tooltip: 'Tutup',
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded, size: 20),
+                      icon: const EmbunIcon(Icons.close_rounded, size: 20),
                     ),
                   ],
                 ),

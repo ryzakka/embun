@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'package:flutter/material.dart';
 import '../../data/profile_avatar_catalog.dart';
 import '../common/ornate.dart';
@@ -10,7 +11,7 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatar = profileAvatars[avatarId];
-    final fallback = Icon(
+    final fallback = EmbunIcon(
       switch (avatarId) {
         'sun' => Icons.wb_sunny_outlined,
         'moon' => Icons.nightlight_outlined,

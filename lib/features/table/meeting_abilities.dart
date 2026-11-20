@@ -1,3 +1,4 @@
+import '../common/embun_icon.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/errors.dart';
@@ -256,7 +257,7 @@ class _MeetingPanelState extends State<MeetingPanel> {
         child: ListTile(
           dense: true,
           visualDensity: VisualDensity.compact,
-          leading: const Icon(Icons.forum_rounded, color: Color(0xFF8FCBFF)),
+          leading: const EmbunIcon(Icons.forum_rounded, color: Color(0xFF8FCBFF)),
           title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: events.isEmpty
               ? null
@@ -265,7 +266,7 @@ class _MeetingPanelState extends State<MeetingPanel> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const EmbunIcon(Icons.chevron_right),
           onTap: () => showDialog<void>(
             context: context,
             builder: (_) => _MeetingDialog(
