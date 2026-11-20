@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "32c1df41d377ce14d015e9ce70235ebd",
-"assets/AssetManifest.bin.json": "d3da56cda35fdc956018ef678c67c372",
+const RESOURCES = {"assets/AssetManifest.bin": "4ef32d0a7b8d3c32394e5849c6ca2dae",
+"assets/AssetManifest.bin.json": "1e723971c470034c5d5be5abd73c8c86",
 "assets/assets/avatars/01_penjaga_hayu.webp": "d94b528ebf9b99cf049e846d4ac9a846",
 "assets/assets/avatars/02_peramu_bunga.webp": "5ce2f362460ba7459cbf2263d57f7a79",
 "assets/assets/avatars/03_petani_muda.webp": "3c7379459d6f89192570e4f425617c94",
@@ -70,6 +70,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "32c1df41d377ce14d015e9ce70235ebd
 "assets/assets/bentang/newDesa-bentang5.webp": "5e684e21f82120d95cd9fec837389e33",
 "assets/assets/bentang/newDesa-bentang6.webp": "3ce1d9a2f07d051d21bb792c90a499d7",
 "assets/assets/bentang/newDesa-bentang7.webp": "757b668eace92ef51ec9c628fc310dcb",
+"assets/assets/bentang/papanmedali-latar.png": "3b90dfe26d27e6dede9f056013ff7d64",
 "assets/assets/bentang/pasar-sianghari.webp": "035015d998144f95bdbeb20da04ba201",
 "assets/assets/bentang/perpustakaantua.webp": "b02ee8c873ad49f39cfcf2647af239f7",
 "assets/assets/bentang/peternakan-sianghari.webp": "7d656476e9f503a4ce28725447ede0fc",
@@ -117,7 +118,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "32c1df41d377ce14d015e9ce70235ebd
 "assets/assets/buatruang/buatruang-siterbisiksatu-char.webp": "017318f85a21d7142093ddca7ce8f863",
 "assets/assets/buatruang/buatruang-siterbisiksatu-latar.webp": "21fa4e7b1bb7c5ce91eacd8337e3afe2",
 "assets/assets/buatruang/buatruang-temadefault.webp": "73292a30353c47bf7cbce9096060cc73",
-"assets/assets/buatruang/buatruang-temamanhwa.webp": "2dacf37b35b8d86b5cd81843b4d082a1",
+"assets/assets/buatruang/buatruang-temamanhwa.png": "68447cf993ca24c74662bd4c316c9c56",
 "assets/assets/buatruang/Buku%2520Desain%2520Busana%2520Kuno%2520di%2520Bawah%2520Lentera.webp": "295de6c2deebb34c248080db18bc31f5",
 "assets/assets/ikon/addmember.webp": "47729f3106f84819a636fdecc21278c6",
 "assets/assets/ikon/akhir-kalah.webp": "40126048a9f4ace274ddb1037e444e8e",
@@ -746,7 +747,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "32c1df41d377ce14d015e9ce70235ebd
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "4991dd39d8162ae19811f9a5112c47aa",
+"flutter_bootstrap.js": "3d40a74bb323849338feb82527a3e9f2",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
