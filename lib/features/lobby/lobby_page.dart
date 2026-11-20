@@ -815,7 +815,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
 
   /// Profil pemain: pil kecil di pojok kanan atas, di samping lonceng.
   /// Tamu melihat ajakan "Tautkan Google"; akun Google melihat "Profilku".
-  Widget _profileChip() {
+  Widget _profileChip({bool compact = false}) {
     if (EmbunData.maybeOf(context) != null) return const SizedBox.shrink();
     final account = AccountScope.maybeOf(context);
     if (account == null || !account.ready) return const SizedBox.shrink();
@@ -833,48 +833,52 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
         ),
         child: InkWell(
           onTap: _openProfile,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PlayerAccountAvatar(
-                  name: name,
-                  googleLinked: account.googleAccount,
-                  avatarId: account.profile?.avatarId,
-                  radius: 16,
-                  onTap: _openProfile,
-                ),
-                const SizedBox(width: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 110),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: EmbunColors.gold,
-                        ),
-                      ),
-                      Text(
-                        guest ? 'Tautkan Google' : 'Profilku',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          color: Colors.white60,
-                        ),
-                      ),
-                    ],
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PlayerAccountAvatar(
+                    name: name,
+                    googleLinked: account.googleAccount,
+                    avatarId: account.profile?.avatarId,
+                    radius: 16,
+                    onTap: _openProfile,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: compact ? 72 : 110),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: EmbunColors.gold,
+                          ),
+                        ),
+                        if (!compact)
+                          Text(
+                            guest ? 'Tautkan Google' : 'Profilku',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: Colors.white60,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1010,26 +1014,9 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
             SafeArea(
               child: Stack(
                 children: [
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: _backButton(
-                          () => setState(() => _stage = _Stage.title),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 8,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _profileChip(),
-                        const SizedBox(width: 6),
-                        _newsBell(),
-                      ],
-                    ),
-                  ),
-                  _versionFooter(),
+                  // Isi dulu, bilah atas terakhir: di ponsel CustomScrollView
+                  // menutupi seluruh area dan menelan ketukan bila ia berada
+                  // di atas tombol kembali / profil / lonceng.
                   if (wide)
                     Positioned.fill(
                       child: Padding(
@@ -1060,15 +1047,16 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                           SliverFillRemaining(
                             hasScrollBody: false,
                             child: Padding(
+                              // 64 atas: memberi ruang bagi bilah atas.
                               padding: const EdgeInsets.fromLTRB(
-                                24,
-                                48,
-                                24,
-                                36,
+                                20,
+                                64,
+                                20,
+                                28,
                               ),
                               child: Column(
                                 children: [
-                                  logo(min(320.0, c.maxWidth - 48)),
+                                  logo(min(300.0, c.maxWidth - 40)),
                                   const Spacer(),
                                   const SizedBox(height: 16),
                                   menuCol,
@@ -1079,6 +1067,26 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
+                  _versionFooter(),
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: _backButton(
+                          () => setState(() => _stage = _Stage.title),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _profileChip(compact: !wide),
+                        const SizedBox(width: 4),
+                        _newsBell(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
