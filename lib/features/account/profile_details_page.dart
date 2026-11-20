@@ -423,10 +423,10 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         ),
       ),
       const SizedBox(height: 10),
-      const NoticeStrip(
-        icon: 'info',
-        text:
+      const Text(
         'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.white60),
       ),
     ],
   );
@@ -447,13 +447,13 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: _tile('Pertandingan', d.completed, EmbunColors.gold),
+                child: _tile('Pertandingan', d.completed, EmbunColors.cream),
               ),
-              const SizedBox(width: 8),
+              _vRule(),
               Expanded(
                 child: _tile('Menang Warga', d.wargaWins, EmbunColors.leaf),
               ),
-              const SizedBox(width: 8),
+              _vRule(),
               Expanded(
                 child: _tile(
                   'Menang Terbisik',
@@ -474,9 +474,12 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         const SectionHeader(icon: 'mydeck', title: 'Riwayat Permainan'),
         const SizedBox(height: 10),
         if (_history.isEmpty)
-          const NoticeStrip(
-            icon: 'info',
-            text: 'Belum ada pertandingan selesai yang tercatat.',
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              'Belum ada pertandingan selesai yang tercatat.',
+              style: TextStyle(color: Colors.white60),
+            ),
           ),
         for (final match in _history) _visitorMatch(match),
         if (_more && !_loading && _error == null)
@@ -550,43 +553,30 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         ),
       ),
       if (d.title.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                EmbunColors.gold.withValues(alpha: 0.28),
-                EmbunColors.gold.withValues(alpha: 0.08),
-              ],
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.workspace_premium_outlined,
+              size: 17,
+              color: EmbunColors.gold,
             ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: EmbunColors.gold.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.workspace_premium_outlined,
-                size: 16,
-                color: EmbunColors.gold,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  d.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: EmbunColors.gold,
-                  ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                d.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: EmbunColors.gold,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     ],
@@ -622,14 +612,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: Container(
-            height: 10,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
-              border: Border.all(
-                color: EmbunColors.goldDim.withValues(alpha: 0.5),
-              ),
-              borderRadius: BorderRadius.circular(6),
-            ),
+            height: 8,
+            color: Colors.white.withValues(alpha: 0.10),
             child: total <= 0
                 ? null
                 : Row(
@@ -654,20 +638,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     );
   }
 
-  Widget _tile(String label, int count, Color accent) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          accent.withValues(alpha: 0.18),
-          accent.withValues(alpha: 0.05),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.2),
-    ),
+  Widget _tile(String label, int count, Color accent) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -677,10 +649,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             fontSize: 28,
             fontWeight: FontWeight.w900,
             color: accent,
-            shadows: const [Shadow(color: Colors.black87, blurRadius: 6)],
           ),
         ),
-        const SizedBox(height: 2),
         Text(
           label,
           textAlign: TextAlign.center,
@@ -700,63 +670,37 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     final terbisik = m.side == 'antagonis';
     final accent = terbisik ? EmbunColors.mist : EmbunColors.leaf;
     final role = terbisik ? 'Si Terbisik' : 'Warga Desa';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: m.won
-              ? accent.withValues(alpha: 0.65)
-              : Colors.white.withValues(alpha: 0.14),
-        ),
-      ),
-      child: Row(
-        children: [
-          ClipOval(
-            child: ColoredBox(
-              color: const Color(0xFF0A1A15),
-              child: GameIcon(m.won ? 'centang' : 'silang', size: 36),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${m.won ? 'Menang' : 'Kalah'} · $role',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: m.won ? accent : EmbunColors.cream,
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: _profileRule())),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            GameIcon(m.won ? 'centang' : 'silang', size: 30),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${m.won ? 'Menang' : 'Kalah'} · $role',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: m.won ? accent : EmbunColors.cream,
+                    ),
                   ),
-                ),
-                Text(
-                  '${two(d.day)}/${two(d.month)}/${d.year} '
-                      '${two(d.hour)}:${two(d.minute)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.white60),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: EmbunColors.goldDim.withValues(alpha: 0.6),
+                  Text(
+                    '${two(d.day)}/${two(d.month)}/${d.year} '
+                        '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white60),
+                  ),
+                ],
               ),
             ),
-            child: Text(
-              'Hari ke-${m.days}',
-              style: const TextStyle(fontSize: 11, color: EmbunColors.gold),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
