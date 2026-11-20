@@ -7,6 +7,7 @@ import 'profile_avatar.dart';
 import 'account_status_badge.dart';
 import 'player_account_avatar.dart';
 import 'profile_medals_view.dart';
+import 'medal_claim_scope.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
 BorderSide _profileRule([Color color = EmbunColors.gold]) =>
@@ -138,6 +139,14 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         _history.addAll(value.history);
         _more = value.hasMore;
       });
+      if (!append) {
+        final claims = MedalClaimScope.maybeOf(context);
+        if (claims?.owns(value) == true) {
+          // The profile request is complete; receipt failures have their own UI.
+          setState(() => _loading = false);
+          await claims!.refresh(details: value);
+        }
+      }
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(

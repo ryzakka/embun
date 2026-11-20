@@ -11,6 +11,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'room_entry_view.dart';
 import '../account/player_account_avatar.dart';
+import '../account/medal_claim_scope.dart';
 import '../../data/profile_repository.dart';
 
 class WaitingRoomView extends StatefulWidget {
@@ -460,16 +461,19 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            PlayerAccountAvatar(
-              name: player['name'] as String,
-              avatarId: widget.accountProfiles[id]?.avatarId,
-              googleLinked:
-                  widget.accountProfiles[id]?.googleLinked ??
-                  widget.googleLinks[id],
-              radius: 19,
-              onTap: widget.onViewProfile == null
-                  ? null
-                  : () => widget.onViewProfile!(id),
+            MedalNotification(
+              userId: id,
+              child: PlayerAccountAvatar(
+                name: player['name'] as String,
+                avatarId: widget.accountProfiles[id]?.avatarId,
+                googleLinked:
+                    widget.accountProfiles[id]?.googleLinked ??
+                    widget.googleLinks[id],
+                radius: 19,
+                onTap: widget.onViewProfile == null
+                    ? null
+                    : () => widget.onViewProfile!(id),
+              ),
             ),
             const SizedBox(width: 9),
             Expanded(

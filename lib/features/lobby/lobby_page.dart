@@ -17,6 +17,7 @@ import '../account/account_pages.dart';
 import '../account/profile_details_page.dart';
 import '../account/player_account_avatar.dart';
 import '../account/room_account_status.dart';
+import '../account/medal_claim_scope.dart';
 import '../common/character_lock.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -73,10 +74,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   String _characterTheme = 'default';
 
   ({
-  String id,
-  Stream<Map<String, dynamic>?> game,
-  Stream<List<Map<String, dynamic>>> players,
-  Stream<List<Map<String, dynamic>>> chat,
+    String id,
+    Stream<Map<String, dynamic>?> game,
+    Stream<List<Map<String, dynamic>>> players,
+    Stream<List<Map<String, dynamic>>> chat,
   })?
   _roomStreams;
 
@@ -169,13 +170,13 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
             MaterialPageRoute(
               builder: (_) => inPrologue
                   ? PrologueFlow(
-                gameId: id,
-                repo: repo,
-                resume: true,
-                characterTheme:
-                (g['character_theme'] as String?) ?? 'default',
-                antagonistCount: (g['antagonist_count'] as int?) ?? 1,
-              )
+                      gameId: id,
+                      repo: repo,
+                      resume: true,
+                      characterTheme:
+                          (g['character_theme'] as String?) ?? 'default',
+                      antagonistCount: (g['antagonist_count'] as int?) ?? 1,
+                    )
                   : TablePage(gameId: id, role: role),
             ),
           );
@@ -453,41 +454,43 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       }
     }
 
-    return PopScope(
-      canPop: canPop,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop || busy) return;
-        // Di Buat Ruangan, tombol kembali mundur satu slide dulu.
-        if (_stage == _Stage.entry &&
-            (_entryKey.currentState?.goBackSlide() ?? false)) {
-          return;
-        }
-        setState(
-              () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
-        );
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF050A08),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            _background(bg, _stage == _Stage.title && !inRoom),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 700),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              layoutBuilder: (cur, prev) =>
-                  Stack(fit: StackFit.expand, children: [...prev, ?cur]),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.97, end: 1.0).animate(anim),
-                  child: child,
+    return MedalLobbyMonitor(
+      child: PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop || busy) return;
+          // Di Buat Ruangan, tombol kembali mundur satu slide dulu.
+          if (_stage == _Stage.entry &&
+              (_entryKey.currentState?.goBackSlide() ?? false)) {
+            return;
+          }
+          setState(
+            () => _stage = _stage == _Stage.entry ? _Stage.menu : _Stage.title,
+          );
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFF050A08),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              _background(bg, _stage == _Stage.title && !inRoom),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 700),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                layoutBuilder: (cur, prev) =>
+                    Stack(fit: StackFit.expand, children: [...prev, ?cur]),
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.97, end: 1.0).animate(anim),
+                    child: child,
+                  ),
                 ),
+                child: screen,
               ),
-              child: screen,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -503,14 +506,14 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     ),
     child: title
         ? TitleIntroBackdrop(
-      key: const ValueKey('title-bg'),
-      progress: _intro,
-      clock: _t,
-    )
+            key: const ValueKey('title-bg'),
+            progress: _intro,
+            clock: _t,
+          )
         : KeyedSubtree(
-      key: const ValueKey('plain-bg'),
-      child: _plainBackground(stem),
-    ),
+            key: const ValueKey('plain-bg'),
+            child: _plainBackground(stem),
+          ),
   );
 
   /// Latar bentang yang bergerak pelan (zoom dan geser) dengan kunang-kunang.
@@ -623,7 +626,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                                                   colors: [
                                                     EmbunColors.gold.withValues(
                                                       alpha:
-                                                      0.18 + 0.12 * pulse,
+                                                          0.18 + 0.12 * pulse,
                                                     ),
                                                     EmbunColors.gold.withValues(
                                                       alpha: 0,
@@ -792,10 +795,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       onTap: _openNews,
       onLongPress: _booted && EmbunData.maybeOf(context) == null
           ? () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const PreviewExperience(),
-        ),
-      )
+              MaterialPageRoute<void>(
+                builder: (_) => const PreviewExperience(),
+              ),
+            )
           : null,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
@@ -822,62 +825,64 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
     final typed = nameCtrl.text.trim();
     final name = _profileName ?? (typed.isEmpty ? 'Tamu' : typed);
     final guest = account.guest;
-    return Semantics(
-      button: true,
-      label: guest ? 'Profil tamu, tautkan Google' : 'Profilku',
-      child: Material(
-        color: Colors.black.withValues(alpha: 0.4),
-        clipBehavior: Clip.antiAlias,
-        shape: StadiumBorder(
-          side: BorderSide(color: EmbunColors.goldDim.withValues(alpha: 0.6)),
-        ),
-        child: InkWell(
-          onTap: _openProfile,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PlayerAccountAvatar(
-                    name: name,
-                    googleLinked: account.googleAccount,
-                    avatarId: account.profile?.avatarId,
-                    radius: 16,
-                    onTap: _openProfile,
-                  ),
-                  const SizedBox(width: 8),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: compact ? 72 : 110),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: EmbunColors.gold,
-                          ),
-                        ),
-                        if (!compact)
+    return MedalNotification(
+      child: Semantics(
+        button: true,
+        label: guest ? 'Profil tamu, tautkan Google' : 'Profilku',
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.4),
+          clipBehavior: Clip.antiAlias,
+          shape: StadiumBorder(
+            side: BorderSide(color: EmbunColors.goldDim.withValues(alpha: 0.6)),
+          ),
+          child: InkWell(
+            onTap: _openProfile,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PlayerAccountAvatar(
+                      name: name,
+                      googleLinked: account.googleAccount,
+                      avatarId: account.profile?.avatarId,
+                      radius: 16,
+                      onTap: _openProfile,
+                    ),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: compact ? 72 : 110),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            guest ? 'Tautkan Google' : 'Profilku',
+                            name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 10.5,
-                              color: Colors.white60,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: EmbunColors.gold,
                             ),
                           ),
-                      ],
+                          if (!compact)
+                            Text(
+                              guest ? 'Tautkan Google' : 'Profilku',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: Colors.white60,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -992,22 +997,22 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   gradient: wide
                       ? LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.82),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.8],
-                  )
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.82),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.8],
+                        )
                       : LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.35),
-                      Colors.black.withValues(alpha: 0.85),
-                    ],
-                  ),
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.35),
+                            Colors.black.withValues(alpha: 0.85),
+                          ],
+                        ),
                 ),
               ),
             ),
@@ -1072,7 +1077,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                     top: 6,
                     left: 6,
                     child: _backButton(
-                          () => setState(() => _stage = _Stage.title),
+                      () => setState(() => _stage = _Stage.title),
                     ),
                   ),
                   Positioned(
@@ -1172,10 +1177,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   Widget _room(String id) {
     if (_roomStreams?.id != id) {
       _roomStreams = (
-      id: id,
-      game: repo.game(id),
-      players: repo.players(id),
-      chat: _gr.chat(id),
+        id: id,
+        game: repo.game(id),
+        players: repo.players(id),
+        chat: _gr.chat(id),
       );
     }
     final streams = _roomStreams!;
@@ -1211,16 +1216,16 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               Navigator.of(context).pushReplacement(
                 ClothTransition.route(
                   game['character_theme'] == 'manhwa' &&
-                      game['status'] == 'prologue'
+                          game['status'] == 'prologue'
                       ? ManhwaDraftPage(repo: repo, gameId: id)
                       : PrologueFlow(
-                    gameId: id,
-                    repo: repo,
-                    characterTheme:
-                    (game['character_theme'] as String?) ?? 'default',
-                    antagonistCount:
-                    (game['antagonist_count'] as int?) ?? 1,
-                  ),
+                          gameId: id,
+                          repo: repo,
+                          characterTheme:
+                              (game['character_theme'] as String?) ?? 'default',
+                          antagonistCount:
+                              (game['antagonist_count'] as int?) ?? 1,
+                        ),
                 ),
               );
             });
@@ -1240,9 +1245,9 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                 onViewProfile: EmbunData.maybeOf(context) != null
                     ? null
                     : (uid) =>
-                    showPlayerProfile(context, gameId: id, userId: uid),
+                          showPlayerProfile(context, gameId: id, userId: uid),
                 characterTheme:
-                (game['character_theme'] as String?) ?? 'default',
+                    (game['character_theme'] as String?) ?? 'default',
                 code: game['code'] as String,
                 isPublic: game['is_public'] == true,
                 antagonistCount: (game['antagonist_count'] as int?) ?? 1,
@@ -1444,24 +1449,24 @@ class _MenuTileState extends State<_MenuTile> {
                     color: _on ? EmbunColors.gold : Colors.transparent,
                     boxShadow: _on
                         ? [
-                      BoxShadow(
-                        color: EmbunColors.gold.withValues(alpha: 0.8),
-                        blurRadius: 8,
-                      ),
-                    ]
+                            BoxShadow(
+                              color: EmbunColors.gold.withValues(alpha: 0.8),
+                              blurRadius: 8,
+                            ),
+                          ]
                         : null,
                   ),
                 ),
                 widget.materialIcon != null
                     ? SizedBox(
-                  width: 34 * widget.scale,
-                  height: 34 * widget.scale,
-                  child: Icon(
-                    widget.materialIcon,
-                    size: 28 * widget.scale,
-                    color: EmbunColors.gold,
-                  ),
-                )
+                        width: 34 * widget.scale,
+                        height: 34 * widget.scale,
+                        child: Icon(
+                          widget.materialIcon,
+                          size: 28 * widget.scale,
+                          color: EmbunColors.gold,
+                        ),
+                      )
                     : GameIcon(widget.icon, size: 34 * widget.scale),
                 const SizedBox(width: 12),
                 AnimatedDefaultTextStyle(
