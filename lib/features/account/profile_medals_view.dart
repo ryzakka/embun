@@ -810,7 +810,7 @@ Future<void> claimMedalWithCelebration(
     barrierDismissible: false,
     builder: (_) => MedalClaimCelebration(
       medal: medal,
-      art: MedalArt(medal: medal, unlocked: true, size: 148),
+      art: MedalArt(medal: medal, unlocked: true, size: 200),
     ),
   );
 }

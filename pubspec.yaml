@@ -69,3 +69,4 @@ flutter:
     - shaders/vote_reveal.frag
     - shaders/prologue_fx.frag
     - shaders/burn.frag
+    - shaders/medal_claim.frag

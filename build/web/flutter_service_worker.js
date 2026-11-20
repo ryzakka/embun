@@ -3,8 +3,8 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "1e19a9f116ce14b44ed706a03257ee0f",
-"assets/AssetManifest.bin.json": "0ca1ce344180413a1afbcb94e1f1631c",
+const RESOURCES = {"assets/AssetManifest.bin": "32c1df41d377ce14d015e9ce70235ebd",
+"assets/AssetManifest.bin.json": "d3da56cda35fdc956018ef678c67c372",
 "assets/assets/avatars/01_penjaga_hayu.webp": "d94b528ebf9b99cf049e846d4ac9a846",
 "assets/assets/avatars/02_peramu_bunga.webp": "5ce2f362460ba7459cbf2263d57f7a79",
 "assets/assets/avatars/03_petani_muda.webp": "3c7379459d6f89192570e4f425617c94",
@@ -727,6 +727,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "1e19a9f116ce14b44ed706a03257ee0f
 "assets/shaders/cloth.frag": "191dcc44ed89406f8ba6267525bb98e0",
 "assets/shaders/divine.frag": "40099de3be4710a2ee43bee207961109",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
+"assets/shaders/medal_claim.frag": "1ef153cdeb129872845975ec01fc9420",
 "assets/shaders/omen_sky.frag": "50bc8df2284d003a39221f0c9e091cf2",
 "assets/shaders/prologue_fx.frag": "b3cc6295fa16c509ae5f22b846f8c161",
 "assets/shaders/stretch_effect.frag": "40d68efbbf360632f614c731219e95f0",
@@ -745,7 +746,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "1e19a9f116ce14b44ed706a03257ee0f
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "0742d0803f670a0f1ef990cf152b0e0f",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "d41cb7e276b1b460aa8352937e11b737",
+"flutter_bootstrap.js": "78c2c317b30052ab26cfd4ca78b195e4",
 "icons/Icon-192.png": "d479d025ecacf97923293737abd4c435",
 "icons/Icon-192.webp": "21d7710de6b473107c3376fe3a48a797",
 "icons/Icon-512.png": "53f9c8eff82ac247e3a4bc76a6a3188e",
@@ -760,7 +761,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "1e19a9f116ce14b44ed706a03257ee0f
 "informasi/embun.css": "82c6376f719defc4df4163fb7eb07a24",
 "informasi/logo.webp": "21d7710de6b473107c3376fe3a48a797",
 "ketentuan/index.html": "6ae5d8daf3bbfdfd9a23742ed911572b",
-"main.dart.js": "797478482eb75e8dbcb0af0306c310d6",
+"main.dart.js": "271faac0b655e3a055669fb953af27c7",
 "manifest.json": "996f2fe6e397924bc750171007628e80",
 "privasi/index.html": "330db661e3f4ef5ba3f676161ff7ec1d",
 "tentang/index.html": "09e656470904e6a6010b1dcd120a1468",
