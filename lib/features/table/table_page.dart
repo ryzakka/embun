@@ -1725,6 +1725,7 @@ class _TablePageState extends State<TablePage> {
       // Semua kartu persembahan dilempar ke Hayu dulu, baru hasilnya.
       return OfferingCeremony(
         key: ValueKey('cer$day'),
+        deadline: deadline,
         repo: repo,
         gameId: widget.gameId,
         day: day,
@@ -1761,6 +1762,7 @@ class _TablePageState extends State<TablePage> {
         children: [
           EffectsView(
             key: ValueKey('fx$day'),
+            deadline: deadline,
             skipBound: _ceremonyCovered,
             repo: repo,
             gameId: widget.gameId,
@@ -1860,13 +1862,13 @@ class _TablePageState extends State<TablePage> {
     switch (phase) {
       case 'discussion':
         return PhaseTitle(
-          id: 'discussion-$day',
+          id: '${widget.gameId}-discussion-$day',
           icon: 'title-musyawarah',
           child: body,
         );
       case 'research':
         return PhaseTitle(
-          id: 'research-$day',
+          id: '${widget.gameId}-research-$day',
           icon: 'title-pasarriset',
           child: body,
         );
@@ -1905,6 +1907,8 @@ class _TablePageState extends State<TablePage> {
     if (phase == 'discussion') {
       body = DiscussionView(
         key: ValueKey('disc$day'),
+        finalLeaves: g['leaves'] as int?,
+        winLeaves: (g['win_leaves'] as int?) ?? 20,
         repo: repo,
         gameId: widget.gameId,
         day: day,

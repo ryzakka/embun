@@ -22,12 +22,14 @@ class _PhaseTitleState extends State<PhaseTitle>
   static final Set<String> _seen = {};
   late final AnimationController _c = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 2200));
-  bool _show = false;
+  bool _show = false, _started = false;
 
   @override
-  void initState() {
-    super.initState();
-    if (_seen.add(widget.id)) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (_seen.add(widget.id) && !MediaQuery.disableAnimationsOf(context)) {
       _show = true;
       _c.addStatusListener((s) {
         if (s == AnimationStatus.completed && mounted) {

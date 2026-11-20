@@ -8,9 +8,9 @@ import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/scene_flow.dart';
-import '../common/moment_fx.dart';
 import '../common/sfx.dart';
 import 'day_view.dart';
+import 'phase_hint.dart';
 import 'research_view.dart';
 import 'village_card_picker.dart';
 import 'village_exchange_view.dart';
@@ -65,15 +65,15 @@ class VillageVisitView extends StatefulWidget {
 
 class _Place {
   const _Place(
-      this.id,
-      this.name,
-      this.tagline,
-      this.outside,
-      this.inside,
-      this.icon,
-      this.tint,
-      this.ikon,
-      );
+    this.id,
+    this.name,
+    this.tagline,
+    this.outside,
+    this.inside,
+    this.icon,
+    this.tint,
+    this.ikon,
+  );
   final String id, name, tagline;
 
   /// Stem `assets/bentang` untuk pemilih (luar) dan di dalam tempat.
@@ -224,26 +224,26 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         'riset' => 'Ssst… setiap ilmu ada harganya. Mau membeli apa malam ini?',
         'sumur' => 'Setetes saja, dan seluruh desa ikut meminumnya.',
         'bengkel' =>
-        'Satukan, retakkan. Tak ada yang benar-benar utuh di sini.',
+          'Satukan, retakkan. Tak ada yang benar-benar utuh di sini.',
         'pondok' =>
-        'Titipkan satu surat. Biar lukanya menunggu pengunjung berikutnya.',
+          'Titipkan satu surat. Biar lukanya menunggu pengunjung berikutnya.',
         _ => null,
       };
     }
     return switch ((place, mood)) {
       ('riset', 'selesai') =>
-      'Bekalmu sudah di tangan. Semoga cukup untuk persembahan nanti.',
+        'Bekalmu sudah di tangan. Semoga cukup untuk persembahan nanti.',
       ('riset', _) =>
-      'Persembahan sudah dekat. Pilih bekalmu baik-baik, tiap bulir berharga.',
+        'Persembahan sudah dekat. Pilih bekalmu baik-baik, tiap bulir berharga.',
       ('sumur', 'selesai') =>
-      'Terima kasih. Airnya terasa lebih tenang sekarang.',
+        'Terima kasih. Airnya terasa lebih tenang sekarang.',
       ('sumur', _) =>
-      'Air sumur ini menghidupi seluruh desa. Satu sumbangan, pengaruhnya sampai akhir.',
+        'Air sumur ini menghidupi seluruh desa. Satu sumbangan, pengaruhnya sampai akhir.',
       ('bengkel', 'selesai') => 'Sudah beres. Kartumu siap digunakan.',
       ('bengkel', _) =>
-      'Bawa kartu lanjutan dan poin untuk digabung. Stetoskopmu juga bisa kutingkatkan di sini.',
+        'Bawa kartu lanjutan dan poin untuk digabung. Stetoskopmu juga bisa kutingkatkan di sini.',
       ('pondok', 'selesai') =>
-      'Beres. Perawatan dijadwalkan; hasilnya diumumkan nanti.',
+        'Beres. Perawatan dijadwalkan; hasilnya diumumkan nanti.',
       ('pondok', 'periksa') => 'Tahan sebentar. Biar kuperiksa dulu lukanya.',
       ('pondok', _) => 'Serahkan suratmu, lalu pilih siapa yang kurawat.',
       (_, 'selesai') => 'Pertukaran tercatat. Senang berurusan denganmu.',
@@ -329,36 +329,6 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     }
   }
 
-  /// Sumbang / cemari sumur, lalu putar efek bila server menerima.
-  Future<void> _contributeWell(num delta) async {
-    final ok = await _act(() => widget.repo.contributeWell(widget.gameId));
-    if (!ok || !mounted) return;
-    final label = '${_signed(delta)} / hari';
-    final origin = _wellOrigin();
-    if (widget.isAntag) {
-      MomentFx.wellTaint(context, origin: origin, label: label);
-    } else {
-      MomentFx.wellBless(context, origin: origin, label: label);
-    }
-  }
-
-  /// Titik jatuh tetes di layar (koordinat global): bagian atas panggung
-  /// saat panel layanan terbuka di layar sempit, tengah-kiri di layar lebar.
-  /// Ubah angka pengali di sini bila titiknya kurang pas dengan gambar sumur.
-  Offset _wellOrigin() {
-    final ro = context.findRenderObject();
-    final box = ro is RenderBox && ro.attached && ro.hasSize ? ro : null;
-    final top = box?.localToGlobal(Offset.zero) ?? Offset.zero;
-    final size = box?.size ?? MediaQuery.sizeOf(context);
-    if (size.width < 600) {
-      final scene = _sheetOpen
-          ? (size.height * .52).clamp(240.0, 460.0).toDouble()
-          : size.height;
-      return top + Offset(size.width * .5, scene * .62);
-    }
-    return top + Offset(size.width * .42, size.height * .55);
-  }
-
   Future<void> _leave() async {
     await _act(() => widget.repo.leaveVillagePlace(widget.gameId));
   }
@@ -375,20 +345,20 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2).replaceAll('.', ',')}';
   String _name(Object? id) =>
       widget.players.where((p) => p['user_id'] == id).firstOrNull?['name']
-      as String? ??
-          'Pemain';
+          as String? ??
+      'Pemain';
 
   // ---------------------------------------------------------------------
   // Blok bangunan visual (bahasa desain: ornate.dart + player_sheet.dart)
   // ---------------------------------------------------------------------
 
   Widget _button(
-      String label,
-      VoidCallback? action, {
-        bool secondary = false,
-        double height = 52,
-        String? icon,
-      }) => EmbunButton(
+    String label,
+    VoidCallback? action, {
+    bool secondary = false,
+    double height = 52,
+    String? icon,
+  }) => EmbunButton(
     label: label,
     icon: icon,
     onPressed: action,
@@ -398,15 +368,15 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   );
 
   Widget _text(
-      String text, {
-        double size = 14,
-        Color? color,
-        FontWeight? weight,
-        double height = 1.35,
-        double? spacing,
-        TextAlign? align,
-        bool lift = false,
-      }) => Text(
+    String text, {
+    double size = 14,
+    Color? color,
+    FontWeight? weight,
+    double height = 1.35,
+    double? spacing,
+    TextAlign? align,
+    bool lift = false,
+  }) => Text(
     text,
     textAlign: align,
     style: TextStyle(
@@ -527,13 +497,13 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         end: highlight ? Alignment.bottomRight : Alignment.bottomCenter,
         colors: highlight
             ? [
-          _accent.withValues(alpha: .14),
-          Colors.black.withValues(alpha: .25),
-        ]
+                _accent.withValues(alpha: .14),
+                Colors.black.withValues(alpha: .25),
+              ]
             : [
-          Colors.black.withValues(alpha: .36),
-          Colors.black.withValues(alpha: .22),
-        ],
+                Colors.black.withValues(alpha: .36),
+                Colors.black.withValues(alpha: .22),
+              ],
       ),
       border: Border.all(
         color: highlight
@@ -622,25 +592,25 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       leading: has
           ? null
           : Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(p.icon, size: 26, color: EmbunColors.gold),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: EmbunColors.gold,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                letterSpacing: 0.8,
-              ),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(p.icon, size: 26, color: EmbunColors.gold),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: EmbunColors.gold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       title: title,
       trailing: trailing,
       iconSize: 30,
@@ -648,11 +618,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   }
 
   Widget _service(
-      _Place p,
-      String title,
-      List<Widget> children, {
-        Widget? trailing,
-      }) => ListView(
+    _Place p,
+    String title,
+    List<Widget> children, {
+    Widget? trailing,
+  }) => ListView(
     padding: const EdgeInsets.fromLTRB(2, 0, 2, 16),
     children: [
       _header(p, title, trailing: trailing),
@@ -867,7 +837,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         const NoticeStrip(
           icon: 'info',
           text:
-          'Efek menetap hingga gim berakhir, untuk seluruh pemain dan kedua fraksi.',
+              'Efek menetap hingga gim berakhir, untuk seluruh pemain dan kedua fraksi.',
         ),
         _gap(),
         if (_used)
@@ -879,7 +849,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 : '${widget.isAntag ? 'Cemari' : 'Sumbangkan'} · $cost',
             _busy || capped || widget.balance < cost
                 ? null
-                : () => _contributeWell(next - bonus),
+                : () => _act(() => widget.repo.contributeWell(widget.gameId)),
             icon: capped ? null : _currency,
           ),
         const SizedBox(height: 10),
@@ -898,9 +868,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   // ---------------------------------------------------------------------
 
   Future<void> _choosePatient(
-      List<VillageRow> patients,
-      String? selected,
-      ) async {
+    List<VillageRow> patients,
+    String? selected,
+  ) async {
     if (_busy || _used) return;
     final id = await showVillageCardPicker(
       context,
@@ -921,8 +891,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         .toList();
     final patient =
         patients.where((p) => p['user_id'] == _target).firstOrNull ??
-            patients.where((p) => p['user_id'] == widget.repo.myId).firstOrNull ??
-            patients.firstOrNull;
+        patients.where((p) => p['user_id'] == widget.repo.myId).firstOrNull ??
+        patients.firstOrNull;
     final target = patient?['user_id'] as String?;
     final fee = target != null && target != widget.repo.myId
         ? _number('care_other_fee', 12)
@@ -972,7 +942,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           const NoticeStrip(
             icon: 'alert',
             text:
-            'Tetap terpasang sampai seorang pengunjung lain terkena. Kamu tidak menjadi korban jebakanmu sendiri.',
+                'Tetap terpasang sampai seorang pengunjung lain terkena. Kamu tidak menjadi korban jebakanmu sendiri.',
           ),
         ] else if (patient != null) ...[
           _sub(
@@ -1064,25 +1034,25 @@ class _VillageVisitViewState extends State<VillageVisitView> {
           _button(
             widget.isAntag ? 'Pasang jebakan' : 'Konfirmasi perawatan',
             _busy ||
-                _ticket == null ||
-                (!widget.isAntag &&
-                    (target == null || widget.balance < fee)) ||
-                (widget.isAntag && trapWaiting)
+                    _ticket == null ||
+                    (!widget.isAntag &&
+                        (target == null || widget.balance < fee)) ||
+                    (widget.isAntag && trapWaiting)
                 ? null
                 : () => _act(
-                  () => widget.repo.useClinicLetter(
-                widget.gameId,
-                _ticket!['id'] as String,
-                target: widget.isAntag ? null : target,
-              ),
-            ),
+                    () => widget.repo.useClinicLetter(
+                      widget.gameId,
+                      _ticket!['id'] as String,
+                      target: widget.isAntag ? null : target,
+                    ),
+                  ),
             icon: 'centang',
           ),
         const SizedBox(height: 4),
         const NoticeStrip(
           icon: 'info',
           text:
-          'Surat habis saat layanan dikonfirmasi. Pemulihan diselesaikan sebelum jebakan.',
+              'Surat habis saat layanan dikonfirmasi. Pemulihan diselesaikan sebelum jebakan.',
         ),
       ],
     );
@@ -1109,8 +1079,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     events: widget.events,
     trades: _free
         ? widget.trades
-        .where((t) => t['id'] == _visit?['invitation_id'])
-        .toList()
+              .where((t) => t['id'] == _visit?['invitation_id'])
+              .toList()
         : widget.trades,
     dark: widget.isAntag,
     isAntag: widget.isAntag,
@@ -1165,11 +1135,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   /// Judul tempat sebagai pusat visual adegan.
   Widget _hero(
-      _Place p, {
-        required bool compact,
-        bool tall = true,
-        bool voice = false,
-      }) => Column(
+    _Place p, {
+    required bool compact,
+    bool tall = true,
+    bool voice = false,
+  }) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1203,10 +1173,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   /// bisa diketuk atau diseret untuk menurunkan panel (karakter dan latar
   /// jadi tontonan penuh) lalu membukanya lagi.
   Widget _sheet(
-      Widget content, {
-        required bool open,
-        required double expandedHeight,
-      }) => ClipRRect(
+    Widget content, {
+    required bool open,
+    required double expandedHeight,
+  }) => ClipRRect(
     borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
     child: DecoratedBox(
       decoration: BoxDecoration(
@@ -1306,21 +1276,21 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       final broad = p.id == 'riset' || p.id == 'bengkel';
       if (!side) return _stageCompact(p, content, box);
       final width =
-      (box.maxWidth *
-          (broad
-              ? .64
-              : p.id == 'balai'
-              ? .48
-              : .41))
-          .clamp(
-        broad ? 380.0 : 320.0,
-        broad
-            ? 900.0
-            : p.id == 'balai'
-            ? 620.0
-            : 480.0,
-      )
-          .toDouble();
+          (box.maxWidth *
+                  (broad
+                      ? .64
+                      : p.id == 'balai'
+                      ? .48
+                      : .41))
+              .clamp(
+                broad ? 380.0 : 320.0,
+                broad
+                    ? 900.0
+                    : p.id == 'balai'
+                    ? 620.0
+                    : 480.0,
+              )
+              .toDouble();
       return Padding(
         padding: EdgeInsets.fromLTRB(28, 12, box.maxWidth > 1000 ? 28 : 12, 8),
         child: Row(
@@ -1397,12 +1367,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   height: broad
                       ? null
                       : (p.id == 'sumur'
-                      ? 470.0
-                      : p.id == 'pondok'
-                      ? 510.0
-                      : 540.0)
-                      .clamp(0.0, box.maxHeight - 20)
-                      .toDouble(),
+                                ? 470.0
+                                : p.id == 'pondok'
+                                ? 510.0
+                                : 540.0)
+                            .clamp(0.0, box.maxHeight - 20)
+                            .toDouble(),
                   child: OrnatePanel(
                     accent: _accent,
                     radius: 22,
@@ -1577,11 +1547,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final incoming = widget.trades
         .where(
           (t) =>
-      t['status'] == 'pending' &&
-          t['day'] == widget.day &&
-          t['to_id'] == widget.repo.myId &&
-          t['id'] != _visit?['invitation_id'],
-    )
+              t['status'] == 'pending' &&
+              t['day'] == widget.day &&
+              t['to_id'] == widget.repo.myId &&
+              t['id'] != _visit?['invitation_id'],
+        )
         .toList();
     if (incoming.isEmpty || _waiting || _free) return const SizedBox.shrink();
     final t = incoming.first;
@@ -1610,21 +1580,21 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             onPressed: _busy
                 ? null
                 : () => _act(
-                  () => widget.repo.enterVillagePlace(
-                widget.gameId,
-                'balai',
-                invitation: t['id'] as String,
-              ),
-            ),
+                    () => widget.repo.enterVillagePlace(
+                      widget.gameId,
+                      'balai',
+                      invitation: t['id'] as String,
+                    ),
+                  ),
             child: const Text('Ke balai · Gratis'),
           ),
           TextButton(
             onPressed: _busy
                 ? null
                 : () => _act(() async {
-              await widget.repo.respondTrade(t['id'] as String, false);
-              return widget.repo.villageStatus(widget.gameId);
-            }),
+                    await widget.repo.respondTrade(t['id'] as String, false);
+                    return widget.repo.villageStatus(widget.gameId);
+                  }),
             child: const Text('Tolak'),
           ),
         ],
@@ -1803,51 +1773,60 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     );
   }
 
-  /// Syarat masuk sebagai NoticeStrip di atas alas gelap supaya terbaca di
-  /// atas gambar.
+  /// Persiapan dibaca sebelum masuk, tanpa memakai jatah kunjungan.
   Widget? _requirement(_Place p) {
-    if (p.id != 'pondok') return null;
+    if (p.id != 'pondok') {
+      final advice = switch (p.id) {
+        'riset' => 'Harga riset +20%. Maksimal 2 pembelian; siapkan saldo. Belanja tetap pilihan.',
+        'sumur' => '${_number('well_cost', 8)} ${widget.isAntag ? 'bulir hitam' : 'embun'} untuk 1 tindakan. Perubahan laju berlaku sepanjang permainan.',
+        'bengkel' => 'Siapkan kartu lanjutan belum aktif dan poin yang sesuai. Stetoskop bisa ditingkatkan dengan saldo yang cukup.',
+        _ => 'Siapkan kartu untuk ditukar dan persetujuan pemain tujuan. Penerima undangan mendapat kunjungan khusus tanpa memakai jatah.',
+      };
+      return PhaseHint(
+        key: ValueKey('prepare-${p.id}'),
+        title: 'Persiapan sebelum masuk',
+        details: [advice, 'Masuk memakai 1 kunjungan. Keluar tidak mengembalikan jatah.'],
+        accent: _accent,
+      );
+    }
     final ok = _ticket != null;
     final name = widget.isAntag ? 'Surat Keterangan Sakit' : 'Surat Dokter';
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: .5),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: NoticeStrip(
-          icon: ok ? 'centang' : 'lock',
-          text: ok ? '$name siap dipakai' : 'Butuh $name untuk masuk',
-          accent: ok ? EmbunColors.leaf : EmbunColors.blood,
-        ),
-      ),
+    return PhaseHint(
+      title: ok ? '$name siap dipakai' : 'Butuh $name untuk masuk',
+      details: [
+        if (widget.isAntag) 'Surat digunakan untuk memasang jebakan.'
+        else 'Rawat diri dengan surat; merawat orang lain perlu tambahan ${_number('care_other_fee', 12)} embun.',
+        'Masuk memakai 1 kunjungan. Surat habis saat layanan dikonfirmasi.',
+        'Pemulihan diselesaikan sebelum jebakan. Hasil diumumkan setelah penjelajahan selesai.',
+      ],
+      accent: ok ? EmbunColors.leaf : EmbunColors.blood,
+      icon: ok ? Icons.check_circle_outline : Icons.lock_outline,
     );
   }
 
   String _description(_Place p) => switch (p.id) {
     'riset' => 'Poin, kartu lanjutan, dan surat perawatan. Harga riset +20%.',
     'sumur' =>
-    widget.isAntag
-        ? 'Cemari sumur untuk menghambat laju seluruh desa.'
-        : 'Sumbangkan embun untuk menaikkan laju seluruh desa.',
+      widget.isAntag
+          ? 'Cemari sumur untuk menghambat laju seluruh desa.'
+          : 'Sumbangkan embun untuk menaikkan laju seluruh desa.',
     'bengkel' =>
-    'Pilih kartu lanjutan dan kartu poin. Penggabungan mengaktifkan kartu.',
+      'Pilih kartu lanjutan dan kartu poin. Penggabungan mengaktifkan kartu.',
     'pondok' =>
-    widget.isAntag
-        ? 'Pasang jebakan yang menetap sampai terpicu.'
-        : 'Rawat diri, atau bayar tambahan untuk merawat pemain lain.',
+      widget.isAntag
+          ? 'Pasang jebakan yang menetap sampai terpicu.'
+          : 'Rawat diri, atau bayar tambahan untuk merawat pemain lain.',
     _ =>
-    'Tawarkan kartu dan jawab undangan. Penerima undangan boleh datang tanpa memakai jatah.',
+      'Tawarkan kartu dan jawab undangan. Penerima undangan boleh datang tanpa memakai jatah.',
   };
 
   Widget _pickerCopy(
-      _Place p, {
-        required bool short,
-        required bool wide,
-        bool voice = false,
-        double maxWidth = 560,
-      }) {
+    _Place p, {
+    required bool short,
+    required bool wide,
+    bool voice = false,
+    double maxWidth = 560,
+  }) {
     final req = _requirement(p);
     return ConstrainedBox(
       key: ValueKey(p.id),
@@ -2213,11 +2192,11 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final offers = widget.trades
         .where(
           (t) =>
-      t['status'] == 'pending' &&
-          t['day'] == widget.day &&
-          t['to_id'] == widget.repo.myId &&
-          t['id'] != _visit?['invitation_id'],
-    )
+              t['status'] == 'pending' &&
+              t['day'] == widget.day &&
+              t['to_id'] == widget.repo.myId &&
+              t['id'] != _visit?['invitation_id'],
+        )
         .toList();
     if (offers.isEmpty || _waiting || _free) return const SizedBox.shrink();
     final t = offers.first;
@@ -2239,12 +2218,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             onPressed: _busy
                 ? null
                 : () => _act(
-                  () => widget.repo.enterVillagePlace(
-                widget.gameId,
-                'balai',
-                invitation: t['id'] as String,
-              ),
-            ),
+                    () => widget.repo.enterVillagePlace(
+                      widget.gameId,
+                      'balai',
+                      invitation: t['id'] as String,
+                    ),
+                  ),
             child: const Text('Ke balai'),
           ),
           IconButton(
@@ -2252,9 +2231,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             onPressed: _busy
                 ? null
                 : () => _act(() async {
-              await widget.repo.respondTrade(t['id'] as String, false);
-              return widget.repo.villageStatus(widget.gameId);
-            }),
+                    await widget.repo.respondTrade(t['id'] as String, false);
+                    return widget.repo.villageStatus(widget.gameId);
+                  }),
             icon: const Icon(Icons.close, size: 18),
           ),
         ],
@@ -2298,21 +2277,21 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         Expanded(
           child: _waiting
               ? LayoutBuilder(
-            builder: (context, box) => SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: box.maxHeight),
-                child: _waitingView(),
-              ),
-            ),
-          )
+                  builder: (context, box) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: box.maxHeight),
+                      child: _waitingView(),
+                    ),
+                  ),
+                )
               : _status == null
               ? const Center(child: CircularProgressIndicator())
               : place == null
               ? _phonePicker(p)
               : LayoutBuilder(
-            builder: (context, box) =>
-                _stageCompact(p, _interior(place), box),
-          ),
+                  builder: (context, box) =>
+                      _stageCompact(p, _interior(place), box),
+                ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 6, 12, 8),
@@ -2320,7 +2299,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             children: [
               Expanded(
                 child: Text(
-                  'Hari ${widget.day} · Kunjungan ${_number('used', 0)}/${_number('limit', 2)}',
+                  'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Semua siap → persembahan',
                   maxLines: 2,
                   style: const TextStyle(fontSize: 11, color: Colors.white70),
                 ),
@@ -2330,7 +2309,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 SizedBox(
                   width: 122,
                   child: _button(
-                    'Selesai',
+                    'Siap lanjut',
                     _busy ? null : _finish,
                     secondary: true,
                     height: 44,
@@ -2366,12 +2345,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   /// tinggi. Bingkai memotong tubuh bagian bawah dan menyatukannya dengan
   /// pijakan bercahaya; tidak menampilkan stiker kecil di tengah udara.
   Widget _phonePortrait(
-      _Place p,
-      String mood, {
-        required double height,
-        double? width,
-        double zoom = 1,
-      }) {
+    _Place p,
+    String mood, {
+    required double height,
+    double? width,
+    double zoom = 1,
+  }) {
     final art = _phonePopup(p.id, mood);
     if (art == null) return const SizedBox.shrink();
     return SizedBox(
@@ -2507,52 +2486,52 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               ),
               child: short
                   ? Row(
-                children: [
-                  SizedBox(width: 40, height: 40, child: image),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      p.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: selected ? _accent : EmbunColors.cream,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-                  : Column(
-                children: [
-                  Expanded(
-                    child: Stack(
-                      fit: StackFit.expand,
                       children: [
-                        image,
-                        if (locked)
-                          const Align(
-                            alignment: Alignment.topRight,
-                            child: GameIcon('lock', size: 18),
+                        SizedBox(width: 40, height: 40, child: image),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: selected ? _accent : EmbunColors.cream,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              image,
+                              if (locked)
+                                const Align(
+                                  alignment: Alignment.topRight,
+                                  child: GameIcon('lock', size: 18),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          p.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: selected ? _accent : EmbunColors.cream,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    p.name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: selected ? _accent : EmbunColors.cream,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -2634,31 +2613,31 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   );
                   final composition = spacious
                       ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      copy,
-                      Expanded(
-                        child: art == null
-                            ? const SizedBox.shrink()
-                            : LayoutBuilder(
-                          builder: (context, slot) =>
-                              figure(slot.maxHeight),
-                        ),
-                      ),
-                    ],
-                  )
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            copy,
+                            Expanded(
+                              child: art == null
+                                  ? const SizedBox.shrink()
+                                  : LayoutBuilder(
+                                      builder: (context, slot) =>
+                                          figure(slot.maxHeight),
+                                    ),
+                            ),
+                          ],
+                        )
                       : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        copy,
-                        if (art != null && scene.maxHeight >= 200)
-                          figure(
-                            (scene.maxHeight * .8).clamp(200.0, 320.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              copy,
+                              if (art != null && scene.maxHeight >= 200)
+                                figure(
+                                  (scene.maxHeight * .8).clamp(200.0, 320.0),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
-                  );
+                        );
                   return GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onHorizontalDragEnd: (details) {
@@ -2674,6 +2653,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                 },
               ),
             ),
+            _requirement(p) ?? const SizedBox.shrink(),
             _phoneRail(short: short),
             const SizedBox(height: 8),
             _button(
@@ -2725,8 +2705,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             tween: Tween<double>(
               end: place != null && box.maxWidth < 600
                   ? (_sheetOpen
-                  ? (box.maxHeight * .52).clamp(240.0, 460.0).toDouble()
-                  : box.maxHeight)
+                        ? (box.maxHeight * .52).clamp(240.0, 460.0).toDouble()
+                        : box.maxHeight)
                   : box.maxHeight,
             ),
             duration: reduced
@@ -2747,10 +2727,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             child: IgnorePointer(
               child: ColoredBox(
                 color:
-                (widget.isAntag
-                    ? const Color(0xFF1A1030)
-                    : const Color(0xFF07130F))
-                    .withValues(alpha: place == null ? .14 : .24),
+                    (widget.isAntag
+                            ? const Color(0xFF1A1030)
+                            : const Color(0xFF07130F))
+                        .withValues(alpha: place == null ? .14 : .24),
               ),
             ),
           ),
@@ -2975,7 +2955,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                             _pips(),
                             const SizedBox(width: 6),
                             _text(
-                              'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Hari ${widget.day}',
+                              'Kunjungan ${_number('used', 0)}/${_number('limit', 2)} · Semua siap → persembahan',
                               size: 12,
                               color: Colors.white70,
                               lift: true,
@@ -2984,7 +2964,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                         ),
                         if (!_waiting)
                           _button(
-                            'Selesai menjelajah',
+                            'Siap ke persembahan',
                             _busy ? null : _finish,
                             secondary: true,
                             height: 44,
@@ -3011,7 +2991,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
             Positioned.fill(
               child: ClinicEntryScene(
                 letter:
-                widget.defs[_letter] ??
+                    widget.defs[_letter] ??
                     {
                       'id': _letter,
                       'kind': 'perawatan',

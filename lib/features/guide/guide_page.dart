@@ -1299,13 +1299,13 @@ class _HowToTab extends StatelessWidget {
   Widget _wins() {
     final good = _winCard('Warga menang', 'helaidaun', EmbunColors.leaf, const [
       'Daun Hayu mencapai **30**.',
-      'Hari terakhir berakhir dengan daun **di atas batas** (12 hari: **20**).',
+      'Hari terakhir berakhir dengan daun **minimal mencapai target akhir** (12 hari: **20**).',
       'Semua Terbisik **tersingkir**.',
     ]);
     final bad =
     _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
       'Daun Hayu **habis**.',
-      'Hari terakhir berakhir dengan daun **di bawah batas**.',
+      'Hari terakhir berakhir dengan daun **di bawah target akhir**.',
       'Di mode klasik, desa **tinggal dua orang**.',
       'Di mode Dua Terbisik, **semua Warga tersingkir**.',
     ]);
@@ -1427,7 +1427,7 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Host memilih lama sesi: 6, 12 (bawaan), 18, atau 24 hari. '
-                  'Batas daun untuk menang: **12 / 20 / 24 / 26**. Tiap siklus: **2 hari biasa** lalu '
+                  'Target daun pada akhir sesi: **12 / 20 / 24 / 26**. Menang langsung memerlukan **30 daun bersih** setelah seluruh efek dan kabut. Tiap siklus: **2 hari biasa** lalu '
                   '**1 malam persembahan**.',
             ),
             const SizedBox(height: 4),

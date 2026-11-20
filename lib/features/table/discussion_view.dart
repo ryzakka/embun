@@ -6,6 +6,7 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'chat_sheet.dart' show sortChat;
 import 'day_chrome.dart';
+import 'phase_hint.dart';
 import 'meeting_player_grid.dart';
 import 'player_status.dart';
 
@@ -17,6 +18,8 @@ class DiscussionView extends StatefulWidget {
   final bool iAmReady;
   final int readyCount;
   final int total;
+  final int? finalLeaves;
+  final int winLeaves;
   final List<Map<String, dynamic>> players;
   final List<Map<String, dynamic>> events;
 
@@ -36,6 +39,8 @@ class DiscussionView extends StatefulWidget {
     required this.iAmReady,
     required this.readyCount,
     required this.total,
+    this.finalLeaves,
+    this.winLeaves = 20,
     this.players = const [],
     this.events = const [],
     this.readOnly = false,
@@ -67,6 +72,9 @@ class _DiscussionViewState extends State<DiscussionView> {
   List<Map<String, dynamic>> effectLogs = [];
   List<String> mySecrets = [];
   bool _privateNotesFailed = false;
+  bool _notesOpened = false, _readyBusy = false;
+  int? _leavesBefore;
+  bool _countsLoaded = false;
   int _logRequest = 0;
   Map<String, int> counts = {};
 
@@ -138,10 +146,13 @@ class _DiscussionViewState extends State<DiscussionView> {
           if (current()) setState(() => effectLogs = r);
         })
         .catchError((_) {});
+    widget.repo.leavesBefore(widget.gameId).then((before) {
+      if (current()) setState(() => _leavesBefore = before);
+    }).catchError((_) {});
     _loadPrivateNotes(request);
     widget.repo.offeringCounts(widget.gameId, widget.day).then((r) {
-      if (current()) setState(() => counts = r);
-    });
+      if (current()) setState(() { counts = r; _countsLoaded = true; });
+    }).catchError((_) {});
   }
 
   Future<void> _loadPrivateNotes(int request) async {
@@ -166,6 +177,9 @@ class _DiscussionViewState extends State<DiscussionView> {
       effectLogs = [];
       mySecrets = [];
       counts = {};
+      _leavesBefore = null;
+      _countsLoaded = false;
+      _notesOpened = false;
       _privateNotesFailed = false;
       _loadLogs();
     }
@@ -183,10 +197,14 @@ class _DiscussionViewState extends State<DiscussionView> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _ready() async {
+    if (_readyBusy || widget.iAmReady || widget.readOnly) return;
+    setState(() => _readyBusy = true);
     try {
       await widget.repo.readyToVote(widget.gameId);
     } catch (e) {
       if (mounted) _toast(errMsg(e));
+    } finally {
+      if (mounted) setState(() => _readyBusy = false);
     }
   }
 
@@ -254,6 +272,7 @@ class _DiscussionViewState extends State<DiscussionView> {
 
   void _showNotes(List<String> clues) {
     final privateNotes = _visibleNotes;
+    setState(() => _notesOpened = true);
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -564,17 +583,42 @@ class _DiscussionViewState extends State<DiscussionView> {
             ),
           SizedBox(
             width: 124,
-            child: EmbunButton(
+            child: Tooltip(
+              message: 'Jika semua siap, musyawarah selesai dan voting langsung dimulai.',
+              child: EmbunButton(
               label: widget.iAmReady
                   ? 'Siap ${widget.readyCount}/${widget.total}'
-                  : 'Siap memilih',
+                  : (_readyBusy ? 'Mengirim…' : 'Siap voting'),
               height: 42,
               expand: true,
-              onPressed: widget.iAmReady ? null : _ready,
+              onPressed: widget.iAmReady || _readyBusy ? null : _ready,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _meetingSummary() {
+    final before = _leavesBefore, after = widget.finalLeaves;
+    final delta = before == null || after == null ? null : after - before;
+    final leaves = delta == null ? 'Ringkasan persembahan'
+        : 'Hayu $before → $after daun (${delta > 0 ? '+' : ''}$delta)';
+    final notes = _visibleNotes.length;
+    return PhaseHint(
+      key: ValueKey('meeting-summary-${widget.gameId}-${widget.day}'),
+      title: '$leaves${notes > 0 && !_notesOpened ? ' · $notes catatan pribadi' : ''}',
+      details: [
+        if (_countsLoaded)
+          'Jumlah kartu: ${counts.isEmpty ? 'belum ada catatan' : counts.entries.map((e) => '${_nameOf(e.key)} ${e.value}').join(' · ')}.',
+        if (!_countsLoaded) 'Jumlah kartu masih dimuat; buka Catatan untuk rincian.',
+        'Nama penyumbang tiap kartu tetap rahasia. Jumlah kartu bukan bukti peran seseorang.',
+        if (notes > 0) '$notes catatan pribadimu tersedia lewat ikon Catatan. Informasi ini hanya terlihat olehmu.',
+        if (_clues.isNotEmpty) '${_clues.length} kabar desa tersedia di Catatan.',
+        'Target akhir sesi: minimal ${widget.winLeaves} daun. Menang langsung: 30 daun bersih setelah seluruh efek dan kabut.',
+        'Siap voting berarti bersedia mengakhiri musyawarah. Jika semua siap, voting langsung dimulai; bereskan obrolan dan kemampuan dahulu.',
+      ],
     );
   }
 
@@ -630,6 +674,7 @@ class _DiscussionViewState extends State<DiscussionView> {
             ],
           ),
         ),
+        _meetingSummary(),
         if (spotlight != null)
           _privateSpotlight(spotlight, clues)
         else if (_privateNotesFailed)

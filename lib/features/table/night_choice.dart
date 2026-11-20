@@ -111,9 +111,7 @@ class _NightChoiceState extends State<NightChoice> {
         Positioned(
           top: 10,
           right: 12,
-          child: showChoice
-              ? Countdown(deadline: widget.deadline)
-              : const SizedBox.shrink(),
+          child: Countdown(deadline: widget.deadline),
         ),
         Center(
           child: Column(
@@ -137,6 +135,15 @@ class _NightChoiceState extends State<NightChoice> {
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
                   color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Malam sedang berlangsung. Hasil diumumkan setelah malam berakhir.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
               ),
             ],

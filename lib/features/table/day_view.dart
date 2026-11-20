@@ -10,12 +10,12 @@ import '../../data/game_repository.dart';
 import '../../data/inspection.dart';
 import 'inspection_workshop.dart';
 import '../common/art.dart';
-import '../common/moment_fx.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import 'bow_dialog.dart';
 import 'card_tile.dart';
 import 'day_chrome.dart';
+import 'phase_hint.dart';
 import 'economy_fx.dart';
 import 'flip_card.dart';
 import 'guard_dialog.dart';
@@ -144,8 +144,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   double get _pulse => 0.5 + 0.5 * sin(_t.value * 2 * pi);
   bool get _canFuse =>
       widget.venueMode &&
-          widget.visitsEnabled &&
-          widget.initialTab == DayTab.merge;
+      widget.visitsEnabled &&
+      widget.initialTab == DayTab.merge;
   int get _initialTab => widget.initialTab == DayTab.merge && !_canFuse
       ? _tabMeja
       : widget.initialTab.index;
@@ -205,7 +205,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     _loadGuards();
     _guardTimer = Timer.periodic(
       const Duration(seconds: 6),
-          (_) => _loadGuards(),
+      (_) => _loadGuards(),
     );
     widget.marketTick?.addListener(_loadOffers);
   }
@@ -380,8 +380,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       actionLabel: _canFuse ? 'Aktifkan di Bengkel' : null,
       onAction: _canFuse
           ? () async {
-        if (mounted) _openGabung(h['card_id'] as String);
-      }
+              if (mounted) _openGabung(h['card_id'] as String);
+            }
           : null,
     );
   }
@@ -403,8 +403,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       }
     }
     return (
-    adv: [for (final e in adv.entries) (e.key, e.value)],
-    poin: [for (final e in poin.entries) (e.key, e.value)],
+      adv: [for (final e in adv.entries) (e.key, e.value)],
+      poin: [for (final e in poin.entries) (e.key, e.value)],
     );
   }
 
@@ -429,34 +429,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       return;
     }
     final handId = row['id'] as String;
-    final poinId = _fusePoin!;
     await _run(() async {
       final r = await widget.repo.fuseCards(widget.gameId, handId);
       if (!mounted) return;
-      // Haptic dan suara sudah ada di dalam MomentFx.fusion.
-      MomentFx.fusion(
-        context,
-        dark: widget.defs[advId]?['side'] == 'antagonis',
-        label: widget.defs[advId]?['name'] as String?,
-        advCard: (w) => CardTile(
-          def: widget.defs[advId],
-          fallbackName: advId,
-          width: w,
-          faded: true,
-        ),
-        poinCard: (w) => CardTile(
-          def: widget.defs[poinId],
-          fallbackName: poinId,
-          width: w,
-        ),
-        resultCard: (w) => CardTile(
-          def: widget.defs[advId],
-          fallbackName: advId,
-          width: w,
-          selected: true,
-          tag: 'AKTIF',
-        ),
-      );
+      HapticFeedback.mediumImpact();
       setState(() {
         _fuseAdv = null;
         _fusePoin = null;
@@ -527,12 +503,12 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                           child: Text(
                             q['direction'] == 'outgoing'
                                 ? 'Menjaga ${names[q['user_id']] ?? 'pemain'}'
-                                ' · sampai hari ${q['until_day']}'
+                                      ' · sampai hari ${q['until_day']}'
                                 : '${switch (q['kind']) {
-                              'mirror' => 'Cermin Kecil aktif',
-                              'accuse' => 'Perisai Tuduhan aktif',
-                              _ => 'Perisai Malam aktif',
-                            }} · sampai hari ${q['until_day']}',
+                                    'mirror' => 'Cermin Kecil aktif',
+                                    'accuse' => 'Perisai Tuduhan aktif',
+                                    _ => 'Perisai Malam aktif',
+                                  }} · sampai hari ${q['until_day']}',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -556,8 +532,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
     final stacked =
         _lastMode == _Mode.phone &&
-            (MediaQuery.sizeOf(context).width < 320 ||
-                (MediaQuery.sizeOf(context).width < 410 && scale > 1.25));
+        (MediaQuery.sizeOf(context).width < 320 ||
+            (MediaQuery.sizeOf(context).width < 410 && scale > 1.25));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -615,19 +591,19 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> get _incoming => widget.trades
       .where(
         (t) =>
-    t['status'] == 'pending' &&
-        t['day'] == widget.day &&
-        t['to_id'] == widget.repo.myId,
-  )
+            t['status'] == 'pending' &&
+            t['day'] == widget.day &&
+            t['to_id'] == widget.repo.myId,
+      )
       .toList();
 
   List<Map<String, dynamic>> get _outgoing => widget.trades
       .where(
         (t) =>
-    t['status'] == 'pending' &&
-        t['day'] == widget.day &&
-        t['from_id'] == widget.repo.myId,
-  )
+            t['status'] == 'pending' &&
+            t['day'] == widget.day &&
+            t['from_id'] == widget.repo.myId,
+      )
       .toList();
 
   /// Alasan kartu belum bisa dibeli; null bila bisa.
@@ -648,7 +624,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     // Terkurung: tidak boleh menyerahkan kartu, jadi hanya menerima.
     if (widget.jailed) {
       await _run(
-            () => widget.repo.respondTrade(t['id'] as String, true),
+        () => widget.repo.respondTrade(t['id'] as String, true),
         ok: 'Kartu diterima',
       );
       return;
@@ -656,9 +632,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final tradable = widget.hand
         .where(
           (h) =>
-      h['card_id'] != 'embun_samaran' &&
-          widget.defs[h['card_id']]?['kind'] != 'malam',
-    )
+              h['card_id'] != 'embun_samaran' &&
+              widget.defs[h['card_id']]?['kind'] != 'malam',
+        )
         .toList();
     if (tradable.isEmpty) {
       _toast('Kamu tidak punya kartu untuk ditukar');
@@ -674,7 +650,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     );
     if (pick == null || !mounted) return;
     await _run(
-          () => widget.repo.respondTrade(t['id'] as String, true, returnHand: pick),
+      () => widget.repo.respondTrade(t['id'] as String, true, returnHand: pick),
       ok: 'Kartu bertukar',
     );
   }
@@ -796,9 +772,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   Widget _preview(Map<String, dynamic>? def, Widget child) => def == null
       ? child
       : GestureDetector(
-    onSecondaryTap: () => showCardPreview(context, def),
-    child: child,
-  );
+          onSecondaryTap: () => showCardPreview(context, def),
+          child: child,
+        );
 
   Widget _progress({double height = 4}) {
     final p = widget.total == 0 ? 0.0 : widget.readyCount / widget.total;
@@ -858,11 +834,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   );
 
   Widget _offerTile(
-      Map<String, dynamic> offer,
-      int index,
-      int columns,
-      double width,
-      ) {
+    Map<String, dynamic> offer,
+    int index,
+    int columns,
+    double width,
+  ) {
     final id = offer['card_id'] as String;
     final def = widget.defs[id];
     final dark = def?['side'] == 'antagonis';
@@ -913,7 +889,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                         0,
                       ),
                       suspense:
-                      index >= 2 && index == (offers?.length ?? 0) - 1,
+                          index >= 2 && index == (offers?.length ?? 0) - 1,
                       front: _preview(
                         def,
                         CardTile(
@@ -1035,15 +1011,15 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         final available = box.maxWidth - 2 * inset;
         final twoRows =
             available >= 285 &&
-                available <= 425 &&
-                box.maxHeight >= 365 &&
-                list.length >= 4;
+            available <= 425 &&
+            box.maxHeight >= 365 &&
+            list.length >= 4;
         final columns = twoRows
             ? 2
             : ((available + gap) / (52 + gap))
-            .floor()
-            .clamp(1, min(4, list.length))
-            .toInt();
+                  .floor()
+                  .clamp(1, min(4, list.length))
+                  .toInt();
         final byWidth = (available - (columns - 1) * gap) / columns;
         final byHeight =
             ((twoRows ? box.maxHeight / 2 : box.maxHeight) - 66) / kTallAspect;
@@ -1201,17 +1177,17 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(3, 2, 3, 5),
       child: inline
           ? Row(
-        children: [
-          Expanded(child: details),
-          const SizedBox(width: 10),
-          SizedBox(width: buyWidth, child: buy),
-        ],
-      )
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 10),
+                SizedBox(width: buyWidth, child: buy),
+              ],
+            )
           : Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [details, const SizedBox(height: 4), buy],
-      ),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [details, const SizedBox(height: 4), buy],
+            ),
     );
   }
 
@@ -1257,12 +1233,12 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 ),
               )
             else ...[
-                if (hasOffers) ...[
-                  Flexible(child: _marketOffers()),
-                  details,
-                ] else
-                  Expanded(child: _marketOffers()),
-              ],
+              if (hasOffers) ...[
+                Flexible(child: _marketOffers()),
+                details,
+              ] else
+                Expanded(child: _marketOffers()),
+            ],
           ],
         ),
       );
@@ -1315,9 +1291,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     ('danger', 'Serangan malam', 'Dilancarkan saat malam tiba.'),
     ('donations', 'Untuk persembahan', 'Dipersembahkan di malam persembahan.'),
     (
-    'item',
-    'Tiket perawatan',
-    'Gunakan di Pondok Perawatan saat kunjungan malam.',
+      'item',
+      'Tiket perawatan',
+      'Gunakan di Pondok Perawatan saat kunjungan malam.',
     ),
   ];
 
@@ -1327,7 +1303,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final byKey = <String, List<Map<String, dynamic>>>{};
     for (final h in widget.hand) {
       (byKey['${h['card_id']}|${h['charged'] == true}|${h['card_id'] == 'stetoskop' ? StethoscopeRules.level(h) : 0}'] ??=
-      [])
+              [])
           .add(h);
     }
     final stacks = byKey.values.toList();
@@ -1422,15 +1398,15 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     } else if (ready) {
       final n = dormant < poin ? dormant : poin;
       text =
-      'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
+          'Poinmu cukup untuk mengaktifkan $n kartu lanjutan. '
           'Pilih kedua kartu di Bengkel untuk mengaktifkannya.';
     } else if (dormant > 0) {
       text =
-      'Kartu lanjutanmu belum aktif. Beli $_poinName di Pasar Riset, '
+          'Kartu lanjutanmu belum aktif. Beli $_poinName di Pasar Riset, '
           'lalu gabungkan di Bengkel Desa.';
     } else {
       text =
-      '$_poinName tersimpan. Beli kartu lanjutan di Pasar Riset, '
+          '$_poinName tersimpan. Beli kartu lanjutan di Pasar Riset, '
           'lalu gabungkan di Bengkel Desa.';
     }
     final c = ready ? EmbunColors.gold : Colors.white70;
@@ -1475,11 +1451,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       return strip == null
           ? empty
           : Column(
-        children: [
-          strip,
-          Expanded(child: empty),
-        ],
-      );
+              children: [
+                strip,
+                Expanded(child: empty),
+              ],
+            );
     }
     final stacks = _mejaStacks();
     final combo = _comboHint();
@@ -1494,8 +1470,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           final inGroup = [
             for (final s in stacks)
               if (_mejaGroupOf(
-                widget.defs[s.first['card_id']]?['kind'] as String?,
-              ) ==
+                    widget.defs[s.first['card_id']]?['kind'] as String?,
+                  ) ==
                   gi)
                 s,
           ];
@@ -1509,11 +1485,11 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
               runSpacing: g.gap,
               children: [
                 for (final s in inGroup)
-                // Kartu baru muncul membal; kunci per jenis + status.
+                  // Kartu baru muncul membal; kunci per jenis + status.
                   _Pop(
                     key: ValueKey(
                       'hand-${s.first['card_id']}-'
-                          '${s.first['charged'] == true}-${s.first['inspection_level'] ?? 0}',
+                      '${s.first['charged'] == true}-${s.first['inspection_level'] ?? 0}',
                     ),
                     index: pop++,
                     child: _preview(
@@ -1525,32 +1501,32 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                         width: g.w,
                         count: s.length,
                         gray:
-                        (widget.isAntag &&
-                            widget.defs[s.first['card_id']]?['kind'] ==
-                                'siang' &&
-                            widget.defs[s.first['card_id']]?['side'] ==
-                                'warga') ||
+                            (widget.isAntag &&
+                                widget.defs[s.first['card_id']]?['kind'] ==
+                                    'siang' &&
+                                widget.defs[s.first['card_id']]?['side'] ==
+                                    'warga') ||
                             (widget.defs[s.first['card_id']]?['kind'] ==
-                                'lanjutan' &&
+                                    'lanjutan' &&
                                 widget.defs[s.first['card_id']]?['side'] !=
                                     mySide),
                         tag: _handTag(s.first),
                         faded: _isDormant(s.first),
                         onTap:
-                        switch (widget.defs[s.first['card_id']]?['kind']) {
-                          'siang' => () => _useDayCard(s.first),
-                          'lanjutan' => () => _useAdvanced(s.first),
-                          'poin' => () => _showPoinHint(s.first),
-                          _ =>
-                          widget.defs[s.first['card_id']] == null
-                              ? null
-                              : () => showCardPreview(
-                            context,
-                            widget.defs[s.first['card_id']]!,
-                            defs: widget.defs,
-                            inspectionCard: s.first,
-                          ),
-                        },
+                            switch (widget.defs[s.first['card_id']]?['kind']) {
+                              'siang' => () => _useDayCard(s.first),
+                              'lanjutan' => () => _useAdvanced(s.first),
+                              'poin' => () => _showPoinHint(s.first),
+                              _ =>
+                                widget.defs[s.first['card_id']] == null
+                                    ? null
+                                    : () => showCardPreview(
+                                        context,
+                                        widget.defs[s.first['card_id']]!,
+                                        defs: widget.defs,
+                                        inspectionCard: s.first,
+                                      ),
+                            },
                       ),
                     ),
                   ),
@@ -1682,13 +1658,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     child: done
         ? const GameIcon('centang', size: 18)
         : Text(
-      '$n',
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: EmbunColors.gold,
-      ),
-    ),
+            '$n',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: EmbunColors.gold,
+            ),
+          ),
   );
 
   /// Tiga langkah: lanjutan, syarat, tempatkan. Yang selesai bercentang.
@@ -1723,15 +1699,15 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   Widget _fuseTray(
-      String title,
-      String? icon,
-      List<(String, int)> items,
-      String? picked,
-      _Grid g,
-      ValueChanged<String?> onPick, {
-        required bool faded,
-        required String hint,
-      }) {
+    String title,
+    String? icon,
+    List<(String, int)> items,
+    String? picked,
+    _Grid g,
+    ValueChanged<String?> onPick, {
+    required bool faded,
+    required String hint,
+  }) {
     final total = items.fold<int>(0, (a, e) => a + e.$2);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1943,7 +1919,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 c.adv,
                 adv,
                 g,
-                    (id) => setState(() => _fuseAdv = id),
+                (id) => setState(() => _fuseAdv = id),
                 faded: true,
                 hint: 'Belum aktif. Butuh satu kartu syarat.',
               ),
@@ -1953,7 +1929,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 c.poin,
                 poin,
                 g,
-                    (id) => setState(() => _fusePoin = id),
+                (id) => setState(() => _fusePoin = id),
                 faded: false,
                 hint: 'Dipakai untuk mengaktifkan kartu lanjutan.',
               ),
@@ -2046,8 +2022,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           onTap: busy
               ? null
               : () => _run(
-                () => widget.repo.respondTrade(t['id'] as String, false),
-          ),
+                  () => widget.repo.respondTrade(t['id'] as String, false),
+                ),
         ),
         const SizedBox(width: 8),
         MedallionButton(
@@ -2096,8 +2072,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 : widget.visitsEnabled
                 ? 'Ketuk avatar untuk memberi embun atau isyarat. Pertukaran kartu tersedia di Balai Pertukaran saat kunjungan malam.'
                 : 'Buka daftar warga atau ketuk avatar untuk memberi embun, menukar '
-                'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
-                'sebuah kartu untuk membaca efeknya.',
+                      'kartu, atau mengirim isyarat. Tekan lama (atau klik kanan) '
+                      'sebuah kartu untuk membaca efeknya.',
             style: TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ),
@@ -2109,9 +2085,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final feed = widget.events
         .where(
           (e) =>
-      e['kind'] != 'kabar' &&
-          (e['day'] == widget.day || e['day'] == widget.day - 1),
-    )
+              e['kind'] != 'kabar' &&
+              (e['day'] == widget.day || e['day'] == widget.day - 1),
+        )
         .toList()
         .reversed
         .toList();
@@ -2222,22 +2198,22 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
                 ),
                 child: vertical
                     ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    icon,
-                    const SizedBox(width: 3),
-                    Flexible(child: text),
-                  ],
-                )
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          icon,
+                          const SizedBox(width: 3),
+                          Flexible(child: text),
+                        ],
+                      )
                     : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    icon,
-                    const SizedBox(height: 2),
-                    FittedBox(fit: BoxFit.scaleDown, child: text),
-                  ],
-                ),
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          icon,
+                          const SizedBox(height: 2),
+                          FittedBox(fit: BoxFit.scaleDown, child: text),
+                        ],
+                      ),
               ),
             ),
           ),
@@ -2251,6 +2227,29 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     final advanced = choices.adv.fold<int>(0, (sum, card) => sum + card.$2);
     final points = choices.poin.fold<int>(0, (sum, card) => sum + card.$2);
     return min(advanced, points);
+  }
+
+  Widget _dayChecklist() {
+    final dayCards = widget.hand.where(
+      (h) => widget.defs[h['card_id']]?['kind'] == 'siang',
+    ).length;
+    final shop = widget.jailed ? 'Belanja terkunci'
+        : offers == null ? 'Toko belum termuat' : 'Belanja tersisa $_remaining';
+    return PhaseHint(
+      key: ValueKey('day-checklist-${widget.gameId}-${widget.day}'),
+      title: widget.iAmReady
+          ? 'Kamu siap · Menunggu ${widget.readyCount}/${widget.total}'
+          : '$shop · Kartu siang $dayCards · Semua siap → malam',
+      details: [
+        if (!widget.jailed && offers != null && _remaining > 0)
+          'Masih ada $_remaining jatah belanja. Membeli kartu bersifat pilihan.',
+        if (dayCards > 0) '$dayCards kartu siang di Meja; periksa syarat masing-masing kartu.',
+        if (_incoming.isNotEmpty) '${_incoming.length} tawaran menunggu jawabanmu.',
+        'Ketuk pemain di daftar untuk memberi embun atau isyarat.',
+        'Akhiri hari menyatakan kamu siap. Jika semua pemain siap, malam langsung dimulai.',
+        'Bereskan aksi yang ingin kamu lakukan sebelum menyatakan siap.',
+      ],
+    );
   }
 
   Widget _endButton() {
@@ -2280,7 +2279,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         ),
       );
     }
-    return EmbunButton(
+    return Tooltip(
+      message: 'Jika semua pemain siap, malam langsung dimulai.',
+      child: EmbunButton(
       label: 'Akhiri hari',
       expand: true,
       height: 45,
@@ -2288,6 +2289,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           ? EmbunButtonKind.primary
           : EmbunButtonKind.secondary,
       onPressed: busy ? null : _endDay,
+      ),
     );
   }
 
@@ -2307,19 +2309,19 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         decoration: tableEdge(_accent),
         child: stacked
             ? Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [tabs, const SizedBox(height: 4), _endButton()],
-        )
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [tabs, const SizedBox(height: 4), _endButton()],
+              )
             : Row(
-          children: [
-            Expanded(child: tabs),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 132 + 80 * (scale - 1).clamp(0, 1),
-              child: _endButton(),
-            ),
-          ],
-        ),
+                children: [
+                  Expanded(child: tabs),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 132 + 80 * (scale - 1).clamp(0, 1),
+                    child: _endButton(),
+                  ),
+                ],
+              ),
       );
     },
   );
@@ -2352,7 +2354,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           )
         else
           IconButton(
-            tooltip: 'Akhiri hari',
+            tooltip: 'Akhiri hari: jika semua siap, malam langsung dimulai.',
             style: IconButton.styleFrom(
               backgroundColor: const Color(0xFF214B37),
               padding: EdgeInsets.zero,
@@ -2474,14 +2476,14 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
             Expanded(
               child: _inspectionTab && !widget.isAntag
                   ? InspectionWorkshop(
-                repo: widget.repo,
-                gameId: widget.gameId,
-                hand: widget.hand,
-                defs: widget.defs,
-                balance: widget.balance,
-                readOnly: widget.iAmReady,
-                onChanged: widget.onHandChanged,
-              )
+                      repo: widget.repo,
+                      gameId: widget.gameId,
+                      hand: widget.hand,
+                      defs: widget.defs,
+                      balance: widget.balance,
+                      readOnly: widget.iAmReady,
+                      onChanged: widget.onHandChanged,
+                    )
                   : _gabungBody(minW: box.maxWidth > 600 ? 76 : 88),
             ),
           ],
@@ -2506,6 +2508,8 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _dayChecklist(),
+              const SizedBox(height: 2),
               _dock(),
               const SizedBox(height: 2),
               Expanded(child: _pages()),
@@ -2517,7 +2521,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
             children: [
               _sideRail(),
               const SizedBox(width: 7),
-              Expanded(child: _pages()),
+              Expanded(child: Column(children: [
+                _dayChecklist(),
+                Expanded(child: _pages()),
+              ])),
             ],
           );
         case _Mode.wide:
@@ -2525,7 +2532,10 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _shopPanel()),
+              Expanded(child: Column(children: [
+                _dayChecklist(),
+                Expanded(child: _shopPanel()),
+              ])),
               const SizedBox(width: 12),
               SizedBox(width: width, child: _desktopRail()),
             ],

@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../../data/phase_timing.dart';
+import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../common/scene_flow.dart';
 import '../common/ornate.dart';
@@ -122,6 +124,7 @@ class OfferingCeremony extends StatefulWidget {
 
   /// Batas daun untuk menang (menentukan garis pada bilah hitungan).
   final int winLeaves;
+  final DateTime? deadline;
 
   const OfferingCeremony({
     super.key,
@@ -132,6 +135,7 @@ class OfferingCeremony extends StatefulWidget {
     required this.defs,
     required this.onDone,
     this.winLeaves = 20,
+    this.deadline,
     this.dark = false,
     this.useFlame = true,
   });
@@ -159,6 +163,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   bool _flameStarted = false;
   Timer? _flameLoadTimer;
   Timer? _heartbeatTimer;
+  Timer? _deadlineTimer;
   bool get _flameActive => widget.useFlame && !_flameFailed;
 
   void _onFlameReady() {
@@ -184,7 +189,22 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   void initState() {
     super.initState();
     _leaves = widget.fallbackLeaves;
+    _armDeadline();
     _load();
+  }
+
+  void _armDeadline() {
+    _deadlineTimer?.cancel();
+    final deadline = widget.deadline;
+    if (deadline == null || _done) return;
+    final left = deadline.difference(ServerClock.now()) - PhaseTiming.resultsReserve;
+    _deadlineTimer = Timer(left.isNegative ? Duration.zero : left, _finish);
+  }
+
+  @override
+  void didUpdateWidget(covariant OfferingCeremony oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.deadline != widget.deadline) _armDeadline();
   }
 
   Future<void> _load() async {
@@ -194,7 +214,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
       final r = await Future.wait<Object?>([
         widget.repo.revealedCards(widget.gameId, widget.day),
         widget.repo.leavesBefore(widget.gameId),
-      ]);
+      ]).timeout(PhaseTiming.loadTimeout);
       cards = r[0] as List<String>;
       before = r[1] as int?;
     } catch (_) {}
@@ -205,11 +225,17 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
     }
     List<Map<String, dynamic>> fx = [];
     try {
-      fx = await widget.repo.effects(widget.gameId, widget.day);
+      fx = await widget.repo.effects(widget.gameId, widget.day)
+          .timeout(PhaseTiming.loadTimeout);
     } catch (_) {}
     if (!mounted || _done) return;
     _per = cards.length <= 6 ? 2400 : 1800;
-    final total = _lead + cards.length * _per + _tail;
+    final remaining = widget.deadline?.difference(ServerClock.now());
+    if (!PhaseTiming.canPlayCeremony(cards.length, remaining)) {
+      _finish();
+      return;
+    }
+    final total = PhaseTiming.ceremony(cards.length).inMilliseconds;
     final c = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: total),
@@ -240,6 +266,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
   void _finish() {
     if (_done) return;
     _done = true;
+    _deadlineTimer?.cancel();
     _flameLoadTimer?.cancel();
     _heartbeatTimer?.cancel();
     _ctl?.stop();
@@ -298,6 +325,7 @@ class _OfferingCeremonyState extends State<OfferingCeremony>
 
   @override
   void dispose() {
+    _deadlineTimer?.cancel();
     _flameLoadTimer?.cancel();
     _heartbeatTimer?.cancel();
     _ctl?.dispose();

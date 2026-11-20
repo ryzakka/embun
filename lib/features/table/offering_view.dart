@@ -9,6 +9,7 @@ import '../../data/inspection.dart';
 import '../common/art.dart';
 import 'card_tile.dart';
 import 'day_chrome.dart';
+import 'phase_hint.dart';
 import '../common/ornate.dart';
 
 /// Layar memilih kartu persembahan untuk Hayu: kartu tersusun seperti kipas,
@@ -143,15 +144,10 @@ class _OfferingViewState extends State<OfferingView>
       } else if (sel.length < 2) {
         sel.add(handId);
       } else {
-        // Sudah 2 kartu: ganti pilihan tertua (kecuali sumbangan wajib).
-        final drop = sel.firstWhere(
-          (x) => !(widget.isAntag && x == _samaranId),
-          orElse: () => '',
-        );
-        if (drop.isNotEmpty) {
-          sel.remove(drop);
-          sel.add(handId);
-        }
+        // Melihat kartu lain tidak boleh mengganti persembahan diam-diam.
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Sudah memilih 2 kartu. Lepas satu pilihan dahulu untuk menggantinya.'),
+        ));
       }
       if (!_needsTarget) targetId = null;
     });
@@ -285,7 +281,7 @@ class _OfferingViewState extends State<OfferingView>
             ),
             const SizedBox(width: 8),
             Text(
-              '${widget.winLeaves}',
+              'Akhir ${widget.winLeaves}',
               style: const TextStyle(fontSize: 12, color: Colors.white60),
             ),
           ],
@@ -735,6 +731,16 @@ class _OfferingViewState extends State<OfferingView>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _header(wide: wide),
+          PhaseHint(
+            title: 'Pilih 1–2 kartu · Waktu habis: kartu dasar otomatis',
+            details: [
+              'Pilihan baru diserahkan setelah kamu menekan Persembahkan.',
+              'Saat waktu habis, pemain yang belum menyerahkan akan mempersembahkan 1 kartu dasar otomatis. Pilihan sementara tidak ikut dikirim.',
+              if (widget.isAntag) 'Roti Surplus wajib disertakan dan tidak dapat dilepas.',
+              'Kartu dibuka tanpa nama penyumbang. Jumlah kartu tiap pemain diumumkan setelah persembahan.',
+              'Target akhir sesi: minimal ${widget.winLeaves} daun. Menang langsung: 30 daun bersih setelah seluruh efek dan kabut.',
+            ],
+          ),
           Expanded(child: content),
         ],
       );

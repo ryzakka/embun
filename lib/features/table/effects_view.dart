@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/game_repository.dart';
+import '../../data/errors.dart';
+import '../../data/phase_timing.dart';
+import '../../data/server_clock.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -71,6 +74,7 @@ class EffectsView extends StatefulWidget {
   /// dilewati; layar ini hanya memutar sisanya (kabut, ulat, dsb.) lalu
   /// perubahan akhir Hayu.
   final bool skipBound;
+  final DateTime? deadline;
 
   const EffectsView({
     super.key,
@@ -84,6 +88,7 @@ class EffectsView extends StatefulWidget {
     required this.total,
     required this.onContinue,
     this.skipBound = false,
+    this.deadline,
   });
 
   @override
@@ -113,6 +118,8 @@ class _EffectsViewState extends State<EffectsView>
   Timer? timer;
   Timer? _recapTimer;
   Timer? _finishTimer;
+  Timer? _deadlineTimer;
+  bool _caughtUp = false, _continueBusy = false;
   HayuReaction? _hayuReaction;
   static const _reactionDuration = Duration(milliseconds: 1200);
   static const _recapStart = Duration(milliseconds: 540);
@@ -160,14 +167,19 @@ class _EffectsViewState extends State<EffectsView>
         setState(() => _ready = true);
       }
     });
+    _armDeadline();
     _load();
   }
 
   Future<void> _load() async {
     try {
-      final all = await widget.repo.effects(widget.gameId, widget.day);
-      final before = await widget.repo.leavesBefore(widget.gameId);
-      if (!mounted) return;
+      final result = await Future.wait<Object?>([
+        widget.repo.effects(widget.gameId, widget.day),
+        widget.repo.leavesBefore(widget.gameId),
+      ]).timeout(PhaseTiming.loadTimeout);
+      if (!mounted || _caughtUp) return;
+      final all = result[0] as List<Map<String, dynamic>>;
+      final before = result[1] as int?;
       final covered = [
         if (widget.skipBound)
           for (final row in all)
@@ -222,7 +234,7 @@ class _EffectsViewState extends State<EffectsView>
       setState(() => revealed = 1);
       // Selang antar gelembung: cukup lama agar tulisannya terbaca sebelum
       // gelembung berikutnya muncul.
-      timer = Timer.periodic(const Duration(milliseconds: 2100), (t) {
+      timer = Timer.periodic(PhaseTiming.effectInterval, (t) {
         if (!mounted || revealed >= rows.length) {
           t.cancel();
           return;
@@ -231,7 +243,7 @@ class _EffectsViewState extends State<EffectsView>
       });
     } catch (_) {
       // Gagal memuat: jangan kunci pemain, tampilkan hasil akhir saja.
-      if (mounted) {
+      if (mounted && !_caughtUp) {
         setState(() {
           loaded = true;
           rows = [];
@@ -244,8 +256,84 @@ class _EffectsViewState extends State<EffectsView>
     }
   }
 
+  void _armDeadline() {
+    _deadlineTimer?.cancel();
+    if (widget.deadline == null || _caughtUp) return;
+    final left = widget.deadline!.difference(ServerClock.now()) - PhaseTiming.summaryReserve;
+    _deadlineTimer = Timer(left.isNegative ? Duration.zero : left, _settleSummary);
+  }
+
+  @override
+  void didUpdateWidget(covariant EffectsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.deadline != widget.deadline) _armDeadline();
+  }
+
+  void _settleSummary() {
+    if (!mounted || _caughtUp || _ready) return;
+    timer?.cancel();
+    _recapTimer?.cancel();
+    _finishTimer?.cancel();
+    _final.stop();
+    setState(() {
+      _caughtUp = true;
+      loaded = true;
+      shown = widget.finalLeaves;
+      imgLeaves = widget.finalLeaves;
+      _ready = true;
+      _settled = true;
+    });
+  }
+
+  Future<void> _continue() async {
+    if (_continueBusy || widget.waiting) return;
+    setState(() => _continueBusy = true);
+    try {
+      await widget.onContinue();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errMsg(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _continueBusy = false);
+    }
+  }
+
+  Widget _summaryView() => ColoredBox(
+    color: const Color(0xFF10251C),
+    child: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.eco_outlined, size: 54, color: EmbunColors.gold),
+              const SizedBox(height: 12),
+              const Text('Hasil persembahan',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Hayu: ${widget.finalLeaves} daun',
+                  style: const TextStyle(fontSize: 20, color: EmbunColors.gold)),
+              const SizedBox(height: 10),
+              const Text('Adegan diringkas agar kamu tetap mengikuti permainan. Rincian persembahan tersedia di Log saat musyawarah.',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 18),
+              if (widget.waiting)
+                Text('Menunggu ${widget.readyCount}/${widget.total} pemain')
+              else
+                EmbunButton(label: 'Lanjut',
+                    onPressed: _continueBusy ? null : _continue),
+            ]),
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   void dispose() {
+    _deadlineTimer?.cancel();
     timer?.cancel();
     _recapTimer?.cancel();
     _finishTimer?.cancel();
@@ -271,7 +359,7 @@ class _EffectsViewState extends State<EffectsView>
   }
 
   void _arrive(Map<String, dynamic> row) {
-    if (!mounted) return;
+    if (!mounted || _caughtUp) return;
     final isBad = row['kind'] == 'bad';
     final reaction = HayuReaction.fromPublicRows([row]);
     final d = reaction.gained - reaction.lost;
@@ -318,6 +406,7 @@ class _EffectsViewState extends State<EffectsView>
 
   @override
   Widget build(BuildContext context) {
+    if (_caughtUp) return _summaryView();
     if (!loaded) {
       return const Stack(
         fit: StackFit.expand,
@@ -637,7 +726,7 @@ class _EffectsViewState extends State<EffectsView>
                         key: const ValueKey('go'),
                         label: 'Lanjut',
                         icon: 'skip',
-                        onPressed: widget.onContinue,
+                        onPressed: _continueBusy ? null : _continue,
                       ),
                     ),
                   ),
