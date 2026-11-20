@@ -7,6 +7,7 @@ import 'profile_avatar.dart';
 import 'account_status_badge.dart';
 import 'player_account_avatar.dart';
 import 'profile_medals_view.dart';
+import 'profile_stats_view.dart';
 import 'medal_claim_scope.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
@@ -30,11 +31,11 @@ InputDecoration _flatField() => InputDecoration(
 /// Sheet profil pemain lain: kartu berbingkai emas yang melayang di atas
 /// layar, dengan kepala bagian, lalu kartu pemain yang bisa digulir.
 Future<void> showPlayerProfile(
-  BuildContext context, {
-  required String gameId,
-  required String userId,
-  ProfileRepository? repository,
-}) => showModalBottomSheet<void>(
+    BuildContext context, {
+      required String gameId,
+      required String userId,
+      ProfileRepository? repository,
+    }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -75,7 +76,7 @@ Future<void> showPlayerProfile(
                   userId: userId,
                   gameId: gameId,
                   repository:
-                      repository ??
+                  repository ??
                       SupabaseProfileRepository(Supabase.instance.client),
                 ),
               ),
@@ -150,7 +151,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(
-        () => _error = widget.owner
+            () => _error = widget.owner
             ? 'Data profil belum dapat dimuat. Periksa koneksi lalu coba lagi.'
             : 'Profil belum dapat dimuat. Coba lagi di lobi atau hasil akhir ruangan yang sama.',
       );
@@ -174,8 +175,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _actionError =
-              'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+              () => _actionError =
+          'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
         );
       }
     } finally {
@@ -267,24 +268,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             ),
           ],
           _heading('Statistik pertandingan'),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _stat('Selesai', details.completed, first: true),
-                ),
-                _vRule(),
-                Expanded(
-                  child: _stat('Menang · Warga Desa', details.wargaWins),
-                ),
-                _vRule(),
-                Expanded(
-                  child: _stat('Menang · Si Terbisik', details.terbisikWins),
-                ),
-              ],
-            ),
-          ),
+          ProfileStatsBoard(details: details, history: _history),
           const SizedBox(height: 12),
           const Text(
             'Hanya pertandingan selesai yang tercatat yang dihitung. Permainan yang dibubarkan tidak masuk statistik.',
@@ -335,9 +319,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 onPressed: _acting || _loading || _title == details.title
                     ? null
                     : () => _act(
-                        () => widget.repository.equipTitle(_title),
-                        'Gelar berhasil dipasang.',
-                      ),
+                      () => widget.repository.equipTitle(_title),
+                  'Gelar berhasil dipasang.',
+                ),
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
@@ -446,38 +430,19 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
   );
 
   Widget _visitorView(ProfileDetails d) {
-    final wins = d.wargaWins + d.terbisikWins;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _hero(d),
-        const SizedBox(height: 18),
-        _winBar(d, wins),
-        const SizedBox(height: 12),
-        // IntrinsicHeight: di dalam area gulir tinggi tak terbatas, jadi
-        // stretch tanpa ini melempar galat layout dan memutus isi di bawahnya.
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _tile('Pertandingan', d.completed, EmbunColors.cream),
-              ),
-              _vRule(),
-              Expanded(
-                child: _tile('Menang Warga', d.wargaWins, EmbunColors.leaf),
-              ),
-              _vRule(),
-              Expanded(
-                child: _tile(
-                  'Menang Terbisik',
-                  d.terbisikWins,
-                  EmbunColors.mist,
-                ),
-              ),
-            ],
+        ProfileStatsHero(
+          details: d,
+          avatar: AccountAvatarBadge(
+            linked: true,
+            size: 22,
+            child: ProfileAvatar(avatarId: d.avatarId, radius: 40),
           ),
         ),
+        const SizedBox(height: 14),
+        ProfileStatsBoard(details: d, history: _history),
         const SizedBox(height: 8),
         const Text(
           'Hanya pertandingan yang selesai dan tercatat yang dihitung.',
@@ -529,156 +494,6 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     );
   }
 
-  /// Avatar berbingkai cahaya emas, nama, dan gelar sebagai pita.
-  Widget _hero(ProfileDetails d) => Column(
-    children: [
-      Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: EmbunColors.gold.withValues(alpha: 0.85),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: EmbunColors.gold.withValues(alpha: 0.35),
-              blurRadius: 24,
-            ),
-          ],
-        ),
-        child: AccountAvatarBadge(
-          linked: true,
-          size: 22,
-          child: ProfileAvatar(avatarId: d.avatarId, radius: 46),
-        ),
-      ),
-      const SizedBox(height: 14),
-      Text(
-        d.nickname,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
-          color: EmbunColors.cream,
-          shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
-        ),
-      ),
-      if (d.title.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.workspace_premium_outlined,
-              size: 17,
-              color: EmbunColors.gold,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                d.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: EmbunColors.gold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ],
-  );
-
-  /// Bilah tingkat kemenangan: hijau = menang Warga, ungu = menang Terbisik,
-  /// sisanya (gelap) = kalah.
-  Widget _winBar(ProfileDetails d, int wins) {
-    final total = d.completed;
-    final lost = (total - wins).clamp(0, total).toInt();
-    final pct = total <= 0 ? null : (wins * 100 / total).round().clamp(0, 100);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Tingkat kemenangan',
-              style: TextStyle(fontSize: 12.5, color: Colors.white70),
-            ),
-            const Spacer(),
-            Text(
-              pct == null ? '-' : '$pct%',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: EmbunColors.gold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            height: 8,
-            color: Colors.white.withValues(alpha: 0.10),
-            child: total <= 0
-                ? null
-                : Row(
-                    children: [
-                      if (d.wargaWins > 0)
-                        Expanded(
-                          flex: d.wargaWins,
-                          child: const ColoredBox(color: EmbunColors.leaf),
-                        ),
-                      if (d.terbisikWins > 0)
-                        Expanded(
-                          flex: d.terbisikWins,
-                          child: const ColoredBox(color: EmbunColors.mist),
-                        ),
-                      if (lost > 0)
-                        Expanded(flex: lost, child: const SizedBox.shrink()),
-                    ],
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _tile(String label, int count, Color accent) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          '$count',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: accent,
-          ),
-        ),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 11.5,
-            height: 1.2,
-            color: Colors.white70,
-          ),
-        ),
-      ],
-    ),
-  );
-
   Widget _visitorMatch(ProfileMatch m) {
     final d = m.finishedAt;
     String two(int n) => n.toString().padLeft(2, '0');
@@ -708,7 +523,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                   ),
                   Text(
                     '${two(d.day)}/${two(d.month)}/${d.year} '
-                    '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
+                        '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
                     style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],
@@ -719,34 +534,6 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       ),
     );
   }
-
-  Widget _vRule() =>
-      Container(width: 1, color: EmbunColors.gold.withValues(alpha: 0.30));
-
-  Widget _stat(String label, int count, {bool first = false}) => Padding(
-    padding: EdgeInsets.fromLTRB(first ? 0 : 14, 4, 10, 4),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$count',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: EmbunColors.cream,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            height: 1.25,
-            color: Colors.white70,
-          ),
-        ),
-      ],
-    ),
-  );
 
   Widget _match(ProfileMatch match) {
     final date = match.finishedAt;
@@ -773,7 +560,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                   ),
                   Text(
                     '${two(date.day)}/${two(date.month)}/${date.year} '
-                    '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
+                        '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
                     style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],

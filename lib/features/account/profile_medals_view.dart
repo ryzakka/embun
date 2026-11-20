@@ -276,6 +276,10 @@ class _FramePainter extends CustomPainter {
     }
     canvas.drawPath(
       path,
+      Paint()..color = const Color(0xFF07130F).withValues(alpha: dim ? .55 : .66),
+    );
+    canvas.drawPath(
+      path,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
@@ -499,8 +503,8 @@ BoxDecoration _panelDecoration(Color accent) => BoxDecoration(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color.lerp(EmbunColors.panelHi, accent, .14)!,
-      EmbunColors.panel,
+      Color.lerp(EmbunColors.panelHi, accent, .14)!.withValues(alpha: .90),
+      EmbunColors.panel.withValues(alpha: .90),
     ],
   ),
   border: Border.all(color: accent.withValues(alpha: .5)),
@@ -890,6 +894,133 @@ final _goldButton = FilledButton.styleFrom(
   disabledForegroundColor: Colors.white38,
 );
 
+// ───────────────────────── Latar koleksi ─────────────────────────
+
+/// Gambar latar papan medali di assets/bentang. Dicari .webp lalu .png.
+const _backdropStem = 'assets/bentang/papanmedali-latar';
+Future<String?> _backdropAsset(AssetBundle bundle) {
+  final paths = _paths[bundle] ??= {};
+  return paths.putIfAbsent('_backdrop', () async {
+    try {
+      final manifest = await (_manifests[bundle] ??=
+          AssetManifest.loadFromAssetBundle(bundle));
+      final files = manifest.listAssets().toSet();
+      for (final extension in ['webp', 'png', 'jpg']) {
+        final path = '$_backdropStem.$extension';
+        if (files.contains(path)) return path;
+      }
+    } catch (_) {}
+    return null;
+  });
+}
+
+/// Teras berlentera: gambar bergerak pelan (diperbesar sedikit supaya bingkai
+/// emas bawaan gambar terpotong rapi), diberi tirai gelap agar teks terbaca,
+/// dan kunang-kunang cahaya yang naik perlahan.
+class _MedalBackdrop extends StatelessWidget {
+  const _MedalBackdrop({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.disableAnimationsOf(context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(0, -1.1),
+              radius: 1.3,
+              colors: [Color(0xFF1D4F3C), Color(0xFF0B1A14)],
+            ),
+          ),
+        ),
+        ClipRect(
+          child: FutureBuilder<String?>(
+            future: _backdropAsset(DefaultAssetBundle.of(context)),
+            builder: (context, snapshot) {
+              final path = snapshot.data;
+              if (path == null) return const SizedBox.shrink();
+              return RepaintBoundary(
+                child: _Loop(
+                  period: const Duration(seconds: 60),
+                  builder: (_, t) => Transform.translate(
+                    offset: Offset(math.sin(2 * math.pi * t) * 8, 0),
+                    child: Transform.scale(
+                      scale: 1.12 + .04 * _wave(t),
+                      child: Image.asset(
+                        path,
+                        fit: BoxFit.cover,
+                        cacheWidth: 1280,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xB8071410),
+                Color(0x47071410),
+                Color(0x57071410),
+                Color(0xCC071410),
+              ],
+              stops: [0, .28, .65, 1],
+            ),
+          ),
+        ),
+        if (!still)
+          IgnorePointer(
+            child: RepaintBoundary(
+              child: _Loop(
+                period: const Duration(seconds: 30),
+                builder: (_, t) => CustomPaint(painter: _FirefliesPainter(t)),
+              ),
+            ),
+          ),
+        child,
+      ],
+    );
+  }
+}
+
+class _FirefliesPainter extends CustomPainter {
+  const _FirefliesPainter(this.t);
+  final double t;
+  static double _r(int i, int k) =>
+      (math.sin(i * 12.9898 + k * 78.233) * 43758.5453).abs() % 1;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    for (var i = 0; i < 22; i++) {
+      final rise = (t * (1 + i % 3) + _r(i, 4)) % 1;
+      final x =
+          _r(i, 1) * size.width +
+              math.sin((t * 2 + _r(i, 5)) * 2 * math.pi) * 14;
+      final y = (_r(i, 2) * size.height + size.height - rise * size.height * .35) %
+          size.height;
+      final twinkle = (math.sin((t * 6 + _r(i, 6)) * 2 * math.pi) + 1) / 2;
+      final alpha = (.12 + .5 * twinkle) * math.sin(math.pi * rise);
+      canvas.drawCircle(
+        Offset(x, y),
+        1.2 + _r(i, 7) * 1.8,
+        paint..color = const Color(0xFFFFE9A8).withValues(alpha: alpha),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FirefliesPainter old) => old.t != t;
+}
+
 // ───────────────────────── Koleksi layar penuh ─────────────────────────
 
 Future<void> showMedalCollection(
@@ -903,14 +1034,7 @@ Future<void> showMedalCollection(
     useSafeArea: false,
     builder: (context) => Dialog.fullscreen(
       backgroundColor: const Color(0xFF0B1A14),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -1.1),
-            radius: 1.3,
-            colors: [Color(0xFF1D4F3C), Color(0xFF0B1A14)],
-          ),
-        ),
+      child: _MedalBackdrop(
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
