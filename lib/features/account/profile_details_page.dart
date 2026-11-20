@@ -6,6 +6,7 @@ import '../common/ornate.dart';
 import 'profile_avatar.dart';
 import 'account_status_badge.dart';
 import 'player_account_avatar.dart';
+import 'profile_medals_view.dart';
 
 /// Deliberately only wired from the waiting room and final result screen.
 BorderSide _profileRule([Color color = EmbunColors.gold]) =>
@@ -28,11 +29,11 @@ InputDecoration _flatField() => InputDecoration(
 /// Sheet profil pemain lain: kartu berbingkai emas yang melayang di atas
 /// layar, dengan kepala bagian, lalu kartu pemain yang bisa digulir.
 Future<void> showPlayerProfile(
-    BuildContext context, {
-      required String gameId,
-      required String userId,
-      ProfileRepository? repository,
-    }) => showModalBottomSheet<void>(
+  BuildContext context, {
+  required String gameId,
+  required String userId,
+  ProfileRepository? repository,
+}) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -56,10 +57,13 @@ Future<void> showPlayerProfile(
             SectionHeader(
               icon: 'character',
               title: 'Profil Pemain',
-              trailing: MedallionButton(
-                icon: 'silang',
-                size: 34,
-                onTap: () => Navigator.pop(context),
+              trailing: Tooltip(
+                message: 'Tutup profil',
+                child: MedallionButton(
+                  icon: 'silang',
+                  size: 34,
+                  onTap: () => Navigator.pop(context),
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -70,7 +74,7 @@ Future<void> showPlayerProfile(
                   userId: userId,
                   gameId: gameId,
                   repository:
-                  repository ??
+                      repository ??
                       SupabaseProfileRepository(Supabase.instance.client),
                 ),
               ),
@@ -137,7 +141,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(
-            () => _error = widget.owner
+        () => _error = widget.owner
             ? 'Data profil belum dapat dimuat. Periksa koneksi lalu coba lagi.'
             : 'Profil belum dapat dimuat. Coba lagi di lobi atau hasil akhir ruangan yang sama.',
       );
@@ -161,8 +165,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (mounted) {
         setState(
-              () => _actionError =
-          'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+          () => _actionError =
+              'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
         );
       }
     } finally {
@@ -277,6 +281,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             'Hanya pertandingan selesai yang tercatat yang dihitung. Permainan yang dibubarkan tidak masuk statistik.',
             style: TextStyle(fontSize: 12, color: Colors.white60),
           ),
+          ProfileMedalsSummary(profile: details),
           if (widget.owner) ...[
             _heading('Gelar yang dipasang'),
             DropdownButtonFormField<String>(
@@ -321,9 +326,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 onPressed: _acting || _loading || _title == details.title
                     ? null
                     : () => _act(
-                      () => widget.repository.equipTitle(_title),
-                  'Gelar berhasil dipasang.',
-                ),
+                        () => widget.repository.equipTitle(_title),
+                        'Gelar berhasil dipasang.',
+                      ),
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
@@ -470,6 +475,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 11.5, color: Colors.white54),
         ),
+        ProfileMedalsSummary(profile: d),
         const SizedBox(height: 20),
         const SectionHeader(icon: 'mydeck', title: 'Riwayat Permainan'),
         const SizedBox(height: 10),
@@ -617,21 +623,21 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             child: total <= 0
                 ? null
                 : Row(
-              children: [
-                if (d.wargaWins > 0)
-                  Expanded(
-                    flex: d.wargaWins,
-                    child: const ColoredBox(color: EmbunColors.leaf),
+                    children: [
+                      if (d.wargaWins > 0)
+                        Expanded(
+                          flex: d.wargaWins,
+                          child: const ColoredBox(color: EmbunColors.leaf),
+                        ),
+                      if (d.terbisikWins > 0)
+                        Expanded(
+                          flex: d.terbisikWins,
+                          child: const ColoredBox(color: EmbunColors.mist),
+                        ),
+                      if (lost > 0)
+                        Expanded(flex: lost, child: const SizedBox.shrink()),
+                    ],
                   ),
-                if (d.terbisikWins > 0)
-                  Expanded(
-                    flex: d.terbisikWins,
-                    child: const ColoredBox(color: EmbunColors.mist),
-                  ),
-                if (lost > 0)
-                  Expanded(flex: lost, child: const SizedBox.shrink()),
-              ],
-            ),
           ),
         ),
       ],
@@ -693,7 +699,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                   ),
                   Text(
                     '${two(d.day)}/${two(d.month)}/${d.year} '
-                        '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
+                    '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
                     style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],
@@ -758,7 +764,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                   ),
                   Text(
                     '${two(date.day)}/${two(date.month)}/${date.year} '
-                        '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
+                    '${two(date.hour)}:${two(date.minute)} · hari ke-${match.days}',
                     style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],
