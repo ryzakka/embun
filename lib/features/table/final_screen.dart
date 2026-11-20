@@ -52,7 +52,13 @@ class _Award {
 }
 
 class _RankingCategory {
-  const _RankingCategory(this.label, this.title, this.icon, this.unit, this.rows);
+  const _RankingCategory(
+    this.label,
+    this.title,
+    this.icon,
+    this.unit,
+    this.rows,
+  );
 
   final String label;
   final String title;
@@ -195,10 +201,12 @@ class FinalResultScreen extends StatefulWidget {
   final Widget Function(Map<String, Map<String, dynamic>> secrets)
   detailsBuilder;
   final VoidCallback onExit;
+  final ValueChanged<String>? onViewProfile;
 
   const FinalResultScreen({
     super.key,
     this.myId,
+    this.onViewProfile,
     required this.wargaMenang,
     required this.leaves,
     required this.day,
@@ -267,7 +275,8 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   void didUpdateWidget(covariant FinalResultScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_recap != null &&
-        (oldWidget.defs != widget.defs || oldWidget.players != widget.players)) {
+        (oldWidget.defs != widget.defs ||
+            oldWidget.players != widget.players)) {
       _stats = _compute();
     }
   }
@@ -453,7 +462,11 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       for (final d in days) _Round(d, byDay[d]![0], byDay[d]![1], byDay[d]![2]),
     ];
 
-    String? top(Map<String, int> m, {int min = 1, Set<String> exclude = const {}}) {
+    String? top(
+      Map<String, int> m, {
+      int min = 1,
+      Set<String> exclude = const {},
+    }) {
       String? best;
       var bv = 0;
       for (final uid in order) {
@@ -649,9 +662,14 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     };
     for (final id in antagIds) {
       final outDay = eliminatedDay[id];
-      final escaped = chron.where((x) =>
-          x.voters > 0 && x.top != id && (outDay == null || x.day <= outDay)
-      ).length;
+      final escaped = chron
+          .where(
+            (x) =>
+                x.voters > 0 &&
+                x.top != id &&
+                (outDay == null || x.day <= outDay),
+          )
+          .length;
       if (escaped > 0) {
         awards.add(
           _Award(
@@ -1036,7 +1054,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
           } else if ((_page == 6 || _page == 7) && _loadingSecrets) {
             content = _notice('Memuat peran pemain…', loading: true);
           } else if ((_page == 6 || _page == 7) && _secrets.isEmpty) {
-            content = _notice('Peran pemain diperlukan untuk menyusun peringkat dan gelar.');
+            content = _notice(
+              'Peran pemain diperlukan untuk menyusun peringkat dan gelar.',
+            );
           } else if (_loadingRecap) {
             content = _notice('Memuat statistik…', loading: true);
           } else if (_stats == null) {
@@ -1117,7 +1137,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               title,
               style: TextStyle(
                 color: EmbunColors.cream,
-                shadows: [Shadow(color: resultColor.withValues(alpha: 0.5), blurRadius: 28)],
+                shadows: [
+                  Shadow(
+                    color: resultColor.withValues(alpha: 0.5),
+                    blurRadius: 28,
+                  ),
+                ],
                 fontSize: wide && !compact ? 50 : 34,
                 fontWeight: FontWeight.w900,
                 height: 1.08,
@@ -2737,6 +2762,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               ],
             ),
           ),
+          if (widget.onViewProfile != null)
+            IconButton(
+              tooltip: 'Lihat profil pemain',
+              onPressed: () => widget.onViewProfile!(uid),
+              icon: const Icon(Icons.account_circle_outlined),
+            ),
           const SizedBox(width: 8),
           if (isOut(p))
             const StatusTag(

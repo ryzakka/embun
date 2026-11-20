@@ -1,35 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/profile_avatar_catalog.dart';
+import '../../data/profile_repository.dart';
+import 'profile_avatar.dart';
+import 'profile_details_page.dart';
+export 'profile_avatar.dart';
 import '../../data/account_controller.dart';
 import '../../data/asset_catalog.dart';
 import '../../data/player_profile.dart';
 import '../common/art.dart';
 import '../common/ornate.dart';
 import 'public_information_links.dart';
-
-const _avatars = <String, (IconData, String)>{
-  'leaf': (Icons.eco_outlined, 'Daun'),
-  'sun': (Icons.wb_sunny_outlined, 'Matahari'),
-  'moon': (Icons.nightlight_outlined, 'Bulan'),
-  'water': (Icons.water_drop_outlined, 'Embun'),
-  'flower': (Icons.local_florist_outlined, 'Bunga'),
-  'tree': (Icons.park_outlined, 'Pohon'),
-};
-
-class ProfileAvatar extends StatelessWidget {
-  const ProfileAvatar({super.key, required this.avatarId, this.radius = 28});
-  final String avatarId;
-  final double radius;
-  @override
-  Widget build(BuildContext context) => CircleAvatar(
-    radius: radius,
-    backgroundColor: const Color(0xFF234237),
-    child: Icon(
-      (_avatars[avatarId] ?? _avatars['leaf']!).$1,
-      color: EmbunColors.gold,
-      size: radius,
-    ),
-  );
-}
 
 /// This gate belongs inside the account-keyed MaterialApp's home. Changing
 /// the authenticated account rebuilds that Navigator, clearing old game routes.
@@ -195,9 +176,11 @@ class ProfilePage extends StatefulWidget {
     super.key,
     required this.account,
     this.firstSetup = false,
+    this.detailsRepository,
   });
   final AccountController account;
   final bool firstSetup;
+  final ProfileRepository? detailsRepository;
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -207,7 +190,11 @@ class _ProfilePageState extends State<ProfilePage> {
   late final _name = TextEditingController(
     text: widget.account.profile?.initialNickname ?? '',
   );
-  late String _avatar = widget.account.profile?.avatarId ?? 'leaf';
+  late String _avatar = widget.account.profile?.avatarId ?? 'penjaga_hayu';
+  late final ProfileRepository? _detailsRepository = widget.firstSetup
+      ? null
+      : widget.detailsRepository ??
+            SupabaseProfileRepository(Supabase.instance.client);
   @override
   void dispose() {
     _name.dispose();
@@ -284,21 +271,44 @@ class _ProfilePageState extends State<ProfilePage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final entry in _avatars.entries)
-                      ChoiceChip(
-                        label: Text(entry.value.$2),
-                        avatar: Icon(entry.value.$1, size: 18),
+                    for (final entry in profileAvatars.entries)
+                      Semantics(
                         selected: _avatar == entry.key,
-                        onSelected: account.busy
-                            ? null
-                            : (_) => setState(() => _avatar = entry.key),
+                        button: true,
+                        label: entry.value.$2,
+                        child: Tooltip(
+                          message: entry.value.$2,
+                          child: InkWell(
+                            key: ValueKey('avatar-${entry.key}'),
+                            borderRadius: BorderRadius.circular(40),
+                            onTap: account.busy
+                                ? null
+                                : () => setState(() => _avatar = entry.key),
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  width: 3,
+                                  color: _avatar == entry.key
+                                      ? EmbunColors.gold
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: ProfileAvatar(
+                                avatarId: entry.key,
+                                radius: 25,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 if (account.profile?.email case final email?)
                   Text(
-                    email,
+                    'Email Google terhubung\n$email',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12, color: Colors.white54),
                   ),
@@ -334,6 +344,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         : 'Simpan profil',
                   ),
                 ),
+                if (!widget.firstSetup)
+                  ProfileDetailsPanel(
+                    key: ValueKey(account.identity),
+                    repository: _detailsRepository!,
+                    userId: account.identity!,
+                    owner: true,
+                  ),
+                const SizedBox(height: 16),
                 TextButton(
                   onPressed: account.busy ? null : account.logout,
                   child: const Text('Keluar akun'),

@@ -14,6 +14,7 @@ import '../../data/lobby_repository.dart';
 import '../common/art.dart';
 import '../account/account_scope.dart';
 import '../account/account_pages.dart';
+import '../account/profile_details_page.dart';
 import '../common/character_lock.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -1104,6 +1105,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           if (snapshot.connectionState != ConnectionState.waiting) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || gameId != id) return;
+              final roomRoute = ModalRoute.of(context);
+              if (roomRoute != null) {
+                Navigator.of(context).popUntil((route) => route == roomRoute);
+              }
               _returnToMenu();
               _toast('Ruangan sudah dibubarkan');
             });
@@ -1116,6 +1121,11 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
             Sfx.I.stopMenuMusic();
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || gameId != id) return;
+              // Close a profile sheet before replacing the waiting-room route.
+              final roomRoute = ModalRoute.of(context);
+              if (roomRoute != null) {
+                Navigator.of(context).popUntil((route) => route == roomRoute);
+              }
               Navigator.of(context).pushReplacement(
                 ClothTransition.route(
                   game['character_theme'] == 'manhwa' &&
@@ -1140,6 +1150,10 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           builder: (context, snapshot) {
             final players = snapshot.data ?? [];
             return WaitingRoomView(
+              onViewProfile: EmbunData.maybeOf(context) != null
+                  ? null
+                  : (uid) =>
+                        showPlayerProfile(context, gameId: id, userId: uid),
               characterTheme: (game['character_theme'] as String?) ?? 'default',
               code: game['code'] as String,
               isPublic: game['is_public'] == true,

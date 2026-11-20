@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show StringCharacters;
 
-const profileAvatarIds = ['leaf', 'sun', 'moon', 'water', 'flower', 'tree'];
+import 'profile_avatar_catalog.dart';
+export 'profile_avatar_catalog.dart' show profileAvatarIds;
 
 /// Presentation preferences only. Never use user metadata for permissions.
 @immutable
@@ -23,7 +24,7 @@ class PlayerProfile {
       : '';
   String get avatarId => profileAvatarIds.contains(metadata['embun_avatar'])
       ? metadata['embun_avatar'] as String
-      : 'leaf';
+      : 'penjaga_hayu';
   bool get complete =>
       googleAccount &&
       metadata['embun_profile_version'] == 1 &&

@@ -5,6 +5,8 @@ import 'data/asset_catalog.dart';
 import 'data/player_profile.dart';
 import 'features/account/account_app.dart';
 import 'features/account/account_pages.dart';
+import 'features/account/profile_preview_repository.dart';
+import 'features/account/profile_details_page.dart';
 
 /// A separate offline entry point. Never used by lib/main.dart.
 Future<void> main() async {
@@ -73,6 +75,7 @@ class AccountPreviewApp extends StatefulWidget {
 
 class _AccountPreviewAppState extends State<AccountPreviewApp> {
   final _repo = PreviewAccountRepository();
+  final _profiles = PreviewProfileRepository();
   late final _account = AccountController(_repo);
   @override
   void initState() {
@@ -117,10 +120,22 @@ class _AccountPreviewAppState extends State<AccountPreviewApp> {
                   FilledButton(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => ProfilePage(account: _account),
+                        builder: (_) => ProfilePage(
+                          account: _account,
+                          detailsRepository: _profiles,
+                        ),
                       ),
                     ),
                     child: const Text('Profilku'),
+                  ),
+                  TextButton(
+                    onPressed: () => showPlayerProfile(
+                      context,
+                      gameId: 'preview-room',
+                      userId: 'preview-other',
+                      repository: _profiles,
+                    ),
+                    child: const Text('Contoh profil pemain lain'),
                   ),
                   TextButton(
                     onPressed: _account.logout,

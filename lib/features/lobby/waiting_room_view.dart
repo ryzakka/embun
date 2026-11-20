@@ -12,6 +12,7 @@ import '../common/ornate.dart';
 import 'room_entry_view.dart';
 
 class WaitingRoomView extends StatefulWidget {
+  final ValueChanged<String>? onViewProfile;
   final String code;
   final String characterTheme;
   final bool isPublic;
@@ -29,6 +30,7 @@ class WaitingRoomView extends StatefulWidget {
 
   const WaitingRoomView({
     super.key,
+    this.onViewProfile,
     required this.code,
     this.characterTheme = 'default',
     required this.isPublic,
@@ -481,6 +483,12 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                 ],
               ),
             ),
+            if (widget.onViewProfile != null)
+              IconButton(
+                tooltip: 'Lihat profil pemain',
+                onPressed: () => widget.onViewProfile!(id),
+                icon: const Icon(Icons.account_circle_outlined, size: 22),
+              ),
             const SizedBox(width: 5),
             Text(
               ready ? 'Siap' : 'Belum siap',

@@ -16,6 +16,7 @@ import '../common/ornate.dart';
 import '../common/sfx.dart';
 import '../common/scene_flow.dart';
 import '../lobby/lobby_page.dart';
+import '../account/profile_details_page.dart';
 import 'chat_sheet.dart';
 import 'chat_spotlight.dart';
 import 'day_chrome.dart';
@@ -2802,6 +2803,13 @@ class _TablePageState extends State<TablePage> {
     }
     if (!bubar) {
       return FinalResultScreen(
+        onViewProfile: EmbunData.maybeOf(context) != null
+            ? null
+            : (uid) => showPlayerProfile(
+                context,
+                gameId: widget.gameId,
+                userId: uid,
+              ),
         key: const ValueKey('final'),
         wargaMenang: wargaMenang,
         leaves: leaves,
