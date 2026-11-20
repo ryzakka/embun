@@ -44,6 +44,15 @@ ThemeData embunTheme() {
   );
   return base.copyWith(
     scaffoldBackgroundColor: EmbunColors.bg,
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        iconSize: 32,
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.all(8),
+        visualDensity: VisualDensity.standard,
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+    ),
     textTheme: base.textTheme
         .apply(bodyColor: EmbunColors.cream, displayColor: EmbunColors.gold),
     filledButtonTheme: FilledButtonThemeData(

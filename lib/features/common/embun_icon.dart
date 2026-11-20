@@ -100,6 +100,20 @@ IconData iconFallback(String name) => switch(canonicalIconName(name)) {
   _ => Icons.info_outline,
 };
 
+// Tombol memakai ikon yang lebih besar daripada indikator status sebaris.
+const double embunActionIconSize = 32;
+const double embunNavigationIconSize = 40;
+
+double embunButtonIconSize(String? name, double requested, bool inButton) {
+  if (!inButton) {
+    return requested;
+  }
+  final canonical = name == null ? null : canonicalIconName(name);
+  final minimum = canonical == 'back' || canonical == 'back2' || canonical == 'x'
+      ? embunNavigationIconSize : embunActionIconSize;
+  return requested < minimum ? minimum : requested;
+}
+
 /// Pengganti Icon yang mempertahankan ukuran dan semantik, memakai ilustrasi
 /// hanya jika ada padanan yang benar. Simbol fungsi yang belum tersedia tetap
 /// terlihat; gambar hilang tidak membuat tombol kosong.
@@ -117,7 +131,10 @@ class EmbunIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final name=asset ?? embunMaterialIcons[icon];
     if (name == null) {
-      return Icon(icon, size: size, color: color,
+      final inButton = context.findAncestorWidgetOfExactType<IconButton>() != null;
+      final dimension = embunButtonIconSize(null,
+          size ?? IconTheme.of(context).size ?? 24.0, inButton);
+      return Icon(icon, size: dimension, color: color,
         semanticLabel: semanticLabel, textDirection: textDirection, shadows: shadows);
     }
     return EmbunAssetIcon(name, size:size, color:color, semanticLabel:semanticLabel,
@@ -136,7 +153,10 @@ class EmbunAssetIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme=IconTheme.of(context);
-    final dimension=size ?? theme.size ?? 24.0;
+    final inButton = context.findAncestorWidgetOfExactType<IconButton>() != null;
+    final dimension = embunButtonIconSize(name,
+        size ?? theme.size ?? 24.0,
+        inButton && width == null && height == null);
     final w=width ?? dimension, h=height ?? dimension;
     final path=ikonPath(name);
     final glyph=Icon(fallback ?? iconFallback(name),size:dimension,color:color,
