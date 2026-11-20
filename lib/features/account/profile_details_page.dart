@@ -44,8 +44,9 @@ Future<void> showPlayerProfile(
   constraints: const BoxConstraints(maxWidth: 580),
   builder: (context) => ProfileSheetFrame(
     asset: sceneryPath('sheetprofile-latar'),
+    fillHeight: true,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

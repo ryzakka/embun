@@ -92,65 +92,61 @@ class _ProfileRevealState extends State<ProfileReveal>
   }
 }
 
-/// Lembar bergambar untuk bottom sheet (sheetmedal-latar / sheetprofile-latar
-/// di assets/bentang). Gambar berbingkai emas direntangkan penuh; isi diberi
-/// tirai gelap di dalam bingkai agar teks terang tetap terbaca. Bila gambar
-/// tidak ada, jatuh ke latar polos.
+/// Latar bergambar untuk bottom sheet (sheetmedal-latar / sheetprofile-latar
+/// di assets/bentang). Gambar menutup seluruh sheet (cover), diberi tirai
+/// gelap rata agar teks terang terbaca. Bila gambar tidak ada, jatuh ke latar
+/// polos. [fillHeight] true = tinggi tetap 92% layar (untuk isi yang memakai
+/// Expanded); false = tinggi mengikuti isi, maksimal 92% layar.
 class ProfileSheetFrame extends StatelessWidget {
-  const ProfileSheetFrame({super.key, required this.asset, required this.child});
+  const ProfileSheetFrame({
+    super.key,
+    required this.asset,
+    required this.child,
+    this.fillHeight = false,
+  });
   final String? asset;
   final Widget child;
-
-  /// Perkiraan lebar : tinggi gambar latar. Sesuaikan bila bingkai terlihat
-  /// melar.
-  static const aspect = 768 / 1365; // ukuran asli gambar latar (9:16)
+  final bool fillHeight;
 
   @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.sizeOf(context);
-    return LayoutBuilder(
-      builder: (context, c) {
-        final maxW = c.maxWidth.isFinite ? c.maxWidth : screen.width;
-        // Tinggi dibatasi layar; lebar mengikuti rasio gambar (tidak melar).
-        final h = math.min(screen.height * 0.92, maxW / aspect);
-        final w = h * aspect;
-        final insetX = w * 0.07;
-        final insetY = h * 0.07;
-        const plain = ColoredBox(color: EmbunColors.bg);
-        return Center(
-          child: SizedBox(
-            width: w,
-            height: h,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (asset == null)
-                  plain
-                else
-                  Image.asset(
-                    asset!,
-                    fit: BoxFit.fill,
-                    cacheWidth: 1080,
-                    errorBuilder: (_, _, _) => plain,
-                  ),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: insetX,
-                    vertical: insetY,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF07130F).withValues(alpha: 0.80),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: child,
-                  ),
-                ),
-              ],
+    final maxH = MediaQuery.sizeOf(context).height * 0.92;
+    const plain = ColoredBox(color: EmbunColors.bg);
+    final body = Stack(
+      fit: fillHeight ? StackFit.expand : StackFit.loose,
+      children: [
+        Positioned.fill(
+          child: asset == null
+              ? plain
+              : Image.asset(
+            asset!,
+            fit: BoxFit.cover,
+            cacheWidth: 1080,
+            errorBuilder: (_, _, _) => plain,
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xC707130F), Color(0xE607130F)],
+              ),
             ),
           ),
-        );
-      },
+        ),
+        child,
+      ],
+    );
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+      child: fillHeight
+          ? SizedBox(height: maxH, child: body)
+          : ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: body,
+      ),
     );
   }
 }
