@@ -20,16 +20,27 @@ class RoomAccountProfile {
     required this.nickname,
     required this.googleLinked,
     this.avatarId,
+    this.title = '',
+    this.medalIds = const [],
+    this.medalsAvailable = false,
   });
   final String userId, nickname;
   final bool googleLinked;
   final String? avatarId;
+  final String title;
+  final List<String> medalIds;
+  final bool medalsAvailable;
   factory RoomAccountProfile.fromJson(Map<String, dynamic> json) =>
       RoomAccountProfile(
         userId: json['user_id'] as String,
         nickname: json['nickname'] as String? ?? '',
         googleLinked: json['google_linked'] == true,
         avatarId: json['avatar_id'] as String?,
+        title: json['title'] as String? ?? '',
+        medalsAvailable: json['medals_available'] == true,
+        medalIds: List<String>.unmodifiable(
+          (json['medal_ids'] as List? ?? const []).whereType<String>(),
+        ),
       );
 }
 
@@ -110,9 +121,18 @@ class SupabaseProfileRepository implements ProfileRepository {
   final SupabaseClient client;
 
   Future<Map<String, RoomAccountProfile>> roomPlayers(String gameId) async {
-    final data = await client
-        .rpc('embun_profile_links', params: {'p_game': gameId})
-        .timeout(const Duration(seconds: 15));
+    dynamic data;
+    try {
+      data = await client
+          .rpc('embun_room_achievements', params: {'p_game': gameId})
+          .timeout(const Duration(seconds: 15));
+    } on PostgrestException catch (error) {
+      if (error.code != 'PGRST202') rethrow;
+      // Keep avatars usable until the optional achievement RPC is installed.
+      data = await client
+          .rpc('embun_profile_links', params: {'p_game': gameId})
+          .timeout(const Duration(seconds: 15));
+    }
     return {
       for (final row in data as List)
         row['user_id'] as String: RoomAccountProfile.fromJson(

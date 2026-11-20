@@ -119,11 +119,11 @@ class ProfileSheetFrame extends StatelessWidget {
           child: asset == null
               ? plain
               : Image.asset(
-            asset!,
-            fit: BoxFit.cover,
-            cacheWidth: 1080,
-            errorBuilder: (_, _, _) => plain,
-          ),
+                  asset!,
+                  fit: BoxFit.cover,
+                  cacheWidth: 1080,
+                  errorBuilder: (_, _, _) => plain,
+                ),
         ),
         const Positioned.fill(
           child: DecoratedBox(
@@ -144,9 +144,9 @@ class ProfileSheetFrame extends StatelessWidget {
       child: fillHeight
           ? SizedBox(height: maxH, child: body)
           : ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxH),
-        child: body,
-      ),
+              constraints: BoxConstraints(maxHeight: maxH),
+              child: body,
+            ),
     );
   }
 }
@@ -244,7 +244,10 @@ class ProfileRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox.square(dimension: visualSize, child: Center(child: visual)),
+            SizedBox.square(
+              dimension: visualSize,
+              child: Center(child: visual),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -391,35 +394,35 @@ class ProfileTab extends StatelessWidget {
               child: compact
                   ? Center(widthFactor: 1, child: text)
                   : Row(
-                children: [
-                  if (icon != null) ...[
-                    GameIcon(icon!, size: 26),
-                    const SizedBox(width: 9),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        text,
-                        if (sub != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              sub!,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                height: 1.25,
-                                color: Colors.white60,
-                              ),
-                            ),
+                        if (icon != null) ...[
+                          GameIcon(icon!, size: 26),
+                          const SizedBox(width: 9),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              text,
+                              if (sub != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    sub!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.25,
+                                      color: Colors.white60,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),

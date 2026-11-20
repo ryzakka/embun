@@ -29,11 +29,11 @@ InputDecoration _flatField() => InputDecoration(
 /// Sheet profil pemain lain, bergaya Panduan: lembar datar dengan garis emas
 /// di tepi atas, kepala berikon dengan garis bawah, isi bergulir tanpa kotak.
 Future<void> showPlayerProfile(
-    BuildContext context, {
-      required String gameId,
-      required String userId,
-      ProfileRepository? repository,
-    }) => showModalBottomSheet<void>(
+  BuildContext context, {
+  required String gameId,
+  required String userId,
+  ProfileRepository? repository,
+}) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -87,7 +87,7 @@ Future<void> showPlayerProfile(
                 userId: userId,
                 gameId: gameId,
                 repository:
-                repository ??
+                    repository ??
                     SupabaseProfileRepository(Supabase.instance.client),
               ),
             ),
@@ -161,7 +161,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (!mounted || revision != _revision) return;
       setState(
-            () => _error = widget.owner
+        () => _error = widget.owner
             ? 'Data profil belum dapat dimuat. Periksa koneksi lalu coba lagi.'
             : 'Profil belum dapat dimuat. Coba lagi di lobi atau hasil akhir ruangan yang sama.',
       );
@@ -185,8 +185,8 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
     } catch (_) {
       if (mounted) {
         setState(
-              () => _actionError =
-          'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+          () => _actionError =
+              'Belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
         );
       }
     } finally {
@@ -306,10 +306,10 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         child: owner
             ? ProfileMedalsSummary(profile: d)
             : ProfileSection(
-          icon: 'helaidaun',
-          title: 'Medali',
-          children: [ProfileMedalsSummary(profile: d, framed: false)],
-        ),
+                icon: 'helaidaun',
+                title: 'Medali',
+                children: [ProfileMedalsSummary(profile: d, framed: false)],
+              ),
       ),
       if (owner)
         ProfileSection(
@@ -357,9 +357,9 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
                 onPressed: _acting || _loading || _title == d.title
                     ? null
                     : () => _act(
-                      () => widget.repository.equipTitle(_title),
-                  'Gelar berhasil dipasang.',
-                ),
+                        () => widget.repository.equipTitle(_title),
+                        'Gelar berhasil dipasang.',
+                      ),
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('Pasang gelar'),
               ),
@@ -377,7 +377,11 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
             ProfileRow(
               accent: Colors.white,
               visualSize: 30,
-              visual: const Icon(Icons.history, size: 22, color: Colors.white38),
+              visual: const Icon(
+                Icons.history,
+                size: 22,
+                color: Colors.white38,
+              ),
               title: 'Belum ada pertandingan selesai yang tercatat.',
               titleColor: Colors.white60,
             ),
@@ -485,7 +489,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
         visual: Icon(Icons.info_outline, size: 22, color: Colors.white54),
         title: 'Statistik belum tersedia',
         text:
-        'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
+            'Pemain ini bermain sebagai tamu, jadi statistik dan riwayat akun belum tersedia.',
       ),
     ],
   );
@@ -504,7 +508,7 @@ class _ProfileDetailsPanelState extends State<ProfileDetailsPanel> {
       title: '${m.won ? 'Menang' : 'Kalah'} · $role',
       titleColor: m.won ? EmbunColors.gold : EmbunColors.cream,
       text:
-      '${two(d.day)}/${two(d.month)}/${d.year} '
+          '${two(d.day)}/${two(d.month)}/${d.year} '
           '${two(d.hour)}:${two(d.minute)} · hari ke-${m.days}',
       trailing: Icon(
         terbisik ? Icons.nights_stay_outlined : Icons.shield_outlined,

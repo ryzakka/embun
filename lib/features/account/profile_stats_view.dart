@@ -120,7 +120,10 @@ class _RateRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CustomPaint(
     painter: _RateRingPainter(value),
-    child: SizedBox.square(dimension: size, child: Center(child: child)),
+    child: SizedBox.square(
+      dimension: size,
+      child: Center(child: child),
+    ),
   );
 }
 
@@ -233,11 +236,11 @@ class ProfileStatsBoard extends StatelessWidget {
         onTap: topMedal == null
             ? null
             : () => showMedalDetails(
-          context,
-          claims?.profile ?? d,
-          topMedal,
-          claims: claims,
-        ),
+                context,
+                claims?.profile ?? d,
+                topMedal,
+                claims: claims,
+              ),
         visual: topMedal == null
             ? const Icon(Icons.lock_outline, size: 30, color: Colors.white38)
             : MedalArt(medal: topMedal, unlocked: true, size: 44),
@@ -319,21 +322,21 @@ class ProfileStatsBoard extends StatelessWidget {
             child: total <= 0
                 ? null
                 : Row(
-              children: [
-                if (d.wargaWins > 0)
-                  Expanded(
-                    flex: d.wargaWins,
-                    child: const ColoredBox(color: EmbunColors.leaf),
+                    children: [
+                      if (d.wargaWins > 0)
+                        Expanded(
+                          flex: d.wargaWins,
+                          child: const ColoredBox(color: EmbunColors.leaf),
+                        ),
+                      if (d.terbisikWins > 0)
+                        Expanded(
+                          flex: d.terbisikWins,
+                          child: const ColoredBox(color: EmbunColors.mist),
+                        ),
+                      if (lost > 0)
+                        Expanded(flex: lost, child: const SizedBox.shrink()),
+                    ],
                   ),
-                if (d.terbisikWins > 0)
-                  Expanded(
-                    flex: d.terbisikWins,
-                    child: const ColoredBox(color: EmbunColors.mist),
-                  ),
-                if (lost > 0)
-                  Expanded(flex: lost, child: const SizedBox.shrink()),
-              ],
-            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -422,11 +425,11 @@ class _Num extends StatelessWidget {
         : MediaQuery.disableAnimationsOf(context)
         ? Text('$v$suffix', style: style)
         : TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: v.toDouble()),
-      duration: const Duration(milliseconds: 1200),
-      curve: Curves.easeOutCubic,
-      builder: (_, n, _) => Text('${n.round()}$suffix', style: style),
-    );
+            tween: Tween(begin: 0, end: v.toDouble()),
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeOutCubic,
+            builder: (_, n, _) => Text('${n.round()}$suffix', style: style),
+          );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -468,10 +471,10 @@ class _Pip extends StatelessWidget {
       child: result == null
           ? null
           : Icon(
-        won ? Icons.check : Icons.close,
-        size: 13,
-        color: won ? const Color(0xFF1A1405) : Colors.white38,
-      ),
+              won ? Icons.check : Icons.close,
+              size: 13,
+              color: won ? const Color(0xFF1A1405) : Colors.white38,
+            ),
     );
   }
 }

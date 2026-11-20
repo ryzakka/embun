@@ -10,9 +10,9 @@ const _burst = 2.8; // detik: durasi ledakan
 
 Future<ui.FragmentProgram?>? _program;
 Future<ui.FragmentProgram?> _loadProgram() =>
-    _program ??= ui.FragmentProgram.fromAsset('shaders/medal_claim.frag')
-        .then<ui.FragmentProgram?>((p) => p)
-        .catchError((_) => null);
+    _program ??= ui.FragmentProgram.fromAsset(
+      'shaders/medal_claim.frag',
+    ).then<ui.FragmentProgram?>((p) => p).catchError((_) => null);
 
 double _fade(double s, double start, double length) =>
     ((s - start) / length).clamp(0.0, 1.0);
@@ -22,9 +22,11 @@ class MedalClaimCelebration extends StatefulWidget {
     super.key,
     required this.medal,
     required this.art,
+    this.previousMedal,
   });
   final ProfileMedal medal;
   final Widget art;
+  final ProfileMedal? previousMedal;
   @override
   State<MedalClaimCelebration> createState() => _MedalClaimCelebrationState();
 }
@@ -157,12 +159,7 @@ class _MedalClaimCelebrationState extends State<MedalClaimCelebration>
                   Align(
                     alignment: Alignment.bottomCenter,
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        24,
-                        0,
-                        24,
-                        pad.bottom + 20,
-                      ),
+                      padding: EdgeInsets.fromLTRB(24, 0, 24, pad.bottom + 20),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
                           maxWidth: 420,
@@ -184,6 +181,19 @@ class _MedalClaimCelebrationState extends State<MedalClaimCelebration>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
+                                if (widget.previousMedal
+                                    case final ProfileMedal previous) ...[
+                                  Text(
+                                    '${previous.name} → ${widget.medal.name}',
+                                    key: const ValueKey('medal-level-up'),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: EmbunColors.gold,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
                                 Text(
                                   widget.medal.series.requirement(
                                     widget.medal.target,
@@ -199,7 +209,9 @@ class _MedalClaimCelebrationState extends State<MedalClaimCelebration>
                                 ),
                                 const SizedBox(height: 20),
                                 FilledButton(
-                                  key: const ValueKey('close-medal-celebration'),
+                                  key: const ValueKey(
+                                    'close-medal-celebration',
+                                  ),
                                   onPressed: () => Navigator.pop(context),
                                   child: const Text('Lanjutkan'),
                                 ),

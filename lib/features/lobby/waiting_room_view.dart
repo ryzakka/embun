@@ -12,6 +12,7 @@ import '../common/ornate.dart';
 import 'room_entry_view.dart';
 import '../account/player_account_avatar.dart';
 import '../account/medal_claim_scope.dart';
+import '../account/room_medals_view.dart';
 import '../../data/profile_repository.dart';
 
 class WaitingRoomView extends StatefulWidget {
@@ -491,6 +492,23 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
                   Text(
                     [characterTitle(card), ...tags].join(' · '),
                     style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                  if (widget.accountProfiles[id]?.title.isNotEmpty == true)
+                    Text(
+                      widget.accountProfiles[id]!.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: EmbunColors.gold,
+                      ),
+                    ),
+                  RoomMedalStrip(
+                    userId: id,
+                    profile: widget.accountProfiles[id],
+                    onViewProfile: widget.onViewProfile == null
+                        ? null
+                        : () => widget.onViewProfile!(id),
                   ),
                 ],
               ),

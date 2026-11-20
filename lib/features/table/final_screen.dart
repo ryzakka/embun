@@ -11,6 +11,9 @@ import 'endgame_aura.dart';
 import 'player_status.dart';
 import '../account/player_account_avatar.dart';
 import '../../data/profile_repository.dart';
+import '../../data/match_player_stats.dart';
+import '../account/room_medals_view.dart';
+import 'match_scoreboard.dart';
 
 double _seg(double v, double a, double b) =>
     ((v - a) / (b - a)).clamp(0.0, 1.0).toDouble();
@@ -134,7 +137,7 @@ class _Stats {
 const _pageTitles = [
   'Akhir Kisah',
   'Barisan Akhir',
-  'Dalam Angka',
+  'Kisi Statistik Pertandingan',
   'Kronik Desa',
   'Sidang Desa',
   'Cahaya & Kabut',
@@ -255,6 +258,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
   Map<String, Map<String, dynamic>> _secrets = {};
   Map<String, dynamic>? _recap;
   _Stats? _stats;
+  Map<String, MatchPlayerStats> _playerStats = {};
   bool _hapGauge = false;
   final Set<int> _hap = {};
 
@@ -403,6 +407,12 @@ class _FinalResultScreenState extends State<FinalResultScreen>
 
   _Stats _compute() {
     final r = _recap ?? const <String, dynamic>{};
+    _playerStats = matchPlayerStats(
+      userIds: widget.players.map((p) => p['user_id'] as String),
+      secrets: _secrets,
+      definitions: widget.defs,
+      recap: r,
+    );
     List<Map<String, dynamic>> list(String k) =>
         List<Map<String, dynamic>>.from((r[k] as List?) ?? const []);
     final offs = list('offerings');
@@ -1098,6 +1108,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: switch (_page) {
+                  1 || 2 => 1600,
                   3 => 750,
                   6 || 7 => 720,
                   _ => 1000,
@@ -1106,6 +1117,13 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_page == 1 || _page == 2)
+                    EndingMedalNotice(
+                      onOpenProfile:
+                          widget.onViewProfile == null || widget.myId == null
+                          ? null
+                          : () => widget.onViewProfile!(widget.myId!),
+                    ),
                   if (_page != 0) ...[
                     _heading(_pageTitles[_page]),
                     const SizedBox(height: 15),
@@ -1366,9 +1384,9 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _group(winners, true, t, time)),
+          Expanded(flex: winners.length, child: _group(winners, true, t, time)),
           const SizedBox(width: 18),
-          Expanded(child: _group(losers, false, t, time)),
+          Expanded(flex: losers.length, child: _group(losers, false, t, time)),
         ],
       );
     }
@@ -1389,9 +1407,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
         ? (antagGroup ? EmbunColors.mist : EmbunColors.gold)
         : Colors.white54;
     final n = uids.length;
-    final cw = antagGroup
-        ? (winner ? 124.0 : 104.0)
-        : (n <= 4 ? 92.0 : (n <= 6 ? 80.0 : 68.0));
+    const cw = 142.0;
     final stag = math.min(0.05, 0.28 / math.max(1, n - 1));
     final start = winner ? 0.04 : 0.06;
     final mine = widget.myId != null && uids.contains(widget.myId);
@@ -1446,24 +1462,44 @@ class _FinalResultScreenState extends State<FinalResultScreen>
                 children: [
                   head,
                   const SizedBox(height: 14),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 14,
-                    children: [
-                      for (var i = 0; i < uids.length; i++)
-                        _fcard(
-                          uids[i],
-                          i,
-                          stag,
-                          start,
-                          winner,
-                          cw,
-                          t,
-                          time,
-                          accent,
+                  LayoutBuilder(
+                    builder: (context, box) => SingleChildScrollView(
+                      key: ValueKey(
+                        'lineup-scroll-${winner ? 'winners' : 'losers'}',
+                      ),
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: box.maxWidth),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var i = 0; i < uids.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: _fcard(
+                                  uids[i],
+                                  i,
+                                  stag,
+                                  start,
+                                  winner,
+                                  cw,
+                                  t,
+                                  time,
+                                  accent,
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Geser barisan untuk melihat semua pemain',
+                    style: TextStyle(fontSize: 10, color: Colors.white54),
                   ),
                 ],
               ),
@@ -1503,9 +1539,7 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     Color accent,
   ) {
     final antag = _isAntag(uid);
-    final String? path = antag
-        ? darkCardPath((_secrets[uid]?['dark_seed'] as int?) ?? 0)
-        : protagonistPath(_cardOf(uid) ?? 'default');
+    final String? path = protagonistPath(_cardOf(uid) ?? 'default');
     final ch = cw * cardAspectFor(path);
     final a = start + stag * i;
     final me = uid == widget.myId;
@@ -1681,11 +1715,65 @@ class _FinalResultScreenState extends State<FinalResultScreen>
     );
 
     return SizedBox(
+      key: ValueKey('lineup-player-$uid'),
       width: cw,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
+            key: ValueKey('lineup-identity-$uid'),
+            height:
+                104.0 +
+                28.0 *
+                    (MediaQuery.textScalerOf(context).scale(12) / 12 - 1).clamp(
+                      0,
+                      2,
+                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _accountAvatar(uid, 24),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        _nameOf(uid),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (widget.accountProfiles[uid]?.title.isNotEmpty == true)
+                  Text(
+                    widget.accountProfiles[uid]!.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: EmbunColors.gold,
+                    ),
+                  ),
+                RoomMedalStrip(
+                  userId: uid,
+                  profile: widget.accountProfiles[uid],
+                  size: 24,
+                  onViewProfile: widget.onViewProfile == null
+                      ? null
+                      : () => widget.onViewProfile!(uid),
+                ),
+                const SizedBox(height: 18),
+              ],
+            ),
+          ),
+          SizedBox(
+            key: ValueKey('lineup-card-$uid'),
             width: cw,
             height: ch,
             child: Stack(
@@ -1701,13 +1789,38 @@ class _FinalResultScreenState extends State<FinalResultScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _nameOf(uid),
+                  antag ? 'Si Terbisik' : 'Warga Desa',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11.5,
                     color: winner ? Colors.white : Colors.white54,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _playerStats[uid] == null
+                      ? '—'
+                      : '${_playerStats[uid]!.activity}',
+                  key: ValueKey('lineup-points-$uid'),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: EmbunColors.gold,
+                  ),
+                ),
+                const Text(
+                  'Poin aktivitas',
+                  style: TextStyle(fontSize: 10, color: Colors.white60),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _playerStats[uid] == null
+                      ? 'Rekap belum tersedia'
+                      : '${_playerStats[uid]!.offered} persembahan\n'
+                            '${_playerStats[uid]!.purchased} pembelian · ${_playerStats[uid]!.votes} suara',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, color: Colors.white70),
                 ),
                 if (me)
                   const Text(
@@ -1781,33 +1894,50 @@ class _FinalResultScreenState extends State<FinalResultScreen>
       ('timer', 'Hari dilewati', widget.day),
       ('donations', 'Persembahan', s.offerCards),
       ('bulirembun', 'Kartu dibeli', s.buys),
-      ('vote', 'Suara diberikan', s.votes),
+      ('vote', 'Bobot suara', s.votes),
       ('bulirhitam', 'Kartu kabut', s.badOffers),
       ('bulirembun', 'Embun terpakai', s.spent),
     ];
-    return LayoutBuilder(
-      builder: (context, box) {
-        final cols = box.maxWidth >= 580 ? 3 : 2;
-        const gap = 14.0;
-        final width = (box.maxWidth - gap * (cols - 1)) / cols;
-        return Wrap(
-          spacing: gap,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < tiles.length; i++)
-              SizedBox(
-                width: width,
-                child: _tile(
-                  tiles[i].$1,
-                  tiles[i].$2,
-                  tiles[i].$3,
-                  t,
-                  i * 0.075,
-                ),
-              ),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MatchScoreboard(
+          rows: widget.players
+              .map((p) => _playerStats[p['user_id']])
+              .whereType<MatchPlayerStats>()
+              .toList(),
+          nameOf: _nameOf,
+          accounts: widget.accountProfiles,
+          onViewProfile: widget.onViewProfile,
+        ),
+        const SizedBox(height: 28),
+        _heading('Ringkasan desa'),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, box) {
+            final cols = box.maxWidth >= 580 ? 3 : 2;
+            const gap = 14.0;
+            final width = (box.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: 8,
+              children: [
+                for (var i = 0; i < tiles.length; i++)
+                  SizedBox(
+                    width: width,
+                    child: _tile(
+                      tiles[i].$1,
+                      tiles[i].$2,
+                      tiles[i].$3,
+                      t,
+                      i * 0.075,
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 

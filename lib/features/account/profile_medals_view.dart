@@ -88,10 +88,10 @@ String _seriesSub(MedalSeries s) => switch (s.metric) {
 enum _MedalState { locked, ready, received }
 
 _MedalState _stateOf(
-    ProfileDetails profile,
-    ProfileMedal medal,
-    MedalClaimsController? claims,
-    ) {
+  ProfileDetails profile,
+  ProfileMedal medal,
+  MedalClaimsController? claims,
+) {
   if (!medal.unlocked(profile)) return _MedalState.locked;
   if (claims == null || claims.isClaimed(medal)) return _MedalState.received;
   return _MedalState.ready;
@@ -205,11 +205,11 @@ class MedalArt extends StatelessWidget {
         builder: (context, snapshot) => snapshot.data == null
             ? fallback
             : Image.asset(
-          snapshot.data!,
-          fit: BoxFit.contain,
-          cacheWidth: (size * 3).round(),
-          errorBuilder: (_, _, _) => fallback,
-        ),
+                snapshot.data!,
+                fit: BoxFit.contain,
+                cacheWidth: (size * 3).round(),
+                errorBuilder: (_, _, _) => fallback,
+              ),
       ),
     );
     return Semantics(
@@ -226,7 +226,7 @@ class MedalArt extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    medal.tint.withValues(alpha: .4),
+                    medal.tint.withValues(alpha: .7),
                     medal.tint.withValues(alpha: 0),
                   ],
                   stops: const [.35, 1],
@@ -237,7 +237,7 @@ class MedalArt extends StatelessWidget {
             art
           else
             Opacity(
-              opacity: .6,
+              opacity: .82,
               child: ColorFiltered(
                 // Abu-abu gelap: bentuknya terbaca, warnanya masih rahasia.
                 colorFilter: const ColorFilter.matrix([
@@ -378,7 +378,7 @@ class ProfileMedalsSummary extends StatelessWidget {
     final highest = [
       for (final series in medalSeries)
         if (received.where((m) => m.series.id == series.id).lastOrNull
-        case final ProfileMedal m)
+            case final ProfileMedal m)
           m,
     ];
     final countText = claims == null
@@ -475,6 +475,45 @@ class ProfileMedalsSummary extends StatelessWidget {
             },
           ),
         const SizedBox(height: 6),
+        if (claims != null && claims.initialized) ...[
+          const SizedBox(height: 14),
+          Text(
+            medalSeries.every((s) => nextMedal(displayed, s) == null)
+                ? 'Seluruh target medali tercapai'
+                : 'Pencapaian berikutnya',
+            style: profileCaps,
+          ),
+          for (final series in medalSeries)
+            if (nextMedal(displayed, series) case final ProfileMedal next)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      next.name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    ProfileMeter(
+                      value: next.progress(displayed),
+                      color: _seriesColor(series),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${medalNumber(next.valueOf(displayed))}/${medalNumber(next.target)} ${series.unit}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        ],
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -525,7 +564,11 @@ class _HighestTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            MedalArt(medal: medal, unlocked: true, size: math.min(76, width - 20)),
+            MedalArt(
+              medal: medal,
+              unlocked: true,
+              size: math.min(96, width - 20),
+            ),
             const SizedBox(height: 8),
             Text(
               medal.name,
@@ -565,7 +608,9 @@ class _ClaimBanner extends StatelessWidget {
       );
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(border: Border(top: side, bottom: side)),
+        decoration: BoxDecoration(
+          border: Border(top: side, bottom: side),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -599,7 +644,7 @@ class _ClaimBanner extends StatelessWidget {
                     onPressed: claims.claimingId != null
                         ? null
                         : () =>
-                        claimMedalWithCelebration(context, claims, medal),
+                              claimMedalWithCelebration(context, claims, medal),
                     icon: const Icon(Icons.emoji_events, size: 20),
                     label: Text(
                       claims.claimingId == medal.id
@@ -620,16 +665,16 @@ class _ClaimBanner extends StatelessWidget {
 
 /// Halaman penuh bergaya Panduan: daftar seri | grid medali | penyaring.
 Future<void> showMedalCollection(
-    BuildContext context,
-    ProfileDetails profile, {
-      MedalClaimsController? claims,
-    }) async {
+  BuildContext context,
+  ProfileDetails profile, {
+  MedalClaimsController? claims,
+}) async {
   if (!profile.googleLinked) return;
   await Navigator.of(context).push<void>(
     MaterialPageRoute<void>(
       builder: (_) => _watchClaims(
         claims,
-            () => _MedalCollectionPage(profile: profile, claims: claims),
+        () => _MedalCollectionPage(profile: profile, claims: claims),
       ),
     ),
   );
@@ -674,14 +719,16 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
         .length;
     final verb = claims == null ? 'diraih' : 'diklaim';
 
-    int doneOf(MedalSeries s) => _medalsOf(s)
-        .where((m) => _stateOf(profile, m, claims) == _MedalState.received)
-        .length;
+    int doneOf(MedalSeries s) => _medalsOf(
+      s,
+    ).where((m) => _stateOf(profile, m, claims) == _MedalState.received).length;
 
     Widget tab(int i, {required bool compact}) {
       final s = i == 0 ? null : medalSeries[i - 1];
       return ProfileTab(
-        key: s == null ? const ValueKey('medal-series-all') : ValueKey('medal-series-${s.id}'),
+        key: s == null
+            ? const ValueKey('medal-series-all')
+            : ValueKey('medal-series-${s.id}'),
         label: s?.name ?? 'Semua',
         sub: s == null ? 'Seluruh seri badge' : _seriesSub(s),
         icon: s == null ? 'helaidaun' : _seriesIcon(s),
@@ -732,7 +779,9 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
         ];
         if (series != null) {
           children.add(
-            ProfileReveal(child: _SeriesHero(profile: profile, series: s)),
+            ProfileReveal(
+              child: _SeriesHero(profile: profile, series: s),
+            ),
           );
         }
         if (medals.isEmpty) continue;
@@ -785,7 +834,7 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
       title: 'Koleksi Badge',
       icon: 'helaidaun',
       background:
-      sceneryPath('papanmedali-latar') ??
+          sceneryPath('papanmedali-latar') ??
           sceneryPath('perpustakaantua') ??
           landscapePath(30),
       child: LayoutBuilder(
@@ -822,7 +871,9 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SingleChildScrollView(
-                        key: ValueKey('medal-series-scroll-${series?.id ?? 'all'}'),
+                        key: ValueKey(
+                          'medal-series-scroll-${series?.id ?? 'all'}',
+                        ),
                         padding: const EdgeInsets.only(bottom: 16),
                         child: content(),
                       ),
@@ -880,15 +931,15 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
   }
 
   Widget _grid(
-      BuildContext context,
-      ProfileDetails profile,
-      MedalClaimsController? claims,
-      List<ProfileMedal> medals,
-      ) => LayoutBuilder(
+    BuildContext context,
+    ProfileDetails profile,
+    MedalClaimsController? claims,
+    List<ProfileMedal> medals,
+  ) => LayoutBuilder(
     builder: (context, c) {
       const gap = 12.0;
       final avail = c.maxWidth.isFinite ? c.maxWidth : 360.0;
-      final cols = ((avail + gap) / (112 + gap)).floor().clamp(2, 6).toInt();
+      final cols = ((avail + gap) / (148 + gap)).floor().clamp(2, 5).toInt();
       final w = ((avail - gap * (cols - 1)) / cols).floorToDouble();
       return Wrap(
         spacing: gap,
@@ -901,7 +952,7 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
                 index: i,
                 dy: 24,
                 scaleFrom: .86,
-                child: _medalCell(context, profile, claims, medals[i]),
+                child: _medalCell(context, profile, claims, medals[i], w),
               ),
             ),
         ],
@@ -910,15 +961,17 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
   );
 
   Widget _medalCell(
-      BuildContext context,
-      ProfileDetails profile,
-      MedalClaimsController? claims,
-      ProfileMedal medal,
-      ) {
+    BuildContext context,
+    ProfileDetails profile,
+    MedalClaimsController? claims,
+    ProfileMedal medal,
+    double cellWidth,
+  ) {
     final state = _stateOf(profile, medal, claims);
     final locked = state == _MedalState.locked;
     final ready = state == _MedalState.ready;
     final color = locked ? EmbunColors.goldDim : medal.tint;
+    final art = (cellWidth - 8).clamp(84.0, 124.0).toDouble();
     final cell = Material(
       color: Colors.transparent,
       child: InkWell(
@@ -935,8 +988,28 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
           ),
           child: Column(
             children: [
-              MedalArt(medal: medal, unlocked: !locked, size: 76),
-              const SizedBox(height: 6),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (!locked)
+                    Container(
+                      width: art * 1.15,
+                      height: art * 1.15,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: medal.tint.withValues(alpha: .35),
+                            blurRadius: 26,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  MedalArt(medal: medal, unlocked: !locked, size: art),
+                ],
+              ),
+              const SizedBox(height: 8),
               SizedBox(
                 height: 34,
                 child: Center(
@@ -946,7 +1019,7 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13.5,
                       height: 1.2,
                       fontWeight: FontWeight.w800,
                       color: locked ? Colors.white70 : medal.tint,
@@ -958,9 +1031,9 @@ class _MedalCollectionPageState extends State<_MedalCollectionPage> {
               Text(
                 switch (state) {
                   _MedalState.locked =>
-                  '${medalNumber(medal.valueOf(profile))}/${medalNumber(medal.target)}',
+                    '${medalNumber(medal.valueOf(profile))}/${medalNumber(medal.target)}',
                   _MedalState.ready =>
-                  claims?.initialized == false ? 'Memuat…' : 'Klaim!',
+                    claims?.initialized == false ? 'Memuat…' : 'Klaim!',
                   _MedalState.received => 'Diraih',
                 },
                 maxLines: 1,
@@ -1017,7 +1090,7 @@ class _SeriesHero extends StatelessWidget {
       decoration: BoxDecoration(border: Border(bottom: profileRule(color))),
       child: Row(
         children: [
-          _Stage(medal: focus, unlocked: focus.unlocked(profile), size: 76),
+          _Stage(medal: focus, unlocked: focus.unlocked(profile), size: 104),
           const SizedBox(width: 6),
           Expanded(
             child: Column(
@@ -1079,11 +1152,11 @@ class _SeriesHero extends StatelessWidget {
 // ───────────────────────── Rincian & klaim ─────────────────────────
 
 Future<void> showMedalDetails(
-    BuildContext context,
-    ProfileDetails profile,
-    ProfileMedal medal, {
-      MedalClaimsController? claims,
-    }) async {
+  BuildContext context,
+  ProfileDetails profile,
+  ProfileMedal medal, {
+  MedalClaimsController? claims,
+}) async {
   if (!profile.googleLinked) return;
   final unlocked = medal.unlocked(profile);
   final next = nextMedal(profile, medal.series);
@@ -1146,12 +1219,14 @@ Future<void> showMedalDetails(
                 ],
               ),
               DecoratedBox(
-                decoration: BoxDecoration(border: Border(bottom: profileRule())),
+                decoration: BoxDecoration(
+                  border: Border(bottom: profileRule()),
+                ),
                 child: const SizedBox(height: 4),
               ),
               const SizedBox(height: 8),
               Center(
-                child: _Stage(medal: medal, unlocked: unlocked, size: 112),
+                child: _Stage(medal: medal, unlocked: unlocked, size: 150),
               ),
               Center(child: _TierLabel(medal)),
               const SizedBox(height: 6),
@@ -1217,7 +1292,7 @@ Future<void> showMedalDetails(
                 visual: Icon(Icons.timeline, color: tint, size: 24),
                 label: 'TOTAL TERCATAT',
                 title:
-                '${medalNumber(medal.valueOf(profile))} ${medal.series.unit}',
+                    '${medalNumber(medal.valueOf(profile))} ${medal.series.unit}',
               ),
               if (unlocked && next != null)
                 ProfileRow(
@@ -1227,7 +1302,7 @@ Future<void> showMedalDetails(
                   label: 'BERIKUTNYA',
                   title: next.name,
                   text:
-                  '${medalNumber(next.valueOf(profile))}/${medalNumber(next.target)} ${next.series.unit}',
+                      '${medalNumber(next.valueOf(profile))}/${medalNumber(next.target)} ${next.series.unit}',
                 ),
               const SizedBox(height: 12),
               if (claims != null && unlocked && !claims.isClaimed(medal)) ...[
@@ -1266,14 +1341,27 @@ Future<void> showMedalDetails(
 
 Widget _watchClaims(MedalClaimsController? claims, Widget Function() builder) =>
     claims == null
-        ? builder()
-        : ListenableBuilder(listenable: claims, builder: (_, _) => builder());
+    ? builder()
+    : ListenableBuilder(listenable: claims, builder: (_, _) => builder());
 
 Future<void> claimMedalWithCelebration(
-    BuildContext context,
-    MedalClaimsController claims,
-    ProfileMedal medal,
-    ) async {
+  BuildContext context,
+  MedalClaimsController claims,
+  ProfileMedal medal,
+) async {
+  final highestReceived = profileMedals
+      .where(
+        (m) =>
+            m.series.id == medal.series.id &&
+            claims.isClaimed(m) &&
+            claims.profile != null &&
+            m.unlocked(claims.profile!),
+      )
+      .lastOrNull;
+  final previous =
+      highestReceived != null && highestReceived.index < medal.index
+      ? highestReceived
+      : null;
   final saved = await claims.claim(medal);
   if (!saved || !context.mounted || !claims.active) return;
   await showDialog<void>(
@@ -1281,6 +1369,7 @@ Future<void> claimMedalWithCelebration(
     barrierDismissible: false,
     builder: (_) => MedalClaimCelebration(
       medal: medal,
+      previousMedal: previous,
       art: MedalArt(medal: medal, unlocked: true, size: 200),
     ),
   );

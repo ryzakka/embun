@@ -18,6 +18,7 @@ import '../account/profile_details_page.dart';
 import '../account/player_account_avatar.dart';
 import '../account/room_account_status.dart';
 import '../account/medal_claim_scope.dart';
+import '../account/room_medals_view.dart';
 import '../common/character_lock.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
@@ -877,6 +878,12 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
                                 fontSize: 10.5,
                                 color: Colors.white60,
                               ),
+                            ),
+                          if (!guest && account.identity != null)
+                            RoomMedalStrip(
+                              userId: account.identity!,
+                              size: 14,
+                              onViewProfile: _openProfile,
                             ),
                         ],
                       ),
