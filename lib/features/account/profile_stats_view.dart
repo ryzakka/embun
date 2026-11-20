@@ -6,20 +6,14 @@ import '../common/art.dart';
 import '../common/ornate.dart';
 import 'medal_claim_scope.dart';
 import 'profile_medals_view.dart';
-
-const _caps = TextStyle(
-  fontSize: 11,
-  letterSpacing: 1.4,
-  fontWeight: FontWeight.w600,
-  color: Colors.white60,
-);
+import 'profile_style.dart';
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
 // ───────────────────────── Hero: cincin tingkat menang + nama ─────────────────────────
 
 /// Avatar di dalam cincin emas yang terisi sesuai tingkat kemenangan, nama
-/// besar di sampingnya. [avatar] dibuat oleh pemanggil (ProfileAvatar dkk).
+/// di sampingnya. Tanpa latar kotak; [avatar] dibuat oleh pemanggil.
 class ProfileStatsHero extends StatelessWidget {
   const ProfileStatsHero({
     super.key,
@@ -36,27 +30,13 @@ class ProfileStatsHero extends StatelessWidget {
     final d = details;
     final total = d.completed;
     final wins = d.wargaWins + d.terbisikWins;
-    final rate = total <= 0 ? 0.0 : (wins / total).clamp(0.0, 1.0);
+    final rate = total <= 0 ? 0.0 : (wins / total).clamp(0.0, 1.0).toDouble();
     final pct = total <= 0 ? null : (rate * 100).round();
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(-.7, 0),
-          radius: 1.1,
-          colors: [
-            EmbunColors.gold.withValues(alpha: .13),
-            Colors.transparent,
-          ],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
       child: Row(
         children: [
-          _RateRing(
-            value: rate,
-            size: avatarRadius * 2 + 30,
-            child: avatar,
-          ),
+          _RateRing(value: rate, size: avatarRadius * 2 + 30, child: avatar),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -78,11 +58,7 @@ class ProfileStatsHero extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.workspace_premium_outlined,
-                        size: 16,
-                        color: EmbunColors.gold,
-                      ),
+                      const GameIcon('persona', size: 20),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -90,8 +66,8 @@ class ProfileStatsHero extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: .6,
                             color: EmbunColors.gold,
                           ),
@@ -100,39 +76,29 @@ class ProfileStatsHero extends StatelessWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white30),
-                      ),
-                      child: Text(
-                        pct == null ? '-' : '$pct%',
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.white70,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: pct == null ? '-' : '$pct%',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: EmbunColors.gold,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        total <= 0
-                            ? 'Belum ada pertandingan selesai'
-                            : 'Menang $wins dari $total pertandingan',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: Colors.white70,
-                        ),
+                      TextSpan(
+                        text: total <= 0
+                            ? '  Belum ada pertandingan selesai'
+                            : '  Menang $wins dari $total pertandingan',
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -163,8 +129,8 @@ class _RateRingPainter extends CustomPainter {
   final double value;
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 4.0;
-    final rect = (Offset.zero & size).deflate(stroke);
+    const stroke = 3.0;
+    final rect = (Offset.zero & size).deflate(stroke + 1);
     canvas.drawArc(
       rect,
       0,
@@ -176,22 +142,10 @@ class _RateRingPainter extends CustomPainter {
         ..color = Colors.white12,
     );
     if (value <= 0) return;
-    final sweep = 2 * math.pi * value;
     canvas.drawArc(
       rect,
       -math.pi / 2,
-      sweep,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke + 4
-        ..color = EmbunColors.gold.withValues(alpha: .45)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
-    );
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      sweep,
+      2 * math.pi * value,
       false,
       Paint()
         ..style = PaintingStyle.stroke
@@ -207,7 +161,8 @@ class _RateRingPainter extends CustomPainter {
 
 // ───────────────────────── Papan statistik ─────────────────────────
 
-/// Tiga angka besar, bilah kemenangan, dan kartu 2×2 ala papan prajurit.
+/// Tiga angka besar dipisah garis tegak tipis, bilah kemenangan, lalu
+/// baris-baris fakta berikon (dua kolom di layar lebar).
 class ProfileStatsBoard extends StatelessWidget {
   const ProfileStatsBoard({
     super.key,
@@ -244,44 +199,122 @@ class ProfileStatsBoard extends StatelessWidget {
 
     final hasRole = d.wargaWins > 0 || d.terbisikWins > 0;
     final wargaTop = d.wargaWins >= d.terbisikWins;
+    final roleColor = !hasRole
+        ? Colors.white38
+        : wargaTop
+        ? EmbunColors.leaf
+        : EmbunColors.mist;
+
+    final rows = <Widget>[
+      ProfileRow(
+        label: 'PERAN UNGGULAN',
+        accent: roleColor,
+        visual: Icon(
+          !hasRole
+              ? Icons.help_outline
+              : wargaTop
+              ? Icons.shield_outlined
+              : Icons.nights_stay_outlined,
+          size: 34,
+          color: roleColor,
+        ),
+        title: !hasRole
+            ? 'Belum ada'
+            : wargaTop
+            ? 'Warga Desa'
+            : 'Si Terbisik',
+        text: !hasRole
+            ? 'Menangkan pertandingan pertama'
+            : '${medalNumber(wargaTop ? d.wargaWins : d.terbisikWins)} kemenangan',
+      ),
+      ProfileRow(
+        label: 'MEDALI TERTINGGI',
+        accent: topMedal?.tintColor ?? Colors.white38,
+        onTap: topMedal == null
+            ? null
+            : () => showMedalDetails(
+          context,
+          claims?.profile ?? d,
+          topMedal,
+          claims: claims,
+        ),
+        visual: topMedal == null
+            ? const Icon(Icons.lock_outline, size: 30, color: Colors.white38)
+            : MedalArt(medal: topMedal, unlocked: true, size: 44),
+        title: topMedal?.name ?? 'Belum ada',
+        text: topMedal == null
+            ? 'Raih medali pertamamu'
+            : '${received.length}/${profileMedals.length} medali',
+      ),
+      ProfileRow(
+        label: 'PERTANDINGAN TERAKHIR',
+        accent: last == null
+            ? Colors.white38
+            : last.won
+            ? EmbunColors.gold
+            : EmbunColors.blood,
+        visual: last == null
+            ? const Icon(Icons.hourglass_empty, size: 30, color: Colors.white38)
+            : GameIcon(last.won ? 'centang' : 'silang', size: 34),
+        title: last == null
+            ? 'Belum ada'
+            : '${last.won ? 'Menang' : 'Kalah'} · ${last.side == 'antagonis' ? 'Si Terbisik' : 'Warga Desa'}',
+        text: last == null
+            ? 'Belum ada riwayat'
+            : '${_two(last.finishedAt.day)}/${_two(last.finishedAt.month)}/${last.finishedAt.year} · hari ke-${last.days}',
+      ),
+      ProfileRow(
+        label: 'REKOR 5 TERAKHIR',
+        visual: const GameIcon('hari', size: 32),
+        title: streak.isEmpty
+            ? 'Belum ada'
+            : '$streakWins menang dari ${streak.length}',
+        text: '${medalNumber(total)} pertandingan selesai',
+        extra: Row(
+          children: [
+            for (var i = 0; i < 5; i++)
+              _Pip(result: i < streak.length ? streak[i].won : null),
+          ],
+        ),
+      ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _BigStat(
-                  label: 'TINGKAT MENANG',
-                  value: pct,
-                  suffix: '%',
-                  color: EmbunColors.gold,
-                ),
+        Row(
+          children: [
+            Expanded(
+              child: _Num(
+                label: 'TINGKAT MENANG',
+                value: pct,
+                suffix: '%',
+                color: EmbunColors.gold,
               ),
-              Expanded(
-                child: _BigStat(
-                  label: 'MENANG WARGA',
-                  value: d.wargaWins,
-                  color: EmbunColors.leaf,
-                ),
+            ),
+            _divider(),
+            Expanded(
+              child: _Num(
+                label: 'MENANG WARGA',
+                value: d.wargaWins,
+                color: EmbunColors.leaf,
               ),
-              Expanded(
-                child: _BigStat(
-                  label: 'MENANG TERBISIK',
-                  value: d.terbisikWins,
-                  color: EmbunColors.mist,
-                ),
+            ),
+            _divider(),
+            Expanded(
+              child: _Num(
+                label: 'MENANG TERBISIK',
+                value: d.terbisikWins,
+                color: EmbunColors.mist,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: 14),
         ClipRRect(
           borderRadius: BorderRadius.circular(3),
           child: Container(
-            height: 6,
+            height: 5,
             color: Colors.white12,
             child: total <= 0
                 ? null
@@ -304,122 +337,49 @@ class ProfileStatsBoard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _InfoCard(
-                  label: 'PERAN UNGGULAN',
-                  accent: !hasRole
-                      ? Colors.white38
-                      : wargaTop
-                      ? EmbunColors.leaf
-                      : EmbunColors.mist,
-                  visual: Icon(
-                    !hasRole
-                        ? Icons.help_outline
-                        : wargaTop
-                        ? Icons.shield_outlined
-                        : Icons.nights_stay_outlined,
-                    size: 46,
-                    color: !hasRole
-                        ? Colors.white38
-                        : wargaTop
-                        ? EmbunColors.leaf
-                        : EmbunColors.mist,
+        LayoutBuilder(
+          builder: (context, c) {
+            if (c.maxWidth < 520) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < rows.length; i++)
+                    ProfileReveal(index: i, child: rows[i]),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < rows.length; i += 2)
+                  ProfileReveal(
+                    index: i ~/ 2,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: rows[i]),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: i + 1 < rows.length
+                              ? rows[i + 1]
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
                   ),
-                  title: !hasRole
-                      ? 'Belum ada'
-                      : wargaTop
-                      ? 'Warga Desa'
-                      : 'Si Terbisik',
-                  subtitle: !hasRole
-                      ? 'Menangkan pertandingan pertama'
-                      : '${medalNumber(wargaTop ? d.wargaWins : d.terbisikWins)} kemenangan',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _InfoCard(
-                  label: 'MEDALI TERTINGGI',
-                  accent: topMedal?.tintColor ?? Colors.white38,
-                  onTap: topMedal == null
-                      ? null
-                      : () => showMedalDetails(
-                    context,
-                    claims?.profile ?? d,
-                    topMedal,
-                    claims: claims,
-                  ),
-                  visual: topMedal == null
-                      ? const Icon(
-                    Icons.lock_outline,
-                    size: 40,
-                    color: Colors.white38,
-                  )
-                      : MedalArt(medal: topMedal, unlocked: true, size: 64),
-                  title: topMedal?.name ?? 'Belum ada',
-                  subtitle: topMedal == null
-                      ? 'Raih medali pertamamu'
-                      : '${received.length}/${profileMedals.length} medali',
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _InfoCard(
-                  label: 'PERTANDINGAN TERAKHIR',
-                  accent: last == null
-                      ? Colors.white38
-                      : last.won
-                      ? EmbunColors.gold
-                      : EmbunColors.blood,
-                  visual: last == null
-                      ? const Icon(
-                    Icons.hourglass_empty,
-                    size: 40,
-                    color: Colors.white38,
-                  )
-                      : GameIcon(last.won ? 'centang' : 'silang', size: 48),
-                  title: last == null
-                      ? 'Belum ada'
-                      : '${last.won ? 'Menang' : 'Kalah'} · ${last.side == 'antagonis' ? 'Si Terbisik' : 'Warga Desa'}',
-                  subtitle: last == null
-                      ? 'Belum ada riwayat'
-                      : '${_two(last.finishedAt.day)}/${_two(last.finishedAt.month)}/${last.finishedAt.year} · hari ke-${last.days}',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _InfoCard(
-                  label: 'REKOR 5 TERAKHIR',
-                  accent: EmbunColors.gold,
-                  visual: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var i = 0; i < 5; i++)
-                        _Pip(result: i < streak.length ? streak[i].won : null),
-                    ],
-                  ),
-                  title: streak.isEmpty
-                      ? 'Belum ada'
-                      : '$streakWins menang dari ${streak.length}',
-                  subtitle: '${medalNumber(total)} pertandingan selesai',
-                ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ],
     );
   }
+
+  Widget _divider() => Container(
+    width: 1,
+    height: 46,
+    color: EmbunColors.goldDim.withValues(alpha: 0.35),
+  );
 }
 
 extension on ProfileMedal {
@@ -438,8 +398,8 @@ extension on ProfileMedal {
   ][index];
 }
 
-class _BigStat extends StatelessWidget {
-  const _BigStat({
+class _Num extends StatelessWidget {
+  const _Num({
     required this.label,
     required this.value,
     required this.color,
@@ -451,91 +411,37 @@ class _BigStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = TextStyle(
-      fontSize: 36,
+      fontSize: 30,
       height: 1.1,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 1,
+      fontWeight: FontWeight.w800,
       color: color,
     );
     final v = value;
+    final Widget number = v == null
+        ? Text('-', style: style)
+        : MediaQuery.disableAnimationsOf(context)
+        ? Text('$v$suffix', style: style)
+        : TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: v.toDouble()),
+      duration: const Duration(milliseconds: 1200),
+      curve: Curves.easeOutCubic,
+      builder: (_, n, _) => Text('${n.round()}$suffix', style: style),
+    );
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: _caps),
-        const SizedBox(height: 6),
-        if (v == null)
-          Text('-', style: style)
-        else if (MediaQuery.disableAnimationsOf(context))
-          Text('$v$suffix', style: style)
-        else
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: v.toDouble()),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOutCubic,
-            builder: (_, n, _) => Text('${n.round()}$suffix', style: style),
-          ),
+        FittedBox(fit: BoxFit.scaleDown, child: number),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: profileCaps.copyWith(fontSize: 10, letterSpacing: 1.1),
+        ),
       ],
     );
   }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.label,
-    required this.visual,
-    required this.title,
-    required this.subtitle,
-    this.accent = EmbunColors.gold,
-    this.onTap,
-  });
-  final String label, title, subtitle;
-  final Widget visual;
-  final Color accent;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.black.withValues(alpha: .30),
-    borderRadius: BorderRadius.circular(4),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 12),
-        decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(color: accent.withValues(alpha: .85), width: 2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: _caps.copyWith(fontSize: 10.5)),
-            const SizedBox(height: 8),
-            SizedBox(height: 66, child: Center(child: visual)),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w700,
-                color: EmbunColors.cream,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: Colors.white60),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 /// Satu penanda hasil: true = menang, false = kalah, null = belum ada.
@@ -546,30 +452,24 @@ class _Pip extends StatelessWidget {
   Widget build(BuildContext context) {
     final won = result == true;
     return Container(
-      width: 22,
-      height: 22,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
+      width: 20,
+      height: 20,
+      margin: const EdgeInsets.only(right: 5),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: won ? EmbunColors.gold : Colors.transparent,
         border: Border.all(
-          color: result == null ? Colors.white12 : (won ? EmbunColors.gold : Colors.white30),
+          color: result == null
+              ? Colors.white12
+              : (won ? EmbunColors.gold : Colors.white30),
         ),
-        boxShadow: won
-            ? [
-          BoxShadow(
-            color: EmbunColors.gold.withValues(alpha: .5),
-            blurRadius: 8,
-          ),
-        ]
-            : null,
       ),
       child: result == null
           ? null
           : Icon(
         won ? Icons.check : Icons.close,
-        size: 14,
+        size: 13,
         color: won ? const Color(0xFF1A1405) : Colors.white38,
       ),
     );
