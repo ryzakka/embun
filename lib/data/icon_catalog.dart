@@ -1,5 +1,5 @@
 /// Nama berkas ikon terbaru dalam assets/ikon (tanpa ekstensi).
-/// Gambar PNG baru didahulukan khusus folder ini; WebP tetap didukung.
+/// Ikon mendukung PNG/WebP; judul dan cap juga ditemukan di foldernya.
 const embunIconNames = <String>{
   'addmember','akhir-kalah','akhir-menang','alert','announcement','back','back2',
   'barter','baru','botollab','bubarkan','bukatautan','bulansabit','bulirembun',
@@ -8,7 +8,7 @@ const embunIconNames = <String>{
   'hatipenuh','helaidaun','hide','home','host','identity','info','item','jampasir',
   'joinroom','jointoroom','kalah','keluar','kirim','lewatiakhir','lewatisatu',
   'lihatprofil','lock','logorhistory','matahari','medali','menang','menu','minus',
-  'mydeck','mydeck2','notification','off','on','perbaikan','persona','pesanataumail',
+  'mydeck','mydeck2','notification','off','on','perbaikan','persona','pesanatauemail',
   'piala','plus','poinmin1','poinplus1','question','refresh','roomcode','roomcreate',
   'salin','samadengan','settings','show','showaddgraphic','silang','simpan','skip',
   'skip2','start','store','suaramati','suaranyala','takterbatas','tautan','tertuduh',
@@ -22,6 +22,7 @@ const embunIconAliases = <String,String>{
   'title-pasarriset':'titlepasarriset',
   'titlepasarrise':'titlepasarriset',
   'tutor':'touch',
+  'pesanataumail':'pesanatauemail',
 };
 const _compatibleIcons = <String,List<String>>{
   'titlemusyawarah':['title-musyawarah'],

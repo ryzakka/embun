@@ -315,8 +315,9 @@ class _PrologueFlowState extends State<PrologueFlow>
     } else if (widget.resume) {
       step = _Step.loading;
     }
-    randomStems = widget.characterTheme == 'manhwa'
-        ? manhwaOutfits.keys.toList()
+    AssetCatalog.useTheme(widget.characterTheme);
+    randomStems = isDraftTheme(widget.characterTheme)
+        ? themeOutfits(widget.characterTheme).keys.toList()
         : protagonistStems();
     _shuffleCtrl = AnimationController(
       vsync: this,

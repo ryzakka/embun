@@ -1,6 +1,7 @@
-import 'manhwa_catalog.dart';
+import 'theme_catalog.dart';
+import 'asset_routes.dart';
 import 'icon_catalog.dart';
-export 'manhwa_catalog.dart';
+export 'theme_catalog.dart';
 import 'dart:math';
 import 'character_catalog.dart';
 export 'character_catalog.dart';
@@ -41,59 +42,98 @@ class AssetCatalog {
   static AssetCatalog? _instance;
   static AssetCatalog get I => _instance ?? AssetCatalog._({});
 
-  static Future<void> load({AssetBundle? bundle}) async {
-    final byFolder = <String, Map<String, String>>{};
-    try {
-      final manifest = await AssetManifest.loadFromAssetBundle(
-        bundle ?? rootBundle,
-      );
-      for (final path in manifest.listAssets()) {
-        final lower = path.toLowerCase();
-        final isImage =
-            lower.endsWith('.png') ||
-            lower.endsWith('.webp') ||
-            lower.endsWith('.jpg') ||
-            lower.endsWith('.jpeg');
-        if (!path.startsWith('assets/') || !isImage) continue;
-        final slash = path.lastIndexOf('/');
-        final file = path.substring(slash + 1);
-        final stem = file.substring(0, file.lastIndexOf('.'));
-        final folder = byFolder.putIfAbsent(path.substring(0, slash), () => {});
-        final isIcon = path.substring(0, slash) == ikonDir;
-        final key = isIcon ? stem.toLowerCase() : stem;
-        // PNG ikon terbaru menang atas WebP lama; folder lain tetap WebP.
-        if (!folder.containsKey(key) ||
-            (isIcon ? lower.endsWith('.png') : lower.endsWith('.webp'))) {
-          folder[key] = path;
-        }
-      }
-    } catch (_) {}
-    _instance = AssetCatalog._(byFolder);
+  /// The room owns this value; home resets it and preview scopes/restores it.
+  static String activeTheme = defaultTheme;
+  static void useTheme(String? theme) {
+    activeTheme = isDraftTheme(theme) ? theme! : defaultTheme;
   }
 
-  String? file(String folder, String stem) => _byFolder[folder]?[stem];
+  factory AssetCatalog.fromPaths(Iterable<String> paths) {
+    final byFolder = <String, Map<String, String>>{};
+    for (final path in paths.toList()..sort()) {
+      final lower = path.toLowerCase();
+      if (!path.startsWith('assets/') ||
+          !RegExp(r'\.(png|webp|jpe?g)$').hasMatch(lower)) continue;
+      final slash = path.lastIndexOf('/');
+      final rawStem = path.substring(slash + 1, path.lastIndexOf('.'));
+      final isIcon = const {'assets/ikon','assets/title','assets/cap'}.contains(path.substring(0, slash));
+      final stem = isIcon ? rawStem.toLowerCase() : rawStem;
+      final folder = byFolder.putIfAbsent(path.substring(0, slash), () => {});
+      // The latest pack is WebP. Stable preference, independent of manifest order.
+      if (!folder.containsKey(stem) || lower.endsWith('.webp')) {
+        folder[stem] = path;
+      }
+    }
+    return AssetCatalog._(byFolder);
+  }
 
-  /// Berkas bernama [stem] di folder mana pun (untuk aset yang letak
-  /// foldernya tidak tetap, mis. gambar karakter tutor).
+  static Future<void> load({AssetBundle? bundle}) async {
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(bundle ?? rootBundle);
+      _instance = AssetCatalog.fromPaths(manifest.listAssets());
+    } catch (_) {
+      _instance = AssetCatalog._({});
+    }
+  }
+
+  Iterable<String> _folders(String folder, String stem, String theme) sync* {
+    if (folder == ikonDir) {
+      if (const {'dibeli','dipilih','kalah','menang','tertuduh'}.contains(stem)) {
+        yield 'assets/cap';
+      } else if (stem.startsWith('title') || stem.startsWith('akhir-')) {
+        yield 'assets/title';
+      }
+    } else if (folder == bentangDir) {
+      if (stem.startsWith('sheet')) yield 'assets/sheets';
+      if (stem.startsWith('pohonindikator') || stem.startsWith('bingkai-')) {
+        yield 'assets/indikator';
+      }
+    }
+    yield* assetFolders(folder, theme);
+  }
+
+  String? file(String folder, String stem, {String? theme}) {
+    final names = [if (assetStemAliases[stem] != null) assetStemAliases[stem]!, stem];
+    for (final dir in _folders(folder, names.first, theme ?? activeTheme)) {
+      for (final name in names) {
+        final hit = _byFolder[dir]?[name];
+        if (hit != null) return hit;
+      }
+    }
+    return null;
+  }
+
   String? anywhere(String stem) {
-    for (final folder in _byFolder.values) {
-      final hit = folder[stem];
+    // Popup illustrations must never leak from an unrelated theme.
+    final popup = file('assets/kartu/CharPopUp', stem);
+    if (popup != null) return popup;
+    for (final entry in _byFolder.entries) {
+      if (entry.key.startsWith('assets/kartu/') || entry.key.startsWith('assets/pohon')) continue;
+      final hit = entry.value[stem];
       if (hit != null) return hit;
     }
     return null;
   }
 
-  /// Berkas pertama (urut abjad) yang namanya diawali [prefix]. Dipakai bila
-  /// nama lengkapnya tak pasti atau panjang.
   String? byPrefix(String folder, String prefix) {
-    final m = _byFolder[folder];
-    if (m == null) return null;
-    final keys = m.keys.where((k) => k.startsWith(prefix)).toList()..sort();
-    return keys.isEmpty ? null : m[keys.first];
+    for (final dir in assetFolders(folder, activeTheme)) {
+      final keys = (_byFolder[dir]?.keys ?? const <String>[])
+          .where((k) => k.startsWith(prefix) && !k.toLowerCase().contains('draf'))
+          .toList()..sort();
+      if (keys.isNotEmpty) return _byFolder[dir]![keys.first];
+    }
+    return null;
   }
 
-  List<String> stems(String folder) =>
-      (_byFolder[folder]?.keys.toList() ?? <String>[])..sort();
+  List<String> stems(String folder, {String? theme}) {
+    for (final dir in assetFolders(folder, theme ?? activeTheme)) {
+      final keys = (_byFolder[dir]?.keys ?? const <String>[])
+          .where((k) => !k.toLowerCase().contains('draf')).toList()..sort();
+      if (keys.isNotEmpty) return keys;
+    }
+    return <String>[];
+  }
+
 }
 
 /// Semua id karakter protagonis (pria + wanita), terurut.
@@ -102,6 +142,7 @@ List<String> protagonistStems({bool includeLocked = false}) =>
           ...AssetCatalog.I.stems(protagonisPriaDir),
           ...AssetCatalog.I.stems(protagonisWanitaDir),
         ]
+        .map((id) => id == 'wanita-penyangraibijikako' ? 'wanita-penyangraibijikakao' : id)
         .where(
           (id) =>
               CharacterCatalog.isListed(id) &&
@@ -110,12 +151,18 @@ List<String> protagonistStems({bool includeLocked = false}) =>
         .toList()
       ..sort();
 
-String? protagonistPath(String id) =>
-    ((manhwaOutfits.containsKey(id) || manhwaLegacyAliases.containsKey(id))
-        ? AssetCatalog.I.file(manhwaDir, manhwaLegacyAliases[id] ?? id)
-        : null) ??
-    AssetCatalog.I.file(protagonisPriaDir, id) ??
-    AssetCatalog.I.file(protagonisWanitaDir, id);
+String? protagonistPath(String id) {
+  if (tiongkokArt.containsKey(id)) {
+    return AssetCatalog.I.file(tiongkokDir, tiongkokArt[id]!) ??
+        AssetCatalog.I.file(punggungDir, 'punggungprotagonis', theme: defaultTheme);
+  }
+  if (manhwaOutfits.containsKey(id) || manhwaLegacyAliases.containsKey(id)) {
+    return AssetCatalog.I.file(manhwaDir, manhwaLegacyAliases[id] ?? id) ??
+        AssetCatalog.I.file(punggungDir, 'punggungprotagonis', theme: defaultTheme);
+  }
+  return AssetCatalog.I.file(protagonisPriaDir, id) ??
+      AssetCatalog.I.file(protagonisWanitaDir, id);
+}
 
 String randomProtagonist() {
   final s = protagonistStems();
@@ -427,6 +474,8 @@ double cardAspectForDef(Map<String, dynamic>? def) => kTallAspect;
 /// `nelayanikanwanita`, `bangsawan-pangeran`. Akhiran pria/wanita dan angka
 /// dibuang; harus sama dengan fungsi SQL `_char_title`.
 String characterTitle(String stem) {
+  final chinese = tiongkokNames[tiongkokOutfits[stem]?.characterId];
+  if (chinese != null) return chinese;
   final manhwaName =
       manhwaNames[manhwaOutfits[manhwaLegacyAliases[stem] ?? stem]
           ?.characterId];

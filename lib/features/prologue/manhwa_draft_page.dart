@@ -160,6 +160,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
 
   void _accept(Map<String, dynamic> state) {
     if (!mounted) return;
+    AssetCatalog.useTheme(state['theme'] as String?);
     final characters = state['stage'] == 'characters';
     final items = (state[characters ? 'characters' : 'outfits'] as List? ?? [])
         .cast<Map>();
@@ -198,7 +199,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
                 ? PrologueFlow(
                     gameId: widget.gameId,
                     repo: widget.repo,
-                    characterTheme: 'manhwa',
+                    characterTheme: (state['theme'] as String?) ?? manhwaTheme,
                     resume: !_wasDrafting,
                     antagonistCount: (state['antagonist_count'] as int?) ?? 1,
                   )
@@ -343,13 +344,13 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
     final locked = stage == 'outfits' && (own?['outfit_card'] != null);
 
     String? charOf(String? id) =>
-        characters ? id : manhwaOutfits[id]?.characterId;
+        characters ? id : themeOutfits(_state?['theme'] as String?)[id]?.characterId;
     final String? accentChar = _selected != null
         ? charOf(_selected)
         : locked
-        ? manhwaOutfits['${own?['outfit_card']}']?.characterId
+        ? themeOutfits(_state?['theme'] as String?)['${own?['outfit_card']}']?.characterId
         : (!characters && items.isNotEmpty
-              ? manhwaOutfits['${items.first['id']}']?.characterId
+              ? themeOutfits(_state?['theme'] as String?)['${items.first['id']}']?.characterId
               : null);
     final accent = _accentFor(accentChar);
 
@@ -369,7 +370,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
           fit: StackFit.expand,
           children: [
             _StageBackdrop(accent: accent, t: _ambient),
-            if (accentChar != null && manhwaNames[accentChar] != null)
+            if (accentChar != null && themeCharacterNames(_state?['theme'] as String?)[accentChar] != null)
               Positioned.fill(
                 child: IgnorePointer(
                   child: Center(
@@ -381,7 +382,7 @@ class _ManhwaDraftPageState extends State<ManhwaDraftPage>
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            manhwaNames[accentChar]!.toUpperCase(),
+                            themeCharacterNames(_state?['theme'] as String?)[accentChar]!.toUpperCase(),
                             softWrap: false,
                             style: TextStyle(
                               fontSize: 150,
@@ -1483,7 +1484,7 @@ class _OutfitCarouselState extends State<_OutfitCarousel> {
     final items = widget.items;
     final cur = items[_page.clamp(0, items.length - 1)];
     final id0 = '${cur['id']}';
-    final label = '${cur['label'] ?? manhwaOutfits[id0]?.label ?? ''}';
+    final label = '${cur['label'] ?? manhwaOutfits[id0]?.label ?? tiongkokOutfits[id0]?.label ?? ''}';
     final parts = label.split(' · ');
     final title = parts.first;
     final sub = parts.length > 1 ? parts.sublist(1).join(' · ') : null;

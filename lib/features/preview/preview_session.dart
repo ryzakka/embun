@@ -1,4 +1,4 @@
-import '../../data/manhwa_catalog.dart';
+import '../../data/theme_catalog.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../data/inspection.dart';
@@ -299,18 +299,18 @@ class PreviewSession
     for (var i = 0; i < _players.length; i++) {
       _previewUsernames[_players[i]['user_id'] as String] = 'Penguji ${i + 1}';
     }
-    if (characterTheme == manhwaTheme) {
-      final preferred = manhwaNames.containsKey(manhwaCharacter)
+    if (isDraftTheme(characterTheme)) {
+      final preferred = themeCharacterNames(characterTheme).containsKey(manhwaCharacter)
           ? manhwaCharacter!
-          : manhwaNames.keys.first;
+          : themeCharacterNames(characterTheme).keys.first;
       final ids = [
         preferred,
-        ...manhwaNames.keys.where((id) => id != preferred),
+        ...themeCharacterNames(characterTheme).keys.where((id) => id != preferred),
       ];
       for (var i = 0; i < _players.length; i++) {
         _players[i] = {
           ..._players[i],
-          'name': waitingRoom ? 'Penguji ${i + 1}' : manhwaNames[ids[i]],
+          'name': waitingRoom ? 'Penguji ${i + 1}' : themeCharacterNames(characterTheme)[ids[i]],
           'character_card': manhwaPrimaryCard(ids[i]),
         };
       }
@@ -549,7 +549,7 @@ class PreviewSession
     _abilityOffers = (previewAbilities.keys.toList()..shuffle())
         .take(3)
         .toList();
-    if (_game['character_theme'] == 'manhwa') {
+    if (isDraftTheme(_game['character_theme'] as String?)) {
       _manhwaStage = 'characters';
       _manhwaCursor = 0;
       _game = {..._game, 'status': 'prologue'};
@@ -617,7 +617,7 @@ class PreviewSession
         _manhwaCursor < roster.length &&
         roster[_manhwaCursor]['user_id'] != myId) {
       final id = roster[_manhwaCursor]['user_id'] as String;
-      final c = manhwaNames.keys.firstWhere(
+      final c = themeCharacterNames(_game['character_theme'] as String?).keys.firstWhere(
         (c) => !_manhwaChoices.values.any((x) => x['character_id'] == c),
       );
       _manhwaChoices[id] = {'character_id': c, 'outfit_card': null};
@@ -626,10 +626,11 @@ class PreviewSession
     if (_manhwaStage == 'characters' && _manhwaCursor >= roster.length) {
       _manhwaStage = 'outfits';
       for (final entry in _manhwaChoices.entries) {
-        if (entry.key != myId)
-          entry.value['outfit_card'] = manhwaOutfits.values
+        if (entry.key != myId || _game['character_theme'] == tiongkokTheme) {
+          entry.value['outfit_card'] = themeOutfits(_game['character_theme'] as String?).values
               .firstWhere((o) => o.characterId == entry.value['character_id'])
               .id;
+        }
       }
     }
     if (!_holdManhwaDraft &&
@@ -642,7 +643,7 @@ class PreviewSession
         _players[i] = {
           ..._players[i],
           'character_card': c['outfit_card'],
-          'name': manhwaNames[c['character_id']],
+          'name': themeCharacterNames(_game['character_theme'] as String?)[c['character_id']],
         };
       }
       _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
@@ -653,20 +654,22 @@ class PreviewSession
   /// Fixtures use the production Manhwa screen and the current shared catalog.
   void prepareManhwaDraft({
     required String characterId,
+    String characterTheme = manhwaTheme,
     String stage = 'characters',
     bool waiting = false,
     bool locked = false,
     String role = 'warga',
     int antagonists = 2,
   }) {
-    if (!manhwaNames.containsKey(characterId))
+    if (!themeCharacterNames(characterTheme).containsKey(characterId)) {
       throw StateError('Tokoh tidak tersedia');
+    }
     prepare(
       waitingRoom: true,
       role: role,
       antagonists: antagonists,
       pickDark: true,
-      characterTheme: manhwaTheme,
+      characterTheme: characterTheme,
       manhwaCharacter: characterId,
     );
     _game = {..._game, 'status': 'prologue'};
@@ -675,7 +678,7 @@ class PreviewSession
     if (stage == 'outfits') {
       final ids = [
         characterId,
-        ...manhwaNames.keys.where((id) => id != characterId),
+        ...themeCharacterNames(_game['character_theme'] as String?).keys.where((id) => id != characterId),
       ];
       _manhwaCursor = roster.length;
       for (var i = 0; i < roster.length; i++) {
@@ -712,7 +715,7 @@ class PreviewSession
     return {
       'status': _game['status'],
       'stage': _manhwaStage,
-      'theme': 'manhwa',
+      'theme': _game['character_theme'],
       'my_id': myId,
       'host_id': myId,
       'antagonist_count': antagonistCount,
@@ -725,7 +728,7 @@ class PreviewSession
         for (final p in roster) {...p, ...?_manhwaChoices[p['user_id']]},
       ],
       'characters': [
-        for (final e in manhwaNames.entries)
+        for (final e in themeCharacterNames(_game['character_theme'] as String?).entries)
           {
             'id': e.key,
             'name': e.value,
@@ -736,7 +739,7 @@ class PreviewSession
           },
       ],
       'outfits': [
-        for (final o in manhwaOutfits.values)
+        for (final o in themeOutfits(_game['character_theme'] as String?).values)
           if (o.characterId == own?['character_id'])
             {'id': o.id, 'label': o.label},
       ],
@@ -754,7 +757,7 @@ class PreviewSession
         roster[_manhwaCursor]['user_id'] != myId) {
       throw StateError('Belum giliranmu memilih tokoh');
     }
-    if (!manhwaNames.containsKey(characterId))
+    if (!themeCharacterNames(_game['character_theme'] as String?).containsKey(characterId))
       throw StateError('Tokoh tidak tersedia');
     if (_manhwaChoices.values.any((c) => c['character_id'] == characterId))
       throw StateError('Tokoh sudah dipilih');
@@ -773,7 +776,7 @@ class PreviewSession
         throw StateError('Pakaianmu sudah terkunci');
       return manhwaDraft(gameId);
     }
-    if (manhwaOutfits[cardId]?.characterId !=
+    if (themeOutfits(_game['character_theme'] as String?)[cardId]?.characterId !=
         _manhwaChoices[myId]?['character_id'])
       throw StateError('Pakaian tidak sesuai');
     _manhwaChoices[myId]!['outfit_card'] = cardId;

@@ -241,7 +241,9 @@ class PlayerAvatar extends StatelessWidget {
         child: path == null
             ? GameIcon('character', size: size * 0.8)
             : (path!.startsWith(protagonisDir) ||
-            path!.startsWith(antagonisDir))
+            path!.startsWith(antagonisDir) ||
+            path!.startsWith('assets/kartu/Char/CharPro/') ||
+            path!.startsWith('assets/kartu/Char/CharAnta/'))
             ? _FaceCrop(path: path!, size: size)
             : GameImage(
           path: path,

@@ -377,8 +377,8 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
               ),
             ),
             Text(
-              widget.characterTheme == 'manhwa'
-                  ? 'Tema: Manhwa Style · tokoh dipilih bergiliran'
+              isDraftTheme(widget.characterTheme)
+                  ? 'Tema: ${characterThemeLabel(widget.characterTheme)} · tokoh dipilih bergiliran'
                   : 'Tema: Default',
               style: const TextStyle(color: Colors.white70),
             ),
@@ -531,14 +531,14 @@ class _WaitingRoomViewState extends State<WaitingRoomView> {
             ),
             if (viewer)
               IconButton(
-                tooltip: widget.characterTheme == 'manhwa'
+                tooltip: isDraftTheme(widget.characterTheme)
                     ? 'Tokoh dipilih setelah Mulai'
                     : ready
                     ? 'Karakter terkunci selama siap'
                     : 'Ganti karakter',
                 icon: GameIcon(ready ? 'lock' : 'change', size: 21),
                 color: EmbunColors.gold,
-                onPressed: _busy || ready || widget.characterTheme == 'manhwa'
+                onPressed: _busy || ready || isDraftTheme(widget.characterTheme)
                     ? null
                     : () => _act(() => widget.onEditCharacter(player)),
               ),

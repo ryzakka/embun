@@ -215,7 +215,8 @@ class CreateRoomViewState extends State<CreateRoomView> {
         return _img('setnama');
       case _iTema:
         return _img(
-          widget.characterTheme == 'manhwa' ? 'temamanhwa' : 'temadefault',
+          widget.characterTheme == tiongkokTheme ? 'temalukisantiongkok'
+              : widget.characterTheme == manhwaTheme ? 'temamanhwaedition' : 'temadefault',
         );
       case _iAkses:
         return _img(
@@ -233,6 +234,9 @@ class CreateRoomViewState extends State<CreateRoomView> {
 
   String? get _figurePath {
     switch (_logicalPage) {
+      case _iTema:
+        return _fig(widget.characterTheme == tiongkokTheme ? 'temalukisantiongkok-char'
+            : widget.characterTheme == manhwaTheme ? 'temamanhwaedition-char' : 'temadefault-char');
       case _iAkses:
         return _fig(widget.isPublic ? 'ruangpublik-char' : 'ruangprivat-char');
       case _iTerbisik:
@@ -716,7 +720,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
         icon: 'character',
         label: 'Default',
         sub: 'Pemilihan kartu karakter seperti biasa.',
-        selected: widget.characterTheme != 'manhwa',
+        selected: widget.characterTheme == defaultTheme,
         accent: EmbunColors.leaf,
         onTap: () => widget.onThemeChanged?.call('default'),
       ),
@@ -729,6 +733,14 @@ class CreateRoomViewState extends State<CreateRoomView> {
         selected: widget.characterTheme == 'manhwa',
         accent: EmbunColors.leaf,
         onTap: () => widget.onThemeChanged?.call('manhwa'),
+      ),
+      _option(
+        icon: 'customization',
+        label: 'Lukisan Tiongkok',
+        sub: 'Tokoh dipilih bergiliran. Setiap tokoh saat ini memiliki satu penampilan utama.',
+        selected: widget.characterTheme == tiongkokTheme,
+        accent: EmbunColors.gold,
+        onTap: () => widget.onThemeChanged?.call(tiongkokTheme),
       ),
     ],
   );
@@ -856,7 +868,7 @@ class CreateRoomViewState extends State<CreateRoomView> {
       ),
       _summaryRow(
         'Tema',
-        widget.characterTheme == 'manhwa' ? 'Manhwa Style' : 'Default',
+        characterThemeLabel(widget.characterTheme),
         _iTema,
       ),
       _summaryRow('Akses', widget.isPublic ? 'Publik' : 'Privat', _iAkses),

@@ -704,6 +704,7 @@ class _TablePageState extends State<TablePage> {
       if (game != null) _backToLobby('Permainan sudah dibubarkan');
       return;
     }
+    AssetCatalog.useTheme(g['character_theme'] as String?);
     final changed = game?['day'] != g['day'] || game?['phase'] != g['phase'];
     final prev = game;
     final holdOld = _startClothToDiscussion(prev, g);

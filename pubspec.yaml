@@ -1,8 +1,8 @@
-name: Embun
+name: embun
 description: "Menjaga Hayu Menjauhkan si Terbisik."
 publish_to: 'none'
 
-version: 3.5.0+1
+version: 2.7.17+1
 
 environment:
   sdk: ^3.10.8
@@ -37,28 +37,57 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    - assets/avatars/
     - assets/bentang/
     - assets/buatruang/
-    - assets/pohon/
-    - assets/avatars/
-    - assets/medals/
-    - assets/kartu/CharPro/CharPro-Pria/
-    - assets/kartu/CharPro/CharPro-Wanita/
-    - assets/kartu/CharProManhwaEdition/
-    - assets/kartu/CharAnta/
-    - assets/kartu/itemPerawatan/
-    - assets/kartu/ItemPro/
-    - assets/kartu/ItemProDay/
-    - assets/kartu/ItemAnta/
-    - assets/kartu/ItemAntaNight/
-    - assets/kartu/ItemAntaRekayasa/
-    - assets/kartu/ItemProRegenerasi/
-    - assets/kartu/punggungkartu/
-    - assets/kartu/CharSkill/
-    - assets/kartu/CharPopUp/
-    - assets/logo/
+    - assets/cap/
     - assets/ikon/
+    - assets/indikator/
+    - assets/kartu/BackCard/BackCardDefault/
+    - assets/kartu/BackCard/BackCardLukisanTiongkok/
+    - assets/kartu/BackCard/BackCardManhwaEdition/
+    - assets/kartu/Char/CharAnta/CharAntaDefault/
+    - assets/kartu/Char/CharAnta/CharAntaLukisanTiongkok/
+    - assets/kartu/Char/CharAnta/CharAntaManhwaEdition/
+    - assets/kartu/Char/CharPopUp/CharPopUpDefault/
+    - assets/kartu/Char/CharPopUp/CharPopUpLukisanTiongkok/
+    - assets/kartu/Char/CharPopUp/CharPopUpManhwaEdition/
+    - assets/kartu/Char/CharPro/CharProDefault/CharPro-Pria/
+    - assets/kartu/Char/CharPro/CharProDefault/CharPro-Wanita/
+    - assets/kartu/Char/CharPro/CharProLukisanTiongkok/
+    - assets/kartu/Char/CharPro/CharProManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAnta/ItemAntaDefault/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAnta/ItemAntaLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAnta/ItemAntaManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaNight/ItemAntaNightDefault/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaNight/ItemAntaNightLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaNight/ItemAntaNightManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaRekayasa/ItemAntaRekayasaDefault/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaRekayasa/ItemAntaRekayasaLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardAnta/ItemAntaRekayasa/ItemAntaRekayasaManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardPerawatan/ItemCardPerawatanDefault/
+    - assets/kartu/ItemCard/ItemCardPerawatan/ItemCardPerawatanLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardPerawatan/ItemCardPerawatanManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardPro/ItemCharProSkill/ItemCharProSkillDefault/
+    - assets/kartu/ItemCard/ItemCardPro/ItemCharProSkill/ItemCharProSkillLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardPro/ItemCharProSkill/ItemCharProSkillManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardPro/ItemPro/ItemProDefault/
+    - assets/kartu/ItemCard/ItemCardPro/ItemPro/ItemProLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardPro/ItemPro/ItemProManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProDay/ItemProDayDefault/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProDay/ItemProDayLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProDay/ItemProDayManhwaEdition/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProRegenerasi/ItemProRegenerasiDefault/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProRegenerasi/ItemProRegenerasiLukisanTiongkok/
+    - assets/kartu/ItemCard/ItemCardPro/ItemProRegenerasi/ItemProRegenerasiManhwaEdition/
+    - assets/logo/
+    - assets/medals/
+    - assets/pohon/pohondefault/
+    - assets/pohon/pohonlukisantiongkok/
+    - assets/pohon/pohonmanhwaedition/
+    - assets/sheets/
     - assets/sound/
+    - assets/title/
 
   shaders:
     - shaders/cloth.frag
@@ -68,5 +97,4 @@ flutter:
     - shaders/divine.frag
     - shaders/vote_reveal.frag
     - shaders/prologue_fx.frag
-    - shaders/burn.frag
     - shaders/medal_claim.frag

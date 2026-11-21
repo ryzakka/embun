@@ -22,7 +22,7 @@ class Snd {
   // ---- efek adegan ----
   static const thunder = Snd('thunder.mp3', 0.9);
   static const slashPedang = Snd('slashpedang.mp3', 0.85);
-  static const slashCahaya = Snd('slashgemerciklight.mp3', 0.8);
+  static const slashCahaya = Snd('slashgemercikcahaya.mp3', 0.8);
   static const fairyGrow = Snd('fairygrow.mp3', 0.75);
   static const pagarPenjara = Snd('dentumpagarpenjara.mp3', 0.9);
   static const swingFire1 = Snd('swingfire1.mp3', 0.8);
@@ -83,6 +83,7 @@ class _Lease {
 
 /// Pemutar suara satu pintu untuk seluruh aplikasi.
 class Sfx with WidgetsBindingObserver {
+  Set<String>? _installedAudio;
   Sfx._();
   @visibleForTesting
   Sfx.testing();
@@ -190,6 +191,7 @@ class Sfx with WidgetsBindingObserver {
       final paths =
           assetPaths ??
           (await AssetManifest.loadFromAssetBundle(rootBundle)).listAssets();
+      _installedAudio = paths.where((p) => p.startsWith('assets/sound/')).toSet();
       _menuPlaylist.replace(MenuPlaylist.fromAssets(paths));
       if (_menuPlaylist.current == null) {
         _log(
@@ -295,6 +297,7 @@ class Sfx with WidgetsBindingObserver {
     double volume = 1.0,
   }) async {
     if (muted.value || _paused || _ownerGone(owner)) return;
+    if (_installedAudio != null && !_installedAudio!.contains('assets/sound/${s.file}')) return;
     _retryMusicIfNeeded();
 
     if (tag != null) {
@@ -394,6 +397,7 @@ class Sfx with WidgetsBindingObserver {
   Future<void> narrate(Snd s, {required Object owner}) async {
     await stopNarration();
     if (muted.value || _paused) return;
+    if (_installedAudio != null && !_installedAudio!.contains('assets/sound/${s.file}')) return;
     _retryMusicIfNeeded();
     final p = AudioPlayer();
     _nar = p;

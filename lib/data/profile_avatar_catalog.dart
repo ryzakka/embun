@@ -12,6 +12,11 @@ const profileAvatars = <String, (String, String)>{
   'perawat_desa': ('08_perawat_desa.png', 'Perawat Desa'),
   'perajin_kayu': ('09_perajin_kayu.png', 'Perajin Kayu'),
   'tetua_bijak': ('10_tetua_bijak.png', 'Tetua Bijak'),
+  'petua_hangat': ('11_petua_hangat.webp', 'Petua Hangat'),
+  'pengembala_ternak': ('12_pengembala_ternak.webp', 'Pengembala Ternak'),
+  'pengarang_cerita': ('13_pengarang_cerita.webp', 'Pengarang Cerita'),
+  'penasihat_desa': ('14_penasihat_desa.webp', 'Penasihat Desa'),
+  'putra_petua': ('15_putra_petua.webp', 'Putra Petua'),
 };
 
 // Older saved icon preferences remain valid until the owner picks an image.

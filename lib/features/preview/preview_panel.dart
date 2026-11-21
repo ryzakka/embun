@@ -58,11 +58,11 @@ enum _Screen {
   story('Cerita prolog'),
   shuffle('Kocok kartu karakter'),
   character('Pilih kartu karakter'),
-  manhwaCharacters('Manhwa · Pilih tokoh'),
-  manhwaWaiting('Manhwa · Menunggu giliran'),
-  manhwaOutfits('Manhwa · Pilih pakaian'),
-  manhwaLocked('Manhwa · Pakaian terkunci'),
-  manhwaCast('Manhwa · Pengungkapan pemain'),
+  manhwaCharacters('Tema · Pilih tokoh'),
+  manhwaWaiting('Tema · Menunggu giliran'),
+  manhwaOutfits('Tema · Pilih pakaian'),
+  manhwaLocked('Tema · Pakaian terkunci'),
+  manhwaCast('Tema · Pengungkapan pemain'),
   role('Pengungkapan peran'),
   omen('Peringatan awan gelap'),
   darkFace('Pilih wajah gelap'),
@@ -240,10 +240,12 @@ class PreviewExperience extends StatefulWidget {
 
 class _PreviewExperienceState extends State<PreviewExperience> {
   final _session = PreviewSession();
+  final _previousTheme = AssetCatalog.activeTheme;
   final _navigator = GlobalKey<NavigatorState>();
 
   @override
   void dispose() {
+    AssetCatalog.useTheme(_previousTheme);
     _session.dispose();
     super.dispose();
   }
@@ -301,6 +303,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
   };
 
   Future<void> _open(_Screen screen) async {
+    AssetCatalog.useTheme(_characterTheme);
     final role = switch (screen) {
       _Screen.secretChat ||
       _Screen.nightPlan ||
@@ -316,7 +319,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     _session.prepare(
       role: role,
       characterTheme: screen == _Screen.manhwaCast
-          ? manhwaTheme
+          ? (isDraftTheme(_characterTheme) ? _characterTheme : manhwaTheme)
           : _characterTheme,
       manhwaCharacter: _manhwaCharacter,
       antagonists: screen == _Screen.secretChat ? 2 : _antagonists,
@@ -370,9 +373,10 @@ class _PreviewPanelState extends State<_PreviewPanel> {
           _Screen.manhwaOutfits,
           _Screen.manhwaLocked,
         }.contains(screen) ||
-        (screen == _Screen.character && _characterTheme == manhwaTheme)) {
+        (screen == _Screen.character && isDraftTheme(_characterTheme))) {
       _session.prepareManhwaDraft(
         characterId: _manhwaCharacter,
+        characterTheme: isDraftTheme(_characterTheme) ? _characterTheme : manhwaTheme,
         role: role,
         antagonists: _antagonists,
         stage: screen == _Screen.manhwaOutfits || screen == _Screen.manhwaLocked
@@ -482,7 +486,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         return PrologueFlow(
           gameId: _gameId,
           repo: _session,
-          characterTheme: manhwaTheme,
+          characterTheme: isDraftTheme(_characterTheme) ? _characterTheme : manhwaTheme,
           resume: true,
           antagonistCount: _session.antagonistCount,
         );
@@ -491,7 +495,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       case _Screen.character:
       case _Screen.role:
       case _Screen.prologueWait:
-        if (screen == _Screen.character && _characterTheme == manhwaTheme) {
+        if (screen == _Screen.character && isDraftTheme(_characterTheme)) {
           return ManhwaDraftPage(repo: _session, gameId: _gameId);
         }
         return PrologueFlow(
@@ -864,24 +868,32 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                       label: const Text('Default'),
                       selected: _characterTheme == defaultTheme,
                       onSelected: (_) =>
-                          setState(() => _characterTheme = defaultTheme),
+                          setState(() { _characterTheme = defaultTheme; _manhwaCharacter = manhwaNames.keys.first; }),
                     ),
                     ChoiceChip(
                       label: const Text('Manhwa Style'),
                       selected: _characterTheme == manhwaTheme,
                       onSelected: (_) =>
-                          setState(() => _characterTheme = manhwaTheme),
+                          setState(() { _characterTheme = manhwaTheme; _manhwaCharacter = manhwaNames.keys.first; }),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Lukisan Tiongkok'),
+                      selected: _characterTheme == tiongkokTheme,
+                      onSelected: (_) => setState(() {
+                        _characterTheme = tiongkokTheme;
+                        _manhwaCharacter = tiongkokNames.keys.first;
+                      }),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text('Tokoh untuk contoh Manhwa'),
+                const Text('Tokoh untuk contoh tema'),
                 DropdownButton<String>(
                   key: const ValueKey('preview-manhwa-character'),
                   isExpanded: true,
                   value: _manhwaCharacter,
                   items: [
-                    for (final e in manhwaNames.entries)
+                    for (final e in themeCharacterNames(_characterTheme).entries)
                       DropdownMenuItem(value: e.key, child: Text(e.value)),
                   ],
                   onChanged: (v) {
@@ -889,7 +901,7 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                   },
                 ),
                 Text(
-                  '${manhwaNames.length} tokoh · ${manhwaOutfits.length} kartu · tampilan awal kartu utama',
+                  '${themeCharacterNames(_characterTheme).length} tokoh · ${themeOutfits(_characterTheme).length} kartu · tampilan awal kartu utama',
                 ),
                 const SizedBox(height: 8),
                 const Text('Kemampuan contoh untuk musyawarah/panel kemampuan'),

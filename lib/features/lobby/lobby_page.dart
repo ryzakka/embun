@@ -111,6 +111,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    AssetCatalog.useTheme(defaultTheme);
     Sfx.I.startMenuMusic();
     _stage = widget.startAtCreate
         ? _Stage.entry
@@ -148,12 +149,13 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
       final g = await repo.activeGame();
       if (!mounted) return;
       if (g != null) {
+        AssetCatalog.useTheme(g['character_theme'] as String?);
         final id = g['id'] as String;
         if (g['status'] == 'lobby') {
           setState(() => gameId = id);
           return;
         }
-        if (g['character_theme'] == 'manhwa' && g['status'] == 'prologue') {
+        if (isDraftTheme(g['character_theme'] as String?) && g['status'] == 'prologue') {
           Sfx.I.stopMenuMusic();
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
@@ -1210,6 +1212,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
           }
           return const EmbunLoading();
         }
+        AssetCatalog.useTheme(game['character_theme'] as String?);
         if (game['status'] != 'lobby') {
           if (!_navigated) {
             _navigated = true;
@@ -1223,7 +1226,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
               }
               Navigator.of(context).pushReplacement(
                 ClothTransition.route(
-                  game['character_theme'] == 'manhwa' &&
+                  isDraftTheme(game['character_theme'] as String?) &&
                           game['status'] == 'prologue'
                       ? ManhwaDraftPage(repo: repo, gameId: id)
                       : PrologueFlow(
@@ -1294,6 +1297,7 @@ class _LobbyPageState extends State<LobbyPage> with TickerProviderStateMixin {
   }
 
   void _returnToMenu() {
+    AssetCatalog.useTheme(defaultTheme);
     Sfx.I.startMenuMusic();
     setState(() {
       gameId = null;
