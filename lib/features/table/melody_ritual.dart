@@ -11,6 +11,7 @@ import '../common/art.dart';
 import '../common/embun_icon.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
+import 'melody_fx.dart';
 
 typedef MelodyRow = Map<String, dynamic>;
 
@@ -57,6 +58,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   Duration _offset = Duration.zero;
   DateTime? _lastPoll, _lastServerStamp;
   final _audio = _RitualAudio();
+  final _fx = MelodyFxController(laneColors: _colors);
   String? _audioSession;
   final Set<String> _refreshed = {};
   static const _keys = [
@@ -129,10 +131,14 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     _poll = Timer.periodic(const Duration(milliseconds: 700), (_) => _load());
     _flush = Timer.periodic(const Duration(milliseconds: 100), (_) => _send());
     Sfx.I.muted.addListener(_muteChanged);
+    MelodyFxLevel.load();
+    MelodyFxLevel.level.addListener(_fxLevelChanged);
     if (widget.enabled) {
       _load();
     }
   }
+
+  void _fxLevelChanged() => _rebuild(() {});
 
   @override
   void didUpdateWidget(covariant MelodyRitualLayer old) {
@@ -154,6 +160,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     _closeOverlay();
     WidgetsBinding.instance.removeObserver(this);
     Sfx.I.muted.removeListener(_muteChanged);
+    MelodyFxLevel.level.removeListener(_fxLevelChanged);
     Sfx.I.setDuck(this, false);
     _poll?.cancel();
     _flush?.cancel();
@@ -182,6 +189,8 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     }
     final t = _elapsed;
     _judge.tick(t);
+    _fx.held = _judge.pressed;
+    _fx.setCombo(_judge.combo);
     if (t >= melodyDurationMs && _pressed.isNotEmpty) {
       _release();
     }
@@ -190,9 +199,9 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       final rows = (_state?['waves'] as List? ?? []).cast<Map>();
       final pressure =
           (rows.where((r) => r['wave'] == wave).firstOrNull?['pressure']
-                  as num?)
+          as num?)
               ?.toInt() ??
-          0;
+              0;
       _audio.sync(
         wave,
         widget.antagonist ? 0 : pressure,
@@ -223,8 +232,8 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     } catch (e) {
       if (mounted && _status != 'idle') {
         _rebuild(
-          () => _error =
-              'Koneksi melambat. Ketukan tetap berjalan; menyambungkan kembali…',
+              () => _error =
+          'Koneksi melambat. Ketukan tetap berjalan; menyambungkan kembali…',
         );
       }
     } finally {
@@ -255,15 +264,16 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       _offset = _state?['id'] != state['id']
           ? estimate
           : Duration(
-              microseconds:
-                  _offset.inMicroseconds +
-                  (estimate - _offset).inMicroseconds
-                      .clamp(-15000, 15000)
-                      .toInt(),
-            );
+        microseconds:
+        _offset.inMicroseconds +
+            (estimate - _offset).inMicroseconds
+                .clamp(-15000, 15000)
+                .toInt(),
+      );
     }
     if (state['id'] != _state?['id']) {
       _judge = MelodyJudge();
+      _fx.reset();
       _pressed.clear();
       _payment = 'embun';
       _handId = null;
@@ -279,7 +289,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     });
     _syncOverlay();
     final status = '${state['status']}';
-    if (status == 'running' || status == 'inviting') {
+    if (status == 'running' || status == 'inviting' || status == 'settled') {
       if (!_frames.isAnimating) {
         _frames.repeat();
       }
@@ -364,12 +374,25 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
         !_pressed.add(lane)) {
       return;
     }
-    _judge.down(lane, _elapsed);
+    final note = _judge.down(lane, _elapsed);
+    _fx.press(lane, true);
+    if (note == null) {
+      _fx.hit(lane, MelodyHitKind.stray);
+    } else {
+      _fx.hit(
+        lane,
+        _judge.feedback == 'Tepat!'
+            ? MelodyHitKind.perfect
+            : MelodyHitKind.good,
+        hold: note.hold > 0,
+      );
+    }
     HapticFeedback.selectionClick();
   }
 
   void _up(int lane) {
     _pressed.remove(lane);
+    _fx.press(lane, false);
     _judge.up(lane, _elapsed);
   }
 
@@ -420,6 +443,13 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
   Widget _surface() {
+    final settled = _status == 'settled';
+    final tier = melodyTier((_own['final_score'] as num? ?? 0).toInt());
+    final ambientTint = widget.antagonist
+        ? EmbunColors.mist
+        : settled
+        ? melodyTierColor(tier)
+        : EmbunColors.gold;
     return PopScope(
       canPop: false,
       child: Material(
@@ -428,11 +458,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
           fit: StackFit.expand,
           children: [
             if (firstScenery([
-                  'tempat-pelataranmelodi',
-                  'alunalun-tiangberpita',
-                  'pohon-keranjangbuah',
-                ])
-                case final path?)
+              'tempat-pelataranmelodi',
+              'alunalun-tiangberpita',
+              'pohon-keranjangbuah',
+            ])
+            case final path?)
               Opacity(
                 opacity: .23,
                 child: GameImage(path: path, fit: BoxFit.cover),
@@ -447,6 +477,20 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                 ),
               ),
             ),
+            if (_status != 'running')
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: MelodyAmbientPainter(
+                      tint: ambientTint,
+                      intensity: settled ? .4 + tier * .1 : .35,
+                      frames: _frames,
+                      level: MelodyFxLevel.level.value,
+                      reduced: MediaQuery.disableAnimationsOf(context),
+                    ),
+                  ),
+                ),
+              ),
             SafeArea(child: _status == 'running' ? _play() : _panel()),
           ],
         ),
@@ -471,11 +515,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
         ? widget.balance >= 8
         : cards.any((c) => c['id'] == _handId);
     final seconds =
-        (DateTime.tryParse(
-                  '${_state?['expires_at']}',
-                )?.difference(_now).inSeconds ??
-                0)
-            .clamp(0, 25);
+    (DateTime.tryParse(
+      '${_state?['expires_at']}',
+    )?.difference(_now).inSeconds ??
+        0)
+        .clamp(0, 25);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
@@ -484,15 +528,10 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'PELATARAN MELODI',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: EmbunColors.gold,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
+              MelodyTitle(
+                text: 'PELATARAN MELODI',
+                color: widget.antagonist ? EmbunColors.mist : EmbunColors.gold,
+                reduced: MediaQuery.disableAnimationsOf(context),
               ),
               const SizedBox(height: 14),
               if (_status == 'inviting') ...[
@@ -613,19 +652,13 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   child: const Text('Lihat peluang hadiah'),
                 ),
               ] else if (_status == 'settled') ...[
-                Text(
-                  '${(_own['final_score'] as num? ?? 0).toInt()}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: EmbunColors.gold,
-                    fontSize: 68,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
+                MelodyScoreReveal(
+                  key: ValueKey('score-${_state?['id']}'),
+                  score: (_own['final_score'] as num? ?? 0).toInt(),
+                  tier: melodyTier((_own['final_score'] as num? ?? 0).toInt()),
+                  label:
                   'Nilai hadiah • kelompok ${melodyBands[melodyTier((_own['final_score'] as num? ?? 0).toInt())]}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70),
+                  reduced: MediaQuery.disableAnimationsOf(context),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -634,7 +667,12 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   style: const TextStyle(color: EmbunColors.cream),
                 ),
                 const SizedBox(height: 18),
-                _reward(),
+                MelodyReveal(
+                  key: ValueKey('reward-${_state?['id']}'),
+                  delay: .6,
+                  reduced: MediaQuery.disableAnimationsOf(context),
+                  child: _reward(),
+                ),
                 const SizedBox(height: 18),
                 const Text(
                   'Hadiah sudah masuk ke saldo atau tanganmu.',
@@ -737,12 +775,17 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
         final w = (math.max(0, t) ~/ 6000).clamp(0, 4).toInt();
         final pressure =
             ((_state?['waves'] as List? ?? [])
-                        .cast<Map>()
-                        .where((x) => x['wave'] == w)
-                        .firstOrNull?['pressure']
-                    as num?)
+                .cast<Map>()
+                .where((x) => x['wave'] == w)
+                .firstOrNull?['pressure']
+            as num?)
                 ?.toInt() ??
-            0;
+                0;
+        _fx
+          ..level = MelodyFxLevel.level.value
+          ..reduced = MediaQuery.disableAnimationsOf(context)
+          ..antag = widget.antagonist
+          ..pressure = widget.antagonist ? 0 : pressure;
         return LayoutBuilder(
           builder: (context, box) {
             final short = box.maxHeight < 430;
@@ -773,6 +816,23 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                         ),
                       ),
                       IconButton(
+                        tooltip: MelodyFxLevel.label(
+                          MelodyFxLevel.level.value,
+                        ),
+                        onPressed: MelodyFxLevel.cycle,
+                        icon: EmbunIcon(
+                          MelodyFxLevel.level.value == 0
+                              ? Icons.auto_awesome_outlined
+                              : Icons.auto_awesome,
+                          size: 24,
+                          color: MelodyFxLevel.level.value == 0
+                              ? Colors.white38
+                              : (MelodyFxLevel.level.value == 1
+                              ? EmbunColors.cream
+                              : EmbunColors.gold),
+                        ),
+                      ),
+                      IconButton(
                         tooltip: Sfx.I.muted.value
                             ? 'Nyalakan suara'
                             : 'Bisukan suara',
@@ -800,25 +860,40 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   child: Stack(
                     children: [
                       Positioned.fill(
-                        child: CustomPaint(
-                          painter: _LanePainter(
-                            notes: _judge.notes.toList(),
-                            judge: _judge,
-                            elapsed: t,
-                            pressed: _pressed,
-                            reduced: MediaQuery.disableAnimationsOf(context),
+                        child: Transform.translate(
+                          offset: _fx.shakeOffset,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CustomPaint(painter: MelodyBackdropPainter(_fx)),
+                              CustomPaint(
+                                painter: MelodyLanePainter(
+                                  notes: _judge.notes.toList(),
+                                  judge: _judge,
+                                  elapsed: t,
+                                  fx: _fx,
+                                  reduced: MediaQuery.disableAnimationsOf(
+                                    context,
+                                  ),
+                                ),
+                              ),
+                              IgnorePointer(
+                                child: CustomPaint(
+                                  painter: MelodyFrontPainter(_fx),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                       if (t < 0)
                         Center(
-                          child: Text(
-                            '${(-t / 1000).ceil()}',
-                            style: const TextStyle(
-                              color: EmbunColors.gold,
-                              fontSize: 84,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          child: MelodyCountdown(
+                            number: (-t / 1000).ceil(),
+                            color: widget.antagonist
+                                ? EmbunColors.mist
+                                : EmbunColors.gold,
+                            reduced: MediaQuery.disableAnimationsOf(context),
                           ),
                         ),
                       if (t >= melodyDurationMs)
@@ -856,7 +931,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                             padding: const EdgeInsets.all(4),
                             child: Semantics(
                               label:
-                                  '${_names[i]}, tombol ${['D', 'F', 'J', 'K'][i]}',
+                              '${_names[i]}, tombol ${['D', 'F', 'J', 'K'][i]}',
                               button: true,
                               child: Listener(
                                 onPointerDown: (_) => _down(i),
@@ -918,91 +993,6 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       },
     ),
   );
-}
-
-class _LanePainter extends CustomPainter {
-  const _LanePainter({
-    required this.notes,
-    required this.judge,
-    required this.elapsed,
-    required this.pressed,
-    required this.reduced,
-  });
-  final List<MelodyNote> notes;
-  final MelodyJudge judge;
-  final int elapsed;
-  final Set<int> pressed;
-  final bool reduced;
-  @override
-  void paint(Canvas c, Size s) {
-    final width = s.width / 4;
-    final line = s.height * .84;
-    const travel = 1800.0;
-    for (var lane = 0; lane < 4; lane++) {
-      final col = _MelodyRitualLayerState._colors[lane];
-      c.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(lane * width + 5, 0, width - 10, s.height),
-          const Radius.circular(16),
-        ),
-        Paint()
-          ..color = col.withValues(alpha: pressed.contains(lane) ? .14 : .045),
-      );
-      c.drawLine(
-        Offset(lane * width + 8, line),
-        Offset((lane + 1) * width - 8, line),
-        Paint()
-          ..color = col
-          ..strokeWidth = 4,
-      );
-    }
-    for (final n in notes) {
-      final delta = n.at - elapsed;
-      if (delta > travel || delta < -n.hold - 200) {
-        continue;
-      }
-      final x = (n.lane + .5) * width;
-      final y = line - delta / travel * line;
-      final col = _MelodyRitualLayerState._colors[n.lane];
-      if (n.hold > 0) {
-        final tail = line - (n.at + n.hold - elapsed) / travel * line;
-        c.drawLine(
-          Offset(x, tail.clamp(0, s.height).toDouble()),
-          Offset(x, y.clamp(0, s.height).toDouble()),
-          Paint()
-            ..color = col.withValues(alpha: .4)
-            ..strokeWidth = math.min(18.0, width * .22)
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-      if (!judge.consumed(n.id)) {
-        final r = math.min(18.0, width * .18);
-        if (!reduced) {
-          c.drawCircle(
-            Offset(x, y),
-            r + 6,
-            Paint()..color = col.withValues(alpha: .13),
-          );
-        }
-        c.drawCircle(Offset(x, y), r, Paint()..color = col);
-        final text = TextPainter(
-          text: TextSpan(
-            text: '${n.lane + 1}',
-            style: TextStyle(
-              color: const Color(0xFF06120E),
-              fontSize: r,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        text.paint(c, Offset(x - text.width / 2, y - text.height / 2));
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LanePainter old) => true;
 }
 
 class _RitualAudio {
