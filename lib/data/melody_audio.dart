@@ -26,8 +26,8 @@ class MelodyMusicController {
   MelodyMusicFrame? _wanted;
   Future<void>? _worker;
   String? _loaded;
-  int _wantedAt = 0, _lastCheck = -10000, _lastDispatch = -10000;
-  int _retryAt = 0;
+  int _wantedAt = 0, _lastDispatch = -10000;
+  bool _failed = false, _fresh = false;
   double _rate = -1, _volume = -1;
   bool _playing = false, _dirty = false, _disposed = false;
 
@@ -42,7 +42,10 @@ class MelodyMusicController {
         old?.asset != frame.asset ||
         old?.play != frame.play ||
         old?.rate != frame.rate;
-    if (now < _retryAt || (!urgent && now - _lastDispatch < 75)) return;
+    if (old?.session != frame.session || old?.asset != frame.asset) {
+      _failed = false;
+    }
+    if (_failed || (!urgent && now - _lastDispatch < 75)) return;
     _lastDispatch = now;
     _schedule();
   }
@@ -50,7 +53,7 @@ class MelodyMusicController {
   /// A button can retry playback when browser autoplay was blocked.
   void retry() {
     if (_disposed) return;
-    _retryAt = 0;
+    _failed = false;
     _schedule();
   }
 
@@ -73,6 +76,10 @@ class MelodyMusicController {
   Future<void> _drain() async {
     while (_dirty && !_disposed) {
       _dirty = false;
+      final attempted = _wanted;
+      final attemptedKey = attempted == null
+          ? null
+          : '${attempted.session}/${attempted.asset}';
       try {
         var f = _wanted;
         if (f == null) {
@@ -87,6 +94,7 @@ class MelodyMusicController {
           _loaded = null;
           await port.load(f.asset);
           _loaded = key;
+          _fresh = true;
           _rate = _volume = -1;
           // Loading may complete after cancellation or a different session.
           if (_disposed) return;
@@ -113,22 +121,38 @@ class MelodyMusicController {
           await port.rate(f.rate);
           _rate = f.rate;
         }
-        // Source-file position and rate come from the same frozen timeline
-        // used by the chart. No phrase restart and no whole-song reloading.
-        if (!_playing || rateChanged || _clock() - _lastCheck >= 500) {
-          final actual = _playing ? await port.position() : null;
+        // The media clock runs continuously. Re-seeking every poll or at
+        // each rate change can repeatedly replay the intro on Web when the
+        // player reports a stale cursor or cannot yet seek the streamed URL.
+        // Align once on start/resume; changing rate never restarts playback.
+        if (!_playing) {
           f = _wanted;
           if (_disposed || f == null || !f.play) {
             _dirty = true;
             continue;
           }
           final target = _position(f).round();
-          if (!_playing ||
-              rateChanged ||
-              (actual != null && (actual - target).abs() > 90)) {
-            await port.seek(target);
+          if (!_fresh || target > 80) {
+            int? actual;
+            try {
+              actual = await port.position().timeout(
+                const Duration(milliseconds: 250),
+              );
+            } catch (_) {
+              /* A missing cursor is not a reason to restart. */
+            }
+            f = _wanted;
+            if (_disposed || f == null || !f.play) {
+              _dirty = true;
+              continue;
+            }
+            final latest = _position(f).round();
+            if (actual == null || (actual - latest).abs() > 80) {
+              await port
+                  .seek(latest)
+                  .timeout(const Duration(milliseconds: 1500));
+            }
           }
-          _lastCheck = _clock();
         }
         f = _wanted;
         if (_disposed ||
@@ -152,13 +176,25 @@ class MelodyMusicController {
         if (!_playing) {
           await port.resume();
           _playing = true;
+          _fresh = false;
         }
-        _retryAt = 0;
+        _failed = false;
         onError?.call(false);
       } catch (_) {
-        // Failure never changes timing, judge or reward. Retry is available
-        // from a user gesture and automatically after a short backoff.
-        _retryAt = _clock() + 2000;
+        if (_disposed) return;
+        final current = _wanted;
+        final currentKey = current == null
+            ? null
+            : '${current.session}/${current.asset}';
+        if (currentKey != attemptedKey) {
+          _failed = false;
+          _dirty = true;
+          continue;
+        }
+        // Keep a failure latched until an explicit gesture or a new session.
+        // Automatically pause/seek/resume every two seconds creates an intro
+        // loop if the platform keeps rejecting a seek/play operation.
+        _failed = true;
         _playing = false;
         try {
           await port.pause();

@@ -209,6 +209,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
 
   void _muteChanged() {
     _prepareAudio();
+    if (!Sfx.I.muted.value) _music.retry();
     _legacyAudio.mute(Sfx.I.muted.value);
   }
 
@@ -1052,7 +1053,16 @@ class _RitualAudioPort implements MelodyAudioPort {
   @override
   Future<void> load(String asset) async {
     await _player.setReleaseMode(ReleaseMode.stop);
-    await _player.setSource(AssetSource(asset));
+    // Decode a fully loaded asset instead of seeking a partially buffered
+    // HTTP source. Web then uses a data URI through audioplayers, so cursor
+    // changes do not depend on the host supporting HTTP byte-range requests.
+    final data = await rootBundle.load('assets/$asset');
+    await _player.setSource(
+      BytesSource(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        mimeType: 'audio/mpeg',
+      ),
+    );
   }
 
   @override
