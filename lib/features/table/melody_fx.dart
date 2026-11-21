@@ -57,13 +57,14 @@ class MelodyFxLevel {
       const ['Efek: teks saja', 'Efek: ringan', 'Efek: penuh'][v.clamp(0, 2)];
 }
 
-enum MelodyHitKind { perfect, good, stray, broken }
+enum MelodyHitKind { perfect, good, stray, broken, milestone, streak }
 
 class _Spawn {
-  _Spawn(this.lane, this.kind, this.hold);
+  _Spawn(this.lane, this.kind, this.hold, [this.value = 0]);
   final int lane;
   final MelodyHitKind kind;
   final bool hold;
+  final int value;
 }
 
 class _Spark {
@@ -121,6 +122,8 @@ class MelodyFxController {
   final List<double> laneGlow = List<double>.filled(4, 0);
   final Set<int> _down = <int>{};
   double energy = 0, shake = 0, comboPulse = 0, hitPulse = 0, breakPulse = 0;
+  double flash = 0;
+  final List<double> laneFlash = List<double>.filled(4, 0);
   double time = 0;
   double _dt = 0, _last = 0;
   final Stopwatch _sw = Stopwatch()..start();
@@ -138,8 +141,8 @@ class MelodyFxController {
   Offset get shakeOffset => (!motion || shake <= 0)
       ? Offset.zero
       : Offset(
-    math.sin(time * 41) * shake * (level >= 2 ? 4 : 2),
-    math.cos(time * 33) * shake * (level >= 2 ? 3 : 1.5),
+    math.sin(time * 41) * shake * (level >= 2 ? 7 : 3),
+    math.cos(time * 33) * shake * (level >= 2 ? 5 : 2.5),
   );
 
   void reset() {
@@ -152,9 +155,10 @@ class MelodyFxController {
     _banner = null;
     held = const {};
     combo = 0;
-    energy = shake = comboPulse = hitPulse = breakPulse = 0;
+    energy = shake = comboPulse = hitPulse = breakPulse = flash = 0;
     for (var i = 0; i < laneGlow.length; i++) {
       laneGlow[i] = 0;
+      laneFlash[i] = 0;
     }
   }
 
@@ -188,11 +192,13 @@ class MelodyFxController {
       final m = c ~/ 15;
       if (m > combo ~/ 15) {
         _milestone(m * 15);
+      } else if (c >= 5 && c ~/ 5 > combo ~/ 5) {
+        _pending.add(_Spawn(-2, MelodyHitKind.streak, false, c ~/ 5 * 5));
       }
     } else if (c == 0 && combo >= 3) {
-      _pending.add(_Spawn(-1, MelodyHitKind.broken, false));
+      _pending.add(_Spawn(-1, MelodyHitKind.broken, false, combo));
       breakPulse = 1;
-      shake = math.max(shake, .45);
+      shake = math.max(shake, combo >= 15 ? 1.0 : .8);
     }
     combo = c;
   }
@@ -219,7 +225,9 @@ class MelodyFxController {
       names[tier],
       antag ? dark[tier] : good[tier],
     );
-    shake = math.max(shake, 1);
+    shake = math.max(shake, 1.1);
+    flash = 1;
+    _pending.add(_Spawn(-2, MelodyHitKind.milestone, false, tier));
   }
 
   /// Maju satu langkah waktu. Dipanggil sekali per frame oleh painter latar.
@@ -246,7 +254,11 @@ class MelodyFxController {
     }
     comboPulse *= math.exp(-dt * 6);
     hitPulse *= math.exp(-dt * 9);
-    breakPulse *= math.exp(-dt * 3.5);
+    breakPulse *= math.exp(-dt * 2.6);
+    flash *= math.exp(-dt * 4.5);
+    for (var l = 0; l < 4; l++) {
+      laneFlash[l] *= math.exp(-dt * 6);
+    }
     for (final s in _sparks) {
       s.age += dt;
       s.vy += s.g * dt;
@@ -280,7 +292,7 @@ class MelodyFxController {
         double spread = .84,
         double down = 0,
       }) {
-    if (_sparks.length > 260) {
+    if (_sparks.length > 340) {
       return;
     }
     final a = -math.pi * (.08 + _rng.nextDouble() * spread);
@@ -311,7 +323,7 @@ class MelodyFxController {
     final w = size.width / 4;
     final line = size.height * kMelodyLineRatio;
     for (final s in _pending) {
-      _burst(s, w, line, size.width);
+      _burst(s, w, line, size.width, size.height);
     }
     _pending.clear();
     if (motion && held.isNotEmpty) {
@@ -326,28 +338,54 @@ class MelodyFxController {
     }
   }
 
-  void _burst(_Spawn s, double w, double line, double fullW) {
+  void _radial(double cx, double cy, Color c, int n, double speed) {
+    for (var i = 0; i < n; i++) {
+      if (_sparks.length > 340) {
+        return;
+      }
+      final a = _rng.nextDouble() * math.pi * 2;
+      final v = speed * (.3 + _rng.nextDouble() * .9);
+      _sparks.add(
+        _Spark(
+          x: cx,
+          y: cy,
+          vx: math.cos(a) * v,
+          vy: math.sin(a) * v,
+          life: .7 + _rng.nextDouble() * .7,
+          size: 2 + _rng.nextDouble() * 3.5,
+          g: 260,
+          color: Color.lerp(c, Colors.white, _rng.nextDouble() * .6)!,
+        ),
+      );
+    }
+  }
+
+  void _burst(_Spawn s, double w, double line, double fullW, double h) {
     final x = (s.lane + .5) * w;
     final col = laneColors[s.lane.clamp(0, 3).toInt()];
     final light = Color.lerp(col, Colors.white, .55)!;
     switch (s.kind) {
       case MelodyHitKind.perfect:
-        _pop(x, line - 74, 'TEPAT!', light, 21);
+        _pop(x, line - 80, 'TEPAT!', light, 28);
+        laneFlash[s.lane.clamp(0, 3).toInt()] = 1;
         if (motion) {
-          _rings.add(_Ring(x, line, .6, w * .62, 5, col, false));
-          _rings.add(_Ring(x, line, .32, w * .5, 0, col, true));
-          final n = (18 * _amount).round();
+          _rings.add(_Ring(x, line, .7, w * .9, 6, col, false));
+          _rings.add(_Ring(x, line, .5, w * .55, 4, Colors.white, false));
+          _rings.add(_Ring(x, line, .34, w * .6, 0, col, true));
+          final n = (32 * _amount).round();
           for (var i = 0; i < n; i++) {
-            _spark(x, line, col, speed: 420);
+            _spark(x, line, col, speed: 540);
           }
         }
       case MelodyHitKind.good:
-        _pop(x, line - 70, 'Bagus', col, 16);
+        _pop(x, line - 72, 'Bagus', col, 20);
+        laneFlash[s.lane.clamp(0, 3).toInt()] = .5;
         if (motion) {
-          _rings.add(_Ring(x, line, .45, w * .4, 3.5, col, false));
-          final n = (8 * _amount).round();
+          _rings.add(_Ring(x, line, .5, w * .55, 4, col, false));
+          _rings.add(_Ring(x, line, .35, w * .45, 0, col, true));
+          final n = (14 * _amount).round();
           for (var i = 0; i < n; i++) {
-            _spark(x, line, col, speed: 300);
+            _spark(x, line, col, speed: 340);
           }
         }
       case MelodyHitKind.stray:
@@ -357,23 +395,48 @@ class MelodyFxController {
           }
         }
       case MelodyHitKind.broken:
-        _pop(fullW / 2, line - 90, 'Irama terputus', _blood, 17);
+        _pop(fullW / 2, line - 110, 'IRAMA TERPUTUS', _blood, 28);
+        if (s.value >= 10) {
+          _pop(fullW / 2, line - 76, 'Kombo ${s.value} lenyap', _cream, 16);
+        }
         if (motion) {
-          final n = (14 * _amount).round();
+          _rings.add(_Ring(fullW / 2, line, .7, fullW * .5, 5, _blood, false));
+          final n = (30 * _amount).round();
           for (var i = 0; i < n; i++) {
             _sparks.add(
               _Spark(
                 x: _rng.nextDouble() * fullW,
-                y: line,
-                vx: (_rng.nextDouble() - .5) * 40,
-                vy: 30 + _rng.nextDouble() * 110,
-                life: .7,
-                size: 2 + _rng.nextDouble() * 2.5,
-                g: 380,
-                color: _blood,
+                y: line - 10,
+                vx: (_rng.nextDouble() - .5) * 70,
+                vy: -60 + _rng.nextDouble() * 200,
+                life: .9,
+                size: 2 + _rng.nextDouble() * 3,
+                g: 480,
+                color: Color.lerp(_blood, Colors.white, _rng.nextDouble() * .3)!,
               ),
             );
           }
+        }
+      case MelodyHitKind.streak:
+        _pop(
+          fullW / 2,
+          h * .2 - 64,
+          '${s.value} KOMBO!',
+          Color.lerp(antag ? _mist : _gold, Colors.white, .35)!,
+          24,
+        );
+        if (motion) {
+          _radial(fullW / 2, h * .2, antag ? _mist : _gold, (20 * _amount).round(), 280);
+        }
+      case MelodyHitKind.milestone:
+        final c = _banner?.color ?? (antag ? _mist : _gold);
+        if (motion) {
+          _rings.add(_Ring(fullW / 2, h * .36, .9, fullW * .45, 7, c, false));
+          _rings.add(_Ring(fullW / 2, h * .36, .7, fullW * .3, 4, Colors.white, false));
+          _rings.add(_Ring(fullW / 2, h * .36, 1.1, fullW * .6, 2.5, c, false));
+          _radial(fullW / 2, h * .36, c, (80 * _amount).round(), 430);
+          _radial(fullW * .22, h * .3, c, (30 * _amount).round(), 300);
+          _radial(fullW * .78, h * .3, c, (30 * _amount).round(), 300);
         }
     }
   }
@@ -736,33 +799,89 @@ class MelodyFrontPainter extends CustomPainter {
 
     if (fx.motion && fx.hitPulse > .02) {
       canvas.drawRect(
-        Rect.fromLTWH(0, line - 2, w, 4),
+        Rect.fromLTWH(0, line - 3, w, 6),
         Paint()
           ..blendMode = BlendMode.plus
-          ..color = Colors.white.withValues(alpha: .35 * fx.hitPulse),
+          ..color = Colors.white.withValues(alpha: .6 * fx.hitPulse),
+      );
+    }
+    if (fx.motion && fx.flash > .02) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..color = tintMain.withValues(alpha: .11 * fx.flash),
+      );
+    }
+    for (var lane = 0; lane < 4; lane++) {
+      final f = fx.laneFlash[lane];
+      if (f < .02 || fx.level == 0) {
+        continue;
+      }
+      final col = fx.laneColors[lane];
+      final r = Rect.fromLTRB(lane * w / 4 + 4, line - h * .8, (lane + 1) * w / 4 - 4, line);
+      canvas.drawRect(
+        r,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..shader = LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Color.lerp(col, Colors.white, .5)!.withValues(alpha: .42 * f),
+              Colors.transparent,
+            ],
+          ).createShader(r),
       );
     }
     if (fx.motion && fx.breakPulse > .02) {
-      final br = Rect.fromLTWH(0, h * .6, w, h * .4);
+      final bp = fx.breakPulse;
+      final br = Rect.fromLTWH(0, h * .5, w, h * .5);
       canvas.drawRect(
         br,
         Paint()
           ..shader = LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [
-              _blood.withValues(alpha: .16 * fx.breakPulse),
-              Colors.transparent,
-            ],
+            colors: [_blood.withValues(alpha: .34 * bp), Colors.transparent],
           ).createShader(br),
+      );
+      final lr = Rect.fromLTWH(0, 0, w * .2, h);
+      final rr = Rect.fromLTWH(w * .8, 0, w * .2, h);
+      canvas.drawRect(
+        lr,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [_blood.withValues(alpha: .26 * bp), Colors.transparent],
+          ).createShader(lr),
+      );
+      canvas.drawRect(
+        rr,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [Colors.transparent, _blood.withValues(alpha: .26 * bp)],
+          ).createShader(rr),
+      );
+      final crack = Path()..moveTo(0, line);
+      for (var i = 1; i <= 14; i++) {
+        crack.lineTo(w * i / 14, line + (i.isEven ? -11 : 11) * math.sin(i * 1.7));
+      }
+      canvas.drawPath(
+        crack,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeJoin = StrokeJoin.bevel
+          ..blendMode = BlendMode.plus
+          ..color = _blood.withValues(alpha: .8 * bp),
       );
     }
 
-    if (fx.combo >= 5) {
-      final scale = fx.motion ? 1 + .22 * fx.comboPulse : 1.0;
+    if (fx.combo >= 3) {
+      final scale = fx.motion ? 1 + .38 * fx.comboPulse : 1.0;
       final base = Color.lerp(Colors.white, tintMain, .6 + .4 * fx.energy)!;
-      final a = (.22 + .30 * fx.energy + .30 * fx.comboPulse)
-          .clamp(0.0, .85)
+      final a = (.30 + .30 * fx.energy + .35 * fx.comboPulse)
+          .clamp(0.0, .95)
           .toDouble();
       _text(
         canvas,
@@ -770,7 +889,7 @@ class MelodyFrontPainter extends CustomPainter {
         Offset(w / 2, h * .2),
         TextStyle(
           color: base.withValues(alpha: a),
-          fontSize: 64 * scale,
+          fontSize: 88 * scale,
           fontWeight: FontWeight.w900,
           shadows: [Shadow(color: base.withValues(alpha: a * .8), blurRadius: 22)],
         ),
@@ -778,7 +897,7 @@ class MelodyFrontPainter extends CustomPainter {
       _text(
         canvas,
         'KOMBO',
-        Offset(w / 2, h * .2 + 44),
+        Offset(w / 2, h * .2 + 58),
         TextStyle(
           color: _cream.withValues(alpha: .5),
           fontSize: 11,
@@ -831,8 +950,8 @@ class MelodyFrontPainter extends CustomPainter {
 
     for (final p in fx._pops) {
       final t = p.age / .8;
-      final lift = fx.motion ? 46 * Curves.easeOutCubic.transform(t) : 0.0;
-      final scale = fx.motion && t < .15 ? 1.5 - (t / .15) * .5 : 1.0;
+      final lift = fx.motion ? 60 * Curves.easeOutCubic.transform(t) : 0.0;
+      final scale = fx.motion && t < .15 ? 2.0 - (t / .15) * 1.0 : 1.0;
       final a = t < .65 ? 1.0 : (1 - (t - .65) / .35).clamp(0.0, 1.0);
       _text(
         canvas,
@@ -865,8 +984,8 @@ class MelodyFrontPainter extends CustomPainter {
       if (fx.motion && fx.level >= 2) {
         final len = size.shortestSide * .7 * (.6 + .4 * enter);
         final rot = fx.time * .5;
-        for (var i = 0; i < 14; i++) {
-          final ang = rot + i * 2 * math.pi / 14;
+        for (var i = 0; i < 18; i++) {
+          final ang = rot + i * 2 * math.pi / 18;
           final path = Path()
             ..moveTo(cx, cy)
             ..lineTo(cx + math.cos(ang - .05) * len, cy + math.sin(ang - .05) * len)
@@ -876,7 +995,7 @@ class MelodyFrontPainter extends CustomPainter {
             path,
             Paint()
               ..blendMode = BlendMode.plus
-              ..color = b.color.withValues(alpha: .16 * a),
+              ..color = b.color.withValues(alpha: .26 * a),
           );
         }
         canvas.drawCircle(
@@ -889,6 +1008,21 @@ class MelodyFrontPainter extends CustomPainter {
             ..color = b.color.withValues(alpha: .5 * (1 - t)),
         );
       }
+      if (fx.motion) {
+        final bandW = w * 1.3 * enter.clamp(0.0, 1.0);
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset(cx, cy), width: bandW, height: 70),
+          Paint()
+            ..blendMode = BlendMode.plus
+            ..color = b.color.withValues(alpha: .14 * a),
+        );
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset(cx, cy), width: bandW, height: 3),
+          Paint()
+            ..blendMode = BlendMode.plus
+            ..color = Colors.white.withValues(alpha: .6 * a),
+        );
+      }
       final main = Color.lerp(b.color, Colors.white, .3)!;
       _text(
         canvas,
@@ -896,7 +1030,7 @@ class MelodyFrontPainter extends CustomPainter {
         Offset(cx, cy),
         TextStyle(
           color: main.withValues(alpha: a.clamp(0.0, 1.0).toDouble()),
-          fontSize: math.min(w * .085, 52) * scale,
+          fontSize: math.min(w * .12, 78) * scale,
           fontWeight: FontWeight.w900,
           letterSpacing: 3,
           shadows: [
@@ -910,7 +1044,7 @@ class MelodyFrontPainter extends CustomPainter {
       _text(
         canvas,
         b.sub,
-        Offset(cx, cy + math.min(w * .085, 52) * .9 + 8),
+        Offset(cx, cy + math.min(w * .12, 78) * .9 + 8),
         TextStyle(
           color: _cream.withValues(alpha: .9 * a.clamp(0.0, 1.0).toDouble()),
           fontSize: 16,
