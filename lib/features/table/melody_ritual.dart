@@ -14,6 +14,7 @@ import '../common/embun_icon.dart';
 import '../common/ornate.dart';
 import '../common/sfx.dart';
 import 'melody_fx.dart';
+import 'melody_art.dart';
 
 typedef MelodyRow = Map<String, dynamic>;
 
@@ -71,6 +72,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   );
   final _fx = MelodyFxController(laneColors: _colors);
   String? _audioSession;
+  bool _chestPreloaded = false;
   final Set<String> _refreshed = {};
   static const _keys = [
     LogicalKeyboardKey.keyD,
@@ -78,17 +80,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     LogicalKeyboardKey.keyJ,
     LogicalKeyboardKey.keyK,
   ];
-  static const _icons = [
-    'pohonindikator-tanah',
-    'pohonindikator-akar',
-    'pohonindikator-batang',
-    'pohonindikator-daun',
-  ];
   static const _names = ['Tanah', 'Akar', 'Batang', 'Daun'];
   static const _colors = [
     Color(0xFFC9A875),
     Color(0xFF70C4D5),
-    Color(0xFFDFB75D),
+    Color(0xFFE57755),
     Color(0xFF8AD17D),
   ];
   void _rebuild(VoidCallback change) {
@@ -140,22 +136,26 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _frames.addListener(_frame);
+    MelodyArtCache.shared.addListener(_artReady);
     _poll = Timer.periodic(const Duration(milliseconds: 700), (_) => _load());
     _flush = Timer.periodic(const Duration(milliseconds: 100), (_) => _send());
     Sfx.I.muted.addListener(_muteChanged);
     MelodyFxLevel.load();
     MelodyFxLevel.level.addListener(_fxLevelChanged);
     if (widget.enabled) {
+      MelodyArtCache.shared.prepareGameplay();
       _load();
     }
   }
 
   void _fxLevelChanged() => _rebuild(() {});
+  void _artReady() => _rebuild(() {});
 
   @override
   void didUpdateWidget(covariant MelodyRitualLayer old) {
     super.didUpdateWidget(old);
     if (widget.enabled && !old.enabled) {
+      MelodyArtCache.shared.prepareGameplay();
       _load();
     }
     if (!widget.enabled) {
@@ -174,6 +174,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     WidgetsBinding.instance.removeObserver(this);
     Sfx.I.muted.removeListener(_muteChanged);
     MelodyFxLevel.level.removeListener(_fxLevelChanged);
+    MelodyArtCache.shared.removeListener(_artReady);
     Sfx.I.setDuck(this, false);
     _poll?.cancel();
     _flush?.cancel();
@@ -218,6 +219,16 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       return;
     }
     final t = _elapsed;
+    if (!_chestPreloaded && t >= _duration - 5000) {
+      _chestPreloaded = true;
+      for (final key in [
+        'melodi-petihadiahtutup',
+        'melodi-petihadiahbuka',
+        'titlekalkulasimelodi',
+      ]) {
+        unawaited(MelodyArtCache.shared.load(key));
+      }
+    }
     _judge.tick(t);
     _fx.held = _judge.pressed;
     _fx.setCombo(_judge.combo);
@@ -309,6 +320,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       _legacyAudio.stop();
       _music.stop();
       _musicFailed = false;
+      _chestPreloaded = false;
       _fx.reset();
       _pressed.clear();
       _payment = 'embun';
@@ -567,7 +579,9 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               MelodyTitle(
-                text: 'PELATARAN MELODI',
+                text: _status == 'settled'
+                    ? 'KALKULASI MELODI'
+                    : 'PELATARAN MELODI',
                 color: widget.antagonist ? EmbunColors.mist : EmbunColors.gold,
                 reduced: MediaQuery.disableAnimationsOf(context),
               ),
@@ -711,11 +725,14 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   style: const TextStyle(color: EmbunColors.cream),
                 ),
                 const SizedBox(height: 18),
-                MelodyReveal(
+                MelodyRewardChest(
                   key: ValueKey('reward-${_state?['id']}'),
-                  delay: .6,
                   reduced: MediaQuery.disableAnimationsOf(context),
-                  child: _reward(),
+                  child: MelodyReveal(
+                    delay: 0,
+                    reduced: MediaQuery.disableAnimationsOf(context),
+                    child: _reward(),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 const Text(
@@ -844,14 +861,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   ),
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'RITUAL MELODI',
-                          style: TextStyle(
-                            color: EmbunColors.gold,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1,
-                          ),
+                      Expanded(
+                        child: MelodyArtView(
+                          'titlepelataranmelodi',
+                          height: short ? 34 : 48,
+                          label: 'Pelataran Melodi',
                         ),
                       ),
                       Text(
@@ -940,26 +954,91 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                             reduced: MediaQuery.disableAnimationsOf(context),
                           ),
                         ),
+                      if (t >= 0 && t < 650)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: Center(
+                              child: Opacity(
+                                opacity: MediaQuery.disableAnimationsOf(context)
+                                    ? 1
+                                    : (1 - t / 650).clamp(0.0, 1.0),
+                                child: MelodyArtView(
+                                  'melodi-go',
+                                  width: math.min(box.maxWidth * .55, 280),
+                                  height: short ? 70 : 120,
+                                  label: 'Mulai!',
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       if (t >= _duration)
-                        const Center(
-                          child: Text(
-                            'Merangkum ritual…',
-                            style: TextStyle(
-                              color: EmbunColors.gold,
-                              fontSize: 25,
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: LayoutBuilder(
+                              builder: (_, stage) => Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    MelodyArtView(
+                                      'melodi-timeout',
+                                      width: math.min(
+                                        stage.maxWidth * .75,
+                                        320,
+                                      ),
+                                      height: math.min(
+                                        110,
+                                        stage.maxHeight * .45,
+                                      ),
+                                      label: 'Waktu habis',
+                                    ),
+                                    const SizedBox(height: 6),
+                                    MelodyArtView(
+                                      'titlekalkulasimelodi',
+                                      width: math.min(
+                                        stage.maxWidth * .84,
+                                        400,
+                                      ),
+                                      height: math.min(
+                                        80,
+                                        stage.maxHeight * .28,
+                                      ),
+                                      label: 'Kalkulasi Melodi',
+                                    ),
+                                    if (stage.maxHeight > 150)
+                                      const Text(
+                                        'Merangkum hasil ritual…',
+                                        style: TextStyle(
+                                          color: EmbunColors.cream,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       Positioned(
                         top: 8,
                         left: 12,
-                        child: Text(
-                          '${_judge.feedback}\nKombo ${_judge.combo} • terbaik ${_judge.maxCombo}',
-                          style: const TextStyle(
-                            color: EmbunColors.cream,
-                            fontWeight: FontWeight.bold,
-                            height: 1.5,
-                          ),
+                        right: 12,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MelodyCounterArt(
+                              combo: _judge.combo,
+                              best: _judge.maxCombo,
+                              compact: short,
+                            ),
+                            Text(
+                              _judge.feedback,
+                              style: const TextStyle(
+                                color: EmbunColors.cream,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -996,12 +1075,10 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      SizedBox(
-                                        height: short ? 25 : 34,
-                                        child: GameImage(
-                                          path: sceneryPath(_icons[i]),
-                                          fit: BoxFit.contain,
-                                        ),
+                                      MelodyArtView(
+                                        melodyLaneArt[i],
+                                        height: short ? 28 : 42,
+                                        label: _names[i],
                                       ),
                                       Text(
                                         '${_names[i]} · ${['D', 'F', 'J', 'K'][i]}',

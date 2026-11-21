@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/melody_rules.dart';
+import 'melody_art.dart';
 
 /// Geometri bersama: jalur, garis penilaian, dan waktu tempuh ketukan.
 const double kMelodyLineRatio = .84;
@@ -508,6 +509,12 @@ class MelodyBackdropPainter extends CustomPainter {
           ],
         ).createShader(rect),
     );
+    MelodyArtCache.shared.paint(
+      canvas,
+      'melodi-garismelodi',
+      Rect.fromLTWH(w * .08, 8, w * .84, math.min(70, h * .16)),
+      opacity: .16,
+    );
     if (fx.level > 0) {
       for (var lane = 0; lane < 4; lane++) {
         final g = fx.laneGlow[lane];
@@ -683,6 +690,16 @@ class MelodyLanePainter extends CustomPainter {
           ..strokeWidth = 2.5
           ..color = col.withValues(alpha: .55 + .4 * g),
       );
+      MelodyArtCache.shared.paint(
+        c,
+        melodyLaneArt[lane],
+        Rect.fromCenter(
+          center: Offset(cx, line),
+          width: (tr + 5) * 2,
+          height: (tr + 5) * 2,
+        ),
+        opacity: .14 + .35 * g,
+      );
     }
     for (var i = 1; i < 4; i++) {
       c.drawLine(
@@ -774,24 +791,36 @@ class MelodyLanePainter extends CustomPainter {
             ..color = col.withValues(alpha: .22 * fade),
         );
       }
-      c.drawCircle(
-        Offset(x, y),
-        r,
-        Paint()..color = col.withValues(alpha: fade),
+      final textured = MelodyArtCache.shared.paint(
+        c,
+        melodyLaneArt[n.lane],
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: r * 2 + 12,
+          height: r * 2 + 12,
+        ),
+        opacity: fade,
       );
-      c.drawCircle(
-        Offset(x, y - r * .2),
-        r * .55,
-        Paint()..color = Colors.white.withValues(alpha: .30 * fade),
-      );
-      c.drawCircle(
-        Offset(x, y),
-        r,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.white.withValues(alpha: .5 * fade),
-      );
+      if (!textured) {
+        c.drawCircle(
+          Offset(x, y),
+          r,
+          Paint()..color = col.withValues(alpha: fade),
+        );
+        c.drawCircle(
+          Offset(x, y - r * .2),
+          r * .55,
+          Paint()..color = Colors.white.withValues(alpha: .30 * fade),
+        );
+        c.drawCircle(
+          Offset(x, y),
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = Colors.white.withValues(alpha: .5 * fade),
+        );
+      }
       if (delta.abs() < 140) {
         c.drawCircle(
           Offset(x, y),
@@ -802,16 +831,18 @@ class MelodyLanePainter extends CustomPainter {
             ..color = Colors.white.withValues(alpha: .35),
         );
       }
-      _text(
-        c,
-        '${n.lane + 1}',
-        Offset(x, y),
-        TextStyle(
-          color: const Color(0xFF06120E).withValues(alpha: fade),
-          fontSize: r,
-          fontWeight: FontWeight.w900,
-        ),
-      );
+      if (!textured) {
+        _text(
+          c,
+          '${n.lane + 1}',
+          Offset(x, y),
+          TextStyle(
+            color: const Color(0xFF06120E).withValues(alpha: fade),
+            fontSize: r,
+            fontWeight: FontWeight.w900,
+          ),
+        );
+      }
     }
   }
 
@@ -948,17 +979,28 @@ class MelodyFrontPainter extends CustomPainter {
           ],
         ),
       );
-      _text(
+      if (!MelodyArtCache.shared.paint(
         canvas,
-        'KOMBO',
-        Offset(w / 2, h * .2 + 58),
-        TextStyle(
-          color: _cream.withValues(alpha: .5),
-          fontSize: 11,
-          letterSpacing: 4,
-          fontWeight: FontWeight.w700,
+        'melodi-combo',
+        Rect.fromCenter(
+          center: Offset(w / 2, h * .2 + 58),
+          width: math.min(w * .34, 160),
+          height: 42,
         ),
-      );
+        opacity: .8,
+      )) {
+        _text(
+          canvas,
+          'KOMBO',
+          Offset(w / 2, h * .2 + 58),
+          TextStyle(
+            color: _cream.withValues(alpha: .5),
+            fontSize: 11,
+            letterSpacing: 4,
+            fontWeight: FontWeight.w700,
+          ),
+        );
+      }
     }
 
     for (final r in fx._rings) {
@@ -1007,23 +1049,46 @@ class MelodyFrontPainter extends CustomPainter {
       final lift = fx.motion ? 60 * Curves.easeOutCubic.transform(t) : 0.0;
       final scale = fx.motion && t < .15 ? 2.0 - (t / .15) * 1.0 : 1.0;
       final a = t < .65 ? 1.0 : (1 - (t - .65) / .35).clamp(0.0, 1.0);
-      _text(
-        canvas,
-        p.text,
-        Offset(p.x, p.y - lift),
-        TextStyle(
-          color: p.color.withValues(alpha: a.toDouble()),
-          fontSize: p.size * scale,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-          shadows: [
-            Shadow(
-              color: p.color.withValues(alpha: .8 * a.toDouble()),
-              blurRadius: 12,
-            ),
-          ],
-        ),
+      final asset = switch (p.text) {
+        'TEPAT!' => 'melodi-perfect',
+        'Bagus' => 'melodi-good',
+        'IRAMA TERPUTUS' => 'melodi-break',
+        _ => null,
+      };
+      final pw = math.min(w * .38, p.size * 5.5 * scale);
+      final ph = pw * .36;
+      final center = Offset(
+        p.x.clamp(pw / 2, w - pw / 2).toDouble(),
+        (p.y - lift).clamp(ph / 2, math.max(ph / 2, h - ph / 2)).toDouble(),
       );
+      final drawn =
+          fx.level > 0 &&
+          asset != null &&
+          MelodyArtCache.shared.paint(
+            canvas,
+            asset,
+            Rect.fromCenter(center: center, width: pw, height: ph),
+            opacity: a.toDouble(),
+          );
+      if (!drawn) {
+        _text(
+          canvas,
+          p.text,
+          Offset(p.x, p.y - lift),
+          TextStyle(
+            color: p.color.withValues(alpha: a.toDouble()),
+            fontSize: p.size * scale,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+            shadows: [
+              Shadow(
+                color: p.color.withValues(alpha: .8 * a.toDouble()),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+        );
+      }
     }
 
     final b = fx._banner;
@@ -1130,62 +1195,51 @@ class MelodyCountdown extends StatelessWidget {
   final int number;
   final Color color;
   final bool reduced;
-
   @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    key: ValueKey(number),
-    tween: Tween<double>(begin: reduced ? 1.0 : 0.0, end: 1.0),
-    duration: const Duration(milliseconds: 800),
-    curve: Curves.easeOutCubic,
-    builder: (context, v, _) {
-      final fade = v < .12 ? v / .12 : 1 - ((v - .12) / .88) * .75;
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'BERSIAP',
-            style: TextStyle(
-              color: _cream.withValues(alpha: .7),
-              fontSize: 13,
-              letterSpacing: 6,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: 260,
-            height: 200,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final width = math.min(360.0, box.maxWidth * .8);
+      final height = math.min(230.0, box.maxHeight * .8);
+      final ready = number > 3;
+      return SizedBox(
+        width: width,
+        height: height,
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey(number),
+          tween: Tween(begin: reduced ? 1.0 : 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeOutCubic,
+          builder: (_, value, _) => Stack(
+            alignment: Alignment.center,
+            children: [
+              if (!reduced)
                 CustomPaint(
-                  size: const Size(260, 200),
-                  painter: _RingPulsePainter(reduced ? 1.0 : v, color),
+                  size: Size(width, height),
+                  painter: _RingPulsePainter(value, color),
                 ),
-                Opacity(
-                  opacity: fade.clamp(0.0, 1.0).toDouble(),
-                  child: Transform.scale(
-                    scale: reduced ? 1.0 : 1.7 - .7 * v,
-                    child: Text(
-                      '$number',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 96,
-                        fontWeight: FontWeight.w900,
-                        shadows: [
-                          Shadow(
-                            color: color.withValues(alpha: .7),
-                            blurRadius: 28,
-                          ),
-                        ],
-                      ),
-                    ),
+              if (!ready)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: MelodyArtView(
+                    'melodi-ready',
+                    height: height * .2,
+                    label: 'Bersiap',
                   ),
                 ),
-              ],
-            ),
+              Transform.scale(
+                scale: reduced ? 1 : 1.2 - value * .2,
+                child: MelodyArtView(
+                  ready ? 'melodi-ready' : 'melodi-angka${number.clamp(1, 3)}',
+                  width: width * .92,
+                  height: height * (ready ? .48 : .65),
+                  label: ready ? 'Bersiap' : '$number',
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     },
   );
@@ -1234,17 +1288,23 @@ class MelodyTitle extends StatelessWidget {
     curve: Curves.easeOutCubic,
     builder: (context, v, _) => Opacity(
       opacity: v.clamp(0.0, 1.0).toDouble(),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: color,
-          fontSize: 24,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 2 + 12 * (1 - v),
-          shadows: [Shadow(color: color.withValues(alpha: .5), blurRadius: 16)],
-        ),
-      ),
+      child: (text == 'PELATARAN MELODI' || text == 'KALKULASI MELODI')
+          ? MelodyArtView(
+              text == 'PELATARAN MELODI'
+                  ? 'titlepelataranmelodi'
+                  : 'titlekalkulasimelodi',
+              height: MediaQuery.sizeOf(context).width < 600 ? 88 : 124,
+              label: text,
+            )
+          : Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: color,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
     ),
   );
 }
