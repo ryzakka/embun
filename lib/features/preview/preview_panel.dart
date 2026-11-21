@@ -71,6 +71,9 @@ enum _Screen {
   hand('Meja kartu'),
   merge('Gabung kartu'),
   hall('Balai · Tawaran tukar'),
+  melodyInvite('Melodi · Undangan dan biaya'),
+  melodyPlay('Melodi · Ketukan langsung'),
+  melodyReward('Melodi · Hadiah pribadi'),
   village('Kunjungan · Pilih tujuan'),
   well('Kunjungan · Sumur Desa'),
   clinic('Kunjungan · Pondok Perawatan'),
@@ -170,6 +173,9 @@ const _sections = [
       _Screen.hand,
       _Screen.merge,
       _Screen.hall,
+      _Screen.melodyInvite,
+      _Screen.melodyPlay,
+      _Screen.melodyReward,
       _Screen.village,
       _Screen.well,
       _Screen.clinic,
@@ -324,6 +330,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       manhwaCharacter: _manhwaCharacter,
       antagonists: screen == _Screen.secretChat ? 2 : _antagonists,
       phase: switch (screen) {
+        _Screen.melodyInvite ||
+        _Screen.melodyPlay ||
+        _Screen.melodyReward ||
         _Screen.village ||
         _Screen.well ||
         _Screen.clinic ||
@@ -368,6 +377,20 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     );
 
     if (const {
+      _Screen.melodyInvite,
+      _Screen.melodyPlay,
+      _Screen.melodyReward,
+    }.contains(screen)) {
+      _session.prepareMelodyPreview(
+        stage: screen == _Screen.melodyPlay
+            ? 'running'
+            : screen == _Screen.melodyReward
+            ? 'settled'
+            : 'inviting',
+      );
+    }
+
+    if (const {
           _Screen.manhwaCharacters,
           _Screen.manhwaWaiting,
           _Screen.manhwaOutfits,
@@ -376,7 +399,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         (screen == _Screen.character && isDraftTheme(_characterTheme))) {
       _session.prepareManhwaDraft(
         characterId: _manhwaCharacter,
-        characterTheme: isDraftTheme(_characterTheme) ? _characterTheme : manhwaTheme,
+        characterTheme: isDraftTheme(_characterTheme)
+            ? _characterTheme
+            : manhwaTheme,
         role: role,
         antagonists: _antagonists,
         stage: screen == _Screen.manhwaOutfits || screen == _Screen.manhwaLocked
@@ -486,7 +511,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
         return PrologueFlow(
           gameId: _gameId,
           repo: _session,
-          characterTheme: isDraftTheme(_characterTheme) ? _characterTheme : manhwaTheme,
+          characterTheme: isDraftTheme(_characterTheme)
+              ? _characterTheme
+              : manhwaTheme,
           resume: true,
           antagonistCount: _session.antagonistCount,
         );
@@ -811,13 +838,21 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     ];
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(tooltip: 'Kembali', onPressed: widget.onClose,
-          icon: const GameIcon('back2', size: 26)),
+        leading: IconButton(
+          tooltip: 'Kembali',
+          onPressed: widget.onClose,
+          icon: const GameIcon('back2', size: 26),
+        ),
         title: const Text('Panel Pratinjau Embun'),
-        actions: [IconButton(tooltip: 'Pratinjau semua ikon',
-          icon: const GameIcon('mydeck', size: 26),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const IconPreviewPage()))),],
+        actions: [
+          IconButton(
+            tooltip: 'Pratinjau semua ikon',
+            icon: const GameIcon('mydeck', size: 26),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const IconPreviewPage()),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -867,14 +902,18 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                     ChoiceChip(
                       label: const Text('Default'),
                       selected: _characterTheme == defaultTheme,
-                      onSelected: (_) =>
-                          setState(() { _characterTheme = defaultTheme; _manhwaCharacter = manhwaNames.keys.first; }),
+                      onSelected: (_) => setState(() {
+                        _characterTheme = defaultTheme;
+                        _manhwaCharacter = manhwaNames.keys.first;
+                      }),
                     ),
                     ChoiceChip(
                       label: const Text('Manhwa Style'),
                       selected: _characterTheme == manhwaTheme,
-                      onSelected: (_) =>
-                          setState(() { _characterTheme = manhwaTheme; _manhwaCharacter = manhwaNames.keys.first; }),
+                      onSelected: (_) => setState(() {
+                        _characterTheme = manhwaTheme;
+                        _manhwaCharacter = manhwaNames.keys.first;
+                      }),
                     ),
                     ChoiceChip(
                       label: const Text('Lukisan Tiongkok'),
@@ -893,7 +932,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                   isExpanded: true,
                   value: _manhwaCharacter,
                   items: [
-                    for (final e in themeCharacterNames(_characterTheme).entries)
+                    for (final e in themeCharacterNames(
+                      _characterTheme,
+                    ).entries)
                       DropdownMenuItem(value: e.key, child: Text(e.value)),
                   ],
                   onChanged: (v) {
@@ -950,7 +991,10 @@ class _PreviewPanelState extends State<_PreviewPanel> {
                     for (final screen in screens)
                       ListTile(
                         title: Text(screen.label),
-                        trailing: const EmbunIcon(Icons.chevron_right, size: 20),
+                        trailing: const EmbunIcon(
+                          Icons.chevron_right,
+                          size: 20,
+                        ),
                         visualDensity: VisualDensity.compact,
                         onTap: () => _open(screen),
                       ),

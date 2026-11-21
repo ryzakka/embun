@@ -11,6 +11,35 @@ class GameRepository {
     return Map<String, dynamic>.from(result as Map);
   }
 
+  Future<Map<String, dynamic>> melodyStatus(String gameId) =>
+      _visitRpc('melody_status', gameId);
+  Future<Map<String, dynamic>> inviteMelody(String gameId) =>
+      _visitRpc('invite_melody', gameId);
+  Future<Map<String, dynamic>> respondMelody(
+    String gameId,
+    String sessionId, {
+    required bool accept,
+    String? payment,
+    String? handId,
+  }) => _visitRpc('respond_melody', gameId, {
+    'p_session': sessionId,
+    'p_accept': accept,
+    'p_payment': payment,
+    'p_hand': handId,
+  });
+  Future<Map<String, dynamic>> playMelody(
+    String gameId,
+    String sessionId,
+    List<Map<String, dynamic>> inputs,
+  ) => _visitRpc('play_melody', gameId, {
+    'p_session': sessionId,
+    'p_inputs': inputs,
+  });
+  Future<void> dismissMelody(String gameId, String sessionId) => _db.rpc(
+    'dismiss_melody',
+    params: {'p_game': gameId, 'p_session': sessionId},
+  );
+
   Future<Map<String, dynamic>> villageStatus(String gameId) =>
       _visitRpc('village_visit_status', gameId);
   Future<Map<String, dynamic>> enterVillagePlace(

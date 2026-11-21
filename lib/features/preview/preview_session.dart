@@ -1,4 +1,5 @@
 import '../../data/theme_catalog.dart';
+import '../../data/melody_rules.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../data/inspection.dart';
@@ -68,7 +69,9 @@ class PreviewSession
   @override
   Future<PreviewRow> leaveVillagePlace(String gameId) async {
     final v = _visits.where((v) => v['closed_at'] == null).lastOrNull;
-    if (v != null) v['closed_at'] = _stamp;
+    if (v != null) {
+      v['closed_at'] = _stamp;
+    }
     return villageStatus(gameId);
   }
 
@@ -96,7 +99,9 @@ class PreviewSession
     if (v['action_used'] == true || v['place'] != 'pondok') {
       throw StateError('Layanan sudah digunakan');
     }
-    if (!_dark && target != myId) _balance -= 12;
+    if (!_dark && target != myId) {
+      _balance -= 12;
+    }
     _trapWaiting = _dark;
     _hand.removeWhere((h) => h['id'] == handId);
     v['action_used'] = true;
@@ -107,6 +112,284 @@ class PreviewSession
   @override
   Future<void> finishVillageVisits(String gameId) async {
     _ready(true);
+  }
+
+  PreviewRow? _melody;
+  MelodyJudge _melodyJudge = MelodyJudge();
+  bool _melodyPaid = false;
+
+  void prepareMelodyPreview({String stage = 'inviting'}) {
+    _melody = null;
+    _melodyPaid = false;
+    _melodyJudge = MelodyJudge();
+    _newMelody();
+    if (stage == 'running') {
+      _melody!['status'] = 'running';
+      _melody!['starts_at'] = DateTime.now()
+          .add(const Duration(seconds: 5))
+          .toUtc()
+          .toIso8601String();
+      _melody!['ends_at'] = DateTime.now()
+          .add(const Duration(seconds: 35))
+          .toUtc()
+          .toIso8601String();
+    } else if (stage == 'settled') {
+      _melody!['status'] = 'settled';
+      _melody!['own'] = {
+        'accepted': true,
+        'personal_score': 92,
+        'final_score': 91,
+        'accuracy': 96.5,
+        'max_combo': 41,
+        'reward': {'kind': 'embun', 'amount': 14, 'tier': 5},
+      };
+    }
+    _update();
+  }
+
+  void _newMelody() {
+    final rng = Random(1234);
+    final notes = <Map<String, dynamic>>[];
+    for (var w = 0; w < 5; w++) {
+      final pressure = _dark ? 0 : (w - 1).clamp(0, 3).toInt();
+      final spacing = (500 / (1 + pressure * .05)).round();
+      var i = 0;
+      while (i * spacing < 5100) {
+        final lane = rng.nextInt(4);
+        final hold = i % 6 == 4 ? min(600, spacing + 100) : 0;
+        notes.add({
+          'id': w * 1000 + i * 4 + lane,
+          'lane': lane,
+          'at': w * 6000 + 450 + i * spacing,
+          'hold': hold,
+          'wave': w,
+        });
+        if (i % 6 == 2) {
+          final chord = (lane + 1 + rng.nextInt(3)) % 4;
+          notes.add({
+            'id': w * 1000 + i * 4 + chord,
+            'lane': chord,
+            'at': w * 6000 + 450 + i * spacing,
+            'hold': 0,
+            'wave': w,
+          });
+        }
+        i += hold > 0 ? 2 : 1;
+      }
+    }
+    _melodyJudge = MelodyJudge()..addNotes(notes.map(MelodyNote.fromJson));
+    _melody = {
+      'id': 'preview-melody-${++_sequence}',
+      'status': 'inviting',
+      'inviter_id': myId,
+      'day': day,
+      'cycle': 1,
+      'expires_at': DateTime.now()
+          .add(const Duration(seconds: 25))
+          .toUtc()
+          .toIso8601String(),
+      'cost': 8,
+      'minimum_card_cost': 10,
+      'duration_ms': 30000,
+      'players': [
+        for (final p in roster)
+          {
+            'user_id': p['user_id'],
+            'name': p['name'],
+            'accepted': p['user_id'] != myId,
+          },
+      ],
+      'own': {
+        'accepted': false,
+        'personal_score': 0,
+        'final_score': 0,
+        'accuracy': 0,
+        'max_combo': 0,
+      },
+      'notes': notes,
+      'waves': [
+        for (var w = 0; w < 5; w++)
+          {'wave': w, 'pressure': (w - 1).clamp(0, 3).toInt()},
+      ],
+    };
+  }
+
+  @override
+  Future<PreviewRow> melodyStatus(String gameId) async {
+    final m = _melody;
+    if (m == null) {
+      return {'status': 'idle', 'server_now': _stamp};
+    }
+    if (m['status'] == 'inviting' &&
+        DateTime.now().isAfter(DateTime.parse(m['expires_at'] as String))) {
+      m['status'] = 'cancelled';
+      m['reason'] = 'Waktu undangan habis. Tidak ada biaya dipotong.';
+    }
+    if (m['status'] == 'running') {
+      final elapsed = DateTime.now()
+          .difference(DateTime.parse(m['starts_at'] as String))
+          .inMilliseconds;
+      _melodyJudge.tick(elapsed);
+      final own = m['own'] as Map<String, dynamic>;
+      own.addAll({
+        'personal_score': _melodyJudge.score,
+        'accuracy': _melodyJudge.accuracy,
+        'max_combo': _melodyJudge.maxCombo,
+      });
+      if (elapsed >= 32000) {
+        final score = melodyFinalScore(
+          _melodyJudge.score,
+          70,
+          antagonist: _dark,
+        );
+        final tier = melodyTier(score);
+        final rng = Random(m['id'].hashCode);
+        final roll = rng.nextInt(100);
+        var cumulative = 0;
+        var category = 0;
+        for (var i = 0; i < 6; i++) {
+          cumulative += melodyPools[tier][i];
+          if (roll < cumulative) {
+            category = i;
+            break;
+          }
+        }
+        final side = _dark ? 'antagonis' : 'warga';
+        final candidates = previewCards.values
+            .where(
+              (d) =>
+                  d['side'] == side &&
+                  d['purchasable'] == true &&
+                  (d['cost'] as num? ?? 0) > 0 &&
+                  switch (category) {
+                    1 => [
+                      'persembahan',
+                      'sekali_pakai',
+                      'penguat',
+                    ].contains(d['kind']),
+                    2 => d['kind'] == (_dark ? 'malam' : 'siang'),
+                    3 => d['kind'] == 'perawatan',
+                    4 => d['kind'] == 'lanjutan',
+                    5 => d['kind'] == 'poin',
+                    _ => false,
+                  },
+            )
+            .toList();
+        if (category > 0 && candidates.isNotEmpty) {
+          final card = candidates[rng.nextInt(candidates.length)];
+          _addCard(card['id'] as String);
+          own['reward'] = {
+            'kind': 'card',
+            'card_id': card['id'],
+            'name': card['name'],
+            'tier': tier,
+          };
+        } else {
+          final range = melodyCoinRanges[tier];
+          final amount = range[0] + rng.nextInt(range[1] - range[0] + 1);
+          _balance += amount;
+          own['reward'] = {'kind': 'embun', 'amount': amount, 'tier': tier};
+        }
+        own['final_score'] = score;
+        m['status'] = 'settled';
+        _update();
+      }
+    }
+    return {...m, 'server_now': _stamp};
+  }
+
+  @override
+  Future<PreviewRow> inviteMelody(String gameId) async {
+    if (_melody == null) {
+      _newMelody();
+    }
+    return melodyStatus(gameId);
+  }
+
+  @override
+  Future<PreviewRow> respondMelody(
+    String gameId,
+    String sessionId, {
+    required bool accept,
+    String? payment,
+    String? handId,
+  }) async {
+    final m = _melody;
+    if (m == null || m['id'] != sessionId) {
+      throw StateError('Undangan tidak ditemukan');
+    }
+    if (m['status'] != 'inviting') {
+      return melodyStatus(gameId);
+    }
+    if (!accept) {
+      m['status'] = 'cancelled';
+      m['reason'] = 'Undangan dibatalkan. Tidak ada biaya dipotong.';
+      return melodyStatus(gameId);
+    }
+    if (!_melodyPaid) {
+      if (payment == 'embun') {
+        if (_balance < 8) {
+          throw StateError('Perlu 8 embun');
+        }
+        _balance -= 8;
+      } else {
+        final h = _hand.where((h) => h['id'] == handId).firstOrNull;
+        final d = previewCards[h?['card_id']];
+        if (h == null ||
+            d == null ||
+            (d['cost'] as num? ?? 0) < 10 ||
+            d['purchasable'] != true) {
+          throw StateError('Pilih kartu yang memenuhi biaya ritual');
+        }
+        _hand.remove(h);
+      }
+      _melodyPaid = true;
+    }
+    (m['own'] as Map)['accepted'] = true;
+    for (final p in m['players'] as List) {
+      (p as Map)['accepted'] = true;
+    }
+    m['status'] = 'running';
+    m['starts_at'] = DateTime.now()
+        .add(const Duration(seconds: 5))
+        .toUtc()
+        .toIso8601String();
+    m['ends_at'] = DateTime.now()
+        .add(const Duration(seconds: 35))
+        .toUtc()
+        .toIso8601String();
+    _update();
+    return melodyStatus(gameId);
+  }
+
+  @override
+  Future<PreviewRow> playMelody(
+    String gameId,
+    String sessionId,
+    List<Map<String, dynamic>> inputs,
+  ) async {
+    if (_melody?['id'] != sessionId || _melody?['status'] != 'running') {
+      return melodyStatus(gameId);
+    }
+    final notes = (_melody!['notes'] as List).cast<Map>();
+    for (final e in inputs) {
+      final n = notes.where((n) => n['id'] == e['id']).firstOrNull;
+      if (n == null) {
+        continue;
+      }
+      if (e['edge'] == 'down') {
+        _melodyJudge.down(n['lane'] as int, e['at'] as int);
+      } else {
+        _melodyJudge.up(n['lane'] as int, e['at'] as int);
+      }
+    }
+    return melodyStatus(gameId);
+  }
+
+  @override
+  Future<void> dismissMelody(String gameId, String sessionId) async {
+    _melody = null;
+    _update();
   }
 
   final _changes = StreamController<void>.broadcast();
@@ -180,6 +463,9 @@ class PreviewSession
     bool locked = false,
   }) {
     this.role = role;
+    _melody = null;
+    _melodyPaid = false;
+    _melodyJudge = MelodyJudge();
     _manhwaChoices.clear();
     _holdManhwaDraft = false;
     _previewUsernames.clear();
@@ -300,17 +586,22 @@ class PreviewSession
       _previewUsernames[_players[i]['user_id'] as String] = 'Penguji ${i + 1}';
     }
     if (isDraftTheme(characterTheme)) {
-      final preferred = themeCharacterNames(characterTheme).containsKey(manhwaCharacter)
+      final preferred =
+          themeCharacterNames(characterTheme).containsKey(manhwaCharacter)
           ? manhwaCharacter!
           : themeCharacterNames(characterTheme).keys.first;
       final ids = [
         preferred,
-        ...themeCharacterNames(characterTheme).keys.where((id) => id != preferred),
+        ...themeCharacterNames(
+          characterTheme,
+        ).keys.where((id) => id != preferred),
       ];
       for (var i = 0; i < _players.length; i++) {
         _players[i] = {
           ..._players[i],
-          'name': waitingRoom ? 'Penguji ${i + 1}' : themeCharacterNames(characterTheme)[ids[i]],
+          'name': waitingRoom
+              ? 'Penguji ${i + 1}'
+              : themeCharacterNames(characterTheme)[ids[i]],
           'character_card': manhwaPrimaryCard(ids[i]),
         };
       }
@@ -476,7 +767,9 @@ class PreviewSession
     final room = (await publicGames())
         .where((row) => row['code'] == normalized)
         .firstOrNull;
-    if (room == null) throw StateError('Kode ruangan contoh tidak ditemukan.');
+    if (room == null) {
+      throw StateError('Kode ruangan contoh tidak ditemukan.');
+    }
     final id = await createGame(
       name,
       card,
@@ -586,7 +879,9 @@ class PreviewSession
 
   @override
   Future<PreviewRow> myAbilityDraft(String gameId) async {
-    if (_dark) throw StateError('Pilihan biru hanya untuk warga');
+    if (_dark) {
+      throw StateError('Pilihan biru hanya untuk warga');
+    }
     return {
       'count': _abilityOffers.length,
       'chosen': _pickedAbility != null,
@@ -599,7 +894,9 @@ class PreviewSession
 
   @override
   Future<PreviewRow> chooseAbility(String gameId, int slot) async {
-    if (_dark) throw StateError('Pilihan biru hanya untuk warga');
+    if (_dark) {
+      throw StateError('Pilihan biru hanya untuk warga');
+    }
     if (_abilitySlot != null && _abilitySlot != slot) {
       throw StateError('Pilihan kemampuan sudah terkunci');
     }
@@ -617,9 +914,10 @@ class PreviewSession
         _manhwaCursor < roster.length &&
         roster[_manhwaCursor]['user_id'] != myId) {
       final id = roster[_manhwaCursor]['user_id'] as String;
-      final c = themeCharacterNames(_game['character_theme'] as String?).keys.firstWhere(
-        (c) => !_manhwaChoices.values.any((x) => x['character_id'] == c),
-      );
+      final c = themeCharacterNames(_game['character_theme'] as String?).keys
+          .firstWhere(
+            (c) => !_manhwaChoices.values.any((x) => x['character_id'] == c),
+          );
       _manhwaChoices[id] = {'character_id': c, 'outfit_card': null};
       _manhwaCursor++;
     }
@@ -627,9 +925,12 @@ class PreviewSession
       _manhwaStage = 'outfits';
       for (final entry in _manhwaChoices.entries) {
         if (entry.key != myId || _game['character_theme'] == tiongkokTheme) {
-          entry.value['outfit_card'] = themeOutfits(_game['character_theme'] as String?).values
-              .firstWhere((o) => o.characterId == entry.value['character_id'])
-              .id;
+          entry.value['outfit_card'] =
+              themeOutfits(_game['character_theme'] as String?).values
+                  .firstWhere(
+                    (o) => o.characterId == entry.value['character_id'],
+                  )
+                  .id;
         }
       }
     }
@@ -643,7 +944,9 @@ class PreviewSession
         _players[i] = {
           ..._players[i],
           'character_card': c['outfit_card'],
-          'name': themeCharacterNames(_game['character_theme'] as String?)[c['character_id']],
+          'name': themeCharacterNames(
+            _game['character_theme'] as String?,
+          )[c['character_id']],
         };
       }
       _game = {..._game, 'status': 'playing', 'prologue_until': _stamp};
@@ -678,7 +981,9 @@ class PreviewSession
     if (stage == 'outfits') {
       final ids = [
         characterId,
-        ...themeCharacterNames(_game['character_theme'] as String?).keys.where((id) => id != characterId),
+        ...themeCharacterNames(
+          _game['character_theme'] as String?,
+        ).keys.where((id) => id != characterId),
       ];
       _manhwaCursor = roster.length;
       for (var i = 0; i < roster.length; i++) {
@@ -728,7 +1033,9 @@ class PreviewSession
         for (final p in roster) {...p, ...?_manhwaChoices[p['user_id']]},
       ],
       'characters': [
-        for (final e in themeCharacterNames(_game['character_theme'] as String?).entries)
+        for (final e in themeCharacterNames(
+          _game['character_theme'] as String?,
+        ).entries)
           {
             'id': e.key,
             'name': e.value,
@@ -739,7 +1046,9 @@ class PreviewSession
           },
       ],
       'outfits': [
-        for (final o in themeOutfits(_game['character_theme'] as String?).values)
+        for (final o in themeOutfits(
+          _game['character_theme'] as String?,
+        ).values)
           if (o.characterId == own?['character_id'])
             {'id': o.id, 'label': o.label},
       ],
@@ -757,10 +1066,14 @@ class PreviewSession
         roster[_manhwaCursor]['user_id'] != myId) {
       throw StateError('Belum giliranmu memilih tokoh');
     }
-    if (!themeCharacterNames(_game['character_theme'] as String?).containsKey(characterId))
+    if (!themeCharacterNames(
+      _game['character_theme'] as String?,
+    ).containsKey(characterId)) {
       throw StateError('Tokoh tidak tersedia');
-    if (_manhwaChoices.values.any((c) => c['character_id'] == characterId))
+    }
+    if (_manhwaChoices.values.any((c) => c['character_id'] == characterId)) {
       throw StateError('Tokoh sudah dipilih');
+    }
     _manhwaChoices[myId] = {'character_id': characterId, 'outfit_card': null};
     _manhwaCursor++;
     return manhwaDraft(gameId);
@@ -772,13 +1085,17 @@ class PreviewSession
       throw StateError('Belum waktunya memilih pakaian');
     }
     if (_manhwaChoices[myId]?['outfit_card'] != null) {
-      if (_manhwaChoices[myId]!['outfit_card'] != cardId)
+      if (_manhwaChoices[myId]!['outfit_card'] != cardId) {
         throw StateError('Pakaianmu sudah terkunci');
+      }
       return manhwaDraft(gameId);
     }
-    if (themeOutfits(_game['character_theme'] as String?)[cardId]?.characterId !=
-        _manhwaChoices[myId]?['character_id'])
+    if (themeOutfits(
+          _game['character_theme'] as String?,
+        )[cardId]?.characterId !=
+        _manhwaChoices[myId]?['character_id']) {
       throw StateError('Pakaian tidak sesuai');
+    }
     _manhwaChoices[myId]!['outfit_card'] = cardId;
     return manhwaDraft(gameId);
   }
@@ -791,8 +1108,12 @@ class PreviewSession
 
   @override
   Future<void> keepPrologueCard(String gameId, String kind) async {
-    if (kind == 'character') _charChosen = true;
-    if (kind == 'dark') _darkChosen = true;
+    if (kind == 'character') {
+      _charChosen = true;
+    }
+    if (kind == 'dark') {
+      _darkChosen = true;
+    }
   }
 
   @override
@@ -831,7 +1152,9 @@ class PreviewSession
     _revealReady = true;
     _castStarted = true;
     _castDone = true;
-    if (_holdPrologue || _game['prologue_until'] == null) return;
+    if (_holdPrologue || _game['prologue_until'] == null) {
+      return;
+    }
     _game = {..._game, 'prologue_until': null};
     _update();
   }
@@ -929,8 +1252,12 @@ class PreviewSession
       throw StateError('Kartu atau tingkatnya sudah berubah.');
     }
     final cost = StethoscopeRules.nextCost(card);
-    if (cost == null) throw StateError('Stetoskop sudah 100%.');
-    if (_balance < cost) throw StateError('Embunmu tidak cukup.');
+    if (cost == null) {
+      throw StateError('Stetoskop sudah 100%.');
+    }
+    if (_balance < cost) {
+      throw StateError('Embunmu tidak cukup.');
+    }
     card['inspection_level'] = expectedLevel + 1;
     _balance -= cost;
     _update();
@@ -959,7 +1286,9 @@ class PreviewSession
     final report = _inspectionReports
         .where((r) => r['id'] == reportId && r['inspector_id'] == myId)
         .firstOrNull;
-    if (report != null) report['seen_at'] ??= _stamp;
+    if (report != null) {
+      report['seen_at'] ??= _stamp;
+    }
   }
 
   @override
@@ -972,7 +1301,9 @@ class PreviewSession
     final points = _hand.indexWhere(
       (h) => previewCards[h['card_id']]?['kind'] == 'poin',
     );
-    if (points < 0) throw StateError('Belum ada kartu poin.');
+    if (points < 0) {
+      throw StateError('Belum ada kartu poin.');
+    }
     item['charged'] = true;
     _hand.removeAt(points);
     _update();
@@ -1105,7 +1436,9 @@ class PreviewSession
   @override
   Stream<List<PreviewRow>> chat(String gameId, {bool terbisik = false}) =>
       _watch(() {
-        if (!terbisik) return List.of(_chat);
+        if (!terbisik) {
+          return List.of(_chat);
+        }
         return _dark && antagonistCount == 2 ? List.of(_secretChat) : [];
       });
 
@@ -1177,7 +1510,9 @@ class PreviewSession
   };
 
   void _buy(String card, Set<String> purchases) {
-    if (!purchases.add(card)) return;
+    if (!purchases.add(card)) {
+      return;
+    }
     _balance -= (previewCards[card]?['cost'] as num?)?.toDouble() ?? 0;
     _addCard(card);
     _update();
@@ -1220,7 +1555,9 @@ class PreviewSession
     String? returnHand,
   }) async {
     final i = _trades.indexWhere((t) => t['id'] == tradeId);
-    if (i < 0) return;
+    if (i < 0) {
+      return;
+    }
     if (accept) {
       _hand.removeWhere((h) => h['id'] == returnHand);
       _addCard(_trades[i]['give_card_id'] as String);
@@ -1402,10 +1739,12 @@ class PreviewSession
     String pollId,
     String choice,
   ) async {
-    if (_meetingPoll == null || _meetingPoll!['closed'] == true)
+    if (_meetingPoll == null || _meetingPoll!['closed'] == true) {
       throw StateError('Sidang sudah ditutup');
-    if (_meetingPoll!['my_choice'] != null)
+    }
+    if (_meetingPoll!['my_choice'] != null) {
       throw StateError('Jawaban sudah terkunci');
+    }
     _meetingPoll = {
       ..._meetingPoll!,
       'my_choice': choice,
@@ -1422,8 +1761,9 @@ class PreviewSession
   }
 
   void selectPreviewAbility(String id) {
-    if (!previewAbilities.containsKey(id))
+    if (!previewAbilities.containsKey(id)) {
       throw StateError('Kemampuan tidak tersedia');
+    }
     _pickedAbility = id;
     _usedAbility = false;
   }
@@ -1434,7 +1774,9 @@ class PreviewSession
     String? target,
     String? option,
   }) async {
-    if (_usedAbility) throw StateError('Kemampuan sudah terpakai');
+    if (_usedAbility) {
+      throw StateError('Kemampuan sudah terpakai');
+    }
     final meeting = const [
       'buktikan_tuduhan',
       'sidang_terbuka',
@@ -1478,10 +1820,11 @@ class PreviewSession
       };
       message = 'Sidang Terbuka dimulai tentang ${victim['name']}.';
     }
-    if (_ability == 'penanggung_luka')
+    if (_ability == 'penanggung_luka') {
       message =
           '${me['name']} bersedia menanggung satu luka untuk ${victim!['name']}.';
-    if (meeting)
+    }
+    if (meeting) {
       _meetingEvents.add({
         'id': 'preview-meeting-${++_sequence}',
         'day': day,
@@ -1492,6 +1835,7 @@ class PreviewSession
         'text':
             'Rapat: ${_ability == 'buktikan_tuduhan' ? '${me['name']} menggunakan Buktikan Tuduhanmu. ' : ''}$message',
       });
+    }
     _update();
     return {
       'result': 'ok',

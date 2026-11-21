@@ -17,6 +17,7 @@ import 'village_card_picker.dart';
 import 'village_exchange_view.dart';
 import 'clinic_entry_scene.dart';
 import 'village_ambience.dart';
+import 'melody_ritual.dart';
 
 typedef VillageRow = Map<String, dynamic>;
 
@@ -133,6 +134,16 @@ const _places = [
     'pondok',
   ),
   _Place(
+    'melodi',
+    'Pelataran Melodi',
+    'Undang seluruh pemain. Pertaruhkan bekalmu dalam irama.',
+    'alunalun-tiangberpita',
+    'pohon-keranjangbuah',
+    Icons.music_note_rounded,
+    Color(0xFF9ECEC1),
+    'bulirembun',
+  ),
+  _Place(
     'balai',
     'Balai Pertukaran',
     'Temui warga lain. Sepakati pertukaran kartu.',
@@ -181,7 +192,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   void _toggleSheet() {
     final id = _visit?['id'];
-    if (id == null) return;
+    if (id == null) {
+      return;
+    }
     Sfx.I.click(Snd.click2);
     setState(() => _collapsedVisit = _sheetOpen ? id : null);
   }
@@ -198,29 +211,36 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   void _markActed() {
     final id = _visit?['id'];
-    if (!mounted || id == null || id == _actedVisit) return;
+    if (!mounted || id == null || id == _actedVisit) {
+      return;
+    }
     setState(() => _actedVisit = id);
   }
 
   /// Pose karakter warga: tanya (menyambut) -> periksa (pondok, pasien sudah
   /// dipilih) -> selesai (tindakan tercatat).
   String _moodOf(String place) {
-    if (_acted) return 'selesai';
+    if (_acted) {
+      return 'selesai';
+    }
     if (place == 'pondok' && !widget.isAntag && _target != null) {
       return 'periksa';
     }
     return 'tanya';
   }
 
-  String? _popup(String place, String mood) =>
-      popupCharPath(antag: widget.isAntag, place: place, mood: mood);
+  String? _popup(String place, String mood) => place == 'melodi'
+      ? null
+      : popupCharPath(antag: widget.isAntag, place: place, mood: mood);
 
   String get _speaker => widget.isAntag ? 'SI TERBISIK' : 'WARGA DESA';
 
   /// Kalimat singkat karakter menurut tempat dan pose. Ubah teksnya di sini.
   String? _voiceOf(String place, String mood) {
     if (widget.isAntag) {
-      if (_acted) return 'Sudah terlaksana. Kini… menunggulah.';
+      if (_acted) {
+        return 'Sudah terlaksana. Kini… menunggulah.';
+      }
       return switch (place) {
         'riset' => 'Ssst… setiap ilmu ada harganya. Mau membeli apa malam ini?',
         'sumur' => 'Setetes saja, dan seluruh desa ikut meminumnya.',
@@ -254,7 +274,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   Widget _voiceBubble(String place, {String? mood, double maxWidth = 380}) {
     final line = _voiceOf(place, mood ?? _moodOf(place));
-    if (line == null) return const SizedBox.shrink();
+    if (line == null) {
+      return const SizedBox.shrink();
+    }
     return PlaceVoice(
       speaker: _speaker,
       line: line,
@@ -272,8 +294,12 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     super.initState();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-      if (ServerClock.now().second % 5 == 0) _load();
+      if (mounted) {
+        setState(() {});
+      }
+      if (ServerClock.now().second % 5 == 0) {
+        _load();
+      }
     });
   }
 
@@ -286,7 +312,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   }
 
   Future<void> _load() async {
-    if (_loading || _busy || _clinicGate) return;
+    if (_loading || _busy || _clinicGate) {
+      return;
+    }
     _loading = true;
     final revision = _revision;
     try {
@@ -298,14 +326,18 @@ class _VillageVisitViewState extends State<VillageVisitView> {
         });
       }
     } catch (e) {
-      if (mounted && _status == null) setState(() => _error = errMsg(e));
+      if (mounted && _status == null) {
+        setState(() => _error = errMsg(e));
+      }
     } finally {
       _loading = false;
     }
   }
 
   Future<bool> _act(Future<VillageRow> Function() action) async {
-    if (_busy || _waiting) return false;
+    if (_busy || _waiting) {
+      return false;
+    }
     _revision++;
     setState(() {
       _busy = true;
@@ -317,16 +349,22 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       if (mounted) {
         setState(() {
           _status = next;
-          if (visitBefore != null) _actedVisit = visitBefore;
+          if (visitBefore != null) {
+            _actedVisit = visitBefore;
+          }
         });
       }
       widget.onHandChanged?.call();
       return true;
     } catch (e) {
-      if (mounted) setState(() => _error = errMsg(e));
+      if (mounted) {
+        setState(() => _error = errMsg(e));
+      }
       return false;
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -337,7 +375,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   Future<void> _finish() async {
     await _act(() async {
       await widget.repo.finishVillageVisits(widget.gameId);
-      if (mounted) setState(() => _finished = true);
+      if (mounted) {
+        setState(() => _finished = true);
+      }
       return _status ?? {};
     });
   }
@@ -872,7 +912,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     List<VillageRow> patients,
     String? selected,
   ) async {
-    if (_busy || _used) return;
+    if (_busy || _used) {
+      return;
+    }
     final id = await showVillageCardPicker(
       context,
       title: 'Siapa yang akan dirawat?',
@@ -883,7 +925,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       selected: selected,
       confirmLabel: 'Rawat pemain ini',
     );
-    if (mounted && id != null) setState(() => _target = id);
+    if (mounted && id != null) {
+      setState(() => _target = id);
+    }
   }
 
   Widget _clinic() {
@@ -1108,7 +1152,16 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     }),
   );
   void _enterPlace(String place) {
-    if (_busy || _waiting) return;
+    if (_busy || _waiting) {
+      return;
+    }
+    if (place == 'melodi') {
+      _act(() async {
+        await widget.repo.inviteMelody(widget.gameId);
+        return widget.repo.villageStatus(widget.gameId);
+      });
+      return;
+    }
     if (place == 'pondok') {
       setState(() => _clinicGate = true);
       return;
@@ -1117,7 +1170,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     // adegan dalam membuka lewat IrisReveal.
     setState(() => _entering = true);
     _act(() => widget.repo.enterVillagePlace(widget.gameId, place)).then((ok) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _entering = false);
       if (ok) {
         Sfx.I.playAny(
@@ -1275,7 +1330,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
       final side =
           box.maxWidth >= 700 || (box.maxWidth >= 600 && box.maxHeight < 400);
       final broad = p.id == 'riset' || p.id == 'bengkel';
-      if (!side) return _stageCompact(p, content, box);
+      if (!side) {
+        return _stageCompact(p, content, box);
+      }
       final width =
           (box.maxWidth *
                   (broad
@@ -1554,7 +1611,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               t['id'] != _visit?['invitation_id'],
         )
         .toList();
-    if (incoming.isEmpty || _waiting || _free) return const SizedBox.shrink();
+    if (incoming.isEmpty || _waiting || _free) {
+      return const SizedBox.shrink();
+    }
     final t = incoming.first;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 6),
@@ -1608,14 +1667,18 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   // ---------------------------------------------------------------------
 
   void _select(int i, {int? dir}) {
-    if (i == _index) return;
+    if (i == _index) {
+      return;
+    }
     Sfx.I.click(Snd.click2);
     setState(() {
       _dir = dir ?? (i > _index ? 1 : -1);
       _index = i;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_phoneRailScroll.hasClients) return;
+      if (!mounted || !_phoneRailScroll.hasClients) {
+        return;
+      }
       final position = _phoneRailScroll.position;
       final target = (i * 116.0 - (position.viewportDimension - 108) / 2).clamp(
         0.0,
@@ -1658,7 +1721,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     final art = firstScenery([p.outside, 'pasar-sianghari']);
     final dur = _reduced ? Duration.zero : const Duration(milliseconds: 180);
     Widget image = GameImage(path: art, cacheWidth: 240);
-    if (locked) image = ColorFiltered(colorFilter: _grayscale, child: image);
+    if (locked) {
+      image = ColorFiltered(colorFilter: _grayscale, child: image);
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Semantics(
@@ -1776,17 +1841,46 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   /// Persiapan dibaca sebelum masuk, tanpa memakai jatah kunjungan.
   Widget? _requirement(_Place p) {
+    if (p.id == 'melodi') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PhaseHint(
+            title: 'Ritual serentak • satu kali setiap siklus',
+            details: const [
+              'Masing-masing membayar 8 embun atau membakar kartu item dengan harga dasar minimal 10.',
+              'Semua pemain yang masih hidup harus bersedia. Undangan batal tanpa biaya jika ditolak atau habis waktu.',
+              'Jatah kunjungan pengundang dipakai saat ritual dimulai. Peserta undangan tidak memakai jatah.',
+              'Undangan berlaku selama fase kunjungan masih berjalan; pemain yang sudah selesai tetap dapat ikut.',
+            ],
+            accent: _accent,
+            icon: Icons.music_note_rounded,
+          ),
+          TextButton(
+            onPressed: () => showMelodyRewardPool(context),
+            child: const Text('Lihat tujuh tingkat dan peluang hadiah'),
+          ),
+        ],
+      );
+    }
     if (p.id != 'pondok') {
       final advice = switch (p.id) {
-        'riset' => 'Harga riset +20%. Maksimal 2 pembelian; siapkan saldo. Belanja tetap pilihan.',
-        'sumur' => '${_number('well_cost', 8)} ${widget.isAntag ? 'bulir hitam' : 'embun'} untuk 1 tindakan. Perubahan laju berlaku sepanjang permainan.',
-        'bengkel' => 'Siapkan kartu lanjutan belum aktif dan poin yang sesuai. Stetoskop bisa ditingkatkan dengan saldo yang cukup.',
-        _ => 'Siapkan kartu untuk ditukar dan persetujuan pemain tujuan. Penerima undangan mendapat kunjungan khusus tanpa memakai jatah.',
+        'riset' =>
+          'Harga riset +20%. Maksimal 2 pembelian; siapkan saldo. Belanja tetap pilihan.',
+        'sumur' =>
+          '${_number('well_cost', 8)} ${widget.isAntag ? 'bulir hitam' : 'embun'} untuk 1 tindakan. Perubahan laju berlaku sepanjang permainan.',
+        'bengkel' =>
+          'Siapkan kartu lanjutan belum aktif dan poin yang sesuai. Stetoskop bisa ditingkatkan dengan saldo yang cukup.',
+        _ =>
+          'Siapkan kartu untuk ditukar dan persetujuan pemain tujuan. Penerima undangan mendapat kunjungan khusus tanpa memakai jatah.',
       };
       return PhaseHint(
         key: ValueKey('prepare-${p.id}'),
         title: 'Persiapan sebelum masuk',
-        details: [advice, 'Masuk memakai 1 kunjungan. Keluar tidak mengembalikan jatah.'],
+        details: [
+          advice,
+          'Masuk memakai 1 kunjungan. Keluar tidak mengembalikan jatah.',
+        ],
         accent: _accent,
       );
     }
@@ -1795,8 +1889,10 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     return PhaseHint(
       title: ok ? '$name siap dipakai' : 'Butuh $name untuk masuk',
       details: [
-        if (widget.isAntag) 'Surat digunakan untuk memasang jebakan.'
-        else 'Rawat diri dengan surat; merawat orang lain perlu tambahan ${_number('care_other_fee', 12)} embun.',
+        if (widget.isAntag)
+          'Surat digunakan untuk memasang jebakan.'
+        else
+          'Rawat diri dengan surat; merawat orang lain perlu tambahan ${_number('care_other_fee', 12)} embun.',
         'Masuk memakai 1 kunjungan. Surat habis saat layanan dikonfirmasi.',
         'Pemulihan diselesaikan sebelum jebakan. Hasil diumumkan setelah penjelajahan selesai.',
       ],
@@ -1806,6 +1902,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   }
 
   String _description(_Place p) => switch (p.id) {
+    'melodi' =>
+      'Ritual ketukan 30 detik, kombo rahasia, dan satu hadiah pribadi. Semua peserta masuk bersamaan.',
     'riset' => 'Poin, kartu lanjutan, dan surat perawatan. Harga riset +20%.',
     'sumur' =>
       widget.isAntag
@@ -1905,7 +2003,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   Widget _pickerScene(bool wide) {
     final p = _places[_index];
     final art = wide ? _popup(p.id, 'tanya') : null;
-    if (art == null) return _picker(wide);
+    if (art == null) {
+      return _picker(wide);
+    }
     return LayoutBuilder(
       builder: (context, c) {
         final h = c.maxHeight * .98;
@@ -2015,7 +2115,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                               ),
                             ),
                           );
-                          if (!showArt) return copy;
+                          if (!showArt) {
+                            return copy;
+                          }
                           // Layar sempit: karakter berdiri di kanan, tepat di
                           // atas deretan tempat, dan keluar sedikit ke tepi.
                           final h = c.maxHeight;
@@ -2053,6 +2155,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                           ? 'Jatah kunjungan habis'
                           : needLetter
                           ? 'Perlu surat perawatan'
+                          : p.id == 'melodi'
+                          ? 'Undang seluruh pemain'
                           : 'Masuk ke ${p.name}',
                       expand: true,
                       onPressed: _busy || !allowed
@@ -2199,7 +2303,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
               t['id'] != _visit?['invitation_id'],
         )
         .toList();
-    if (offers.isEmpty || _waiting || _free) return const SizedBox.shrink();
+    if (offers.isEmpty || _waiting || _free) {
+      return const SizedBox.shrink();
+    }
     final t = offers.first;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
@@ -2327,6 +2433,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
   );
 
   String? _phonePopup(String place, String mood) {
+    if (place == 'melodi') {
+      return null;
+    }
     final stem = switch (place) {
       'riset' => 'pasarriset',
       'sumur' => 'sumur',
@@ -2353,7 +2462,9 @@ class _VillageVisitViewState extends State<VillageVisitView> {
     double zoom = 1,
   }) {
     final art = _phonePopup(p.id, mood);
-    if (art == null) return const SizedBox.shrink();
+    if (art == null) {
+      return const SizedBox.shrink();
+    }
     return SizedBox(
       key: ValueKey('phone-portrait-${p.id}-$mood'),
       height: height,
@@ -2662,6 +2773,8 @@ class _VillageVisitViewState extends State<VillageVisitView> {
                   ? 'Jatah kunjungan habis'
                   : needLetter
                   ? 'Perlu surat perawatan'
+                  : p.id == 'melodi'
+                  ? 'Undang seluruh pemain'
                   : 'Masuk ke ${p.name}',
               _busy || left == 0 || needLetter ? null : () => _enterPlace(p.id),
               height: 50,

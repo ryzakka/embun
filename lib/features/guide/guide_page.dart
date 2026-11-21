@@ -299,11 +299,11 @@ class _Section extends StatelessWidget {
 
 /// Teks dengan **tebal** sederhana.
 Widget _rich(
-    String s, {
-      double size = 13.5,
-      Color? color,
-      Color bold = EmbunColors.gold,
-    }) {
+  String s, {
+  double size = 13.5,
+  Color? color,
+  Color bold = EmbunColors.gold,
+}) {
   final parts = s.split('**');
   return Text.rich(
     TextSpan(
@@ -481,21 +481,21 @@ class _Grid extends StatelessWidget {
                     // Kartu muncul membal, bergelombang per baris dan kolom.
                     child: start + j < count
                         ? _GridOrder(
-                      order: j,
-                      child: _Reveal(
-                        dy: 24,
-                        scaleFrom: 0.82,
-                        curve: Curves.easeOutBack,
-                        duration: const Duration(milliseconds: 700),
-                        delay: Duration(
-                          milliseconds: min(
-                            60 * (start ~/ cols) + 55 * j,
-                            700,
-                          ),
-                        ),
-                        child: item(start + j, w),
-                      ),
-                    )
+                            order: j,
+                            child: _Reveal(
+                              dy: 24,
+                              scaleFrom: 0.82,
+                              curve: Curves.easeOutBack,
+                              duration: const Duration(milliseconds: 700),
+                              delay: Duration(
+                                milliseconds: min(
+                                  60 * (start ~/ cols) + 55 * j,
+                                  700,
+                                ),
+                              ),
+                              child: item(start + j, w),
+                            ),
+                          )
                         : null,
                   ),
                 ],
@@ -589,9 +589,9 @@ class _GuideFlipState extends State<_GuideFlip> {
     final o = box.localToGlobal(Offset.zero);
     final seen =
         o.dy < size.height - 40 &&
-            o.dy + box.size.height > 0 &&
-            o.dx < size.width &&
-            o.dx + box.size.width > 0;
+        o.dy + box.size.height > 0 &&
+        o.dx < size.width &&
+        o.dx + box.size.width > 0;
     if (!seen) return;
     _poll?.cancel();
     setState(() => _revealed = true);
@@ -624,18 +624,18 @@ Widget _catalogState(String loading, {String? error, VoidCallback? retry}) =>
         child: error == null
             ? EmbunLoading(text: loading)
             : Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const GameIcon('alert', size: 30),
-            const SizedBox(height: 5),
-            Text(error, textAlign: TextAlign.center),
-            TextButton.icon(
-              onPressed: retry,
-              icon: const GameIcon('refresh', size: 20),
-              label: const Text('Coba lagi'),
-            ),
-          ],
-        ),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const GameIcon('alert', size: 30),
+                  const SizedBox(height: 5),
+                  Text(error, textAlign: TextAlign.center),
+                  TextButton.icon(
+                    onPressed: retry,
+                    icon: const GameIcon('refresh', size: 20),
+                    label: const Text('Coba lagi'),
+                  ),
+                ],
+              ),
       ),
     );
 
@@ -749,33 +749,33 @@ class _BPanelTile extends StatelessWidget {
               child: compact
                   ? Center(widthFactor: 1, child: label)
                   : Row(
-                children: [
-                  GameIcon(side.icon, size: 26),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        label,
-                        if (side.sub != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              side.sub!,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                height: 1.25,
-                                color: Colors.white60,
-                              ),
-                            ),
+                        GameIcon(side.icon, size: 26),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              label,
+                              if (side.sub != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    side.sub!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.25,
+                                      color: Colors.white60,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -888,11 +888,15 @@ class _BSearch extends StatelessWidget {
       suffixIcon: controller.text.isEmpty
           ? const EmbunIcon(Icons.search, size: 20, color: EmbunColors.gold)
           : IconButton(
-        tooltip: 'Hapus',
-        visualDensity: VisualDensity.compact,
-        icon: const EmbunIcon(Icons.close, size: 20, color: EmbunColors.gold),
-        onPressed: controller.clear,
-      ),
+              tooltip: 'Hapus',
+              visualDensity: VisualDensity.compact,
+              icon: const EmbunIcon(
+                Icons.close,
+                size: 20,
+                color: EmbunColors.gold,
+              ),
+              onPressed: controller.clear,
+            ),
       border: UnderlineInputBorder(
         borderSide: BorderSide(color: EmbunColors.gold.withValues(alpha: 0.32)),
       ),
@@ -939,10 +943,10 @@ class _BNumberBar extends StatelessWidget {
               child: Ink(
                 decoration: i == selected
                     ? BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: accent, width: 2),
-                  ),
-                )
+                        border: Border(
+                          bottom: BorderSide(color: accent, width: 2),
+                        ),
+                      )
                     : null,
                 child: InkWell(
                   onTap: () {
@@ -1186,7 +1190,9 @@ class _BuilderFrame extends StatelessWidget {
                 children: [
                   for (final f in filters)
                     SizedBox(
-                      width: filters.length == 1 ? box.maxWidth - pad * 2 : half,
+                      width: filters.length == 1
+                          ? box.maxWidth - pad * 2
+                          : half,
                       child: _filterRow(f),
                     ),
                 ],
@@ -1263,11 +1269,11 @@ class _HowToTab extends StatelessWidget {
   }
 
   Widget _winCard(
-      String title,
-      String icon,
-      Color accent,
-      List<String> lines,
-      ) => Container(
+    String title,
+    String icon,
+    Color accent,
+    List<String> lines,
+  ) => Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(10, 4, 3, 2),
     decoration: BoxDecoration(border: Border(left: learningRule(accent))),
@@ -1304,12 +1310,12 @@ class _HowToTab extends StatelessWidget {
       'Semua Terbisik **tersingkir**.',
     ]);
     final bad =
-    _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
-      'Daun Hayu **habis**.',
-      'Hari terakhir berakhir dengan daun **di bawah target akhir**.',
-      'Di mode klasik, desa **tinggal dua orang**.',
-      'Di mode Dua Terbisik, **semua Warga tersingkir**.',
-    ]);
+        _winCard('Si Terbisik menang', 'danger', EmbunColors.mist, const [
+          'Daun Hayu **habis**.',
+          'Hari terakhir berakhir dengan daun **di bawah target akhir**.',
+          'Di mode klasik, desa **tinggal dua orang**.',
+          'Di mode Dua Terbisik, **semua Warga tersingkir**.',
+        ]);
     return LayoutBuilder(
       builder: (context, c) {
         if (c.maxWidth >= 520) {
@@ -1369,8 +1375,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               '**Hayu**, pohon tua desa, sedang meredup. Jumlah daunnya '
-                  'adalah nyawa desa: warga berusaha menyelamatkannya, '
-                  '**Si Terbisik** diam-diam menghancurkannya.',
+              'adalah nyawa desa: warga berusaha menyelamatkannya, '
+              '**Si Terbisik** diam-diam menghancurkannya.',
             ),
             const SizedBox(height: 4),
             _wins(),
@@ -1382,19 +1388,19 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Satu pemain acak menjadi Si Terbisik, sisanya warga. '
-                  'Hanya kamu yang tahu perannya.',
+              'Hanya kamu yang tahu perannya.',
             ),
             _bullet(
               'Namamu diacak menjadi **nama kartu karakter** '
-                  '(mis. "Guru", "Nelayan 2").',
+              '(mis. "Guru", "Nelayan 2").',
             ),
             _bullet(
               'Warga berbelanja dengan **tetes embun**, Si Terbisik '
-                  'dengan **bulir hitam**.',
+              'dengan **bulir hitam**.',
             ),
             _bullet(
               'Daun awal Hayu: 10 dikurangi jumlah pemain '
-                  '(minimal 4).',
+              '(minimal 4).',
             ),
           ],
         ),
@@ -1420,6 +1426,9 @@ class _HowToTab extends StatelessWidget {
             _bullet(
               '**Balai Pertukaran**: tawarkan kartu. Penerima boleh mengikuti undangan tanpa menghabiskan kunjungan dan kembali ke tempat sebelumnya. Kunjungan gratis hanya untuk tawaran tersebut.',
             ),
+            _bullet(
+              '**Pelataran Melodi**: undang semua pemain yang masih hidup. Semua harus bersedia dan masing-masing membayar 8 embun atau membakar kartu item dengan harga dasar minimal 10. Biaya baru dipotong ketika ritual mulai. Pengundang memakai satu kunjungan; peserta undangan tidak. Mainkan ketukan D F J K atau tombol sentuh selama 30 detik. Ketepatan dan kombo menentukan satu hadiah pribadi dari tujuh tingkat skor. Kombo Si Terbisik mempercepat irama warga. Satu ritual setiap siklus.',
+            ),
           ],
         ),
         _Section(
@@ -1428,8 +1437,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Host memilih lama sesi: 6, 12 (bawaan), 18, atau 24 hari. '
-                  'Target daun pada akhir sesi: **12 / 20 / 24 / 26**. Menang langsung memerlukan **30 daun bersih** setelah seluruh efek dan kabut. Tiap siklus: **2 hari biasa** lalu '
-                  '**1 malam persembahan**.',
+              'Target daun pada akhir sesi: **12 / 20 / 24 / 26**. Menang langsung memerlukan **30 daun bersih** setelah seluruh efek dan kabut. Tiap siklus: **2 hari biasa** lalu '
+              '**1 malam persembahan**.',
             ),
             const SizedBox(height: 4),
             _step(
@@ -1476,7 +1485,7 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Embun bertambah tiap pagi sesuai **laju** (awal 3). '
-                  'Pagi pertama tiap siklus ada bonus +5.',
+              'Pagi pertama tiap siklus ada bonus +5.',
             ),
             _bullet('**Perlindungan** menahan serangan pada malam itu saja.'),
             const SizedBox(height: 4),
@@ -1495,10 +1504,10 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Stetoskop** memeriksa peran. Peluang berhasil awal **30%**. '
-                  'Tingkatkan satu kartu di **Bengkel Desa**: **30 → 50 → 70 → 85 → 100%**, '
-                  'dengan biaya bertahap **3 / 5 / 7 / 10 embun**. Gagal berarti peran '
-                  'belum dapat dipastikan. Mulai **85%** kebal pengelabuan; **100%** pasti benar. '
-                  'Kartu dan peningkatannya habis saat dipakai. Buka ulang hasil lewat **Infoku**.',
+              'Tingkatkan satu kartu di **Bengkel Desa**: **30 → 50 → 70 → 85 → 100%**, '
+              'dengan biaya bertahap **3 / 5 / 7 / 10 embun**. Gagal berarti peran '
+              'belum dapat dipastikan. Mulai **85%** kebal pengelabuan; **100%** pasti benar. '
+              'Kartu dan peningkatannya habis saat dipakai. Buka ulang hasil lewat **Infoku**.',
             ),
             _infoRow(
               'plus',
@@ -1519,9 +1528,9 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Perisai Malam** bisa dipasang untuk diri sendiri atau satu '
-                  'pemain lain sampai akhir sesi. Nama penjaga dirahasiakan dari '
-                  'penerima. Jika perisai menahan serangan, penjaga mendapat '
-                  'laporan pribadi.',
+              'pemain lain sampai akhir sesi. Nama penjaga dirahasiakan dari '
+              'penerima. Jika perisai menahan serangan, penjaga mendapat '
+              'laporan pribadi.',
             ),
             _infoRow(
               'danger',
@@ -1532,11 +1541,11 @@ class _HowToTab extends StatelessWidget {
             const SizedBox(height: 2),
             _bullet(
               'Yang bisa dipersembahkan: Persembahan, Sekali pakai, '
-                  'Penguat, dan kartu lanjutan yang AKTIF (maks 2 per malam).',
+              'Penguat, dan kartu lanjutan yang AKTIF (maks 2 per malam).',
             ),
             _bullet(
               'Tekan lama kartu untuk membaca efeknya. Daftar lengkap '
-                  'ada di tab **Kartu Item**.',
+              'ada di tab **Kartu Item**.',
             ),
           ],
         ),
@@ -1546,7 +1555,7 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Kartu lanjutan harus **digabung** dengan satu **kartu '
-                  'poin** sebelum bisa dipersembahkan.',
+              'poin** sebelum bisa dipersembahkan.',
             ),
             _bullet('**Warga**: Kartu Regenerasi + Poin Regenerasi.'),
             _bullet('**Si Terbisik**: Kartu Rekayasa + Poin DNA.'),
@@ -1579,12 +1588,12 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               '**Kapsul DNA** (Si Terbisik) setara 2 Poin DNA: cukup '
-                  'untuk dua kartu Rekayasa.',
+              'untuk dua kartu Rekayasa.',
             ),
             _bullet(
               'Kartu yang ditukar atau dicuri **kehilangan status '
-                  'AKTIF**. Kartu poin yang mahal juga mudah jadi sasaran '
-                  'Kerikil Panas dan Curian Malam, jadi gabungkan secepatnya.',
+              'AKTIF**. Kartu poin yang mahal juga mudah jadi sasaran '
+              'Kerikil Panas dan Curian Malam, jadi gabungkan secepatnya.',
             ),
           ],
         ),
@@ -1595,8 +1604,8 @@ class _HowToTab extends StatelessWidget {
           children: [
             _para(
               'Tiap pemain punya **2 nyawa** (dua hati di avatar). '
-                  'Dituduh mayoritas = kehilangan satu nyawa, dan Hayu '
-                  'kehilangan 1 daun.',
+              'Dituduh mayoritas = kehilangan satu nyawa, dan Hayu '
+              'kehilangan 1 daun.',
             ),
             _step(
               1,
@@ -1614,14 +1623,14 @@ class _HowToTab extends StatelessWidget {
             ),
             _bullet(
               'Pada mode klasik, **Si Terbisik menang** jika pemain '
-                  'tersisa kurang dari $kMinPlayers.',
+              'tersisa kurang dari $kMinPlayers.',
               dot: EmbunColors.blood,
               bold: EmbunColors.blood,
             ),
             _bullet(
               '**Dua Terbisik** bisa dimulai dengan minimal '
-                  '$kMinDuaTerbisikPlayers pemain. Mereka saling kenal, '
-                  'punya obrolan rahasia, dan berbagi satu serangan per malam biasa.',
+              '$kMinDuaTerbisikPlayers pemain. Mereka saling kenal, '
+              'punya obrolan rahasia, dan berbagi satu serangan per malam biasa.',
               dot: EmbunColors.mist,
               bold: EmbunColors.mist,
             ),
@@ -1633,19 +1642,19 @@ class _HowToTab extends StatelessWidget {
           children: [
             _bullet(
               'Satu petunjuk belum tentu benar: Topeng, Cermin Khayal, '
-                  'dan Boneka Sawah bisa mengelabui pemeriksaan.',
+              'dan Boneka Sawah bisa mengelabui pemeriksaan.',
             ),
             _bullet(
               'Perhatikan **siapa yang jarang membeli** atau selalu '
-                  'menyerahkan jumlah kartu yang sama.',
+              'menyerahkan jumlah kartu yang sama.',
             ),
             _bullet(
               'Isyarat (emoji) bisa ke semua orang atau satu pemain, '
-                  'maks 8 per hari.',
+              'maks 8 per hari.',
             ),
             _bullet(
               'Si Terbisik: tidak perlu menyerang tiap malam. '
-                  'Persembahan yang tampak biasa adalah samaran terbaik.',
+              'Persembahan yang tampak biasa adalah samaran terbaik.',
             ),
           ],
         ),
@@ -1677,7 +1686,7 @@ List<_Char> _protagonists() {
   final seen = <String, int>{};
   return [
     for (final s in stems)
-          () {
+      () {
         final t = characterTitle(s);
         final i = seen[t] = (seen[t] ?? 0) + 1;
         return _Char(
@@ -1744,9 +1753,9 @@ void _previewCharacter(BuildContext context, _Char c, {required bool dark}) {
                 Text(
                   dark
                       ? 'Wajah gelap Si Terbisik. Hanya pemiliknya yang '
-                      'melihatnya sampai permainan berakhir.'
+                            'melihatnya sampai permainan berakhir.'
                       : 'Kartu karakter warga. Dibagikan acak di awal, dan '
-                      'namamu selama permainan mengikuti kartu ini.',
+                            'namamu selama permainan mengikuti kartu ini.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 12.5,
@@ -1821,10 +1830,20 @@ class _CharactersTabState extends State<_CharactersTab>
 
     return _BuilderFrame(
       sides: [
-        _BSide('Warga', 'persona', EmbunColors.leaf, good.length,
-            sub: 'Kartu karakter'),
-        _BSide('Si Terbisik', 'danger', EmbunColors.mist, bad.length,
-            sub: 'Wajah gelap'),
+        _BSide(
+          'Warga',
+          'persona',
+          EmbunColors.leaf,
+          good.length,
+          sub: 'Kartu karakter',
+        ),
+        _BSide(
+          'Si Terbisik',
+          'danger',
+          EmbunColors.mist,
+          bad.length,
+          sub: 'Wajah gelap',
+        ),
       ],
       side: faction,
       onSide: (i) => setState(() {
@@ -1838,65 +1857,65 @@ class _CharactersTabState extends State<_CharactersTab>
           'Status',
           const ['Semua', 'Terbuka', 'Terkunci'],
           status,
-              (i) => setState(() => status = i),
+          (i) => setState(() => status = i),
         ),
       ],
       resultText: '${list.length} kartu',
       note: _rich(
         dark
             ? 'Dipakai Si Terbisik di layarnya sendiri; pemain lain tetap '
-            'melihat kartu karakter biasa. Terungkap saat permainan '
-            'berakhir. Ketuk kartu untuk memperbesar.'
+                  'melihat kartu karakter biasa. Terungkap saat permainan '
+                  'berakhir. Ketuk kartu untuk memperbesar.'
             : 'Dibagikan acak di awal; namamu mengikuti kartu ini (diberi '
-            'nomor bila kembar). Hanya penampilan, tidak mengubah '
-            'kekuatan. Kartu terkunci tidak bisa dipakai. Ketuk kartu '
-            'aktif untuk memperbesar.',
+                  'nomor bila kembar). Hanya penampilan, tidak mengubah '
+                  'kekuatan. Kartu terkunci tidak bisa dipakai. Ketuk kartu '
+                  'aktif untuk memperbesar.',
         size: 12,
         color: Colors.white60,
         bold: accent,
       ),
       body: list.isEmpty
           ? _builderEmpty(
-        (dark ? bad : good).isEmpty
-            ? 'Belum ada gambar karakter.'
-            : 'Tidak ada kartu yang cocok.',
-      )
+              (dark ? bad : good).isEmpty
+                  ? 'Belum ada gambar karakter.'
+                  : 'Tidak ada kartu yang cocok.',
+            )
           : _Grid(
-        key: ValueKey('char-$faction-$status'),
-        count: list.length,
-        minCell: 108,
-        item: (i, w) => GestureDetector(
-          onTap: list[i].locked
-              ? null
-              : () => _previewCharacter(context, list[i], dark: dark),
-          child: Column(
-            children: [
-              _GuideFlip(
-                width: w,
-                height: w * cardAspectFor(list[i].path),
-                backPath: cardBackPath(dark: dark),
-                dark: dark,
-                glow: dark ? EmbunColors.mist : EmbunColors.leaf,
-                front: list[i].stem == null
-                    ? CardArt(
-                  path: list[i].path,
-                  width: w,
-                  glow: dark ? EmbunColors.mist : null,
-                )
-                    : CharacterLock(
-                  id: list[i].stem!,
-                  child: CardArt(path: list[i].path, width: w),
+              key: ValueKey('char-$faction-$status'),
+              count: list.length,
+              minCell: 108,
+              item: (i, w) => GestureDetector(
+                onTap: list[i].locked
+                    ? null
+                    : () => _previewCharacter(context, list[i], dark: dark),
+                child: Column(
+                  children: [
+                    _GuideFlip(
+                      width: w,
+                      height: w * cardAspectFor(list[i].path),
+                      backPath: cardBackPath(dark: dark),
+                      dark: dark,
+                      glow: dark ? EmbunColors.mist : EmbunColors.leaf,
+                      front: list[i].stem == null
+                          ? CardArt(
+                              path: list[i].path,
+                              width: w,
+                              glow: dark ? EmbunColors.mist : null,
+                            )
+                          : CharacterLock(
+                              id: list[i].stem!,
+                              child: CardArt(path: list[i].path, width: w),
+                            ),
+                    ),
+                    const SizedBox(height: 8),
+                    _caption(
+                      list[i].label,
+                      dark ? EmbunColors.mist : EmbunColors.cream,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              _caption(
-                list[i].label,
-                dark ? EmbunColors.mist : EmbunColors.cream,
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
@@ -1930,30 +1949,20 @@ const _itemGroupLabel = {
   'malam': 'Serangan malam',
 };
 
-const _itemGroupIcon = {
-  'persembahan': 'donations',
-  'sekali_pakai': 'item',
-  'penguat': 'plus',
-  'siang': 'item',
-  'kombinasi': 'plus',
-  'perawatan': 'item',
-  'malam': 'danger',
-};
-
 const _itemGroupHelp = {
   'perawatan':
-  'Beli di Pasar Riset. Surat Dokter memulihkan 1 nyawa di Pondok Perawatan; merawat pemain lain perlu 12 uang tambahan. Surat Keterangan Sakit memasang jebakan yang bertahan sampai seorang pengunjung lain terkena. Surat habis setelah digunakan.',
+      'Beli di Pasar Riset. Surat Dokter memulihkan 1 nyawa di Pondok Perawatan; merawat pemain lain perlu 12 uang tambahan. Surat Keterangan Sakit memasang jebakan yang bertahan sampai seorang pengunjung lain terkena. Surat habis setelah digunakan.',
   'persembahan': 'Efek langsung saat dipersembahkan ke Hayu.',
   'sekali_pakai': 'Alat periksa. Hasilnya hanya dilihat pemakainya.',
   'penguat': 'Menaikkan laju embun (atau bulir hitam) untuk seterusnya.',
   'siang':
-  'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
+      'Khusus warga. Dipakai di Meja pada hari biasa, bukan '
       'dipersembahkan.',
   'kombinasi':
-  'Kartu lanjutan harus digabung dengan kartu poin di '
+      'Kartu lanjutan harus digabung dengan kartu poin di '
       'Bengkel Desa sebelum bisa dipersembahkan.',
   'malam':
-  'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
+      'Khusus Si Terbisik. Dilancarkan saat malam tiba; desa hanya '
       'tahu ada serangan.',
 };
 
@@ -2141,10 +2150,20 @@ class _ItemsTabState extends State<_ItemsTab>
 
     return _BuilderFrame(
       sides: [
-        _BSide('Warga', 'persona', EmbunColors.leaf, good.length,
-            sub: 'Dibeli dengan tetes embun'),
-        _BSide('Si Terbisik', 'danger', EmbunColors.mist, bad.length,
-            sub: 'Dibeli dengan bulir hitam'),
+        _BSide(
+          'Warga',
+          'persona',
+          EmbunColors.leaf,
+          good.length,
+          sub: 'Dibeli dengan tetes embun',
+        ),
+        _BSide(
+          'Si Terbisik',
+          'danger',
+          EmbunColors.mist,
+          bad.length,
+          sub: 'Dibeli dengan bulir hitam',
+        ),
       ],
       side: faction,
       onSide: (i) => setState(() {
@@ -2167,21 +2186,21 @@ class _ItemsTabState extends State<_ItemsTab>
           'Jenis Kartu',
           ['Semua', for (final g in present) _itemGroupLabel[g] ?? g],
           kindSel,
-              (i) => setState(() => kindFilter = i == 0 ? null : present[i - 1]),
+          (i) => setState(() => kindFilter = i == 0 ? null : present[i - 1]),
         ),
         _BFilter(
           'Bagian Hayu',
           ['Semua bagian', for (final p in HayuPart.values) p.label],
           hayuFilter == null ? 0 : HayuPart.values.indexOf(hayuFilter!) + 1,
-              (i) => setState(
-                () => hayuFilter = i == 0 ? null : HayuPart.values[i - 1],
+          (i) => setState(
+            () => hayuFilter = i == 0 ? null : HayuPart.values[i - 1],
           ),
         ),
         _BFilter(
           'Ketersediaan',
           const ['Semua', 'Dijual', 'Dasar (dibagikan)'],
           stockIdx,
-              (i) => setState(() => stockIdx = i),
+          (i) => setState(() => stockIdx = i),
         ),
       ],
       resultText: '${list.length} kartu',
@@ -2190,7 +2209,7 @@ class _ItemsTabState extends State<_ItemsTab>
         children: [
           _rich(
             'Ketuk kartu untuk detail. Label **Dasar** = tidak dijual, '
-                'dibagikan tiap malam persembahan.',
+            'dibagikan tiap malam persembahan.',
             size: 12,
             color: Colors.white60,
             bold: accent,
@@ -2203,17 +2222,17 @@ class _ItemsTabState extends State<_ItemsTab>
       ),
       body: list.isEmpty
           ? _builderEmpty(
-        all.isEmpty ? 'Tidak ada kartu.' : 'Tidak ada kartu yang cocok.',
-      )
+              all.isEmpty ? 'Tidak ada kartu.' : 'Tidak ada kartu yang cocok.',
+            )
           : _Grid(
-        key: ValueKey(
-          '$faction-${kindFilter ?? 'all'}-${hayuFilter?.name ?? 'all'}'
-              '-$stockIdx-$costSel',
-        ),
-        count: list.length,
-        minCell: 120,
-        item: (i, w) => _tile(list[i], w, dark),
-      ),
+              key: ValueKey(
+                '$faction-${kindFilter ?? 'all'}-${hayuFilter?.name ?? 'all'}'
+                '-$stockIdx-$costSel',
+              ),
+              count: list.length,
+              minCell: 120,
+              item: (i, w) => _tile(list[i], w, dark),
+            ),
     );
   }
 }
@@ -2249,7 +2268,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
   static const _groupIcon = {'sekali_pakai': 'item', 'pasif': 'plus'};
   static const _groupHelp = {
     'sekali_pakai':
-    'Tekan tombol kemampuan di bilah atas meja (Patuhilah '
+        'Tekan tombol kemampuan di bilah atas meja (Patuhilah '
         'Padaku: di layar voting). Hanya sekali.',
     'pasif': 'Bekerja otomatis saat syaratnya terpenuhi.',
   };
@@ -2432,7 +2451,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
       for (final k in idx == 0 ? _groups : [_groups[idx - 1]])
         for (final d in _list(k))
           if ((modeIdx == 0 ||
-              abilityIsManual('${d['id']}') == (modeIdx == 1)) &&
+                  abilityIsManual('${d['id']}') == (modeIdx == 1)) &&
               (q.isEmpty ||
                   '${d['name']}'.toLowerCase().contains(q) ||
                   '${d['description'] ?? ''}'.toLowerCase().contains(q)))
@@ -2462,7 +2481,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
           'Cara Pakai',
           const ['Semua', 'Ditekan manual', 'Bekerja sendiri'],
           modeIdx,
-              (i) => setState(() => modeIdx = i),
+          (i) => setState(() => modeIdx = i),
         ),
       ],
       resultText: '${list.length} kartu',
@@ -2472,12 +2491,7 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
           if (help != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: _rich(
-                help,
-                size: 12,
-                color: Colors.white70,
-                bold: accent,
-              ),
+              child: _rich(help, size: 12, color: Colors.white70, bold: accent),
             ),
           _rich(
             'Ketuk kartu untuk membaca efeknya.',
@@ -2505,31 +2519,31 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
               children: [
                 _bullet(
                   'Lima kemampuan rapat baru tidak bisa ditangkis atau '
-                      'dipadamkan kartu kuning/ungu. Penanggung Luka hanya '
-                      'memindahkan satu luka. Warisan Suara memberi satu suara '
-                      'terakhir sesuai jadwal, tanpa mengembalikan aksi pemain.',
+                  'dipadamkan kartu kuning/ungu. Penanggung Luka hanya '
+                  'memindahkan satu luka. Warisan Suara memberi satu suara '
+                  'terakhir sesuai jadwal, tanpa mengembalikan aksi pemain.',
                   dot: accent,
                   bold: accent,
                 ),
                 _bullet(
                   'Setelah kartu karakter hijau terbuka, tiap warga memilih '
-                      '**satu dari tiga kartu biru tertutup**. Pilihan diacak '
-                      'server dan hasilnya hanya terlihat oleh pemilik.',
+                  '**satu dari tiga kartu biru tertutup**. Pilihan diacak '
+                  'server dan hasilnya hanya terlihat oleh pemilik.',
                   dot: accent,
                   bold: accent,
                 ),
                 _bullet(
                   'Kartu biru tidak bisa dibeli. Kemampuan khusus tidak '
-                      'kembar; **Hanya Orang Biasa** tetap bisa diperoleh lebih '
-                      'dari satu warga. Terbisik membuka kartu merah pada tahap '
-                      'yang sama.',
+                  'kembar; **Hanya Orang Biasa** tetap bisa diperoleh lebih '
+                  'dari satu warga. Terbisik membuka kartu merah pada tahap '
+                  'yang sama.',
                   dot: accent,
                   bold: accent,
                 ),
                 _bullet(
                   'Si Terbisik tidak punya kemampuan, tetapi Stetoskop '
-                      'Pencuri Hati miliknya bisa menyedot kemampuan yang belum '
-                      'terpakai.',
+                  'Pencuri Hati miliknya bisa menyedot kemampuan yang belum '
+                  'terpakai.',
                   dot: accent,
                   bold: accent,
                 ),
@@ -2540,14 +2554,16 @@ class _AbilitiesTabState extends State<_AbilitiesTab>
       ),
       body: list.isEmpty
           ? _builderEmpty(
-        total == 0 ? 'Belum ada kemampuan.' : 'Tidak ada kartu yang cocok.',
-      )
+              total == 0
+                  ? 'Belum ada kemampuan.'
+                  : 'Tidak ada kartu yang cocok.',
+            )
           : _Grid(
-        key: ValueKey('ab-$idx-$modeIdx'),
-        count: list.length,
-        minCell: 120,
-        item: (i, w) => _tile(list[i], w),
-      ),
+              key: ValueKey('ab-$idx-$modeIdx'),
+              count: list.length,
+              minCell: 120,
+              item: (i, w) => _tile(list[i], w),
+            ),
     );
   }
 }

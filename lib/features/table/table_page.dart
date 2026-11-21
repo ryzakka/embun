@@ -27,6 +27,7 @@ import 'day_chrome.dart';
 import 'day_transition.dart';
 import 'day_view.dart';
 import 'village_visit_view.dart';
+import 'melody_ritual.dart';
 import 'discussion_view.dart';
 import 'effects_view.dart';
 import 'economy_fx.dart';
@@ -234,7 +235,9 @@ class _TablePageState extends State<TablePage> {
 
   Map<String, dynamic>? get _meRow {
     for (final p in players) {
-      if (p['user_id'] == repo.myId) return p;
+      if (p['user_id'] == repo.myId) {
+        return p;
+      }
     }
     return null;
   }
@@ -265,7 +268,9 @@ class _TablePageState extends State<TablePage> {
     super.initState();
     Sfx.I.music(Snd.bgmMeja, owner: this);
     repo.cardDefs().then((d) {
-      if (mounted) setState(() => defs = d);
+      if (mounted) {
+        setState(() => defs = d);
+      }
     });
     lobby.mySecret(widget.gameId).then((s) {
       if (mounted && s != null) {
@@ -275,7 +280,9 @@ class _TablePageState extends State<TablePage> {
     repo
         .abilityDefs()
         .then((d) {
-          if (mounted) setState(() => abilityDefs = d);
+          if (mounted) {
+            setState(() => abilityDefs = d);
+          }
         })
         .catchError((_) {});
     _loadAbility();
@@ -284,7 +291,9 @@ class _TablePageState extends State<TablePage> {
     _subs.add(lobby.game(id).listen(_onGame, onError: (_) {}));
     _subs.add(
       lobby.players(id).listen((p) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _enqueueBoard(
             _boardTracker.observePlayers(
@@ -300,7 +309,9 @@ class _TablePageState extends State<TablePage> {
     );
     _subs.add(
       repo.myState(id).listen((s) {
-        if (mounted) setState(() => myState = s);
+        if (mounted) {
+          setState(() => myState = s);
+        }
       }, onError: (_) {}),
     );
     // Stream tangan hanya dipakai sebagai PEMICU. Isinya tidak dipercaya:
@@ -310,40 +321,51 @@ class _TablePageState extends State<TablePage> {
     _refreshHand();
     _subs.add(
       repo.emotes(id).listen((e) {
-        if (mounted) setState(() => emotes = e);
+        if (mounted) {
+          setState(() => emotes = e);
+        }
       }, onError: (_) {}),
     );
     _subs.add(
       repo.villageEvents(id).listen((e) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             events = e;
             _enqueueBoard(
               _boardTracker.observeEvents(e, day: (game?['day'] as int?) ?? 0),
             );
           });
+        }
         _noteEvents(e);
       }, onError: (_) {}),
     );
     _subs.add(
       repo.trades(id).listen((t) {
-        if (mounted) setState(() => trades = t);
+        if (mounted) {
+          setState(() => trades = t);
+        }
         _noteTrades(t);
         _refreshHand(); // tukar kartu mengubah pemilik kartu
       }, onError: (_) {}),
     );
     _subs.add(
       repo.chat(id).listen((c) {
-        if (mounted) setState(() => chatMsgs = c);
+        if (mounted) {
+          setState(() => chatMsgs = c);
+        }
       }, onError: (_) {}),
     );
     _subs.add(
       repo.presence(id).listen((rows) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         final m = <String, DateTime>{};
         for (final r in rows) {
           final t = DateTime.tryParse((r['last_seen'] as String?) ?? '');
-          if (t != null) m[r['user_id'] as String] = t;
+          if (t != null) {
+            m[r['user_id'] as String] = t;
+          }
         }
         setState(() => lastSeen = m);
       }, onError: (_) {}),
@@ -377,7 +399,9 @@ class _TablePageState extends State<TablePage> {
   /// desa secara umum, lalu ke tengah atas layar.
   Rect _avatarRect(String? id) {
     final r = id == null ? null : globalRectOf(_avatarKeys[id]);
-    if (r != null) return r;
+    if (r != null) {
+      return r;
+    }
     final strip = globalRectOf(_stripKey) ?? globalRectOf(_playersKey);
     if (strip != null) {
       return Rect.fromCenter(center: strip.center, width: 38, height: 38);
@@ -403,7 +427,9 @@ class _TablePageState extends State<TablePage> {
       }
     }
     _eventsPrimed = true;
-    if (!fresh) return;
+    if (!fresh) {
+      return;
+    }
     final own = _ownGiveAt;
     if (own != null &&
         DateTime.now().difference(own) < const Duration(seconds: 6)) {
@@ -435,9 +461,13 @@ class _TablePageState extends State<TablePage> {
   /// menuju saldo. Dijadwalkan setelah frame karena dipicu saat membangun.
   void _scheduleEmbunArrival(double delta) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _fxBlocked) return;
+      if (!mounted || _fxBlocked) {
+        return;
+      }
       final to = globalRectOf(_balanceKey);
-      if (to == null) return;
+      if (to == null) {
+        return;
+      }
       final strip = globalRectOf(_stripKey) ?? globalRectOf(_playersKey);
       final from = strip == null
           ? to.shift(const Offset(0, 90))
@@ -456,9 +486,13 @@ class _TablePageState extends State<TablePage> {
   void _fxGiveEmbun(String targetId, int amount) {
     _ownGiveAt = DateTime.now();
     Future.delayed(const Duration(milliseconds: 320), () {
-      if (!mounted || _fxBlocked) return;
+      if (!mounted || _fxBlocked) {
+        return;
+      }
       final from = globalRectOf(_balanceKey);
-      if (from == null) return;
+      if (from == null) {
+        return;
+      }
       showEmbunFlow(
         context,
         from: from,
@@ -473,7 +507,9 @@ class _TablePageState extends State<TablePage> {
   /// Aku menawarkan tukar kartu: salinan kartu terbang ke avatar lawan.
   void _fxOfferCard(String targetId, Map<String, dynamic> handRow) {
     Future.delayed(const Duration(milliseconds: 320), () {
-      if (!mounted || _fxBlocked) return;
+      if (!mounted || _fxBlocked) {
+        return;
+      }
       showCardGift(
         context,
         def: defs[handRow['card_id']],
@@ -496,7 +532,9 @@ class _TablePageState extends State<TablePage> {
       final st = (r['status'] as String?) ?? '';
       final prev = _tradeStatus[id];
       _tradeStatus[id] = st;
-      if (!_tradesPrimed) continue;
+      if (!_tradesPrimed) {
+        continue;
+      }
       if (prev == 'pending' && st != 'pending') {
         final from = r['from_id'] as String?;
         final to = r['to_id'] as String?;
@@ -523,7 +561,9 @@ class _TablePageState extends State<TablePage> {
     final a = {for (final h in after) '${h['id']}'};
     final added = after.where((h) => !b.contains('${h['id']}')).toList();
     final removed = before.where((h) => !a.contains('${h['id']}')).toList();
-    if (added.isEmpty && removed.isEmpty) return;
+    if (added.isEmpty && removed.isEmpty) {
+      return;
+    }
     _pendingDiff = (added: added, removed: removed, at: DateTime.now());
     _trySwap();
   }
@@ -544,13 +584,19 @@ class _TablePageState extends State<TablePage> {
       _swapOther = null;
       return;
     }
-    if (d == null || at == null || other == null) return;
-    if (d.at.difference(at).abs() > const Duration(seconds: 6)) return;
+    if (d == null || at == null || other == null) {
+      return;
+    }
+    if (d.at.difference(at).abs() > const Duration(seconds: 6)) {
+      return;
+    }
     _pendingDiff = null;
     _swapAt = null;
     _swapOther = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _playSwap(d.added, d.removed, other);
+      if (mounted) {
+        _playSwap(d.added, d.removed, other);
+      }
     });
   }
 
@@ -562,13 +608,17 @@ class _TablePageState extends State<TablePage> {
     List<Map<String, dynamic>> removed,
     String otherId,
   ) {
-    if (_fxBlocked) return;
+    if (_fxBlocked) {
+      return;
+    }
     final name = _nameOf(otherId);
     var delay = 0;
     for (final r in removed.take(2)) {
       final def = defs[r['card_id']];
       Future.delayed(Duration(milliseconds: delay), () {
-        if (!mounted || _fxBlocked) return;
+        if (!mounted || _fxBlocked) {
+          return;
+        }
         showCardGift(
           context,
           def: def,
@@ -581,11 +631,15 @@ class _TablePageState extends State<TablePage> {
       });
       delay += 500;
     }
-    if (removed.isNotEmpty) delay += 500;
+    if (removed.isNotEmpty) {
+      delay += 500;
+    }
     for (final a in added.take(3)) {
       final def = defs[a['card_id']];
       Future.delayed(Duration(milliseconds: delay), () {
-        if (!mounted || _fxBlocked) return;
+        if (!mounted || _fxBlocked) {
+          return;
+        }
         showCardGift(
           context,
           def: def,
@@ -620,7 +674,9 @@ class _TablePageState extends State<TablePage> {
       do {
         _handAgain = false;
         final h = await repo.handNow(widget.gameId);
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         final before = hand;
         setState(() => hand = h);
         _noteHand(before, h);
@@ -649,7 +705,9 @@ class _TablePageState extends State<TablePage> {
       (ModalRoute.of(context)?.isCurrent ?? false);
 
   Future<void> _readInspectionInbox() async {
-    if (_inspectionLoading || _inspectionOpen || !_canReadInspections) return;
+    if (_inspectionLoading || _inspectionOpen || !_canReadInspections) {
+      return;
+    }
     _inspectionLoading = true;
     try {
       final rows = await repo.inspectionReports(
@@ -657,13 +715,19 @@ class _TablePageState extends State<TablePage> {
         unreadOnly: true,
       );
       for (final row in rows) {
-        if (!_canReadInspections) break;
+        if (!_canReadInspections) {
+          break;
+        }
         final report = InspectionReport.fromRow(row);
-        if (_inspectionShown.contains(report.id)) continue;
+        if (_inspectionShown.contains(report.id)) {
+          continue;
+        }
         final target = players
             .where((p) => p['user_id'] == report.targetId)
             .firstOrNull;
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         _inspectionOpen = true;
         final read = await showInspectionReport(
           context,
@@ -671,7 +735,9 @@ class _TablePageState extends State<TablePage> {
           characterStem: target?['character_card'] as String?,
         );
         _inspectionOpen = false;
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         if (read) {
           _inspectionShown.add(report.id);
           try {
@@ -698,10 +764,14 @@ class _TablePageState extends State<TablePage> {
   );
 
   void _onGame(Map<String, dynamic>? g) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (g == null) {
       _terbisikChatAccess.value = false;
-      if (game != null) _backToLobby('Permainan sudah dibubarkan');
+      if (game != null) {
+        _backToLobby('Permainan sudah dibubarkan');
+      }
       return;
     }
     AssetCatalog.useTheme(g['character_theme'] as String?);
@@ -710,8 +780,12 @@ class _TablePageState extends State<TablePage> {
     final holdOld = _startClothToDiscussion(prev, g);
     setState(() {
       game = g;
-      if (g['phase'] != 'discussion') _discussionChatBounds = null;
-      if (holdOld) _heldGame = prev;
+      if (g['phase'] != 'discussion') {
+        _discussionChatBounds = null;
+      }
+      if (holdOld) {
+        _heldGame = prev;
+      }
       _checkVoteReveal(prev, g);
       _checkNight(prev, g);
       _checkDayIntro(g);
@@ -722,7 +796,9 @@ class _TablePageState extends State<TablePage> {
       lobby
           .terbisikPartner(widget.gameId)
           .then((id) {
-            if (mounted) setState(() => _terbisikPartnerId = id);
+            if (mounted) {
+              setState(() => _terbisikPartnerId = id);
+            }
           })
           .catchError((_) {});
     }
@@ -730,7 +806,9 @@ class _TablePageState extends State<TablePage> {
     if (changed) {
       _refreshHand();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _readInspectionInbox();
+        if (mounted) {
+          _readInspectionInbox();
+        }
       });
     }
   }
@@ -741,15 +819,25 @@ class _TablePageState extends State<TablePage> {
     Map<String, dynamic>? prev,
     Map<String, dynamic> g,
   ) {
-    if (!_clothToDiscussion || prev == null) return false;
-    if (prev['status'] != 'playing' || g['status'] != 'playing') return false;
-    if (prev['phase'] != 'effects' || g['phase'] != 'discussion') return false;
+    if (!_clothToDiscussion || prev == null) {
+      return false;
+    }
+    if (prev['status'] != 'playing' || g['status'] != 'playing') {
+      return false;
+    }
+    if (prev['phase'] != 'effects' || g['phase'] != 'discussion') {
+      return false;
+    }
     // Hanya bila hasil efek memang sedang tampil (adegan lempar sudah usai).
-    if (prev['day'] != g['day'] || _ceremonyDay != prev['day']) return false;
+    if (prev['day'] != g['day'] || _ceremonyDay != prev['day']) {
+      return false;
+    }
     return _cloth.currentState?.play(
           style: _styleToDiscussion.tinted(dark: showAsAntag),
           onCovered: () {
-            if (mounted) setState(() => _heldGame = null);
+            if (mounted) {
+              setState(() => _heldGame = null);
+            }
           },
         ) ??
         false;
@@ -766,7 +854,9 @@ class _TablePageState extends State<TablePage> {
             prev['phase'] != g['phase'])) {
       _loadNightPlan();
     }
-    if (prev == null || prev['status'] != 'playing') return;
+    if (prev == null || prev['status'] != 'playing') {
+      return;
+    }
     final prevDay = prev['day'] as int;
     final phase = prev['phase'];
     final finished = g['status'] == 'finished';
@@ -783,8 +873,12 @@ class _TablePageState extends State<TablePage> {
         (phase == 'day' || phase == 'night') &&
         g['day'] == prevDay + 1;
     final openingVisits = phase == 'night' && g['phase'] == 'visits';
-    if (!finalBow && !nightFinished && !nextDay && !openingVisits) return;
-    if (_lastNightDay == prevDay) return;
+    if (!finalBow && !nightFinished && !nextDay && !openingVisits) {
+      return;
+    }
+    if (_lastNightDay == prevDay) {
+      return;
+    }
     _lastNightDay = prevDay;
     _nightScene = {'day': prevDay, 'rows': null, 'finalBow': finalBow};
     _loadNight(prevDay, finalBow: finalBow);
@@ -815,7 +909,9 @@ class _TablePageState extends State<TablePage> {
         }).toList();
       }
     } catch (_) {}
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (!finalBow && rows.isEmpty && attempt < 1) {
       await Future.delayed(const Duration(milliseconds: 600));
       return _loadNight(
@@ -827,7 +923,9 @@ class _TablePageState extends State<TablePage> {
     }
     setState(() {
       final cur = _nightScene;
-      if (cur == null || cur['day'] != day) return;
+      if (cur == null || cur['day'] != day) {
+        return;
+      }
       if (rows.isEmpty) {
         _nightScene = null; // tak ada data (mis. migrasi belum dijalankan)
       } else {
@@ -841,7 +939,9 @@ class _TablePageState extends State<TablePage> {
     final rows = v['rows'] as List<Map<String, dynamic>>?;
     // Warna yang sama dengan dasar semua adegan (kSceneInk), supaya layar
     // penantian data tidak berbeda nuansa dari adegan yang menyusul.
-    if (rows == null) return const ColoredBox(color: kSceneInk);
+    if (rows == null) {
+      return const ColoredBox(color: kSceneInk);
+    }
     final finalBow = v['finalBow'] == true;
     return NightScene(
       key: ValueKey('night${v['day']}-${v['rows']}'),
@@ -851,17 +951,23 @@ class _TablePageState extends State<TablePage> {
       finalBow: finalBow,
       finalBowBackdrop: finalBow ? landscapePath(game!['leaves'] as int) : null,
       onDone: () {
-        if (mounted) setState(() => _nightScene = null);
+        if (mounted) {
+          setState(() => _nightScene = null);
+        }
       },
     );
   }
 
   Future<void> _loadNightPlan() async {
-    if (!isAntag) return;
+    if (!isAntag) {
+      return;
+    }
     final day = (game?['day'] as int?) ?? 0;
     try {
       final p = await repo.nightPlan(widget.gameId, day);
-      if (mounted) setState(() => _nightArmed = p != null);
+      if (mounted) {
+        setState(() => _nightArmed = p != null);
+      }
     } catch (_) {}
   }
 
@@ -879,7 +985,9 @@ class _TablePageState extends State<TablePage> {
     );
     await _loadNightPlan();
     // Kartu sudah dilancarkan: malam langsung dijalankan.
-    if (mounted && _nightOn && _nightArmed) await _continueNight();
+    if (mounted && _nightOn && _nightArmed) {
+      await _continueNight();
+    }
   }
 
   /// Fase malam: hari biasa sudah berakhir, malam belum dijalankan.
@@ -914,14 +1022,24 @@ class _TablePageState extends State<TablePage> {
   /// berakhir): putar pembukaan suara untuk hari yang baru lewat. Riwayat
   /// (masuk kembali sesudahnya) tidak memutarnya lagi.
   void _checkVoteReveal(Map<String, dynamic>? prev, Map<String, dynamic> g) {
-    if (prev == null) return;
-    if (prev['status'] != 'playing' || prev['phase'] != 'voting') return;
+    if (prev == null) {
+      return;
+    }
+    if (prev['status'] != 'playing' || prev['phase'] != 'voting') {
+      return;
+    }
     final prevDay = prev['day'] as int;
     final finished = g['status'] == 'finished';
     final moved = ((g['day'] as int?) ?? prevDay) > prevDay;
-    if (!(finished || moved)) return;
-    if (g['winner'] == 'dibatalkan') return; // dibatalkan, bukan hasil voting
-    if (_lastRevealDay == prevDay) return;
+    if (!(finished || moved)) {
+      return;
+    }
+    if (g['winner'] == 'dibatalkan') {
+      return;
+    } // dibatalkan, bukan hasil voting
+    if (_lastRevealDay == prevDay) {
+      return;
+    }
     _lastRevealDay = prevDay;
     _voteReveal = {'day': prevDay, 'rows': null};
     _loadVoteReveal(prevDay);
@@ -942,14 +1060,18 @@ class _TablePageState extends State<TablePage> {
 
   Future<void> _loadEvict(int day, [int attempt = 0]) async {
     final rows = await repo.evictedAt(widget.gameId, day);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (rows.isEmpty && attempt < 1) {
       await Future.delayed(const Duration(milliseconds: 600));
       return _loadEvict(day, attempt + 1);
     }
     setState(() {
       final cur = _evict;
-      if (cur == null || cur['day'] != day) return;
+      if (cur == null || cur['day'] != day) {
+        return;
+      }
       if (rows.isEmpty) {
         _evict = null; // tidak ketemu: lewati adegan
       } else {
@@ -978,8 +1100,9 @@ class _TablePageState extends State<TablePage> {
         _boardOutSeen.removeWhere((k) => k.startsWith('${m.playerId}:'));
       }
       if (m.eliminated &&
-          !_boardOutSeen.add('${m.playerId}:${m.after['out_day'] ?? m.day}'))
+          !_boardOutSeen.add('${m.playerId}:${m.after['out_day'] ?? m.day}')) {
         continue;
+      }
       _boardMoments.add(m);
     }
   }
@@ -1012,8 +1135,9 @@ class _TablePageState extends State<TablePage> {
       players: staged.values.toList(),
       myId: repo.myId,
       onDone: () {
-        if (mounted)
+        if (mounted) {
           setState(() => _boardMoments.removeWhere((e) => e.id == m.id));
+        }
       },
     );
   }
@@ -1021,7 +1145,9 @@ class _TablePageState extends State<TablePage> {
   Widget _evictLayer() {
     final e = _evict!;
     final row = e['row'] as Map<String, dynamic>?;
-    if (row == null) return const ColoredBox(color: kSceneInk);
+    if (row == null) {
+      return const ColoredBox(color: kSceneInk);
+    }
     return EvictionVerdictScene(
       key: ValueKey('evict${e['day']}'),
       name: row['name'] as String,
@@ -1029,7 +1155,9 @@ class _TablePageState extends State<TablePage> {
       isMe: row['user_id'] == repo.myId,
       votes: e['votes'] as int?,
       onDone: () {
-        if (mounted) setState(() => _evict = null);
+        if (mounted) {
+          setState(() => _evict = null);
+        }
       },
     );
   }
@@ -1039,14 +1167,18 @@ class _TablePageState extends State<TablePage> {
     try {
       rows = await repo.voteReveal(widget.gameId, day);
     } catch (_) {}
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (rows.isEmpty && attempt < 1) {
       await Future.delayed(const Duration(milliseconds: 600));
       return _loadVoteReveal(day, attempt + 1);
     }
     setState(() {
       final cur = _voteReveal;
-      if (cur == null || cur['day'] != day) return;
+      if (cur == null || cur['day'] != day) {
+        return;
+      }
       if (rows.isEmpty) {
         _voteReveal = null; // tidak ada data (mis. migrasi belum dijalankan)
       } else {
@@ -1058,14 +1190,18 @@ class _TablePageState extends State<TablePage> {
   Widget _voteRevealLayer() {
     final v = _voteReveal!;
     final rows = v['rows'] as List<Map<String, dynamic>>?;
-    if (rows == null) return const ColoredBox(color: kSceneInk);
+    if (rows == null) {
+      return const ColoredBox(color: kSceneInk);
+    }
     return VoteRevealScene(
       key: ValueKey('votes${v['day']}'),
       day: v['day'] as int,
       rows: rows,
       myId: repo.myId,
       onDone: () {
-        if (mounted) setState(() => _voteReveal = null);
+        if (mounted) {
+          setState(() => _voteReveal = null);
+        }
       },
     );
   }
@@ -1074,15 +1210,21 @@ class _TablePageState extends State<TablePage> {
   /// dianggap riwayat, jadi masuk kembali saat fase persembahan tidak
   /// memutarnya lagi.
   void _checkOfferIntro(Map<String, dynamic> g) {
-    if (g['status'] == 'finished') return;
+    if (g['status'] == 'finished') {
+      return;
+    }
     final day = g['day'] as int;
     final phase = (g['phase'] as String?) ?? 'day';
     if (!_offerSeeded) {
       _offerSeeded = true;
-      if (phase == 'offering') _lastOfferDay = day;
+      if (phase == 'offering') {
+        _lastOfferDay = day;
+      }
       return;
     }
-    if (phase != 'offering' || day == _lastOfferDay) return;
+    if (phase != 'offering' || day == _lastOfferDay) {
+      return;
+    }
     _lastOfferDay = day;
     _dayIntro = {
       'kind': 'offering',
@@ -1094,12 +1236,16 @@ class _TablePageState extends State<TablePage> {
   /// Putar adegan peralihan hari saat hari baru dimulai (fase 'day').
   /// Data pertama dianggap riwayat, kecuali hari 1 yang baru dimulai.
   void _checkDayIntro(Map<String, dynamic> g) {
-    if (g['status'] == 'finished') return;
+    if (g['status'] == 'finished') {
+      return;
+    }
     final day = g['day'] as int;
     final phase = (g['phase'] as String?) ?? 'day';
     if (_lastIntroDay == null) {
       _lastIntroDay = day;
-      if (!(day == 1 && phase == 'day')) return;
+      if (!(day == 1 && phase == 'day')) {
+        return;
+      }
     } else {
       if ((phase != 'research' && phase != 'day') || day == _lastIntroDay) {
         return;
@@ -1118,16 +1264,22 @@ class _TablePageState extends State<TablePage> {
       'jailPending': day > 1,
       'jail': null,
     };
-    if (day > 1) _resolveJail(day);
+    if (day > 1) {
+      _resolveJail(day);
+    }
   }
 
   /// Ambil pemain yang dikurung hari ini; bila ada, putar adegan vonis
   /// sebelum adegan fajar.
   Future<void> _resolveJail(int day) async {
     final rows = await repo.jailedAt(widget.gameId, day);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     final cur = _dayIntro;
-    if (cur == null || cur['kind'] != 'day' || cur['day'] != day) return;
+    if (cur == null || cur['kind'] != 'day' || cur['day'] != day) {
+      return;
+    }
     setState(() {
       cur['jailPending'] = false;
       cur['jail'] = rows.isEmpty ? null : rows.first;
@@ -1149,14 +1301,18 @@ class _TablePageState extends State<TablePage> {
   Widget _jailLayer() {
     final intro = _dayIntro!;
     final j = intro['jail'] as Map<String, dynamic>?;
-    if (j == null) return const ColoredBox(color: kSceneInk);
+    if (j == null) {
+      return const ColoredBox(color: kSceneInk);
+    }
     return JailVerdictScene(
       key: ValueKey('jail${intro['day']}-${j['user_id']}'),
       name: j['name'] as String,
       card: j['character_card'] as String?,
       isMe: j['user_id'] == repo.myId,
       onDone: () {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           final q = (intro['jailQueue'] as List<dynamic>?) ?? const <dynamic>[];
           if (q.isEmpty) {
@@ -1178,14 +1334,20 @@ class _TablePageState extends State<TablePage> {
     try {
       await action();
     } catch (e) {
-      if (mounted) _toast(errMsg(e));
+      if (mounted) {
+        _toast(errMsg(e));
+      }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+      }
     }
   }
 
   void _backToLobby([String? msg]) {
-    if (_leaving || !mounted) return;
+    if (_leaving || !mounted) {
+      return;
+    }
     _leaving = true;
     if (widget.onExit case final onExit?) {
       onExit();
@@ -1195,7 +1357,9 @@ class _TablePageState extends State<TablePage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LobbyPage(startAtMenu: true)),
     );
-    if (msg != null) messenger.showSnackBar(SnackBar(content: Text(msg)));
+    if (msg != null) {
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   Future<void> _confirmExit(bool isHost) async {
@@ -1222,7 +1386,9 @@ class _TablePageState extends State<TablePage> {
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !mounted) {
+      return;
+    }
     setState(() => busy = true);
     try {
       if (isHost) {
@@ -1232,9 +1398,13 @@ class _TablePageState extends State<TablePage> {
         _backToLobby();
       }
     } catch (e) {
-      if (mounted) _toast(errMsg(e));
+      if (mounted) {
+        _toast(errMsg(e));
+      }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+      }
     }
   }
 
@@ -1419,10 +1589,14 @@ class _TablePageState extends State<TablePage> {
   /// Memuat kemampuan milikku dari server. Si Terbisik tidak punya kemampuan
   /// (ia memakai kartu), jadi tidak ada yang ditampilkan untuknya.
   Future<void> _loadAbility() async {
-    if (isAntag) return;
+    if (isAntag) {
+      return;
+    }
     try {
       final s = await lobby.mySecret(widget.gameId);
-      if (!mounted || s == null) return;
+      if (!mounted || s == null) {
+        return;
+      }
       setState(() {
         abilityId = (s['ability'] as String?) ?? 'biasa';
         abilityUsed = s['ability_used'] == true;
@@ -1435,10 +1609,14 @@ class _TablePageState extends State<TablePage> {
   }
 
   Future<void> _openAbility({bool intro = false}) async {
-    if (isAntag) return;
+    if (isAntag) {
+      return;
+    }
     await _loadAbility(); // data segar (mis. Lidah Manis baru terpakai)
     final def = abilityDefs[abilityId];
-    if (!mounted || def == null) return;
+    if (!mounted || def == null) {
+      return;
+    }
     final day = (game?['day'] as int?) ?? 0;
     final me = _meRow;
     setState(() => _abilityOpen = true);
@@ -1464,7 +1642,9 @@ class _TablePageState extends State<TablePage> {
         },
       );
     } finally {
-      if (mounted) setState(() => _abilityOpen = false);
+      if (mounted) {
+        setState(() => _abilityOpen = false);
+      }
     }
   }
 
@@ -1505,7 +1685,9 @@ class _TablePageState extends State<TablePage> {
   /// dulu supaya status "terpakai" segar.
   Future<void> _openMyInfo() async {
     await _loadAbility();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     await showMyInfoDialog(
       context,
       isAntag: isAntag,
@@ -1556,7 +1738,9 @@ class _TablePageState extends State<TablePage> {
   /// "Online" relatif terhadap detak terbaru siapa pun, supaya tahan selisih
   /// jam antara perangkat dan server.
   Set<String> _online() {
-    if (lastSeen.isEmpty) return {};
+    if (lastSeen.isEmpty) {
+      return {};
+    }
     final newest = lastSeen.values.reduce((a, b) => a.isAfter(b) ? a : b);
     return {
       for (final e in lastSeen.entries)
@@ -1572,7 +1756,9 @@ class _TablePageState extends State<TablePage> {
   /// Adegan obrolan hanya tampil di fase hari biasa dan diskusi, saat efek
   /// menyala dan sheet obrolan sedang tertutup.
   bool _spotlightOn(Map<String, dynamic>? g) {
-    if (g == null || g['status'] == 'finished') return false;
+    if (g == null || g['status'] == 'finished') {
+      return false;
+    }
     final phase = (g['phase'] as String?) ?? 'day';
     return chatFx &&
         !_chatOpen &&
@@ -1591,9 +1777,12 @@ class _TablePageState extends State<TablePage> {
   /// Ada adegan layar penuh yang berjalan: musik meja diredam (adegan punya
   /// suaranya sendiri). Saat game selesai, peredaman diurus EndingCinematic.
   bool _sceneDuck(Map<String, dynamic>? g) {
-    if (g == null) return false;
-    if (g['status'] == 'finished')
+    if (g == null) {
+      return false;
+    }
+    if (g['status'] == 'finished') {
       return _nightScene != null || _boardMoments.isNotEmpty;
+    }
     return (_dayIntro != null && !_holdIntro) ||
         _evict != null ||
         _voteReveal != null ||
@@ -1652,7 +1841,9 @@ class _TablePageState extends State<TablePage> {
                       leaves: _dayIntro!['leaves'] as int,
                       dark: showAsAntag,
                       onDone: () {
-                        if (mounted) setState(() => _dayIntro = null);
+                        if (mounted) {
+                          setState(() => _dayIntro = null);
+                        }
                       },
                     )
                   : DayTransition(
@@ -1663,7 +1854,9 @@ class _TablePageState extends State<TablePage> {
                       verdict: _dayIntro!['verdict'] as String?,
                       dark: showAsAntag,
                       onDone: () {
-                        if (mounted) setState(() => _dayIntro = null);
+                        if (mounted) {
+                          setState(() => _dayIntro = null);
+                        }
                       },
                     ),
             ),
@@ -1677,6 +1870,18 @@ class _TablePageState extends State<TablePage> {
           if (_nightOn && _nightScene == null)
             Positioned.fill(child: _nightChoiceLayer()),
           if (_nightScene != null) Positioned.fill(child: _nightLayer()),
+          Positioned.fill(
+            child: MelodyRitualLayer(
+              repo: repo,
+              gameId: widget.gameId,
+              enabled: g?['status'] == 'playing' && g?['phase'] == 'visits',
+              hand: hand,
+              defs: defs,
+              balance: (myState?['balance'] as num?)?.toDouble() ?? 0,
+              antagonist: isAntag,
+              onChanged: _refreshHand,
+            ),
+          ),
           // Paling atas: kain menutupi semua lapisan lain.
           Positioned.fill(child: ClothSweepLayer(key: _cloth)),
         ],
@@ -1699,7 +1904,9 @@ class _TablePageState extends State<TablePage> {
     final readyCount = alive.where((p) => p['ready'] == true).length;
     final jailed = meRow != null && isJailed(meRow, day);
 
-    if (g['status'] == 'finished') return _result(g);
+    if (g['status'] == 'finished') {
+      return _result(g);
+    }
 
     if (phase == 'visits' && !iAmOut) {
       return VillageVisitView(
@@ -1736,7 +1943,9 @@ class _TablePageState extends State<TablePage> {
         dark: showAsAntag,
         winLeaves: (g['win_leaves'] as int?) ?? 20,
         onDone: (covered) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           void toEffects() {
             if (mounted) {
               setState(() {
@@ -1753,7 +1962,9 @@ class _TablePageState extends State<TablePage> {
                     onCovered: toEffects,
                   ) ??
                   false);
-          if (!played) toEffects();
+          if (!played) {
+            toEffects();
+          }
         },
       );
     }
@@ -1927,8 +2138,9 @@ class _TablePageState extends State<TablePage> {
             : null,
         onPlayerTap: (p) => _openPlayer(p, phase),
         onChatBounds: (r) {
-          if (mounted && _discussionChatBounds != r)
+          if (mounted && _discussionChatBounds != r) {
             setState(() => _discussionChatBounds = r);
+          }
         },
       );
     } else if (phase == 'voting') {
@@ -1958,8 +2170,12 @@ class _TablePageState extends State<TablePage> {
           final k = defs[h['card_id']]?['kind'];
           // Kartu poin tak bisa dipersembahkan; kartu lanjutan hanya bila
           // sudah digabung dengan poin (aktif).
-          if (k == 'poin') return false;
-          if (k == 'lanjutan' && h['charged'] != true) return false;
+          if (k == 'poin') {
+            return false;
+          }
+          if (k == 'lanjutan' && h['charged'] != true) {
+            return false;
+          }
           return k != 'malam' && k != 'siang' && k != 'perawatan';
         }).toList(),
         defs: defs,
@@ -2216,7 +2432,9 @@ class _TablePageState extends State<TablePage> {
         ),
       );
     }
-    if (items.isEmpty) return const SizedBox(width: double.infinity);
+    if (items.isEmpty) {
+      return const SizedBox(width: double.infinity);
+    }
     final top = items.first;
     return Padding(
       key: ValueKey('notice-${top.short}'),
@@ -2697,7 +2915,9 @@ class _TablePageState extends State<TablePage> {
           case 'mask':
             setState(() => disguiseMode = !disguiseMode);
           case 'exit':
-            if (!busy) _confirmExit(isHost);
+            if (!busy) {
+              _confirmExit(isHost);
+            }
         }
       },
       itemBuilder: (_) => [
@@ -2790,7 +3010,9 @@ class _TablePageState extends State<TablePage> {
     usernamesFuture ??= repo
         .usernames(widget.gameId)
         .then((m) {
-          if (mounted) setState(() => usernames = m);
+          if (mounted) {
+            setState(() => usernames = m);
+          }
           return m;
         })
         .catchError((_) => <String, String>{});
@@ -2806,7 +3028,9 @@ class _TablePageState extends State<TablePage> {
         usernames: usernamesFuture!,
         players: players,
         onDone: () {
-          if (mounted) setState(() => _endingSeen = true);
+          if (mounted) {
+            setState(() => _endingSeen = true);
+          }
         },
       );
     }
@@ -2855,9 +3079,13 @@ class _TablePageState extends State<TablePage> {
   }
 
   String _nameOf(String? id) {
-    if (id == null) return '—';
+    if (id == null) {
+      return '—';
+    }
     for (final p in players) {
-      if (p['user_id'] == id) return p['name'] as String;
+      if (p['user_id'] == id) {
+        return p['name'] as String;
+      }
     }
     return '?';
   }
