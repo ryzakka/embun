@@ -1903,7 +1903,7 @@ class _VillageVisitViewState extends State<VillageVisitView> {
 
   String _description(_Place p) => switch (p.id) {
     'melodi' =>
-      'Ritual ketukan 30 detik, kombo rahasia, dan satu hadiah pribadi. Semua peserta masuk bersamaan.',
+      'Ritual ketukan 30, 45, atau 60 detik dengan musik acak, kombo rahasia, dan satu hadiah pribadi. Semua peserta masuk bersamaan.',
     'riset' => 'Poin, kartu lanjutan, dan surat perawatan. Harga riset +20%.',
     'sumur' =>
       widget.isAntag

@@ -7,6 +7,8 @@ import '../../data/asset_catalog.dart';
 import '../../data/errors.dart';
 import '../../data/game_repository.dart';
 import '../../data/melody_rules.dart';
+import '../../data/melody_music.dart';
+import '../../data/melody_audio.dart';
 import '../common/art.dart';
 import '../common/embun_icon.dart';
 import '../common/ornate.dart';
@@ -57,7 +59,16 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   MelodyJudge _judge = MelodyJudge();
   Duration _offset = Duration.zero;
   DateTime? _lastPoll, _lastServerStamp;
-  final _audio = _RitualAudio();
+  final _legacyAudio = _LegacyRitualAudio();
+  bool _musicFailed = false, _background = false;
+  late final _music = MelodyMusicController(
+    _RitualAudioPort(),
+    onError: (failed) {
+      if (mounted && failed != _musicFailed) {
+        _rebuild(() => _musicFailed = failed);
+      }
+    },
+  );
   final _fx = MelodyFxController(laneColors: _colors);
   String? _audioSession;
   final Set<String> _refreshed = {};
@@ -115,6 +126,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     }
   }
 
+  int get _duration => melodySessionDuration(_state);
   String get _status => '${_state?['status'] ?? 'idle'}';
   MelodyRow get _own => Map<String, dynamic>.from(_state?['own'] as Map? ?? {});
   DateTime get _now => DateTime.now().add(_offset);
@@ -150,7 +162,8 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       _frames.stop();
       Sfx.I.setDuck(this, false);
       _release();
-      _audio.stop();
+      _legacyAudio.stop();
+      _music.stop();
       _closeOverlay();
     }
   }
@@ -166,21 +179,37 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     _flush?.cancel();
     _frames.dispose();
     _focus.dispose();
-    _audio.dispose();
+    _legacyAudio.dispose();
+    unawaited(_music.dispose());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) {
+    _background = state != AppLifecycleState.resumed;
+    if (_background) {
       _release();
       _send();
+    }
+    _frame();
+  }
+
+  void _prepareAudio() {
+    if (_state != null && melodyTrackFromState(_state) != null) {
+      final f = melodyMusicFrame(
+        _state!,
+        _elapsed,
+        muted: Sfx.I.muted.value || _background,
+      );
+      if (f != null) _music.sync(f);
+    } else if (!Sfx.I.muted.value) {
+      _legacyAudio.prepare();
     }
   }
 
   void _muteChanged() {
-    if (!Sfx.I.muted.value) _audio.prepare();
-    _audio.mute(Sfx.I.muted.value);
+    _prepareAudio();
+    _legacyAudio.mute(Sfx.I.muted.value);
   }
 
   void _frame() {
@@ -191,25 +220,28 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     _judge.tick(t);
     _fx.held = _judge.pressed;
     _fx.setCombo(_judge.combo);
-    if (t >= melodyDurationMs && _pressed.isNotEmpty) {
+    if (t >= _duration && _pressed.isNotEmpty) {
       _release();
     }
-    if (t >= 0 && t < melodyDurationMs) {
+    if (melodyTrackFromState(_state) != null) {
+      _prepareAudio();
+      if (t >= _duration + melodyFadeMs) Sfx.I.setDuck(this, false);
+    } else if (t >= 0 && t < _duration) {
       final wave = (t ~/ 6000).clamp(0, 4).toInt();
       final rows = (_state?['waves'] as List? ?? []).cast<Map>();
       final pressure =
           (rows.where((r) => r['wave'] == wave).firstOrNull?['pressure']
-          as num?)
+                  as num?)
               ?.toInt() ??
-              0;
-      _audio.sync(
+          0;
+      _legacyAudio.sync(
         wave,
         widget.antagonist ? 0 : pressure,
         t - wave * 6000,
-        Sfx.I.muted.value,
+        Sfx.I.muted.value || _background,
       );
-    } else if (t >= melodyDurationMs) {
-      _audio.stop();
+    } else if (t >= _duration) {
+      _legacyAudio.stop();
     }
   }
 
@@ -232,8 +264,8 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     } catch (e) {
       if (mounted && _status != 'idle') {
         _rebuild(
-              () => _error =
-          'Koneksi melambat. Ketukan tetap berjalan; menyambungkan kembali…',
+          () => _error =
+              'Koneksi melambat. Ketukan tetap berjalan; menyambungkan kembali…',
         );
       }
     } finally {
@@ -264,15 +296,18 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       _offset = _state?['id'] != state['id']
           ? estimate
           : Duration(
-        microseconds:
-        _offset.inMicroseconds +
-            (estimate - _offset).inMicroseconds
-                .clamp(-15000, 15000)
-                .toInt(),
-      );
+              microseconds:
+                  _offset.inMicroseconds +
+                  (estimate - _offset).inMicroseconds
+                      .clamp(-15000, 15000)
+                      .toInt(),
+            );
     }
     if (state['id'] != _state?['id']) {
-      _judge = MelodyJudge();
+      _judge = MelodyJudge(durationMs: melodySessionDuration(state));
+      _legacyAudio.stop();
+      _music.stop();
+      _musicFailed = false;
       _fx.reset();
       _pressed.clear();
       _payment = 'embun';
@@ -297,17 +332,19 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       _frames.stop();
     }
     Sfx.I.setDuck(this, status == 'running');
+    if (status == 'inviting') _prepareAudio();
     if (status == 'running') {
       if (_audioSession != state['id']) {
         _audioSession = '${state['id']}';
-        if (!Sfx.I.muted.value) _audio.prepare();
+        _prepareAudio();
         _focus.requestFocus();
       }
       if (_refreshed.add('paid-${state['id']}')) {
         widget.onChanged?.call();
       }
     } else {
-      _audio.stop();
+      _legacyAudio.stop();
+      if (status != 'inviting') _music.stop();
     }
     if (status == 'settled' && _refreshed.add('reward-${state['id']}')) {
       widget.onChanged?.call();
@@ -321,7 +358,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
     _rebuild(() => _busy = true);
     final sent = DateTime.now();
     try {
-      if (!Sfx.I.muted.value) _audio.prepare();
+      _prepareAudio();
       _receive(
         await widget.repo.respondMelody(
           widget.gameId,
@@ -370,7 +407,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   void _down(int lane) {
     if (_status != 'running' ||
         _elapsed < 0 ||
-        _elapsed >= melodyDurationMs ||
+        _elapsed >= _duration ||
         !_pressed.add(lane)) {
       return;
     }
@@ -458,11 +495,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
           fit: StackFit.expand,
           children: [
             if (firstScenery([
-              'tempat-pelataranmelodi',
-              'alunalun-tiangberpita',
-              'pohon-keranjangbuah',
-            ])
-            case final path?)
+                  'tempat-pelataranmelodi',
+                  'alunalun-tiangberpita',
+                  'pohon-keranjangbuah',
+                ])
+                case final path?)
               Opacity(
                 opacity: .23,
                 child: GameImage(path: path, fit: BoxFit.cover),
@@ -515,11 +552,11 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
         ? widget.balance >= 8
         : cards.any((c) => c['id'] == _handId);
     final seconds =
-    (DateTime.tryParse(
-      '${_state?['expires_at']}',
-    )?.difference(_now).inSeconds ??
-        0)
-        .clamp(0, 25);
+        (DateTime.tryParse(
+                  '${_state?['expires_at']}',
+                )?.difference(_now).inSeconds ??
+                0)
+            .clamp(0, 25);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
@@ -544,6 +581,12 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   ),
                 ),
                 const SizedBox(height: 10),
+                Text(
+                  'Musik ${(melodyTrackFromState(_state)?.id ?? 'klasik').replaceAll('instrument', '')} · ${_duration ~/ 1000} detik',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: EmbunColors.gold),
+                ),
+                const SizedBox(height: 8),
                 AnimatedBuilder(
                   animation: _frames,
                   builder: (_, _) => Text(
@@ -657,7 +700,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                   score: (_own['final_score'] as num? ?? 0).toInt(),
                   tier: melodyTier((_own['final_score'] as num? ?? 0).toInt()),
                   label:
-                  'Nilai hadiah • kelompok ${melodyBands[melodyTier((_own['final_score'] as num? ?? 0).toInt())]}',
+                      'Nilai hadiah • kelompok ${melodyBands[melodyTier((_own['final_score'] as num? ?? 0).toInt())]}',
                   reduced: MediaQuery.disableAnimationsOf(context),
                 ),
                 const SizedBox(height: 12),
@@ -772,15 +815,17 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
       animation: _frames,
       builder: (_, _) {
         final t = _elapsed;
-        final w = (math.max(0, t) ~/ 6000).clamp(0, 4).toInt();
+        final w = (math.max(0, t) ~/ melodyWaveMs)
+            .clamp(0, (_duration - 1) ~/ melodyWaveMs)
+            .toInt();
         final pressure =
             ((_state?['waves'] as List? ?? [])
-                .cast<Map>()
-                .where((x) => x['wave'] == w)
-                .firstOrNull?['pressure']
-            as num?)
+                        .cast<Map>()
+                        .where((x) => x['wave'] == w)
+                        .firstOrNull?['pressure']
+                    as num?)
                 ?.toInt() ??
-                0;
+            0;
         _fx
           ..level = MelodyFxLevel.level.value
           ..reduced = MediaQuery.disableAnimationsOf(context)
@@ -809,16 +854,14 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                         ),
                       ),
                       Text(
-                        '${((melodyDurationMs - t).clamp(0, melodyDurationMs) / 1000).ceil()} dtk',
+                        '${((_duration - t).clamp(0, _duration) / 1000).ceil()} dtk',
                         style: const TextStyle(
                           color: EmbunColors.cream,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        tooltip: MelodyFxLevel.label(
-                          MelodyFxLevel.level.value,
-                        ),
+                        tooltip: MelodyFxLevel.label(MelodyFxLevel.level.value),
                         onPressed: MelodyFxLevel.cycle,
                         icon: EmbunIcon(
                           MelodyFxLevel.level.value == 0
@@ -828,8 +871,8 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                           color: MelodyFxLevel.level.value == 0
                               ? Colors.white38
                               : (MelodyFxLevel.level.value == 1
-                              ? EmbunColors.cream
-                              : EmbunColors.gold),
+                                    ? EmbunColors.cream
+                                    : EmbunColors.gold),
                         ),
                       ),
                       IconButton(
@@ -896,7 +939,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                             reduced: MediaQuery.disableAnimationsOf(context),
                           ),
                         ),
-                      if (t >= melodyDurationMs)
+                      if (t >= _duration)
                         const Center(
                           child: Text(
                             'Merangkum ritual…',
@@ -931,7 +974,7 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                             padding: const EdgeInsets.all(4),
                             child: Semantics(
                               label:
-                              '${_names[i]}, tombol ${['D', 'F', 'J', 'K'][i]}',
+                                  '${_names[i]}, tombol ${['D', 'F', 'J', 'K'][i]}',
                               button: true,
                               child: Listener(
                                 onPointerDown: (_) => _down(i),
@@ -977,6 +1020,15 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
                     ],
                   ),
                 ),
+                if (_musicFailed && !Sfx.I.muted.value)
+                  TextButton.icon(
+                    onPressed: () {
+                      _prepareAudio();
+                      _music.retry();
+                    },
+                    icon: const EmbunIcon(Icons.volume_up),
+                    label: const Text('Ketuk untuk mengaktifkan musik'),
+                  ),
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.all(4),
@@ -995,7 +1047,34 @@ class _MelodyRitualLayerState extends State<MelodyRitualLayer>
   );
 }
 
-class _RitualAudio {
+class _RitualAudioPort implements MelodyAudioPort {
+  final AudioPlayer _player = AudioPlayer();
+  @override
+  Future<void> load(String asset) async {
+    await _player.setReleaseMode(ReleaseMode.stop);
+    await _player.setSource(AssetSource(asset));
+  }
+
+  @override
+  Future<void> rate(double value) => _player.setPlaybackRate(value);
+  @override
+  Future<void> volume(double value) => _player.setVolume(value);
+  @override
+  Future<void> seek(int milliseconds) =>
+      _player.seek(Duration(milliseconds: milliseconds));
+  @override
+  Future<int?> position() async =>
+      (await _player.getCurrentPosition())?.inMilliseconds;
+  @override
+  Future<void> pause() => _player.pause();
+  @override
+  Future<void> resume() => _player.resume();
+  @override
+  Future<void> dispose() => _player.dispose();
+}
+
+// Compatibility with a session created before the music migration.
+class _LegacyRitualAudio {
   final Map<int, AudioPlayer> _players = {};
   bool _preparing = false, _disposed = false;
   int _key = -1;

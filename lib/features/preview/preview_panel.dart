@@ -72,7 +72,10 @@ enum _Screen {
   merge('Gabung kartu'),
   hall('Balai · Tawaran tukar'),
   melodyInvite('Melodi · Undangan dan biaya'),
-  melodyPlay('Melodi · Ketukan langsung'),
+  melodyPlay('Melodi · 30 detik · Musik 01'),
+  melodyPlay45('Melodi · 45 detik · Musik 02'),
+  melodyPlay60('Melodi · 60 detik · Musik 03'),
+  melodyPlay4('Melodi · 45 detik · Musik 04'),
   melodyReward('Melodi · Hadiah pribadi'),
   village('Kunjungan · Pilih tujuan'),
   well('Kunjungan · Sumur Desa'),
@@ -175,6 +178,9 @@ const _sections = [
       _Screen.hall,
       _Screen.melodyInvite,
       _Screen.melodyPlay,
+      _Screen.melodyPlay45,
+      _Screen.melodyPlay60,
+      _Screen.melodyPlay4,
       _Screen.melodyReward,
       _Screen.village,
       _Screen.well,
@@ -332,6 +338,9 @@ class _PreviewPanelState extends State<_PreviewPanel> {
       phase: switch (screen) {
         _Screen.melodyInvite ||
         _Screen.melodyPlay ||
+        _Screen.melodyPlay45 ||
+        _Screen.melodyPlay60 ||
+        _Screen.melodyPlay4 ||
         _Screen.melodyReward ||
         _Screen.village ||
         _Screen.well ||
@@ -379,10 +388,31 @@ class _PreviewPanelState extends State<_PreviewPanel> {
     if (const {
       _Screen.melodyInvite,
       _Screen.melodyPlay,
+      _Screen.melodyPlay45,
+      _Screen.melodyPlay60,
+      _Screen.melodyPlay4,
       _Screen.melodyReward,
     }.contains(screen)) {
       _session.prepareMelodyPreview(
-        stage: screen == _Screen.melodyPlay
+        durationMs: screen == _Screen.melodyPlay60
+            ? 60000
+            : const {_Screen.melodyPlay45, _Screen.melodyPlay4}.contains(screen)
+            ? 45000
+            : 30000,
+        trackIndex: screen == _Screen.melodyPlay4
+            ? 3
+            : screen == _Screen.melodyPlay60
+            ? 2
+            : screen == _Screen.melodyPlay45
+            ? 1
+            : 0,
+        stage:
+            const {
+              _Screen.melodyPlay,
+              _Screen.melodyPlay45,
+              _Screen.melodyPlay60,
+              _Screen.melodyPlay4,
+            }.contains(screen)
             ? 'running'
             : screen == _Screen.melodyReward
             ? 'settled'

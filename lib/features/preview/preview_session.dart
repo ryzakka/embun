@@ -1,5 +1,6 @@
 import '../../data/theme_catalog.dart';
 import '../../data/melody_rules.dart';
+import '../../data/melody_music.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../data/inspection.dart';
@@ -118,11 +119,15 @@ class PreviewSession
   MelodyJudge _melodyJudge = MelodyJudge();
   bool _melodyPaid = false;
 
-  void prepareMelodyPreview({String stage = 'inviting'}) {
+  void prepareMelodyPreview({
+    String stage = 'inviting',
+    int durationMs = 30000,
+    int trackIndex = 0,
+  }) {
     _melody = null;
     _melodyPaid = false;
     _melodyJudge = MelodyJudge();
-    _newMelody();
+    _newMelody(durationMs: durationMs, trackIndex: trackIndex);
     if (stage == 'running') {
       _melody!['status'] = 'running';
       _melody!['starts_at'] = DateTime.now()
@@ -130,7 +135,7 @@ class PreviewSession
           .toUtc()
           .toIso8601String();
       _melody!['ends_at'] = DateTime.now()
-          .add(const Duration(seconds: 35))
+          .add(Duration(milliseconds: 5000 + melodySessionDuration(_melody)))
           .toUtc()
           .toIso8601String();
     } else if (stage == 'settled') {
@@ -147,37 +152,24 @@ class PreviewSession
     _update();
   }
 
-  void _newMelody() {
-    final rng = Random(1234);
-    final notes = <Map<String, dynamic>>[];
-    for (var w = 0; w < 5; w++) {
-      final pressure = _dark ? 0 : (w - 1).clamp(0, 3).toInt();
-      final spacing = (500 / (1 + pressure * .05)).round();
-      var i = 0;
-      while (i * spacing < 5100) {
-        final lane = rng.nextInt(4);
-        final hold = i % 6 == 4 ? min(600, spacing + 100) : 0;
-        notes.add({
-          'id': w * 1000 + i * 4 + lane,
-          'lane': lane,
-          'at': w * 6000 + 450 + i * spacing,
-          'hold': hold,
-          'wave': w,
-        });
-        if (i % 6 == 2) {
-          final chord = (lane + 1 + rng.nextInt(3)) % 4;
-          notes.add({
-            'id': w * 1000 + i * 4 + chord,
-            'lane': chord,
-            'at': w * 6000 + 450 + i * spacing,
-            'hold': 0,
-            'wave': w,
-          });
-        }
-        i += hold > 0 ? 2 : 1;
-      }
-    }
-    _melodyJudge = MelodyJudge()..addNotes(notes.map(MelodyNote.fromJson));
+  void _newMelody({int durationMs = 30000, int trackIndex = 0}) {
+    final duration = melodySessionDuration({'duration_ms': durationMs});
+    final eligible = melodyTracks.where((t) => t.supports(duration)).toList();
+    final track = eligible[trackIndex % eligible.length];
+    final waves = melodyPreviewWaves(duration, antagonist: _dark);
+    final notes = melodyPreviewNotes(track, duration, waves, Random(1234))
+        .map(
+          (n) => <String, dynamic>{
+            'id': n.id,
+            'lane': n.lane,
+            'at': n.at,
+            'hold': n.hold,
+            'wave': n.wave,
+          },
+        )
+        .toList();
+    _melodyJudge = MelodyJudge(durationMs: duration)
+      ..addNotes(notes.map(MelodyNote.fromJson));
     _melody = {
       'id': 'preview-melody-${++_sequence}',
       'status': 'inviting',
@@ -190,7 +182,9 @@ class PreviewSession
           .toIso8601String(),
       'cost': 8,
       'minimum_card_cost': 10,
-      'duration_ms': 30000,
+      'duration_ms': duration,
+      'music': track.toJson(),
+      'combo_step': melodyComboStep(duration),
       'players': [
         for (final p in roster)
           {
@@ -207,10 +201,7 @@ class PreviewSession
         'max_combo': 0,
       },
       'notes': notes,
-      'waves': [
-        for (var w = 0; w < 5; w++)
-          {'wave': w, 'pressure': (w - 1).clamp(0, 3).toInt()},
-      ],
+      'waves': waves,
     };
   }
 
@@ -236,7 +227,7 @@ class PreviewSession
         'accuracy': _melodyJudge.accuracy,
         'max_combo': _melodyJudge.maxCombo,
       });
-      if (elapsed >= 32000) {
+      if (elapsed >= melodySessionDuration(m) + 2000) {
         final score = melodyFinalScore(
           _melodyJudge.score,
           70,
@@ -355,7 +346,7 @@ class PreviewSession
         .toUtc()
         .toIso8601String();
     m['ends_at'] = DateTime.now()
-        .add(const Duration(seconds: 35))
+        .add(Duration(milliseconds: 5000 + melodySessionDuration(_melody)))
         .toUtc()
         .toIso8601String();
     _update();

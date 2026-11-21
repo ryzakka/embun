@@ -84,7 +84,15 @@ class _Spark {
 }
 
 class _Ring {
-  _Ring(this.x, this.y, this.life, this.maxR, this.width, this.color, this.flat);
+  _Ring(
+    this.x,
+    this.y,
+    this.life,
+    this.maxR,
+    this.width,
+    this.color,
+    this.flat,
+  );
   final double x, y, life, maxR, width;
   final Color color;
   final bool flat;
@@ -141,9 +149,9 @@ class MelodyFxController {
   Offset get shakeOffset => (!motion || shake <= 0)
       ? Offset.zero
       : Offset(
-    math.sin(time * 41) * shake * (level >= 2 ? 7 : 3),
-    math.cos(time * 33) * shake * (level >= 2 ? 5 : 2.5),
-  );
+          math.sin(time * 41) * shake * (level >= 2 ? 7 : 3),
+          math.cos(time * 33) * shake * (level >= 2 ? 5 : 2.5),
+        );
 
   void reset() {
     _pending.clear();
@@ -218,7 +226,12 @@ class MelodyFxController {
       Color(0xFFFFFFFF),
     ];
     final names = antag
-        ? const ['Bisikan menguat', 'Irama retak', 'Gema bayangan', 'Malam bergema']
+        ? const [
+            'Bisikan menguat',
+            'Irama retak',
+            'Gema bayangan',
+            'Malam bergema',
+          ]
         : const ['Selaras', 'Harmoni', 'Gema Hayu', 'Ritual Agung'];
     _banner = _Banner(
       antag ? 'GANGGUAN $c' : 'KOMBO $c',
@@ -285,13 +298,13 @@ class MelodyFxController {
   }
 
   void _spark(
-      double x,
-      double y,
-      Color c, {
-        double speed = 300,
-        double spread = .84,
-        double down = 0,
-      }) {
+    double x,
+    double y,
+    Color c, {
+    double speed = 300,
+    double spread = .84,
+    double down = 0,
+  }) {
     if (_sparks.length > 340) {
       return;
     }
@@ -412,7 +425,11 @@ class MelodyFxController {
                 life: .9,
                 size: 2 + _rng.nextDouble() * 3,
                 g: 480,
-                color: Color.lerp(_blood, Colors.white, _rng.nextDouble() * .3)!,
+                color: Color.lerp(
+                  _blood,
+                  Colors.white,
+                  _rng.nextDouble() * .3,
+                )!,
               ),
             );
           }
@@ -426,13 +443,21 @@ class MelodyFxController {
           24,
         );
         if (motion) {
-          _radial(fullW / 2, h * .2, antag ? _mist : _gold, (20 * _amount).round(), 280);
+          _radial(
+            fullW / 2,
+            h * .2,
+            antag ? _mist : _gold,
+            (20 * _amount).round(),
+            280,
+          );
         }
       case MelodyHitKind.milestone:
         final c = _banner?.color ?? (antag ? _mist : _gold);
         if (motion) {
           _rings.add(_Ring(fullW / 2, h * .36, .9, fullW * .45, 7, c, false));
-          _rings.add(_Ring(fullW / 2, h * .36, .7, fullW * .3, 4, Colors.white, false));
+          _rings.add(
+            _Ring(fullW / 2, h * .36, .7, fullW * .3, 4, Colors.white, false),
+          );
           _rings.add(_Ring(fullW / 2, h * .36, 1.1, fullW * .6, 2.5, c, false));
           _radial(fullW / 2, h * .36, c, (80 * _amount).round(), 430);
           _radial(fullW * .22, h * .3, c, (30 * _amount).round(), 300);
@@ -504,7 +529,10 @@ class MelodyBackdropPainter extends CustomPainter {
             ..shader = LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
-              colors: [col.withValues(alpha: .38 * g), Colors.transparent],
+              colors: [
+                col.withValues(alpha: .38 * g),
+                Colors.transparent,
+              ],
             ).createShader(r),
         );
         canvas.drawOval(
@@ -542,21 +570,27 @@ class MelodyBackdropPainter extends CustomPainter {
     if (!fx.antag && fx.pressure > 0 && fx.level > 0) {
       final a =
           (.05 * fx.pressure).clamp(0.0, .2).toDouble() *
-              (.75 + (fx.reduced ? 0 : .25 * math.sin(fx.time * 2.2)));
+          (.75 + (fx.reduced ? 0 : .25 * math.sin(fx.time * 2.2)));
       final lr = Rect.fromLTWH(0, 0, w * .18, h);
       final rr = Rect.fromLTWH(w * .82, 0, w * .18, h);
       canvas.drawRect(
         lr,
         Paint()
           ..shader = LinearGradient(
-            colors: [_mist.withValues(alpha: a), Colors.transparent],
+            colors: [
+              _mist.withValues(alpha: a),
+              Colors.transparent,
+            ],
           ).createShader(lr),
       );
       canvas.drawRect(
         rr,
         Paint()
           ..shader = LinearGradient(
-            colors: [Colors.transparent, _mist.withValues(alpha: a)],
+            colors: [
+              Colors.transparent,
+              _mist.withValues(alpha: a),
+            ],
           ).createShader(rr),
       );
     }
@@ -671,7 +705,8 @@ class MelodyLanePainter extends CustomPainter {
       final fade = delta > kMelodyTravelMs - 200
           ? ((kMelodyTravelMs - delta) / 200).clamp(0.0, 1.0).toDouble()
           : 1.0;
-      final isHeld = n.hold > 0 &&
+      final isHeld =
+          n.hold > 0 &&
           held.contains(n.lane) &&
           judge.consumed(n.id) &&
           delta <= 0;
@@ -819,7 +854,12 @@ class MelodyFrontPainter extends CustomPainter {
         continue;
       }
       final col = fx.laneColors[lane];
-      final r = Rect.fromLTRB(lane * w / 4 + 4, line - h * .8, (lane + 1) * w / 4 - 4, line);
+      final r = Rect.fromLTRB(
+        lane * w / 4 + 4,
+        line - h * .8,
+        (lane + 1) * w / 4 - 4,
+        line,
+      );
       canvas.drawRect(
         r,
         Paint()
@@ -843,7 +883,10 @@ class MelodyFrontPainter extends CustomPainter {
           ..shader = LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [_blood.withValues(alpha: .34 * bp), Colors.transparent],
+            colors: [
+              _blood.withValues(alpha: .34 * bp),
+              Colors.transparent,
+            ],
           ).createShader(br),
       );
       final lr = Rect.fromLTWH(0, 0, w * .2, h);
@@ -852,19 +895,28 @@ class MelodyFrontPainter extends CustomPainter {
         lr,
         Paint()
           ..shader = LinearGradient(
-            colors: [_blood.withValues(alpha: .26 * bp), Colors.transparent],
+            colors: [
+              _blood.withValues(alpha: .26 * bp),
+              Colors.transparent,
+            ],
           ).createShader(lr),
       );
       canvas.drawRect(
         rr,
         Paint()
           ..shader = LinearGradient(
-            colors: [Colors.transparent, _blood.withValues(alpha: .26 * bp)],
+            colors: [
+              Colors.transparent,
+              _blood.withValues(alpha: .26 * bp),
+            ],
           ).createShader(rr),
       );
       final crack = Path()..moveTo(0, line);
       for (var i = 1; i <= 14; i++) {
-        crack.lineTo(w * i / 14, line + (i.isEven ? -11 : 11) * math.sin(i * 1.7));
+        crack.lineTo(
+          w * i / 14,
+          line + (i.isEven ? -11 : 11) * math.sin(i * 1.7),
+        );
       }
       canvas.drawPath(
         crack,
@@ -891,7 +943,9 @@ class MelodyFrontPainter extends CustomPainter {
           color: base.withValues(alpha: a),
           fontSize: 88 * scale,
           fontWeight: FontWeight.w900,
-          shadows: [Shadow(color: base.withValues(alpha: a * .8), blurRadius: 22)],
+          shadows: [
+            Shadow(color: base.withValues(alpha: a * .8), blurRadius: 22),
+          ],
         ),
       );
       _text(
@@ -977,9 +1031,7 @@ class MelodyFrontPainter extends CustomPainter {
       final t = (b.age / 2.0).clamp(0.0, 1.0).toDouble();
       final enter = Curves.easeOutBack.transform((t / .16).clamp(0.0, 1.0));
       final scale = fx.motion ? 1.9 - .9 * enter : 1.0;
-      final a = t < .16
-          ? t / .16
-          : (t > .7 ? 1 - (t - .7) / .3 : 1.0);
+      final a = t < .16 ? t / .16 : (t > .7 ? 1 - (t - .7) / .3 : 1.0);
       final cx = w / 2, cy = h * .36;
       if (fx.motion && fx.level >= 2) {
         final len = size.shortestSide * .7 * (.6 + .4 * enter);
@@ -988,8 +1040,14 @@ class MelodyFrontPainter extends CustomPainter {
           final ang = rot + i * 2 * math.pi / 18;
           final path = Path()
             ..moveTo(cx, cy)
-            ..lineTo(cx + math.cos(ang - .05) * len, cy + math.sin(ang - .05) * len)
-            ..lineTo(cx + math.cos(ang + .05) * len, cy + math.sin(ang + .05) * len)
+            ..lineTo(
+              cx + math.cos(ang - .05) * len,
+              cy + math.sin(ang - .05) * len,
+            )
+            ..lineTo(
+              cx + math.cos(ang + .05) * len,
+              cy + math.sin(ang + .05) * len,
+            )
             ..close();
           canvas.drawPath(
             path,
@@ -1035,7 +1093,9 @@ class MelodyFrontPainter extends CustomPainter {
           letterSpacing: 3,
           shadows: [
             Shadow(
-              color: b.color.withValues(alpha: .8 * a.clamp(0.0, 1.0).toDouble()),
+              color: b.color.withValues(
+                alpha: .8 * a.clamp(0.0, 1.0).toDouble(),
+              ),
               blurRadius: 24,
             ),
           ],
@@ -1144,7 +1204,9 @@ class _RingPulsePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3 * (1 - v) + .5
-        ..color = color.withValues(alpha: ((1 - v) * .6).clamp(0.0, 1.0).toDouble()),
+        ..color = color.withValues(
+          alpha: ((1 - v) * .6).clamp(0.0, 1.0).toDouble(),
+        ),
     );
   }
 
@@ -1356,8 +1418,14 @@ class _ScoreRaysPainter extends CustomPainter {
         final len = 150 * (.5 + .5 * pop);
         final path = Path()
           ..moveTo(c.dx, c.dy)
-          ..lineTo(c.dx + math.cos(a - .045) * len, c.dy + math.sin(a - .045) * len)
-          ..lineTo(c.dx + math.cos(a + .045) * len, c.dy + math.sin(a + .045) * len)
+          ..lineTo(
+            c.dx + math.cos(a - .045) * len,
+            c.dy + math.sin(a - .045) * len,
+          )
+          ..lineTo(
+            c.dx + math.cos(a + .045) * len,
+            c.dy + math.sin(a + .045) * len,
+          )
           ..close();
         canvas.drawPath(
           path,
@@ -1443,7 +1511,7 @@ class MelodyAmbientPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant MelodyAmbientPainter old) =>
       old.tint != tint ||
-          old.intensity != intensity ||
-          old.level != level ||
-          old.reduced != reduced;
+      old.intensity != intensity ||
+      old.level != level ||
+      old.reduced != reduced;
 }

@@ -3,7 +3,17 @@ import 'dart:math' as math;
 /// Shared presentation/rules. Rewards and authoritative scores are server-owned.
 const melodyFee = 8;
 const melodyMinimumCardCost = 10;
+// Legacy default. New sessions use their server-owned duration_ms.
 const melodyDurationMs = 30000;
+const melodyDurationsMs = [30000, 45000, 60000];
+const melodyWaveMs = 6000;
+const melodyFadeMs = 1500;
+int melodySessionDuration(Map? state) {
+  final n = (state?['duration_ms'] as num?)?.toInt();
+  return melodyDurationsMs.contains(n) ? n! : melodyDurationMs;
+}
+
+int melodyComboStep(int durationMs) => (15 * durationMs / 30000).ceil();
 const melodyLabels = [
   'Embun',
   'Persembahan',
@@ -75,6 +85,8 @@ class MelodyNote {
 /// Input judge is deterministic and independent from rendering frame rate.
 /// The server re-judges submitted timestamps; this class supplies immediate FX.
 class MelodyJudge {
+  MelodyJudge({this.durationMs = melodyDurationMs});
+  final int durationMs;
   final Map<int, MelodyNote> _notes = {};
   final Map<int, int> _down = {}, _up = {};
   final Set<int> _judged = {};
@@ -92,7 +104,7 @@ class MelodyJudge {
   }
 
   MelodyNote? down(int lane, int elapsed) {
-    if (_held.containsKey(lane) || elapsed < 0 || elapsed > melodyDurationMs) {
+    if (_held.containsKey(lane) || elapsed < 0 || elapsed >= durationMs) {
       return null;
     }
     final choices =
@@ -127,7 +139,7 @@ class MelodyJudge {
     _queue.add({
       'id': note.id,
       'edge': 'up',
-      'at': elapsed.clamp(0, 30500).toInt(),
+      'at': elapsed.clamp(0, durationMs).toInt(),
     });
   }
 

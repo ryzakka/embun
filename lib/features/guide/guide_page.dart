@@ -1427,7 +1427,7 @@ class _HowToTab extends StatelessWidget {
               '**Balai Pertukaran**: tawarkan kartu. Penerima boleh mengikuti undangan tanpa menghabiskan kunjungan dan kembali ke tempat sebelumnya. Kunjungan gratis hanya untuk tawaran tersebut.',
             ),
             _bullet(
-              '**Pelataran Melodi**: undang semua pemain yang masih hidup. Semua harus bersedia dan masing-masing membayar 8 embun atau membakar kartu item dengan harga dasar minimal 10. Biaya baru dipotong ketika ritual mulai. Pengundang memakai satu kunjungan; peserta undangan tidak. Mainkan ketukan D F J K atau tombol sentuh selama 30 detik. Ketepatan dan kombo menentukan satu hadiah pribadi dari tujuh tingkat skor. Kombo Si Terbisik mempercepat irama warga. Satu ritual setiap siklus.',
+              '**Pelataran Melodi**: undang semua pemain yang masih hidup. Semua harus bersedia dan masing-masing membayar 8 embun atau membakar kartu item dengan harga dasar minimal 10. Biaya baru dipotong ketika ritual mulai. Pengundang memakai satu kunjungan; peserta undangan tidak. Mainkan ketukan D F J K atau tombol sentuh selama 30, 45, atau 60 detik sesuai undangan. Satu dari empat musik dipilih untuk seluruh peserta, lalu memudar setelah waktu habis. Ketepatan dan kombo menentukan satu hadiah pribadi dari tujuh tingkat skor. Kombo Si Terbisik mempercepat irama warga. Satu ritual setiap siklus.',
             ),
           ],
         ),
