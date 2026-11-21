@@ -184,6 +184,7 @@ class PreviewSession
       'minimum_card_cost': 10,
       'duration_ms': duration,
       'music': track.toJson(),
+      'beatmap_version': track.toJson()['beatmap_version'],
       'combo_step': melodyComboStep(duration),
       'players': [
         for (final p in roster)

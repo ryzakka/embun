@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'melody_rules.dart';
+import 'melody_beatmaps.g.dart';
 
 /// Full original assets: no clips or speed variants are generated.
 class MelodyTrack {
@@ -16,6 +17,7 @@ class MelodyTrack {
     'duration_ms': durationMs,
     'bpm': bpm,
     'beat_offset_ms': beatOffsetMs,
+    'beatmap_version': melodyBeatmapVersion,
   };
 }
 
@@ -87,7 +89,7 @@ MelodyMusicFrame? melodyMusicFrame(
   );
 }
 
-/// Preview uses the same pulse/timeline formula as SQL; the server still owns
+/// Preview uses the same speed timeline as SQL; the server still owns
 /// actual note IDs, scoring and rewards in multiplayer.
 List<Map<String, dynamic>> melodyPreviewWaves(
   int durationMs, {
@@ -111,56 +113,74 @@ List<Map<String, dynamic>> melodyPreviewWaves(
   ];
 }
 
+/// Piecewise source time -> session time. Return null until the speed of
+/// the necessary phrase has been frozen, including a sustain's tail.
+double? melodySourceTime(
+  List<Map<String, dynamic>> rows,
+  num sourceMs,
+  int durationMs, {
+  bool tail = false,
+}) {
+  for (final row in rows) {
+    final wave = row['wave'] as int;
+    final rate = (row['rate'] as num).toDouble();
+    final start = (row['music_at_ms'] as num).toDouble();
+    final end =
+        start + math.min(melodyWaveMs, durationMs - wave * melodyWaveMs) * rate;
+    if (sourceMs >= start && (sourceMs < end || tail && sourceMs == end)) {
+      return wave * melodyWaveMs + (sourceMs - start) / rate;
+    }
+  }
+  return null;
+}
+
+/// Fixed authored events, shared by every session of a song. The retained rng
+/// argument supports callers from the earlier preview; lane placement no longer
+/// depends on it. Actual multiplayer uses the same data in the SQL migration.
 List<MelodyNote> melodyPreviewNotes(
   MelodyTrack track,
   int durationMs,
   List<Map<String, dynamic>> waves,
   math.Random rng,
 ) {
+  return melodyProjectBeatmap(
+    melodyBeatmaps[track.id] ?? const [],
+    durationMs,
+    waves,
+  );
+}
+
+List<MelodyNote> melodyProjectBeatmap(
+  List<List<int>> source,
+  int durationMs,
+  List<Map<String, dynamic>> waves,
+) {
   final result = <MelodyNote>[];
-  final beat = 60000 / track.bpm;
-  for (final w in waves) {
-    final wave = w['wave'] as int;
-    final rate = (w['rate'] as num).toDouble();
-    final musicAt = (w['music_at_ms'] as num).toDouble();
-    final end = math.min((wave + 1) * melodyWaveMs, durationMs);
-    var i = math.max(0, ((musicAt - track.beatOffsetMs) / beat).ceil());
-    while (true) {
-      final at =
-          (wave * melodyWaveMs +
-                  (track.beatOffsetMs + i * beat - musicAt) / rate)
-              .round();
-      if (at >= end - 200) break;
-      if (at < math.max(450, wave * melodyWaveMs)) {
-        i++;
-        continue;
-      }
-      final lane = rng.nextInt(4);
-      var hold = i % 6 == 4 ? (beat / rate * 1.2).round() : 0;
-      if (at + hold >= end - 200) hold = 0;
-      result.add(
-        MelodyNote(
-          id: wave * 10000 + i * 4 + lane,
-          lane: lane,
-          at: at,
-          hold: hold,
-          wave: wave,
-        ),
+  final full = waves.length == (durationMs / melodyWaveMs).ceil();
+  for (final n in source) {
+    final time = melodySourceTime(waves, n[1], durationMs);
+    if (time == null) continue;
+    final at = time.round();
+    if (at < 450 || at >= durationMs - 200) continue;
+    var hold = 0;
+    if (n[3] > 0) {
+      final end = melodySourceTime(waves, n[1] + n[3], durationMs, tail: true);
+      if (end == null && !full) continue;
+      hold = math.max(
+        0,
+        math.min((end ?? durationMs - 200).round(), durationMs - 200) - at,
       );
-      if (i % 6 == 2) {
-        final chord = (lane + 1 + rng.nextInt(3)) % 4;
-        result.add(
-          MelodyNote(
-            id: wave * 10000 + i * 4 + chord,
-            lane: chord,
-            at: at,
-            hold: 0,
-            wave: wave,
-          ),
-        );
-      }
-      i += hold > 0 ? 2 : 1;
+      if (hold < 180) hold = 0;
     }
+    result.add(
+      MelodyNote(
+        id: n[0],
+        lane: n[2],
+        at: at,
+        hold: hold,
+        wave: at ~/ melodyWaveMs,
+      ),
+    );
   }
   return result;
 }
